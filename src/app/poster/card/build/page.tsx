@@ -1897,6 +1897,8 @@ export default function BuildCard() {
   if (state === "make") {
     // A website built in this session (or restored from this phone's draft) or already live.
     const madeAlready = !!card && (!!built || !!liveUser || isLiveSite(existing));
+    // Blank details (16 Nov 2026): no order and no build until the name, the work and the city are there — or a website of their own to read them from.
+    const needDetails = !!setup && !facts.website && (!(setup.business || setup.person) || !setup.category || !setup.city);
     const li = (text: string) => <li className="flex items-start gap-2 text-sm"><span className="text-good">✓</span><span>{text}</span></li>;
     return (
       <div className="space-y-4 py-2">
@@ -1943,6 +1945,12 @@ export default function BuildCard() {
             </ul>
           </section>
         )}
+        {needDetails && (
+          <div className="space-y-2 rounded-2xl border border-amber/50 bg-amber/10 p-4">
+            <p className="text-sm font-semibold">{T("Fill your business name, work and city first. Your website is made from these.", "पहले अपने business का नाम, काम और शहर भरें। Website इन्हीं से बनती है।")}</p>
+            <Link href={`/poster/onboard?step=trade&back=${encodeURIComponent("/poster/card/build?make=1")}`} onClick={() => setEditMark(true)} className="inline-flex items-center gap-2 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Fill my details →", "मेरी details भरें →")}</Link>
+          </div>
+        )}
         {/* A free account (owner, 2 Nov 2026): ONE button, "Make my website". The card is made first and shown; then the plan sheet
             asks for the website's plan (WebsitePlanSheet) — "Not now" keeps the free card. The card alone stays one small link. */}
         {freeMake && (
@@ -1959,7 +1967,7 @@ export default function BuildCard() {
               ["site_premium", false, T("Make my Premium website", "मेरी Premium website बनाएँ"), `${rupees(SITE_PKG.site_premium.amount)} ${T("/ year", "/ साल")}`, T("Dynamic and progressive, a page for every product", "Dynamic और progressive, हर product का अपना page"), "bg-[#12144a] text-white"],
               ["site_premium", true, T("Premium + Customise", "Premium + Customise"), `${rupees(SITE_PKG.site_premium.amount)} + ${T("customising", "customise")}`, T("Premium now; customising charged as per the work", "अभी Premium; customise का charge काम के हिसाब से"), "border-2 border-[#12144a] bg-surface text-ink"],
             ] as const).map(([pkg, custom, title, price, sub, cls]) => (
-              <button key={title} type="button" onClick={() => void placeOrder(pkg, custom)} disabled={!!busy || ordering} className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left disabled:opacity-60 ${cls}`}>
+              <button key={title} type="button" onClick={() => void placeOrder(pkg, custom)} disabled={!!busy || ordering || needDetails} className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left disabled:opacity-60 ${cls}`}>
                 <Sparkles className="h-5 w-5 shrink-0" />
                 <span className="min-w-0 flex-1"><span className="block text-base font-bold leading-tight">{title}</span><span className="block text-xs opacity-80">{sub}</span></span>
                 <span className="shrink-0 text-right text-sm font-extrabold">{price}</span>
@@ -1991,7 +1999,7 @@ export default function BuildCard() {
             {li(T("Your own domain", "अपना domain"))}
           </ul>
           {access.subscribed ? (
-            <button type="button" onClick={() => { setPlan("premium"); setMakeFrom("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => { setPlan("premium"); setMakeFrom("premium"); void build(); }} disabled={!!busy || access.loading || needDetails} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-3.5 text-base font-semibold text-white disabled:opacity-60">
               {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}
             </button>
           ) : (

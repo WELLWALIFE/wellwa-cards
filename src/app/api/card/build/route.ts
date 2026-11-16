@@ -337,6 +337,10 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     if (Object.keys(metaPatch).length) void patchBusinessMeta(me.id, metaPatch);
   }
 
+  // No website from blank details (owner, 16 Nov 2026: a paid demo account was built as "Demo1 · Business services" before its
+  // details were filled): the work and the city must be known — typed, or read from the owner's own website above.
+  if (!setup.category || !setup.city) return answer({ error: "Fill your business name, work and city first. Your website is made from these.", details: true }, 400);
+
   // Free or paid, read once: it decides where the card's pictures come from, and nothing that costs money
   // may run before this is known.
   const paidPlan = (await posterQuota(me.token, me.id).catch(() => ({ plan: "free" as const }))).plan !== "free";
