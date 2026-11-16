@@ -27,6 +27,9 @@ export function AdminReturnBar() {
       if (!email || (s.email && email.toLowerCase() === s.email.toLowerCase())) { try { localStorage.removeItem(ADMIN_RETURN_KEY); } catch { /* ignore */ } return; }
       setWho(s.as || email);
       setSaved(s);
+      // Which account exactly (owner, 16 Nov 2026: two accounts with one name): its username on the pill.
+      void fetch("/api/account", { headers: { Authorization: `Bearer ${(await sb!.auth.getSession()).data.session?.access_token ?? ""}` }, cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null)).then((j: { username?: string | null } | null) => { if (j?.username) setWho(`@${j.username}`); }).catch(() => undefined);
     })();
   }, []);
 
@@ -56,7 +59,7 @@ export function AdminReturnBar() {
     <button onClick={back} disabled={busy} title={`Super Admin · viewing as ${who} — back to admin`}
       className="fixed z-[100] inline-flex items-center gap-1 rounded-full bg-[#12144a] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
       style={{ top: "calc(8px + env(safe-area-inset-top))", right: "max(8px, calc(50% - 14rem + 8px))" }}>
-      {busy ? "…" : <>← Admin</>}
+      {busy ? "…" : <>← Admin{who ? <span className="max-w-[9rem] truncate font-normal opacity-80"> · {who}</span> : null}</>}
     </button>
   );
 }

@@ -15,7 +15,7 @@ import {
   ADV_FONTS, BODY_FONTS, DEFAULT_ORDER, DENSITIES, HERO_IDS, hash32, SANS_HEADINGS, SECTION_KEYS, SERIF_HEADINGS, SHAPES, VARIANT_IDS, rng, validateSpec, variantOf,
   type AdvancedSpec, type SectionKey,
 } from "./site-advanced";
-import { PALETTE_KEYS, SITE_PALETTES } from "./site-style";
+import { PALETTE_KEYS, SITE_PALETTES, hexToOklch } from "./site-style";
 import { tradeMood } from "./trade-moods";
 import { CURATED_PALETTES, FONT_PAIRINGS, curatedPalette } from "@/components/site-adv/theme";
 import { isEmptyBlock } from "./site-home";
@@ -99,6 +99,7 @@ export const GROUPS: TradeGroup[] = [
   { key: "leader", label: "Political leader, MLA, councillor, sarpanch", about: "the person and the work; the area; public contact; a plain, respectful, confident page" },
   { key: "astro", label: "Astrology, vastu, pandit", about: "calm, traditional, trust; services and how to consult; the person" },
   { key: "personal", label: "Personal brand, creator, professional, sales agent", about: "the person is the brand; what they do; a portrait; how to reach" },
+  { key: "bridal", label: "Bridal and wedding wear: lehenga, sherwani, wedding boutique", about: "couture and occasion; the bride, the groom and the family; few pieces shown large; fittings and made-to-measure; an appointment or a WhatsApp enquiry; calm luxury, never loud" },
   { key: "general", label: "Any other business", about: "a clear story, the offering, proof and a way to reach out" },
 ];
 
@@ -994,7 +995,45 @@ function finish(arch: Archetype, group: string): Archetype {
   }
   return { ...arch, sections };
 }
-export const ARCHETYPES_BY_GROUP: Record<string, Archetype[]> = mergeGroups(LIBRARY, RESEARCHED, PREMIUM);
+/* ================= fixed templates: twelve finished designs for one trade ================= */
+// Owner, 16 Nov 2026: "trade select karte hi us trade ke 12 design dikhe — sab alag, sab perfect". The library above is a set of starting
+// points that the seed then varies (colour, face, hero, two or three sections); these are NOT varied: every section, the palette, the faces
+// and the corners are written out, and the choose screen shows exactly these twelve (fixedSpecs). Four moods of three — classic, bold,
+// luxury, festive — twelve different tops, six light pages and six dark, twelve colours. Bridal wear first (reference: a couture house's
+// bridal page — a quiet header, one full-bleed image, tall portraits in a row, the occasions as tiles, menswear beside it, much air).
+const FIXED: Record<string, Archetype[]> = {
+  bridal: [
+    // --- classic ---
+    a("bridal-couture-house", "The Couture House", "one full-bleed bridal image, a short centred line, then the collection as tall portraits in a row", "full-bleed", "about services gallery proof",
+      "about:pull-quote services:scroller gallery:filmstrip proof:testimonial-carousel trust:hairline process:numbered-list faq:accordion visit:address-poster cta:wide-band footer:big-wordmark", "sage light luxe", "Playfair Display/DM Sans", "sharp airy subtle", "quiet couture: ivory paper, a sage band, small caps, tall portraits, very slow pacing"),
+    a("bridal-lookbook", "The Bridal Lookbook", "the collection as a magazine: oversized type, a masonry of looks, captions in small caps", "editorial-marquee", "gallery services about proof",
+      "gallery:masonry services:magazine about:editorial-split proof:review-wall trust:ticker process:timeline-h faq:two-column visit:split cta:floating-card footer:atelier", "blush light", "Instrument Serif/Inter", "sharp airy rich", "editorial fashion photography; dusty pink and ink; looks numbered like a lookbook"),
+    a("bridal-bride-groom", "Bride & Groom", "two lanes side by side: her lehenga, his sherwani; each look a full-width row with its own enquiry", "split-frame", "services gallery about proof",
+      "services:listing-rows gallery:bento about:overlap-card proof:cards trust:strip process:steps faq:accordion visit:map-hours cta:band footer:columns", "ivory light", "Newsreader/Inter", "soft airy subtle", "ivory and warm brown; the couple together, then each alone; calm and exact"),
+    // --- bold ---
+    a("bridal-wedding-season", "The Wedding Season", "occasion-led: mehndi, haldi, sangeet, wedding, reception — each a large card with its own pieces", "stacked-poster", "services gallery proof about",
+      "services:feature-cards gallery:album-tabs proof:marquee-cards about:photo-collage trust:counters process:icon-cards faq:chat-bubble visit:hours-timeline cta:sticky-ribbon footer:link-grid", "crimson dark", "DM Serif Display/Manrope", "soft airy rich", "deep bridal red on dark; an arched photo; the functions as a row of big cards"),
+    a("bridal-collection", "The Collection", "the store as a shop: search, filters, every piece as a photo card with its price and an ask button", "mosaic", "services trust gallery proof",
+      "services:shop-grid trust:icon-row gallery:lightbox-grid proof:star-summary about:numbers-led process:steps faq:searchable visit:split cta:split-qr footer:mega", "pearl light", "Manrope/DM Sans", "soft compact subtle", "clean white and navy; product-first; sizes, fabric and delivery said plainly"),
+    a("bridal-new-arrivals", "New Arrivals", "this season's pieces on a slanted photo, tabs by category, one look at a time on a stage", "diagonal", "services gallery trust proof",
+      "services:category-tabs gallery:stage trust:ticker proof:review-wall about:banner-columns process:icon-cards faq:accordion visit:map-hours cta:sticky-ribbon footer:mega", "plum dark", "Bricolage Grotesque/Inter", "pill compact rich", "plum and magenta on dark; bold type; a new-arrivals ticker; energetic"),
+    // --- luxury ---
+    a("bridal-private-viewing", "The Private Viewing", "one dramatic bridal image, 'book a private viewing', a letter from the designer, the appointment in steps", "centered-minimal", "about gallery process proof",
+      "about:founder-letter gallery:filmstrip process:numbered-list proof:spotlight services:index-rows trust:hairline faq:spotlight visit:address-poster cta:callback footer:minimal", "oxblood dark", "Playfair Display/Inter", "sharp airy rich", "oxblood and gold; ornate serif; very slow pacing; intimate, made-to-measure language"),
+    a("bridal-atelier-noir", "Atelier Noir", "black and brass: the words on a frosted card over the photo, signature pieces as an editorial grid, a pinned reel", "glass-card", "services about gallery proof",
+      "services:magazine about:manifesto gallery:pinned-reel proof:testimonial-carousel trust:bento process:stack-cards faq:numbered-accordion visit:contact-desk cta:wide-band footer:atelier", "brass dark", "Instrument Serif/Manrope", "sharp airy rich", "ink black and champagne gold; a few pieces shown very large; a heavy, quiet luxury"),
+    a("bridal-heirloom-craft", "Heirloom Craft", "the craft leads: zardozi, gota, hand embroidery — the making told in chapters, the pieces after it", "masthead", "about process gallery services",
+      "about:chapters process:timeline-h gallery:scrapbook services:scroller proof:cards trust:strip faq:accordion visit:address-poster cta:band footer:big-wordmark", "terracotta light luxe", "Fraunces/DM Sans", "soft airy subtle", "ivory paper and terracotta; embroidery close-ups; the karigar's hands; heritage, named techniques"),
+    // --- festive, local ---
+    a("bridal-shaadi-ghar", "Shaadi Ghar", "the wedding shop of the town: a floating collage, the whole wedding under one roof, families who came back", "parallax-collage", "services proof gallery about",
+      "services:feature-cards proof:clients-strip gallery:mosaic about:owner-card trust:counters process:steps faq:chat-bubble visit:branch-list cta:band footer:columns", "saffron dark", "Playfair Display/Mukta", "pill airy rich", "saffron, marigold and maroon; festive and warm; Hindi reads as well as English; the owner at the counter"),
+    a("bridal-made-to-measure", "Made to Measure", "the boutique's work: measure, stitch, fitting, delivery — the steps first, then a clear rate list", "pinned-story", "process services about gallery",
+      "process:stack-cards services:price-list about:owner-card gallery:rooms proof:receipt trust:split-cards faq:numbered-accordion visit:hours-timeline cta:split-qr footer:hotline", "slate light", "Lora/Mukta", "sharp compact subtle", "grey-blue and cream; tape, chalk and patterns; exact and honest; delivery dates said plainly"),
+    a("bridal-family-wedding", "The Family Wedding Store", "for the whole family: bride, groom, sisters, mothers — a giant headline with round photos in it, then everything by person", "kinetic-type", "services gallery proof about",
+      "services:grid gallery:masonry proof:marquee-cards about:story-columns trust:icon-row process:icon-cards faq:two-column visit:map-hours cta:floating-card footer:link-grid", "rose dark", "Fraunces/Manrope", "pill airy rich", "deep rose and pink; joyful; many faces; one stop for the wedding"),
+  ],
+};
+export const ARCHETYPES_BY_GROUP: Record<string, Archetype[]> = mergeGroups(LIBRARY, RESEARCHED, PREMIUM, FIXED);
 
 /* ================= what the card has: fit ================= */
 
@@ -1191,6 +1230,45 @@ export function specFromSeed(card: Card): AdvancedSpec {
 }
 const LIGHT_ONLY = new Set(["ivory", "pearl"]);
 
+/* ================= fixed templates: which card, and the twelve specs ================= */
+
+/** A clothing business whose own words say wedding wear (owner, 16 Nov 2026: "ladies lehenga, male wedding clothes, boutique"). */
+const BRIDAL_WORDS = /\b(bridal|bride|brides|lehenga|lehnga|lehanga|sherwani|wedding|groom|dulhan|dulha|shaadi|shadi)\b|लहंगा|लहँगा|शेरवानी|दुल्हन|दूल्हा|शादी|ब्राइडल/i;
+const CLOTHING = new Set(["garments", "textile", "tailor"]);
+/** The trade group of THIS card: its category's group, but a clothing business that says wedding wear is "bridal". */
+export function groupOfCard(card: Card): string {
+  const cat = (card.seo?.categoryKey ?? "").trim().toLowerCase();
+  if (CLOTHING.has(cat)) {
+    const products = card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "product" ? b.items.map((i) => i.name ?? "") : []));
+    const text = [card.company, card.name, card.jobTitle, card.tagline, card.about, card.site?.hero?.headline, ...products].filter(Boolean).join(" ");
+    if (BRIDAL_WORDS.test(text)) return "bridal";
+  }
+  return groupOf(cat);
+}
+/** The finished templates of this card's trade, as specs — exactly as written (no seeded variation), only the things the card cannot
+ *  carry repaired (a photo top with no photo, a photo catalogue with no product pictures). Empty for a trade that has none yet. */
+export function fixedSpecs(card: Card): AdvancedSpec[] {
+  const list = FIXED[groupOfCard(card)];
+  if (!list?.length) return [];
+  const name = (card.company || card.name || "").trim().toLowerCase();
+  const base = `${name}|${card.seo?.categoryKey ?? ""}|${card.username ?? ""}`;
+  const fit = fitOf(card);
+  const out: AdvancedSpec[] = [];
+  for (const raw of list) {
+    const arch = finish(raw, groupOfCard(card));
+    const seed = `${base}|fix:${arch.id}`;
+    try {
+      const spec = guardByFit(validateSpec({ ...(archetypeSpec(arch, seed) as object), seed }, seed), fit, seed);
+      if (LIGHT_ONLY.has(spec.palette.key)) spec.palette.tone = "light";
+      if (spec.palette.luxe && spec.palette.tone === "dark") delete spec.palette.luxe;
+      if (card.language === "hi") spec.fonts = { ...spec.fonts, body: "Mukta" };
+      out.push({ ...spec, seed, archetype: arch.name.slice(0, 40) });
+    } catch { /* a template the registry no longer knows is left out, never a broken page */ }
+  }
+  return out;
+}
+export const isFixedSeed = (seed: unknown): boolean => typeof seed === "string" && seed.includes("|fix:");
+
 const curatedName = (hex: string) => CURATED_PALETTES.find((x) => x.color === hex)?.name ?? "brand";
 /** A one-line description of an archetype for the designer's prompt. */
 export function describeArchetype(arch: Archetype): string {
@@ -1226,9 +1304,25 @@ export function distinctLook(spec: AdvancedSpec, seed: string, others: AdvancedS
     ].filter((pal) => !usedColors.has(`${pal.key}|${pal.color ?? ""}`));
     if (pool.length) cur.palette = { ...pickOf(r, pool), ...(cur.palette.luxe ? { luxe: true } : {}) };
   }
-  // Tone: when every seen design is light (or all dark), this one takes the other, so the backgrounds differ at a glance.
-  const tones = new Set(others.map((o) => o.palette.tone));
-  if (tones.size === 1 && tones.has(cur.palette.tone)) cur.palette.tone = cur.palette.tone === "light" ? "dark" : "light";
+  // Colour families apart (owner, 16 Nov 2026: five of six were cream with an orange or a brown): a hue within 40° of one already
+  // there is swapped for the unused palette farthest from every hue seen.
+  const hueOf = (pal: AdvancedSpec["palette"]): number | null => {
+    const named = SITE_PALETTES.find((x) => x.key === pal.key && x.key !== "brand");
+    if (named) return named.h;
+    try { return pal.color ? hexToOklch(pal.color).h : null; } catch { return null; }
+  };
+  const apart = (a: number, b: number) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+  const seenHues = others.map((o) => hueOf(o.palette)).filter((h): h is number => h !== null);
+  const nearest = (h: number | null) => (h === null || !seenHues.length ? 180 : Math.min(...seenHues.map((x) => apart(x, h))));
+  if (nearest(hueOf(cur.palette)) < 40) {
+    const usedColors = new Set(others.map((o) => `${o.palette.key}|${o.palette.color ?? ""}`));
+    const pool = CURATED_PALETTES.map((c) => ({ key: "brand", color: c.color, tone: c.tone } as AdvancedSpec["palette"])).filter((pal) => !usedColors.has(`${pal.key}|${pal.color ?? ""}`));
+    const best = pool.map((pal) => ({ pal, d: nearest(hueOf(pal)) })).sort((a, b) => b.d - a.d)[0];
+    if (best && best.d > nearest(hueOf(cur.palette))) cur.palette = { ...best.pal, tone: cur.palette.tone, ...(cur.palette.luxe ? { luxe: true } : {}) };
+  }
+  // Tone: light and dark in turn — this one takes the tone fewer of the seen designs wear, so the backgrounds differ at a glance.
+  const same = others.filter((o) => o.palette.tone === cur.palette.tone).length;
+  if (same > others.length - same) cur.palette.tone = cur.palette.tone === "light" ? "dark" : "light";
   // Heading face: another pairing of the same kind, never one already seen.
   const usedHeads = new Set(others.map((o) => o.fonts.heading));
   if (usedHeads.has(cur.fonts.heading)) {

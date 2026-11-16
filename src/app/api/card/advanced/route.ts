@@ -29,6 +29,7 @@ import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import { DESIGN_CREDITS } from "@/lib/adv-price";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
+import { fixedSpecs } from "@/lib/site-advanced-archetypes";
 import { isDemoAccount, readyIn, sitePending } from "@/lib/site-ready-server";
 import { packageRunning } from "@/lib/site-tier";
 
@@ -43,6 +44,19 @@ const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> =
 const CHOICES = 6;
 async function fillDesigns(uid: string, row: { id: string; username: string; data: Card }, from?: Obj): Promise<void> {
   const kept = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
+  // A trade with finished templates (owner, 16 Nov 2026: bridal wear first): its twelve, exactly as written — no seeded variation, no AI.
+  // The words stay the ones on the card. Kept once; a template already there is not written again.
+  const fixed = fixedSpecs(row.data);
+  if (fixed.length) {
+    const site0 = row.data.site as (Card["site"] & { advancedCopy?: unknown; advancedMeta?: { critique?: unknown; round?: number } }) | undefined;
+    const words = from ?? kept[kept.length - 1] ?? { copy: site0?.advancedCopy ?? {}, critique: site0?.advancedMeta?.critique, round: site0?.advancedMeta?.round ?? 0 };
+    const have = new Set(kept.map((r) => (r.spec as AdvancedSpec | undefined)?.seed));
+    if (fixed.every((x) => have.has(x.seed))) return;
+    for (const spec of fixed) {
+      await rememberAdvDesign(uid, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, copy: words.copy ?? {}, critique: words.critique, round: words.round ?? 0, spec, source: { review: "signals", spec: "fixed", copy: "none" } } as unknown as Obj);
+    }
+    return;
+  }
   if (kept.length >= CHOICES) return;
   const site = row.data.site as (Card["site"] & { advancedCopy?: unknown; advancedMeta?: { critique?: unknown; source?: Obj; round?: number } }) | undefined;
   const onCard = parseAdvanced(site?.advanced);

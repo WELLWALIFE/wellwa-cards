@@ -18,7 +18,7 @@ export function TopMenu() {
   const { lang } = useT();
   const kind = useAccountKind();
   const en = lang === "en";
-  const [me, setMe] = useState<{ name: string; photo: string | null } | null>(null);
+  const [me, setMe] = useState<{ name: string; photo: string | null; partnerId: string } | null>(null);
   const [username, setUsername] = useState("");
   const [open, setOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -30,7 +30,7 @@ export function TopMenu() {
     sb.auth.getUser().then(({ data }) => {
       const u = data.user; if (!u) { setMe(null); return; }
       const md = (u.user_metadata ?? {}) as Record<string, unknown>;
-      setMe({ name: String(md.display_name ?? md.full_name ?? md.name ?? "").trim() || (u.email ?? ""), photo: (md.photo_url as string) || null });
+      setMe({ name: String(md.display_name ?? md.full_name ?? md.name ?? "").trim() || (u.email ?? ""), photo: (md.photo_url as string) || null, partnerId: typeof md.associate_id === "string" ? md.associate_id : "" });
     });
     // The account's username for the Home header (owner's call, 29 Sep 2026: photo, name, @username on the left).
     import("@/lib/poster-client").then(({ api }) => api<{ username: string | null }>("/api/account").then((r) => { if (r.ok && r.data.username) setUsername(r.data.username); })).catch(() => {});
@@ -69,7 +69,7 @@ export function TopMenu() {
         {home && (
           <span className="min-w-0">
             <span className="block truncate text-[15px] font-bold leading-tight">{me.name}</span>
-            {username && <span className="block truncate text-xs text-muted leading-tight">@{username}</span>}
+            {(username || me.partnerId) && <span className="block truncate text-xs text-muted leading-tight">{[username ? `@${username}` : "", me.partnerId].filter(Boolean).join(" · ")}</span>}
           </span>
         )}
       </button>
@@ -77,6 +77,8 @@ export function TopMenu() {
         <div className={`absolute mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-surface shadow-xl ${home ? "left-0" : "right-0"}`}>
           <div className="border-b border-border px-3 py-2.5">
             <p className="truncate text-sm font-semibold">{me.name}</p>
+            {/* Who is logged in, on every page (owner, 16 Nov 2026): the username and the partner ID under the name. */}
+            {(username || me.partnerId) && <p className="truncate text-xs text-muted">{[username ? `@${username}` : "", me.partnerId].filter(Boolean).join(" · ")}</p>}
           </div>
           <Link href="/poster/settings" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><UserRound className="h-4 w-4 text-muted" /> {en ? "Me · account" : "मेरा account"}</Link>
           {showsPartnerUi(kind) && <Link href="/poster/business" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Handshake className="h-4 w-4 text-muted" /> Business</Link>}

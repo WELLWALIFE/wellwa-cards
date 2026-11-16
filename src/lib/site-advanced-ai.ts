@@ -656,6 +656,10 @@ export function libraryDesigns(card: Card, have: AdvancedSpec[], n: number): Adv
     } catch (e) { console.log("[advanced] library design skipped:", e instanceof Error ? e.message : e); return null; }
   };
   const fresh = (x: AdvancedSpec) => { const all = [...have, ...out]; return !all.some((h) => h.archetype === x.archetype && h.hero === x.hero) && all.filter((h) => h.archetype === x.archetype).length < 2; };
+  // Six designs, six compositions (owner, 16 Nov 2026: two tiles were both "The Editorial"): first only compositions not there yet,
+  // then — when the trade's library has fewer than six — a second of one, with another top.
+  const brandNew = (x: AdvancedSpec) => ![...have, ...out].some((h) => h.archetype === x.archetype);
+  for (let r = 1; out.length < n && r <= 40; r++) { const x = draw(r); if (x && brandNew(x)) out.push(x); }
   for (let r = 1; out.length < n && r <= 40; r++) { const x = draw(r); if (x && fresh(x)) out.push(x); }
   for (let r = 41; out.length < n && r <= 60; r++) { const x = draw(r); if (x) out.push(x); }
   return out;

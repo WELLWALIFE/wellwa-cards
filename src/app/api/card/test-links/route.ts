@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   try { b = JSON.parse(raw); } catch { /* below */ }
   const card = b?.card, looks = b?.looks ?? [];
   // Premium designs (the choose screen): up to six, each a spec with its words. Keys are ours (d1…d6), never the caller's.
-  const designs: TestDesign[] = (Array.isArray(b?.designs) ? b!.designs! : []).slice(0, 6)
+  const designs: TestDesign[] = (Array.isArray(b?.designs) ? b!.designs! : []).slice(0, 12)
     .filter((d) => d && d.adv && typeof d.adv.spec === "object" && d.adv.spec)
     .map((d, i) => ({ key: `d${i + 1}`, name: String(d.name ?? `Design ${i + 1}`).slice(0, 40), adv: { spec: d.adv!.spec, ...(d.adv!.copy && typeof d.adv!.copy === "object" ? { copy: d.adv!.copy as TestDesign["adv"]["copy"] } : {}), ...(Array.isArray(d.adv!.slides) ? { slides: d.adv!.slides } : {}) } }));
   if (!card || !Array.isArray(card.pages) || !Array.isArray(card.links) || !Array.isArray(looks) || looks.length > 6) return NextResponse.json({ error: "Nothing to send yet." }, { status: 400 });

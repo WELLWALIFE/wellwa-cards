@@ -58,6 +58,7 @@ const VARIETY: { palette: string; font: string }[] = [
 ];
 /** The full-photo look: a dark page end to end (black and gold), the one dark look among the six. */
 const DARK_LOOK = { palette: "noir", font: "luxury" };
+const FESTIVE = { palette: "saffron", font: "honest" };
 function dressApart(looks: Look[]): Look[] {
   if (looks.length < 2) return looks;
   const first = looks[0].style;
@@ -68,6 +69,8 @@ function dressApart(looks: Look[]): Look[] {
     const { color: _c, ...rest } = l.style; void _c;
     // The pages are paper under every other blueprint, so a dark palette would only darken the text there: the dark one is the cinematic look's.
     if (l.key === "cinematic" && first.palette !== DARK_LOOK.palette) return { ...l, style: { ...rest, palette: DARK_LOOK.palette, font: hindi ? "hindi" : DARK_LOOK.font, body: "dark" } };
+    // The festive, local one (owner's list, 16 Nov 2026): saffron, a Hindi-ready face and a rangoli-like ring pattern on the photo collage.
+    if (l.key === "collage" && first.palette !== FESTIVE.palette) return { ...l, style: { ...rest, palette: FESTIVE.palette, font: hindi ? "hindi" : FESTIVE.font, pattern: "rings" } };
     const pick = pool.shift() ?? VARIETY[i % VARIETY.length];
     return { ...l, style: { ...rest, palette: pick.palette, font: hindi ? "hindi" : pick.font } };
   });

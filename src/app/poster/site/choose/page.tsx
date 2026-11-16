@@ -71,7 +71,10 @@ export default function ChooseDesignPage() {
     setCard(c);
     // The Premium designs kept for this card, filled up to six from the library (any paid website; none when the server says no).
     const r = await api<{ designs?: Design[] }>("/api/card/advanced", { method: "POST", json: { cardId: c.id, more: true } }).catch(() => null);
-    setDesigns(r?.ok && r.data.designs?.length ? r.data.designs.slice(0, 6) : []);
+    // A trade with finished templates (bridal wear, 16 Nov 2026): its twelve are the whole choice — marked by their seed ("|fix:").
+    const all = r?.ok && r.data.designs?.length ? r.data.designs : [];
+    const fixed = all.filter((d) => String(d.spec?.seed ?? "").includes("|fix:"));
+    setDesigns(fixed.length ? fixed.slice(0, 12) : all.slice(0, 6));
   })(); }, [router, tick]);
 
   const advOn = !!card?.site?.advanced && (card.site as { advancedOn?: boolean }).advancedOn !== false;
@@ -92,6 +95,8 @@ export default function ChooseDesignPage() {
       card: l.key === cur ? plain : applyLook(plain, l), on: !advOn && l.key === cur,
       swatch: (() => { const st = l.key === cur ? plain.site?.style : l.style; return swatchOf(st?.palette, st?.color ?? card.themeColor, st?.body === "dark" ? "dark" : "light", fontSetFor(st?.font)?.display.family); })(),
     }));
+    // Twelve finished templates of the trade: they are the choice; the six general looks are not mixed in.
+    if (prem.length > 6) return prem;
     return [...prem, ...looks];
   }, [card, designs, hi, advOn]);
   const chosen = options.find((o) => o.id === pick) ?? options.find((o) => o.on) ?? options[0];

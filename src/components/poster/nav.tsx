@@ -134,6 +134,7 @@ function SideAccount({ hi }: { hi: boolean }) {
   const kind = useAccountKind();
   const [me, setMe] = useState<{ name: string; photo: string | null; partnerId: string } | null>(null);
   const [username, setUsername] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -141,6 +142,7 @@ function SideAccount({ hi }: { hi: boolean }) {
     const sb = getBrowserSupabase();
     if (!sb) return;
     sb.auth.getUser().then(({ data }) => {
+      setLoaded(true);
       const u = data.user; if (!u) { setMe(null); return; }
       const md = (u.user_metadata ?? {}) as Record<string, unknown>;
       setMe({ name: String(md.display_name ?? md.full_name ?? md.name ?? "").trim() || (u.email ?? ""), photo: (md.photo_url as string) || null, partnerId: typeof md.associate_id === "string" ? md.associate_id : "" });
@@ -155,7 +157,13 @@ function SideAccount({ hi }: { hi: boolean }) {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
-  if (!me) return null;
+  // Nobody logged in (owner, 16 Nov 2026: "kahin naam, username ya ID nahi dikh raha"): say so, with the way in.
+  if (!me) return loaded ? (
+    <div className="border-t border-border p-3">
+      <p className="px-2 text-[11px] font-semibold text-muted">{hi ? "आप login नहीं हैं" : "You are not logged in"}</p>
+      <Link href="/login" className="mt-1.5 block rounded-xl grad-brand px-3 py-2 text-center text-sm font-semibold text-white">{hi ? "Log in" : "Log in"}</Link>
+    </div>
+  ) : null;
   async function logout() {
     try { await getBrowserSupabase()?.auth.signOut(); } catch { /* already out */ }
     await endPartnerSession();
