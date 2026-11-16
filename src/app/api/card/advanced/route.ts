@@ -188,6 +188,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, current: advancedState(next), username: row.username });
   }
 
+  // A trade with finished templates (bridal wear, 16 Nov 2026): a Premium order's design is the first template, put on at once — no AI
+  // run, no try spent, nothing to wait for (a demo sat on "Your Premium designs are being prepared" for ten minutes). The choose screen
+  // then offers all twelve; the owner's pick replaces it.
+  if (b.mode === "apply" && b.quiet === true && data.site && !data.site.advanced) {
+    const fx = fixedSpecs(data);
+    if (fx.length) {
+      await fillDesigns(me.id, row).catch(() => undefined);
+      const first = (await seenItems(me.id, row.id)).find((r) => r.cardId === row.id && (r.spec as AdvancedSpec | undefined)?.seed === fx[0].seed);
+      const fresh = (await myCard(me.id, row.id))?.data ?? data;
+      const clean = first ? cleanResult(first, fresh) : null;
+      if (clean) {
+        let next = applyAdvanced(fresh, clean);
+        if (next.site && !(await isDemoAccount(me.id))) {
+          const at = sitePending(fresh.site)?.toISOString() ?? (fresh.site?.enabled === true ? null : readyIn());
+          if (at) next = { ...next, site: { ...next.site, advancedReadyAt: at } };
+        }
+        const r = await save(row.id, me.id, next);
+        if (r.ok) return NextResponse.json({ ok: true, current: advancedState(next), username: row.username });
+      }
+    }
+  }
+
   // Start (or join) the redesign.
   if (!data.site) return NextResponse.json({ error: "Create your website first." }, { status: 400 });
   const running = await currentJob(key);
