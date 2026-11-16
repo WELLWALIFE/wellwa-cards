@@ -44,6 +44,10 @@ export default function AdminUserProfile() {
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [plan, setPlan] = useState("free");
   const [mobile, setMobile] = useState("");
   const [months, setMonths] = useState(1);
+  // The website package (owner, 16 Nov 2026: "admin me sabhi plan hone chahiye"): Website Standard / Premium / Custom, given here
+  // without a payment (cash, a demo, a test) — the same as the Users list's package menu (api/admin/users PATCH `package`).
+  const [pkg, setPkg] = useState("");
+  const [pkgMonths, setPkgMonths] = useState(12);
   // "Edit profile" opens straight away when the Users list sent us here with ?edit=profile.
   const [editProfile, setEditProfile] = useState(false);
   const [note, setNote] = useState("");
@@ -53,7 +57,7 @@ export default function AdminUserProfile() {
     const r = await fetch(`/api/admin/users/${id}`, { headers: await adminHeaders(), cache: "no-store" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setErr(j.error || `Error ${r.status}`); return; }
-    setData(j); setEmail(j.auth.email); setPlan(String(j.profile?.plan ?? "free"));
+    setData(j); setEmail(j.auth.email); setPlan(String(j.profile?.plan ?? "free")); setPkg(String(j.profile?.package ?? ""));
     setMobile((String(j.auth.email ?? "").match(/^p91(\d{10})@phone\./)?.[1]) ?? "");
   }, [id]);
   useEffect(() => { const t = setTimeout(() => void load(), 0); return () => clearTimeout(t); }, [load]);
@@ -77,6 +81,7 @@ export default function AdminUserProfile() {
       if (!rm.ok) { setBusy(""); alert(jm.error || "Could not change the mobile"); return; }
     }
     const body: Row = { id }; if (!isMobileLogin && email && email !== data?.auth.email) body.email = email; if (password) body.password = password; if (plan !== String(data?.profile?.plan ?? "free")) { body.plan = plan; body.months = months; }
+    if (pkg !== String(data?.profile?.package ?? "")) { body.package = pkg; body.packageMonths = pkgMonths; body.packageNote = "Given by Super Admin"; }
     const r = Object.keys(body).length > 1 ? await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify(body) }) : null;
     const j = r ? await r.json().catch(() => ({})) : {}; setBusy("");
     if (r && !r.ok) { alert(j.error || "Failed"); return; }
@@ -252,6 +257,11 @@ export default function AdminUserProfile() {
               <label className="block w-28"><span className="mb-1 block text-xs text-muted">For months</span><input type="number" min={1} max={24} value={months} disabled={plan === "free"} onChange={(e) => setMonths(Number(e.target.value))} className="w-full rounded-lg border border-border bg-surface px-3 py-2 disabled:opacity-40" /></label>
             </div>
             <p className="text-xs text-muted">Unlocks AI Studio, Studio, WhatsApp and Analytics for this user straight away, counted from today. &ldquo;Free&rdquo; takes it all back.</p>
+            <div className="flex gap-2">
+              <label className="block flex-1"><span className="mb-1 block text-xs text-muted">Website package</span><select value={pkg} onChange={(e) => setPkg(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2"><option value="">None</option><option value="site_standard">Website Standard (₹2,999 / year)</option><option value="site_premium">Website Premium (₹5,999 / year)</option><option value="custom">Custom Solutions</option></select></label>
+              <label className="block w-28"><span className="mb-1 block text-xs text-muted">For months</span><input type="number" min={1} max={24} value={pkgMonths} disabled={!pkg} onChange={(e) => setPkgMonths(Number(e.target.value))} className="w-full rounded-lg border border-border bg-surface px-3 py-2 disabled:opacity-40" /></label>
+            </div>
+            <p className="text-xs text-muted">Website package without a payment (cash, demo, test). The website is made after this; Premium also gives the Growth Plan&apos;s 1st month free.</p>
             <div className="flex gap-2"><button onClick={() => setEdit(false)} className="flex-1 rounded-lg border border-border px-3 py-2">Cancel</button><button onClick={save} disabled={busy === "save"} className="flex-1 rounded-lg bg-brand px-3 py-2 font-semibold text-white disabled:opacity-60">Save</button></div>
           </div>
         </div>
