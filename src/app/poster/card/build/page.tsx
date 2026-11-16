@@ -1217,6 +1217,11 @@ export default function BuildCard() {
   // Free = the card only, for every account (owner, 2 Nov 2026: "free me website nahi banegi, kisi ki bhi").
   const freeMake = !access.loading && !access.subscribed;
   const cardOnly = freeMake || (built?.site?.enabled === false && !existing?.site?.enabled);
+  // Nothing free (owner, 16 Nov 2026): a draft made before this rule (a free account's preview that never went live) is not shown —
+  // the Make screen (choose the website, pay) opens instead, so a free card is never published from it.
+  useEffect(() => {
+    if (freeMake && !improveMode && !liveUser && (state === "preview" || state === "style" || state === "domain")) setState("make");
+  }, [freeMake, improveMode, liveUser, state]);
   // "Make my website" on a free account: the card is made first, then — on its preview — the plan sheet opens by itself.
   useEffect(() => {
     if (state === "preview" && wantSite.current) { wantSite.current = false; if (cardOnly) setSitePlan(true); }
