@@ -90,7 +90,7 @@ export default function ChooseDesignPage() {
       id: `s${l.key}`, look: l, name: `Design ${prem.length + i + 1}`, sub: hi ? l.hi : l.name,
       // The look the website wears now keeps its own colours and choices; the others are drawn from it.
       card: l.key === cur ? plain : applyLook(plain, l), on: !advOn && l.key === cur,
-      swatch: (() => { const st = l.key === cur ? plain.site?.style : l.style; return swatchOf(st?.palette, st?.color ?? card.themeColor, "dark", fontSetFor(st?.font)?.display.family); })(),
+      swatch: (() => { const st = l.key === cur ? plain.site?.style : l.style; return swatchOf(st?.palette, st?.color ?? card.themeColor, st?.body === "dark" ? "dark" : "light", fontSetFor(st?.font)?.display.family); })(),
     }));
     return [...prem, ...looks];
   }, [card, designs, hi, advOn]);

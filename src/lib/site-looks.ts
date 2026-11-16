@@ -45,17 +45,19 @@ export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>
 
 /** Six looks must look like six (owner, 16 Nov 2026: "12 design hai lekin sab same se lag rahe hai"): the first look keeps the website's
  *  own colours and type; every other look wears a palette and a font set of its own, so the difference shows at a glance — classic
- *  cream, dark luxury, fresh, bold, clean and royal. The full-photo (cinematic) look always takes a dark one. A Hindi website keeps its
+ *  cream, green, bold red, ocean, plum and sage; the full-photo (cinematic) look is the dark one (black and gold, dark page). A Hindi website keeps its
  *  Hindi fonts on every look. */
 const VARIETY: { palette: string; font: string }[] = [
   { palette: "ivory", font: "elegant" },
-  { palette: "noir", font: "luxury" },
-  { palette: "sage", font: "honest" },
+  { palette: "emerald", font: "honest" },
   { palette: "crimson", font: "bold" },
-  { palette: "pearl", font: "tech" },
-  { palette: "plum", font: "warm" },
-  { palette: "ocean", font: "editorial" },
+  { palette: "ocean", font: "tech" },
+  { palette: "plum", font: "luxury" },
+  { palette: "sage", font: "editorial" },
+  { palette: "royal", font: "warm" },
 ];
+/** The full-photo look: a dark page end to end (black and gold), the one dark look among the six. */
+const DARK_LOOK = { palette: "noir", font: "luxury" };
 function dressApart(looks: Look[]): Look[] {
   if (looks.length < 2) return looks;
   const first = looks[0].style;
@@ -63,10 +65,10 @@ function dressApart(looks: Look[]): Look[] {
   const pool = VARIETY.filter((v) => v.palette !== first.palette && (hindi || v.font !== first.font));
   return looks.map((l, i) => {
     if (i === 0 || !pool.length) return l;
-    const dark = l.key === "cinematic";
-    const at = pool.findIndex((v) => !dark || !LIGHT.has(v.palette));
-    const pick = pool.splice(at < 0 ? 0 : at, 1)[0] ?? VARIETY[i % VARIETY.length];
     const { color: _c, ...rest } = l.style; void _c;
+    // The pages are paper under every other blueprint, so a dark palette would only darken the text there: the dark one is the cinematic look's.
+    if (l.key === "cinematic" && first.palette !== DARK_LOOK.palette) return { ...l, style: { ...rest, palette: DARK_LOOK.palette, font: hindi ? "hindi" : DARK_LOOK.font, body: "dark" } };
+    const pick = pool.shift() ?? VARIETY[i % VARIETY.length];
     return { ...l, style: { ...rest, palette: pick.palette, font: hindi ? "hindi" : pick.font } };
   });
 }
