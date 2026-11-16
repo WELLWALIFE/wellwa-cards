@@ -19,9 +19,11 @@ export async function GET(request: Request) {
   const rows = (r.data ?? []).map((c) => ({ c, row: { username: c.username, pages: c.data?.pages ?? null, site: c.data?.site ? { ...c.data.site, ...(c.site_paused === true ? { paused: true } : {}) } : null, about: c.data?.about ?? null, language: c.data?.language ?? null } as Row }));
   // Search is Premium only (owner, 15 Nov 2026): the package from the profile, lib/site-tier.ts.
   const pkg = await packageOf(me.id);
-  const listed = (x: (typeof rows)[number]) => searchListed(x.row, premiumTier(x.row.site, x.row.username, pkg));
+  // The checklist is Premium (full SEO); a Standard website on Google gets { premium: false, listed: true } (owner, 16 Nov 2026).
+  const listed = (x: (typeof rows)[number]) => searchListed(x.row);
   const mine = rows.find((x) => isPremiumRow(x.row) && listed(x)) ?? rows.find(listed);
   if (!mine) return NextResponse.json({ premium: false });
+  if (!premiumTier(mine.row.site, mine.row.username, pkg)) return NextResponse.json({ premium: false, listed: true });
   const st = await restAsService<{ expired?: boolean }[] | { expired?: boolean }>("rpc/card_owner_state", { method: "POST", body: JSON.stringify({ p_username: mine.c.username }) }).catch(() => null);
   const own = Array.isArray(st?.data) ? st?.data[0] : st?.data;
   if (own?.expired === true) return NextResponse.json({ premium: false });

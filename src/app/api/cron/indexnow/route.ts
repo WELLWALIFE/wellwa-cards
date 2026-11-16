@@ -38,7 +38,8 @@ export async function GET(request: Request) {
   for (const c of r.data ?? []) {
     const site = c.data?.site ? { ...c.data.site, ...(c.site_paused === true ? { paused: true } : {}) } : null;
     const row: CardRow = { username: c.username, pages: c.data?.pages ?? null, site, about: c.data?.about ?? null, language: c.data?.language ?? null };
-    if (!searchListed(row, premiumTier(row.site, row.username, pk.get(c.owner_id ?? "")))) continue;
+    // IndexNow (search engines told at once) is a Premium feature; a Standard website is found through the sitemap.
+    if (!premiumTier(row.site, row.username, pk.get(c.owner_id ?? "")) || !searchListed(row)) continue;
     premium++;
     const dom = domainOf.get(c.username);
     const host = dom || new URL(SITE_URL).host;

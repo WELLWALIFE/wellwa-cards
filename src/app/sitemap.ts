@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const row = data ? withPaused(data as Row & { site_paused?: boolean }) : null;
       const own = (data as { owner_id?: string } | null)?.owner_id;
       const premium = !!row && premiumTier(row.site, row.username, own ? (await packagesOf([own])).get(own) : null);
-      return row && searchListed(row, premium) && !(await fetchCardExpired(username)) ? cardUrls(`https://${host}`, row) : [];
+      return row && searchListed(row) && !(await fetchCardExpired(username)) ? cardUrls(`https://${host}`, row, premium) : [];
     } catch { return []; }
   }
 
@@ -51,6 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   let rows: Row[] = [];
+  const premiumNames = new Set<string>();
   if (sb) {
     try {
       const [{ data }, { data: own }] = await Promise.all([
@@ -59,10 +60,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ]);
       // A card on its own domain is listed in that domain's sitemap, not here (its canonical address is there).
       const elsewhere = new Set(((own ?? []) as { username: string }[]).map((r) => r.username));
-      // Premium websites only (owner, 15 Nov 2026), the package read from the owner's profile (lib/site-tier.ts).
+      // Standard: home and main pages; Premium: every product and service too (owner, 16 Nov 2026). Package from the profile (lib/site-tier.ts).
       const all = (data ?? []) as (Row & { site_paused?: boolean; owner_id?: string })[];
       const pk = await packagesOf(all.map((r) => r.owner_id ?? "")).catch(() => new Map());
-      rows = all.filter((r) => premiumTier(r.site, r.username, pk.get(r.owner_id ?? ""))).map(withPaused).filter((r) => r.username && !elsewhere.has(r.username) && searchListed(r, true));
+      for (const r of all) if (premiumTier(r.site, r.username, pk.get(r.owner_id ?? ""))) premiumNames.add(r.username);
+      rows = all.map(withPaused).filter((r) => r.username && !elsewhere.has(r.username) && searchListed(r));
       // Google is for subscribed websites only (owner, 14 Oct 2026): a free or lapsed card is noindex, so it is not listed either.
       const keep: Row[] = [];
       for (let i = 0; i < rows.length; i += 40) {
@@ -83,5 +85,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     dir.push({ url: `${SITE}/in/${encodeURIComponent(c.slug)}`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.7 });
     for (const k of c.categories) dir.push({ url: `${SITE}/in/${encodeURIComponent(c.slug)}/${encodeURIComponent(k.slug)}`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.6 });
   }
-  return [...staticPages, ...dir, ...rows.flatMap((r) => cardUrls(`${SITE}/c/${r.username}`, r))];
+  return [...staticPages, ...dir, ...rows.flatMap((r) => cardUrls(`${SITE}/c/${r.username}`, r, premiumNames.has(r.username)))];
 }

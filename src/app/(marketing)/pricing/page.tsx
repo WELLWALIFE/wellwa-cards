@@ -15,6 +15,7 @@ export const metadata: Metadata = pageMeta("/pricing", {
 // The plan lists are the owner's own words (16 Oct 2026). 15 Nov 2026: every design for both; Google, AI search and the app are Premium.
 const STANDARD_ITEMS = [
   "Dynamic website, every design to choose from",
+  "On Google (basic listing)",
   "Product catalogue + WhatsApp order",
   "AI Ad Studio and Reel Maker (credits)",
   "Growth Plan: 1st month free",
@@ -41,7 +42,7 @@ const CUSTOM_ITEMS = [
 const PREMIUM_LIST = [
   "Dynamic & Progressive website",
   "Installs on phone like an app",
-  "Google SEO + AI search (ChatGPT & Gemini)",
+  "Full Google SEO + GEO (ChatGPT & Gemini)",
   "AI chat on your website",
   "Product catalogue + WhatsApp order",
   "AI Ad Studio and Reel Maker (credits)",

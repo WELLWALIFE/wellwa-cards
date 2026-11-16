@@ -10,7 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
 
 type Item = { key: string; ok: boolean; optional?: boolean; en: string; hi: string; href: string };
-type Status = { premium: boolean; sitemap?: string; home?: string; items?: Item[] };
+type Status = { premium: boolean; listed?: boolean; sitemap?: string; home?: string; items?: Item[] };
 
 export default function SeoChecklistPage() {
   const router = useRouter();
@@ -27,8 +27,8 @@ export default function SeoChecklistPage() {
     <div className="py-6 space-y-4">
       <div className="flex items-center gap-2">{back}<h1 className="text-xl font-bold">Google SEO</h1></div>
       <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
-        <p className="text-base font-semibold">{T("Google and AI search come with Premium.", "Google और AI search Premium के साथ आते हैं।")}</p>
-        <p className="text-sm text-muted">{T("With the Premium plan your website is put on Google by itself once it is live: every page and product, with a sitemap and search-ready details, so Google, ChatGPT and Gemini searches can find it. Premium also lets your customers install your website as an app. A Standard website has every design too, and is shared by its link, but is not listed on Google.", "Premium plan पर website live होते ही अपने-आप Google पर जाती है: हर page और product, sitemap और search के लिए ज़रूरी details के साथ, ताकि Google, ChatGPT और Gemini की search में मिल सके। Premium में ग्राहक आपकी website को app की तरह install भी कर सकते हैं। Standard website में भी सारे designs हैं और link से share होती है, पर Google पर नहीं आती।")}</p>
+        <p className="text-base font-semibold">{st.listed ? T("Your website is on Google (basic listing).", "आपकी website Google पर है (basic listing)।") : T("Google and AI search come with Premium.", "Google और AI search Premium के साथ आते हैं।")}</p>
+        <p className="text-sm text-muted">{T("A Standard website goes on Google with its home and main pages. Premium puts every product and service page on Google too, tells Google of every change at once, opens it to AI search (ChatGPT, Gemini), gives this checklist, and lets customers install your website as an app.", "Standard website का home और main pages Google पर जाते हैं। Premium में हर product और service का page भी Google पर जाता है, हर बदलाव की ख़बर Google को तुरंत जाती है, AI search (ChatGPT, Gemini) के लिए खुली होती है, यह checklist मिलती है, और ग्राहक website को app की तरह install कर सकते हैं।")}</p>
         <div className="flex flex-wrap gap-2">
           <Link href="/poster/site/order" className="inline-flex items-center justify-center rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Get Premium", "Premium लें")}</Link>
           <Link href="/poster/site" className="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("See my website", "मेरी website देखें")}</Link>

@@ -137,7 +137,7 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
     twitter: { card: "summary_large_image", title, description, images: [ogImage] },
     // On Google: the Standard and the Premium website, once live (owner, 12 Nov 2026; lib/seo-urls.ts searchListed). A free card, a lapsed plan,
     // a website still in its first-day wait, a paused one and a demo account's stay out of search.
-    robots: { index: card.active !== false && searchListed({ username: card.username, pages: card.pages, site: card.site }, premium) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    robots: { index: card.active !== false && searchListed({ username: card.username, pages: card.pages, site: card.site }) && (premium || !product) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
     // The business's own logo (or photo) as the tab icon of its card and website.
     ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icons: { icon: card.site?.logoUrl || card.avatarUrl! } } : {}),
     // The Premium website is installable as the business's own app (owner, 31 Oct 2026): its manifest and Apple's home-screen icon.

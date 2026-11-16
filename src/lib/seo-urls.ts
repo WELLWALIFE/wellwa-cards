@@ -1,5 +1,5 @@
-// The addresses of a card's website pages, for the sitemap and for IndexNow (lib/indexnow.ts). Google (and every search engine) lists a Premium
-// website only (owner, 15 Nov 2026: "standard me SEO nahi") — once it is really live: see searchListed.
+// The addresses of a card's website pages, for the sitemap and for IndexNow (lib/indexnow.ts). Google (and every search engine) lists the Standard
+// website (home and main pages) and the Premium one (every page, product and service) — once really live: see searchListed and cardUrls.
 import type { MetadataRoute } from "next";
 import { advancedItems, activeAdvanced, livePages, withAdvancedPages } from "@/lib/site-advanced";
 import { cardProducts } from "@/lib/product-page";
@@ -10,7 +10,9 @@ export type Row = { username: string; pages: CardPage[] | null; site?: Card["sit
 
 /** Every page of a card that has something on it: home first, then /<slug>, then each product at its own
  *  address (/p-kaju-katli) — Google indexes a product only when the sitemap lists it. */
-export function cardUrls(home: string, r: Row): MetadataRoute.Sitemap {
+export function cardUrls(home: string, r: Row, full = true): MetadataRoute.Sitemap {
+  // `full` = a Premium website (lib/site-tier.ts): every product and service at its own address too. A Standard website lists its home
+  // and main pages only (owner, 16 Nov 2026: "basic Google listing" for Standard, full SEO for Premium).
   // The Premium (advanced) website has pages the stored card does not: About and Gallery made at request time, and a page for every product AND
   // service. Google is told about all of them (owner, 16 Oct 2026: the Premium "Google SEO" promise).
   if (r.site?.advanced && (r.site as { advancedOn?: boolean }).advancedOn !== false) {
@@ -19,7 +21,7 @@ export function cardUrls(home: string, r: Row): MetadataRoute.Sitemap {
     const pages = livePages(card);
     return [
       ...pages.map((p, i) => ({ url: i === 0 ? home : `${home}/${encodeURIComponent(p.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: i === 0 ? 0.9 : 0.7 })),
-      ...advancedItems(card).map((it) => ({ url: `${home}/${encodeURIComponent(it.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: 0.6 })),
+      ...(full ? advancedItems(card) : []).map((it) => ({ url: `${home}/${encodeURIComponent(it.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: 0.6 })),
     ];
   }
   const pages = (r.pages ?? []).filter((p, i) => i === 0 || (p.blocks ?? []).length > 0);
@@ -30,7 +32,7 @@ export function cardUrls(home: string, r: Row): MetadataRoute.Sitemap {
       url: i === 0 ? home : `${home}/${encodeURIComponent(p.slug)}`,
       lastModified, changeFrequency: "weekly" as const, priority: i === 0 ? 0.9 : 0.7,
     })),
-    ...products.map((p) => ({ url: `${home}/${encodeURIComponent(p.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: 0.6 })),
+    ...(full ? products : []).map((p) => ({ url: `${home}/${encodeURIComponent(p.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: 0.6 })),
   ];
 }
 
@@ -42,10 +44,8 @@ export const isPremiumRow = (r: Row): boolean => !!activeAdvanced(r.site, r.user
  *  - a Premium website that is switched on, or a Standard website that is switched on and past its first-day wait (lib/site-ready.ts);
  *  - not paused by Super Admin, not a demo account's (site.noindex), and with something on it.
  *  The plan itself (a paid Standard / Premium, not free or lapsed) is checked by the caller (card_owner_state), as it needs the database. */
-export function searchListed(r: Row, premium: boolean, now = Date.now()): boolean {
-  // Search (Google, and through it the AI search engines) is a Premium feature (owner, 15 Nov 2026: "standard me SEO nahi, ab kevel
-  // premium me"): `premium` comes from the owner's package, lib/site-tier.ts premiumTier.
-  if (!premium) return false;
+export function searchListed(r: Row, now = Date.now()): boolean {
+  // Standard and Premium both go on Google (owner, 16 Nov 2026: basic listing for Standard); what is listed differs, see cardUrls `full`.
   const s = r.site;
   if (!s || s.noindex === true || sitePaused(s)) return false;
   if (isPremiumRow(r)) return true;
