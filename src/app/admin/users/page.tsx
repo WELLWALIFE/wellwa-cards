@@ -668,6 +668,8 @@ export default function AdminUsers() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setLoginInfo(null)}>
           <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-xl space-y-3 text-sm" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold">Login as {loginInfo.user.name}</h3>
+            {/* Two accounts can carry one name (owner, 16 Nov 2026: two "Akhilesh" rows): the username and the partner ID say which one this is. */}
+            <p className="mono rounded-lg bg-surface2 px-2 py-1 text-xs font-bold">{[loginInfo.user.username ? `@${loginInfo.user.username}` : "", loginInfo.user.partner?.code || loginInfo.user.associate || "", loginInfo.user.phone || ""].filter(Boolean).join(" · ")}</p>
             {loginInfo.mode === "link" ? (
               <>
                 <p className="text-muted text-xs">Opens <b>{loginInfo.user.name}</b>&apos;s app, already logged in as <b>{loginOf(loginInfo.email)}</b>. This browser switches to their account — a <b>“← Back to admin”</b> bar at the bottom brings you back to your own account in one tap. The link works once, for a short time.</p>

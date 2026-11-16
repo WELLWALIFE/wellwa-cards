@@ -132,7 +132,7 @@ function SideAccount({ hi }: { hi: boolean }) {
   const router = useRouter();
   const { plan } = usePlan();
   const kind = useAccountKind();
-  const [me, setMe] = useState<{ name: string; photo: string | null } | null>(null);
+  const [me, setMe] = useState<{ name: string; photo: string | null; partnerId: string } | null>(null);
   const [username, setUsername] = useState("");
   const [open, setOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -143,7 +143,7 @@ function SideAccount({ hi }: { hi: boolean }) {
     sb.auth.getUser().then(({ data }) => {
       const u = data.user; if (!u) { setMe(null); return; }
       const md = (u.user_metadata ?? {}) as Record<string, unknown>;
-      setMe({ name: String(md.display_name ?? md.full_name ?? md.name ?? "").trim() || (u.email ?? ""), photo: (md.photo_url as string) || null });
+      setMe({ name: String(md.display_name ?? md.full_name ?? md.name ?? "").trim() || (u.email ?? ""), photo: (md.photo_url as string) || null, partnerId: typeof md.associate_id === "string" ? md.associate_id : "" });
     });
     import("@/lib/poster-client").then(({ api }) => api<{ username: string | null }>("/api/account").then((r) => { if (r.ok && r.data.username) setUsername(r.data.username); })).catch(() => {});
     const { data: sub } = sb.auth.onAuthStateChange((_e, s) => { if (!s) setMe(null); });
@@ -188,7 +188,7 @@ function SideAccount({ hi }: { hi: boolean }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold leading-tight">{me.name}</span>
-          <span className="block truncate text-[11px] text-muted leading-tight">{[username ? `@${username}` : "", planLabel].filter(Boolean).join(" · ")}</span>
+          <span className="block truncate text-[11px] text-muted leading-tight">{[username ? `@${username}` : "", me.partnerId, planLabel].filter(Boolean).join(" · ")}</span>
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted" />
       </button>

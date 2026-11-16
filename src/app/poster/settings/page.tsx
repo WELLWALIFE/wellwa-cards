@@ -34,6 +34,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const [me, setMe] = useState<{ email?: string; name: string; photo: string | null } | null>(null);
   const [acct, setAcct] = useState<Account | null>(null);
+  // The partner ID beside the username (owner, 16 Nov 2026: two accounts with one name — which one is logged in?).
+  const [partnerId, setPartnerId] = useState("");
   const kind = useAccountKind();
   // Back from "Edit name / mobile" (About you → Save): say it worked, once.
   const [saved, setSaved] = useState<"" | "all" | "np">("");
@@ -72,6 +74,7 @@ export default function SettingsPage() {
       const sb = getBrowserSupabase();
       const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };
       const md = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+      setPartnerId(typeof md.associate_id === "string" ? md.associate_id : "");
       // Offline here used to reject the whole start-up, so the account line spun forever with no Try again.
       const profs = await api<{ profiles?: Profile[] }>("/api/poster/profiles").catch(() => null);
       const list = profs?.data?.profiles ?? [];
@@ -142,7 +145,7 @@ export default function SettingsPage() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-bold">{me?.name || (en ? "Your account" : "आपका account")}</p>
             {acct?.username
-              ? <p className="truncate text-sm text-muted"><span className="font-semibold tracking-wide text-ink">{acct.username}</span>{hasCard ? ` · ${SITE_HOST}${path}` : ""}</p>
+              ? <p className="truncate text-sm text-muted"><span className="font-semibold tracking-wide text-ink">@{acct.username}</span>{partnerId ? <span className="font-semibold text-ink"> · ID {partnerId}</span> : null}{hasCard ? ` · ${SITE_HOST}${path}` : ""}</p>
               : acct === null
                 ? (acctErr ? null : <p className="mt-1 h-3.5 w-40 animate-pulse rounded bg-surface2" aria-label="Loading" />)
                 : <p className="text-sm text-muted">{en ? "No username yet" : "अभी कोई username नहीं है"}</p>}
