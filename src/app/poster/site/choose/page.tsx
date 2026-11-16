@@ -21,10 +21,22 @@ import { applyLook, threeLooks, type Look } from "@/lib/site-looks";
 import { wearAdvanced, type AdvPreview } from "@/lib/adv-preview";
 import type { Card } from "@/lib/types";
 import type { OrderState } from "@/lib/site-order";
+import { SITE_PALETTES, fontSetFor } from "@/lib/site-style";
+
+/** A small colour chip per tile (owner, 16 Nov 2026: "ek nazar me farak dikhe"): the design's page and accent colours and its heading face. */
+type Swatch = { bg: string; fg: string; accent: string; font: string };
+function swatchOf(palKey: string | undefined, color: string | undefined, tone: "light" | "dark", font: string | undefined): Swatch {
+  const p = SITE_PALETTES.find((x) => x.key === palKey && x.key !== "brand");
+  const mid = p?.mid ?? color ?? "#2f5bf5";
+  const deep = p?.deep ?? "#141a33";
+  const light = tone === "light" || p?.tone === "light";
+  return light ? { bg: p?.tone === "light" ? deep : "#fbf8f3", fg: p?.tone === "light" ? (p.ink ?? "#2f261d") : deep, accent: mid, font: font || "Georgia" }
+    : { bg: deep, fg: "#ffffff", accent: p?.accent ?? mid, font: font || "Georgia" };
+}
 
 const PREVIEW_KEY = "site-choose";
 type Design = AdvPreview & { spec?: { seed?: string; archetype?: string } };
-type Option = { id: string; name: string; sub: string; card: Card; on: boolean; look?: Look; seed?: string };
+type Option = { id: string; name: string; sub: string; card: Card; on: boolean; look?: Look; seed?: string; swatch?: Swatch };
 
 export default function ChooseDesignPage() {
   const router = useRouter();
@@ -69,6 +81,7 @@ export default function ChooseDesignPage() {
     const prem: Option[] = (designs ?? []).map((d, i) => ({
       id: `p${i}`, seed: d.spec?.seed, name: `Design ${i + 1}`, sub: String(d.spec?.archetype ?? "").replace(/-/g, " "),
       card: wearAdvanced(card, d), on: advOn && !!live && d.spec?.seed === live,
+      swatch: (() => { const pal = (d.spec as { palette?: { key?: string; color?: string; tone?: string } } | undefined)?.palette; const f = (d.spec as { fonts?: { heading?: string } } | undefined)?.fonts; return swatchOf(pal?.key, pal?.color, pal?.tone === "dark" ? "dark" : "light", f?.heading); })(),
     }));
     // A look is the basic website: a Premium design on the card is put aside for its preview.
     const plain: Card = advOn ? { ...card, site: { ...card.site, advancedOn: false } as Card["site"] } : card;
@@ -77,6 +90,7 @@ export default function ChooseDesignPage() {
       id: `s${l.key}`, look: l, name: `Design ${prem.length + i + 1}`, sub: hi ? l.hi : l.name,
       // The look the website wears now keeps its own colours and choices; the others are drawn from it.
       card: l.key === cur ? plain : applyLook(plain, l), on: !advOn && l.key === cur,
+      swatch: (() => { const st = l.key === cur ? plain.site?.style : l.style; return swatchOf(st?.palette, st?.color ?? card.themeColor, "dark", fontSetFor(st?.font)?.display.family); })(),
     }));
     return [...prem, ...looks];
   }, [card, designs, hi, advOn]);
@@ -200,6 +214,12 @@ export default function ChooseDesignPage() {
                   <div key={o.id} className={`relative overflow-visible rounded-2xl border-2 text-center ${sel ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
                     {o.on && <span className="absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full bg-good text-white ring-2 ring-surface"><Check className="h-3 w-3" strokeWidth={3} /></span>}
                     <button type="button" aria-pressed={sel} onClick={() => { setPick(o.id); setMsg(""); setErr(""); }} className="block w-full px-2 pb-1.5 pt-3">
+                      {o.swatch && (
+                        <span className="mx-auto mb-1.5 flex h-9 w-full max-w-[96px] items-center justify-center gap-1.5 rounded-lg" style={{ background: o.swatch.bg }}>
+                          <span className="text-base leading-none" style={{ color: o.swatch.fg, fontFamily: `"${o.swatch.font}", Georgia, serif` }}>Aa</span>
+                          <span className="h-3 w-3 rounded-full" style={{ background: o.swatch.accent }} />
+                        </span>
+                      )}
                       <span className="block text-sm font-bold">{o.name}</span>
                       <span className="block truncate text-[10px] capitalize text-muted">{o.sub}</span>
                     </button>

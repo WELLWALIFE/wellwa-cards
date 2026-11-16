@@ -31,7 +31,7 @@ export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>
   const designerPick = d.blueprint ?? rankBlueprints(category).find((k) => k !== "story") ?? "bento";
   const want: BlueprintKey[] = ["story", ...[designerPick, ...rankBlueprints(category)].filter((k, i, a) => k !== "story" && a.indexOf(k) === i)];
   const byKey = new Map((plans ?? []).map((p) => [p.blueprint, p]));
-  return want.map((key) => {
+  return dressApart(want.map((key) => {
     const bp = BLUEPRINTS.find((b) => b.key === key)!;
     const plan = byKey.get(key);
     // A plan from the designer AI carries its own few choices; the look's section layouts (the blueprint's defaults) fill
@@ -40,6 +40,34 @@ export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>
     // The plan's tile list may omit the photo (a board with no picture on a business that has one): the photo tile leads.
     const tiles = plan?.tiles ? (plan.tiles.includes("photo") ? plan.tiles : (["photo", ...plan.tiles] as typeof plan.tiles)) : undefined;
     return { key, name: bp.name, hi: bp.hi, blurb: bp.blurb, blurbHi: bp.blurbHi, style, ...(plan?.order ? { order: plan.order } : {}), ...(tiles ? { tiles } : {}) };
+  }));
+}
+
+/** Six looks must look like six (owner, 16 Nov 2026: "12 design hai lekin sab same se lag rahe hai"): the first look keeps the website's
+ *  own colours and type; every other look wears a palette and a font set of its own, so the difference shows at a glance — classic
+ *  cream, dark luxury, fresh, bold, clean and royal. The full-photo (cinematic) look always takes a dark one. A Hindi website keeps its
+ *  Hindi fonts on every look. */
+const VARIETY: { palette: string; font: string }[] = [
+  { palette: "ivory", font: "elegant" },
+  { palette: "noir", font: "luxury" },
+  { palette: "sage", font: "honest" },
+  { palette: "crimson", font: "bold" },
+  { palette: "pearl", font: "tech" },
+  { palette: "plum", font: "warm" },
+  { palette: "ocean", font: "editorial" },
+];
+function dressApart(looks: Look[]): Look[] {
+  if (looks.length < 2) return looks;
+  const first = looks[0].style;
+  const hindi = first.font === "hindi";
+  const pool = VARIETY.filter((v) => v.palette !== first.palette && (hindi || v.font !== first.font));
+  return looks.map((l, i) => {
+    if (i === 0 || !pool.length) return l;
+    const dark = l.key === "cinematic";
+    const at = pool.findIndex((v) => !dark || !LIGHT.has(v.palette));
+    const pick = pool.splice(at < 0 ? 0 : at, 1)[0] ?? VARIETY[i % VARIETY.length];
+    const { color: _c, ...rest } = l.style; void _c;
+    return { ...l, style: { ...rest, palette: pick.palette, font: hindi ? "hindi" : pick.font } };
   });
 }
 

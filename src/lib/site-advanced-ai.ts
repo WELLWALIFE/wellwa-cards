@@ -650,7 +650,8 @@ export function libraryDesigns(card: Card, have: AdvancedSpec[], n: number): Adv
       const guarded = guardSpec({ ...specFromSeed(salted), seed }, s, seed);
       const unique = diversify(guarded, seed, against, 6, allowedByFit(fitOfSignals(s)));
       const spec = validateSpec({ ...distinctLook(unique, seed, against), seed }, seed);
-      if (spec.palette) spec.palette.tone = "light";
+      // Light and dark both (owner, 16 Nov 2026: "sab same se lag rahe hai"): distinctLook already turns every other design to the other
+      // tone; forcing all six light made them one cream page in six fonts.
       return spec;
     } catch (e) { console.log("[advanced] library design skipped:", e instanceof Error ? e.message : e); return null; }
   };
