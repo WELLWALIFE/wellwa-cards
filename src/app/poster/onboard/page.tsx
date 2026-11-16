@@ -143,7 +143,8 @@ function Onboard() {
   // ?next=/poster/card/build — the card (or another tool) needs these details first: no skip, and "Save" returns there.
   // An in-app path only, like ?back= below (never //other-site, never /\other-site).
   const SAFE_PATH = /^\/(?![/\\])[^\s]*$/;
-  const next = SAFE_PATH.test(params.get("next") ?? "") ? params.get("next")! : "";
+  // A bare /poster/card/build would make the card before the payment: the details walk returns to its Make screen instead (16 Nov 2026).
+  const next = ((v: string) => (v === "/poster/card/build" ? "/poster/card/build?make=1" : v))(SAFE_PATH.test(params.get("next") ?? "") ? params.get("next")! : "");
   // ?skip=1 — the plan page's Skip: create the minimal profile and open the app without showing the form.
   const autoSkip = params.get("skip") === "1";
   // ?back=/poster/more — an EDIT of name / mobile / photo (Me → "Edit name / mobile"): only "About you", a Save

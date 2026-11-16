@@ -45,6 +45,13 @@ export async function applyPackage(uid: string, pkg: SitePkg, paymentId: string,
   return true;
 }
 
+/** True when the account has a running website package (Standard / Premium / Custom). Nothing is built without one (owner, 16 Nov 2026:
+ *  "bina payment ke website nahi banegi — AI ka galat use nahi chahiye"). */
+export async function hasRunningPackage(uid: string): Promise<boolean> {
+  const p = await profileOf(uid).catch(() => null);
+  return !!p && (isSitePkg(p.package) || p.package === "custom") && runs(p.package_until);
+}
+
 /** The account's open (unpaid) package request, newest first, and its last paid one. */
 async function packageRequests(uid: string): Promise<{ open: PaymentRequest | null; paid: PaymentRequest | null }> {
   const rows = (await restAsService<PaymentRequest[]>(`payment_requests?owner_id=eq.${uid}&kind=eq.custom&note=like.${encodeURIComponent("[pkg:")}*&order=created_at.desc&limit=20&select=*`)).data;

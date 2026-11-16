@@ -16,7 +16,7 @@
 import { researchTrade, researchText } from "@/lib/trade-research";
 import { NextResponse, after } from "next/server";
 import { claim, currentJob, jobView, startJob, touch, type BuildStage, type CardJob } from "@/lib/card-jobs";
-import { finishOrder } from "@/lib/site-order-server";
+import { finishOrder, hasRunningPackage } from "@/lib/site-order-server";
 import { notify } from "@/lib/notify";
 import { bannerKeys } from "@/lib/banners-server";
 import { rateLimited } from "@/lib/api-security";
@@ -123,6 +123,10 @@ export async function POST(request: Request) {
     if (rateLimited(`card-build:${me.id}`, 6, 60 * 60_000)) {
       return NextResponse.json({ error: "You have made your V-Card 6 times in the last hour. Please try again in an hour." }, { status: 429 });
     }
+  }
+  // Nothing is made before the payment (owner, 16 Nov 2026): no website package and no paid plan → no AI build at all, only the plans.
+  if (running?.state !== "running" && !(await hasRunningPackage(me.id)) && !(await hasPaidPlan(me.token, me.id))) {
+    return NextResponse.json({ error: "Choose your website plan and pay first. Your website and card are made after the payment.", plan: true }, { status: 402 });
   }
   // A paid order (lib/site-order.ts): when the build ends the website is saved and held by the server itself — the owner is not asked
   // to look, choose or publish — and a Premium order's design is started with this same session.

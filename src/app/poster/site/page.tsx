@@ -211,7 +211,7 @@ export default function WebsitePage() {
       {!s.hasCard ? (
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
           {/* The same start for everyone (owner, 2 Nov 2026): website + card; a free account's card is made first, its website plan after. */}
-          <p className="text-sm text-muted">{!paid ? T("Make your website and card in 5 minutes. Your card is free.", "5 मिनट में अपनी website और card बनाएँ। Card free है।") : T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
+          <p className="text-sm text-muted">{!paid ? T("Fill your details, choose your website plan and pay. Your website and card are made after the payment.", "अपनी details भरें, website का plan चुनें और payment करें। Payment के बाद website और card बनते हैं।") : T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
           <Link href={setupHref} className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{!paid ? T("Make my website & card →", "मेरी website और card बनाएँ →") : T("Make my website →", "मेरी website बनाएँ →")}</Link>
         </section>
       ) : (

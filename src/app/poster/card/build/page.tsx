@@ -584,6 +584,9 @@ export default function BuildCard() {
       // Card & Website does not keep sending the owner here.
       if (who?.data.user?.user_metadata?.finish_pos && !isLiveSite(live)) void getBrowserSupabase()?.auth.updateUser({ data: { finish_pos: null } }).catch(() => undefined);
       if (makeNow) { setState("make"); return; }
+      // No card yet (owner, 16 Nov 2026: "pehle design ban gaya, baad me payment mang raha hai"): a bare /poster/card/build — the
+      // Card & Website button's details walk ends here — opens the Make screen (choose the website, pay), never a free build first.
+      if (!flow && !again && !live) { setState("make"); return; }
       // The owner's rule: reaching the V-Card with nothing real yet makes the card at once. The form
       // below stays as the "Make it better" path; the draft it saves stops any second build.
       // An owner who has already started answering (a saved form backup) is left alone with their
@@ -1530,7 +1533,7 @@ export default function BuildCard() {
       {cardOnly && (
         <div className="space-y-2 rounded-xl border border-brand/40 bg-brand-soft/40 p-3">
           <p className="text-sm font-semibold">{T("Your free plan publishes your digital card", "आपका free plan आपका digital card publish करता है")}</p>
-          <p className="text-xs text-muted">{T("The website on the Website tab is part of Standard (₹2,999 a month) or Premium. Your card stays free.", "Website tab वाली website Standard plan (₹2,999 / महीना) या Premium में मिलती है। आपका card free ही रहेगा।")}</p>
+          <p className="text-xs text-muted">{T("The website on the Website tab is part of Website Standard (₹2,999 a year) or Premium (₹5,999 a year). Your card stays free.", "Website tab वाली website Website Standard (₹2,999 / साल) या Premium (₹5,999 / साल) में मिलती है। आपका card free ही रहेगा।")}</p>
           <button type="button" onClick={() => setSitePlan(true)} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> {T("Choose a plan for the website", "Website के लिए plan चुनें")}</button>
         </div>
       )}
