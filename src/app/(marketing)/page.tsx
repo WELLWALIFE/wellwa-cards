@@ -352,7 +352,7 @@ export default function Home() {
               <h3 className="font-semibold text-lg">Website Standard</h3>
               <p className="mt-1 text-sm text-muted">Dynamic website, up to 5 pages</p>
               <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">₹2,999</span><span className="text-sm text-muted"> / year</span></p>
-              <p className="mt-1 text-xs text-faint">Incl. {GST_PCT}% GST · Growth Plan ₹2,999 / month, 1st month free</p>
+              <p className="mt-1 text-xs text-faint">Incl. {GST_PCT}% GST · Growth Plan ₹2,999 / month</p>
             </div>
             <div className="rounded-2xl border border-brand ring-1 ring-brand shadow-float bg-surface p-6">
               <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">Website Premium</h3><span className="rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">Most popular</span></div>

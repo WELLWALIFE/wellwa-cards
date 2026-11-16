@@ -314,6 +314,7 @@ export async function PATCH(request: Request) {
     // plan given here did nothing. Both are written now: the profile decides access, the card carries the label.
     // The package (owner, 5 Nov 2026): website + V-Card for its months (12 by default); the Growth features get one month free when
     // the account has no running plan — the same as a paid website purchase on the site. Clearing the package leaves the plan alone.
+    // 16 Nov 2026 (owner, the deck): the free Growth month comes with Website Premium only.
     if (pkg !== undefined) {
       const pm = Math.min(24, Math.max(1, Math.round(Number(body.packageMonths) || 12)));
       const until = new Date(); until.setMonth(until.getMonth() + pm);
@@ -323,7 +324,7 @@ export async function PATCH(request: Request) {
         body: JSON.stringify(pkg ? { package: pkg, package_until: until.toISOString(), package_note: note } : { package: "", package_until: null, package_note: note }),
       });
       if (!pr.ok) return Response.json({ error: /package/.test(await pr.text()) ? "Run migration 0087 in Supabase (profile package)." : "Could not set the package." }, { status: 400 });
-      if (pkg && !plan) {
+      if (pkg === "site_premium" && !plan) {
         const cur = ((await pr.json()) as { plan?: string; plan_expires_at?: string | null }[])[0];
         const running = cur?.plan && cur.plan !== "free" && cur.plan_expires_at && new Date(cur.plan_expires_at) > new Date();
         if (!running) {

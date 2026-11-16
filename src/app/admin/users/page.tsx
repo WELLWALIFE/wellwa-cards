@@ -196,11 +196,11 @@ export default function AdminUsers() {
     void load();
   }
 
-  /** The package (owner, 5 Nov 2026): Website Standard / Premium for a year (Growth 1 month free with it), or Custom Solutions. */
+  /** The package (owner, 5 Nov 2026): Website Standard / Premium for a year (Growth 1 month free with Premium only, 16 Nov 2026), or Custom Solutions. */
   async function setPackage(u: User, pkg: string) {
     let months = 12; let note = u.packageNote ?? "";
     if (pkg) {
-      const m = prompt(`${who(u)} — ${PKG_LABEL[pkg] ?? pkg} kitne mahine ke liye? (website + V-Card live rahenge; Growth features 1 mahina free)`, "12");
+      const m = prompt(`${who(u)} — ${PKG_LABEL[pkg] ?? pkg} kitne mahine ke liye? (website + V-Card live rahenge${pkg === "site_premium" ? "; Growth features 1 mahina free" : ""})`, "12");
       if (m === null) return; months = Math.min(meFr ? 12 : 24, Math.max(1, Math.trunc(Number(m)) || 12));
       const n = prompt("Note (optional): payment kaise/kab aayega, kya custom banana hai…", note); if (n === null) return; note = n;
     } else if (!confirm(`${who(u)} ka package hata dein? (plan jaisa hai waisa rahega)`)) return;

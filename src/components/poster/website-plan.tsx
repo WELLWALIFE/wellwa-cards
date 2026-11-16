@@ -24,12 +24,13 @@ function planList(hi: boolean) {
       items: [
         T("Your website and digital card on your own link", "आपकी website और digital card, आपके अपने link पर"),
         T("Every design to choose from: 12 designs, Premium ones too", "हर design में से चुनें: 12 designs, Premium वाले भी"),
-        T("Basic SEO: home and main pages on Google", "Basic SEO: home और main pages Google पर"),
-        T("Google Business Profile setup by our team", "Google Business Profile का setup हमारी team करती है"),
         T("Made by our team and delivered within 24 hours", "हमारी team बनाकर 24 घंटे में देती है"),
         T("We WhatsApp you the moment it is live", "Live होते ही WhatsApp पर खबर"),
         T("Change photos, words and products yourself, any time", "फ़ोटो, शब्द और products जब चाहें खुद बदलें"),
-        T("First month of the Growth Plan free: daily posters, WhatsApp AI and CRM", "Growth Plan का पहला महीना free: रोज़ का poster, WhatsApp AI और CRM"),
+        T("Product catalogue with WhatsApp order", "Product catalogue, WhatsApp पर order"),
+        T("Basic SEO: home and main pages on Google", "Basic SEO: home और main pages Google पर"),
+        T("Google Profile: posts and review replies", "Google Profile: posts और review के जवाब"),
+        T("AI Ad Maker and Video Maker (on credits)", "AI Ad Maker और Video Maker (credits पर)"),
       ],
     },
     {
@@ -38,11 +39,11 @@ function planList(hi: boolean) {
       items: [
         T("Everything in Website Standard", "Website Standard का सब कुछ"),
         T("Progressive: customers can install it on their phone like an app", "Progressive: ग्राहक इसे phone पर app की तरह install कर सकते हैं"),
-        T("Full Google SEO: every page, product and service on Google", "पूरा Google SEO: हर page, product और service Google पर"),
-        T("AI search: open to ChatGPT and Gemini search", "AI search: ChatGPT और Gemini की search के लिए खुली"),
+        T("Complete SEO: every page, product and service on Google", "Complete SEO: हर page, product और service Google पर"),
+        T("GEO: open to ChatGPT and Gemini search", "GEO: ChatGPT और Gemini की search के लिए खुली"),
         T("AI chat on your website answers your customers", "Website पर AI chat ग्राहकों को जवाब देता है"),
-        T("Facebook & Instagram page setup by our team", "Facebook और Instagram page का setup हमारी team करती है"),
-        T("A layout designed for your business", "आपके business के लिए बना design"),
+        T("A layout designed for your business by AI", "आपके business के लिए AI से बना design"),
+        T("First month of the Growth Plan free: daily posters, WhatsApp AI and CRM", "Growth Plan का पहला महीना free: रोज़ का poster, WhatsApp AI और CRM"),
       ],
     },
   ];

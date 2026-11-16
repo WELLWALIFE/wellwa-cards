@@ -140,9 +140,9 @@ function ReportView({ r, onReset }: { r: Report; onReset: () => void }) {
       <div className="rounded-2xl bg-[#171447] p-6 text-white md:p-8">
         <h2 className="text-xl font-semibold">{needsWebsite ? "Fix it with a Shubhora website + Growth Plan" : "Fix it with the Growth Plan"}</h2>
         <ul className="mt-3 space-y-1.5 text-base text-white/90">
-          {needsWebsite && <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#a9c8ff]" /> Website Standard ₹2,999 / year · Premium ₹5,999 / year (SEO + AI-search ready)</li>}
-          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#a9c8ff]" /> Growth Plan ₹2,999 / month: Google profile &amp; review replies, daily posters, WhatsApp AI, CRM</li>
-          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#a9c8ff]" /> 1st month of Growth free with every website plan</li>
+          {needsWebsite && <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#a9c8ff]" /> Website Standard ₹2,999 / year (basic SEO) · Premium ₹5,999 / year (complete SEO + ChatGPT &amp; Gemini search)</li>}
+          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#a9c8ff]" /> Growth Plan ₹2,999 / month: Google posts &amp; review replies, daily posters, WhatsApp AI, CRM</li>
+          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#a9c8ff]" /> 1st month of Growth free with Website Premium</li>
         </ul>
         <div className="mt-5 flex flex-wrap gap-3">
           <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-base font-semibold text-white hover:opacity-90">Talk on WhatsApp <ArrowRight className="h-5 w-5" /></a>

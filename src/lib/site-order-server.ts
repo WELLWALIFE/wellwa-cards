@@ -26,7 +26,8 @@ const profileOf = async (uid: string): Promise<Prof | null> =>
 const runs = (iso: string | null | undefined) => !!iso && Date.parse(iso) > Date.now();
 
 /** The package for one year from today — or from the end of the year already running. One month of the Growth features (posters,
- *  WhatsApp AI, CRM) comes with it when the account has no running plan, the same as a package set by Super Admin. */
+ *  WhatsApp AI, CRM) comes with Website Premium when the account has no running plan, the same as a package set by Super Admin
+ *  (16 Nov 2026, owner: Premium only, as in the deck). */
 export async function applyPackage(uid: string, pkg: SitePkg, paymentId: string, custom = false): Promise<boolean> {
   const cur = await profileOf(uid);
   const from = cur && isSitePkg(cur.package) && runs(cur.package_until) ? new Date(cur.package_until!) : new Date();
@@ -36,7 +37,7 @@ export async function applyPackage(uid: string, pkg: SitePkg, paymentId: string,
   const w = await restAsService(`profiles?id=eq.${uid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ package: keep, package_until: until.toISOString(), package_note: `Paid online · ${paymentId}${custom ? " · Premium + Customise: customising to be quoted as per the work" : ""}` }) });
   if (!w.ok) { console.log("[site-order] package not set", uid, w.status, w.text.slice(0, 200)); return false; }
   const planRuns = !!cur?.plan && cur.plan !== "free" && runs(cur.plan_expires_at);
-  if (!planRuns) {
+  if (!planRuns && pkg === "site_premium") {
     const free = new Date(); free.setMonth(free.getMonth() + 1);
     await restAsService(`profiles?id=eq.${uid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ plan: "pro", plan_expires_at: free.toISOString(), plan_source: "admin" }) });
   }

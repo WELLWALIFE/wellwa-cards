@@ -13,14 +13,16 @@ export const metadata: Metadata = pageMeta("/pricing", {
 });
 
 // The plan lists are the owner's own words (16 Oct 2026). 15 Nov 2026: every design for both; Google, AI search and the app are Premium.
-// 16 Nov 2026 (owner): Standard = website + basic SEO + Google profile setup; Premium adds full SEO, FB/Instagram page setup and AI chat.
+// 16 Nov 2026 (owner, as in the Business Opportunity deck): Standard = website + vCard, basic SEO, Google posts & review replies;
+// Premium adds complete SEO, GEO, AI chat, the app and the Growth Plan's 1st month free. No manual setup work in any plan.
 const STANDARD_ITEMS = [
-  "Dynamic website, every design to choose from",
-  "Basic SEO: home & main pages on Google",
-  "Google Business Profile setup",
+  "Website + Digital vCard (one link + QR)",
+  "All 12 designs, ready in 24 hours",
+  "Change photos, words, products yourself",
   "Product catalogue + WhatsApp order",
-  "AI Ad Studio and Reel Maker (credits)",
-  "Growth Plan: 1st month free",
+  "Basic SEO: home & main pages",
+  "Google Profile: posts & review replies",
+  "AI Ad Maker & Video Maker (credits)",
 ];
 const GROWTH_ITEMS = [
   "Daily posters",
@@ -29,8 +31,8 @@ const GROWTH_ITEMS = [
   "CRM & lead follow-ups",
   "Google posts & review replies",
   "WhatsApp broadcasts",
-  "AI search: ChatGPT & Gemini",
   "Monthly report",
+  "Ads & reels on credits (1 = ₹10)",
 ];
 const CUSTOM_ITEMS = [
   "Custom software, apps and websites built for your business",
@@ -42,14 +44,12 @@ const CUSTOM_ITEMS = [
   "A manager from Shubhora just for you",
 ];
 const PREMIUM_LIST = [
-  "Dynamic & Progressive website",
-  "Installs on phone like an app",
-  "Full Google SEO + GEO (ChatGPT & Gemini)",
+  "Everything in Website Standard",
+  "Complete SEO: every product & service page",
+  "GEO: ChatGPT & Gemini search",
   "AI chat on your website",
-  "Facebook & Instagram page setup",
-  "Product catalogue + WhatsApp order",
-  "AI Ad Studio and Reel Maker (credits)",
-  "Growth Plan: 1st month free",
+  "Installs on phone like an app · AI design for you",
+  "Growth Plan: 1st month FREE",
 ];
 
 export default function PricingPage() {
@@ -58,7 +58,7 @@ export default function PricingPage() {
       <section className="mx-auto max-w-6xl px-5 pb-10 pt-16 text-center">
         <span className="mono text-xs uppercase tracking-wide text-faint">Pricing</span>
         <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight md:text-5xl">Simple plans. Big value.</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{SUITE} replaces the designer, the social media person and the person who answers WhatsApp. Pick a Website plan (your digital card comes with it), then grow every month with the Growth Plan. All prices include GST.</p>
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{SUITE} replaces the designer, the social media person and the person who answers WhatsApp. Pick a Website plan (your digital card comes with it), then grow every month with the Growth Plan. All prices include GST. Upgrade from Standard to Premium any time for ₹3,000.</p>
         <p className="mx-auto mt-3 max-w-2xl rounded-full border border-good/30 bg-good/10 px-4 py-1.5 text-sm text-ink">{NO_LOCK_IN.en}</p>
       </section>
 
@@ -111,7 +111,7 @@ export default function PricingPage() {
             <div className="mt-6"><TalkToUs /></div>
           </div>
         </div>
-        {/* Growth Plan (owner, 4 Nov 2026): Rs 2,999 a month, needs a website plan; 1st month free with every website purchase and renewal. */}
+        {/* Growth Plan (owner, 4 Nov 2026): Rs 2,999 a month, needs a website plan. 16 Nov 2026: 1st month free with Website Premium only. */}
         <div className="mt-5 grid gap-6 rounded-2xl bg-[#171447] p-6 text-white md:grid-cols-[1fr_1.4fr] md:p-8">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wide text-[#a9c8ff]">Growth Plan</h2>
@@ -119,7 +119,7 @@ export default function PricingPage() {
               <span className="text-3xl font-semibold tracking-tight tabular-nums">₹2,999</span>
               <span className="text-sm text-white/70">/ month</span>
             </div>
-            <p className="mt-2 text-sm text-[#fde68a]">Needs a website plan. 1st month free with every website purchase &amp; renewal. Includes {GST_PCT}% GST.</p>
+            <p className="mt-2 text-sm text-[#fde68a]">Needs a website plan. 1st month free with Website Premium (purchase &amp; renewal). Includes {GST_PCT}% GST.</p>
             <div className="mt-5"><TalkToUs label="Get the Growth Plan" text="Hi Shubhora, I want the Growth Plan (₹2,999 a month)." /></div>
           </div>
           <ul className="grid content-start gap-2.5 sm:grid-cols-2">
