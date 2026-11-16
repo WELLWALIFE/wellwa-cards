@@ -1907,7 +1907,7 @@ export default function BuildCard() {
         </div>
         {/* Came back from a built website: it is kept — the big button goes on to it, and making a new one is a small, asked-for choice
             (owner, 24 Oct 2026: "pehle se web site bani ho to dobara process na kare"). */}
-        {madeAlready && !remake && (
+        {madeAlready && !remake && !freeMake && (
           <section className="space-y-3 rounded-3xl border border-good/40 bg-good/5 p-4 shadow-card">
             <p className="flex items-center gap-2 text-base font-bold"><CheckCircle2 className="h-5 w-5 text-good" /> {T("Your website is already made", "आपकी website पहले से बनी हुई है")}</p>
             <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setState("preview"); toTop(); }} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white">
@@ -1916,7 +1916,7 @@ export default function BuildCard() {
             <button type="button" onClick={() => setRemake(true)} className="block w-full text-center text-xs font-semibold text-muted underline underline-offset-2">{T("Make a new one instead", "नई website बनानी है")}</button>
           </section>
         )}
-        {(!madeAlready || remake) && <>
+        {(!madeAlready || remake || freeMake) && <>
         {!finding && found && !found.url && facts.website === found.q && (
           <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-sm">{T(`No website was found for “${found.q}”, so it is used as typed. To use a website, go back and paste its link.`, `“${found.q}” की website नहीं मिली, इसलिए उसे वैसे ही रखा गया है। website लगानी हो तो वापस जाकर उसका link डालें।`)}</p>
         )}
