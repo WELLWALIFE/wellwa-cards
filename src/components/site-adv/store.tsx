@@ -20,13 +20,15 @@ export function TrustUspBar({ c, x }: VariantProps) {
 }
 
 export function GalleryPortraitRow({ c, x }: VariantProps) {
-  const g = c.gallery.slice(0, 8);
+  // Full rows only (owner's demo, 17 Nov 2026: six photos left a half-empty second row): 8 in fours, 6 in threes, else 4, 3 or 2.
+  const n0 = c.gallery.length;
+  const g = c.gallery.slice(0, n0 >= 8 ? 8 : n0 >= 6 ? 6 : n0 >= 4 ? 4 : n0);
   if (g.length < 2) return null;
   const urls = c.gallery.map((p) => p.url);
   return (
     <Sec k="gallery" wide className="spr">
       <h2 className="st-h">{x.ui("The lookbook", "लुकबुक")}</h2>
-      <ul className="spr-row" data-n={g.length >= 4 ? 4 : g.length}>
+      <ul className="spr-row" data-n={g.length === 6 ? 3 : g.length >= 4 ? 4 : g.length}>
         {g.map((p, i) => (
           <li key={i}>
             <button type="button" className="spr-tile" onClick={() => x.zoom(urls, i, x.t(p.label))} aria-label={`${x.ui("View photo", "फ़ोटो देखें")} ${i + 1}`}>

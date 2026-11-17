@@ -104,7 +104,8 @@ export function buildContent(card: Card, lang: string): SiteContent {
 
   // The owner's "good to know" line: the first highlights block with 2-6 short items (the basic site's rule).
   const hl = pages.flatMap((p) => p.blocks).find((b): b is Extract<CardBlock, { kind: "highlights" }> => b.kind === "highlights" && !b.items.some((x) => (x ?? "").startsWith("✅")));
-  const hlItems = (hl?.items ?? []).map((s) => splitGlyph((s ?? "").trim()).text.trim()).filter(Boolean);
+  // A point the old builder cut at 40 letters mid-word ("…courier delivery acr") is left out, not shown broken.
+  const hlItems = (hl?.items ?? []).map((s) => splitGlyph((s ?? "").trim()).text.trim()).filter((t) => t && !(t.length === 40 && /[a-z]$/i.test(t) && !/\s/.test(t.slice(-1))));
   const highlights = hlItems.length >= 2 && hlItems.length <= 8 ? hlItems : [];
 
   let offer: SiteContent["offer"];

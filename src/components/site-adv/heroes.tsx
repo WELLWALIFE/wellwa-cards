@@ -184,7 +184,7 @@ const HEROES_BASE_CSS = `
 .ahb-inner{padding-top:clamp(7rem,18vw,12rem);padding-bottom:clamp(1.75rem,4vw,3rem)}
 .site .hero-dark .ahb-top .kicker{color:var(--hero-text);opacity:.85}
 .ahb-top{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5);margin-bottom:var(--s4)}
-.ahb-title{--ah-fs:clamp(3rem,11.5vw,10rem);max-width:13ch;line-height:.9}
+.ahb-title{--ah-fs:clamp(2.75rem,8.5vw,7rem);max-width:15ch;line-height:.95}
 .site:lang(hi) .ahb-title{max-width:16ch}
 .ahb-foot{display:grid;gap:var(--s5);margin-top:clamp(1.5rem,4vw,3rem);padding-top:var(--s5);border-top:1px solid var(--hero-line);align-items:end}
 .ahb-say{display:flex;flex-direction:column;gap:var(--s4);align-items:flex-start}
@@ -1102,6 +1102,7 @@ export function HeroStorefront({ c, x, spec }: VariantProps) {
 const HERO_STORE_CSS = `
 .ahs{position:relative;display:grid;align-items:end;min-height:min(86svh,860px);background:var(--hero-ink);color:#fff}
 .ahs-photo{position:absolute;inset:0;overflow:hidden}
+.ahs-photo>.hero-ph-wrap{position:absolute;inset:0;height:100%}
 .ahs::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,0) 38%,rgba(0,0,0,.62) 100%);pointer-events:none}
 .ahs-inner{position:relative;z-index:2;display:grid;justify-items:center;gap:.9rem;text-align:center;padding-block:clamp(2.4rem,7vw,4.4rem)}
 .site[data-adv] .ahs-kicker{color:#fff;opacity:.92;letter-spacing:.3em;font-size:11px}

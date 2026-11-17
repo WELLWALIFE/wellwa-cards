@@ -40,7 +40,14 @@ function useStore(props: Props) {
   const contact = x.pages.byRole("contact");
   const go = (slug?: string) => (e: React.MouseEvent) => { if (!slug) return; e.preventDefault(); open(slug); };
   const products = items.filter((i) => i.kind === "product");
-  const shop = products.length ? products : items;
+  // The home page's featured few are the catalogue's own items again: each product once, in the catalogue's order (the demo showed
+  // "Silk sarees" twice in the categories and the Bestsellers, 17 Nov 2026).
+  const all = products.length ? products : items;
+  const catSlug = cat?.slug;
+  const seen = new Set<string>();
+  const shop = [...all.filter((i) => i.page === catSlug), ...all.filter((i) => i.page !== catSlug)].filter((i) => {
+    const k = (i.item.name ?? "").trim().toLowerCase(); if (!k) return true; if (seen.has(k)) return false; seen.add(k); return true;
+  });
   const wa = (text?: string) => x.waHref(text);
   const call = x.phone ? linkHref(x.phone.type, x.phone.value) : "";
   return { card, c, x, cat, about, contact, go, shop, items, wa, call };
@@ -191,8 +198,8 @@ function Home({ s }: { s: S }) {
       {revs.length > 0 && <section className="s1-sec"><h2 className="s1-st">{x.ui("What our customers say", "हमारे ग्राहक क्या कहते हैं")}</h2><div className="s1-wrap s1-rev">{revs.slice(0, 6).map((r, i) => (
         <div key={i} className="s1-revc"><span className="s1-stars">{"★★★★★".slice(0, Math.max(1, Math.round(r.rating || 5)))}</span><p>“{x.t(r.text)}”</p><b>{x.t(r.name).toUpperCase()}</b></div>))}</div></section>}
 
-      {shop.length > 0 && <section className="s1-sec"><h2 className="s1-st">{x.ui("Bestsellers", "सबसे ज़्यादा पसंद")}</h2><div className="s1-grid5">{shop.slice(0, 10).map((it, i) => <Card1 key={it.slug} s={s} it={it} eager={i < 5} />)}</div>
-        {s.cat && shop.length > 10 && <div className="s1-center"><a className="s1-btn s1-btn-outline" href={catHref} onClick={toCat}>{x.ui("View all", "सभी देखें")}</a></div>}</section>}
+      {shop.length > 0 && <section className="s1-sec"><h2 className="s1-st">{x.ui("Bestsellers", "सबसे ज़्यादा पसंद")}</h2><div className="s1-grid5">{shop.slice(0, shop.length >= 10 ? 10 : Math.min(5, shop.length)).map((it, i) => <Card1 key={it.slug} s={s} it={it} eager={i < 5} />)}</div>
+        {s.cat && shop.length > 5 && <div className="s1-center"><a className="s1-btn s1-btn-outline" href={catHref} onClick={toCat}>{x.ui("View all", "सभी देखें")}</a></div>}</section>}
 
       {c.about && <section className="s1-sec"><div className="s1-wrap s1-about"><div><h2 className="s1-st l">{x.t(c.about.title)}</h2>{c.about.paras.slice(0, 2).map((p, i) => <p key={i}>{x.t(p)}</p>)}
         {s.about && <a className="s1-btn s1-btn-outline" href={s.about.href} onClick={go(s.about.slug)}>{x.ui("Our story", "हमारी कहानी")}</a>}</div>
@@ -402,7 +409,7 @@ function StudioHome({ s }: { s: S }) {
         <div className="s1-wrap s2-points" data-n={points.length}>{points.map((p, i) => <div key={i}><i>✦</i><h3>{x.t(p.t)}</h3>{p.d && <p>{x.t(p.d)}</p>}</div>)}</div></section>}
 
       {pool.length >= 3 && <section className="s2-sec s2-alt"><div className="s2-head"><p className="s2-ey">{x.ui("Lookbook", "लुकबुक")}</p><h2>{x.ui("A Glimpse of Our World", "हमारी दुनिया की एक झलक")}</h2></div>
-        <div className="s1-wrap s2-look">{pool.slice(0, 7).map((u, i) => <button key={i} type="button" className={`s2-look-i s2-l${i}`} onClick={() => x.zoom(pool, i, c.name)} aria-label={x.ui("View photo", "फ़ोटो देखें")}><Photo src={u} alt="" sizes="(min-width:1024px) 33vw, 50vw" /></button>)}</div>
+        <div className="s1-wrap s2-look">{pool.slice(0, 6).map((u, i) => <button key={i} type="button" className={`s2-look-i s2-l${i}`} onClick={() => x.zoom(pool, i, c.name)} aria-label={x.ui("View photo", "फ़ोटो देखें")}><Photo src={u} alt="" sizes="(min-width:1024px) 33vw, 50vw" /></button>)}</div>
         {ig && <div className="s1-center"><a className="s2-btn s2-btn-line" href={ig.value.startsWith("http") ? ig.value : `https://instagram.com/${ig.value.replace(/^@/, "")}`} target="_blank" rel="noreferrer">{x.ui("View on Instagram", "Instagram पर देखें")}</a></div>}</section>}
 
       {revs.length > 0 && <section className="s2-sec"><div className="s2-head"><p className="s2-ey">{x.ui("Client love", "ग्राहकों का प्यार")}</p><h2>{x.ui("What Our Clients Say", "हमारे ग्राहक क्या कहते हैं")}</h2></div>
@@ -450,7 +457,7 @@ export function Store1(props: Props) {
 
 export const STORE1_CSS = `
 .s1{--m:#7a1f2e;--m2:#9b2c3e;--g:#c8a04a;--bl:#fbe2da;--ink:#2a2226;--mu:#76696e;--ln:#ece4e1;--rd:#d8443c;--gr:#1f9d55;background:#fff;color:var(--ink);font-family:var(--font-text);font-size:14px;line-height:1.55;overflow-x:clip}
-.s1 a{color:inherit;text-decoration:none}
+:where(.s1) a{color:inherit;text-decoration:none}
 .s1 button{font:inherit;background:none;border:0;cursor:pointer;color:inherit}
 .s1-wrap{max-width:1320px;margin:0 auto;padding:0 24px}
 .s1-center{text-align:center;margin-top:30px}
@@ -725,7 +732,7 @@ export const STORE1_CSS = `
  .s2-hero .s1-pic{min-height:0;aspect-ratio:3/4!important}.s2-hero-frame{inset:14px}.s2-hero-txt{justify-content:flex-end;padding:0 26px 46px}.s2-btns .s2-btn{flex:1 1 auto}
  .s2-sec{padding:64px 0}.s2-cols,.s2-cols[data-n="2"]{grid-template-columns:1fr}.s2-story,.s2-contact{grid-template-columns:1fr;gap:34px}.s2-badge{right:10px}
  .s2-points,.s2-points[data-n="3"],.s2-points[data-n="2"]{grid-template-columns:1fr}.s2-points div+div{border-left:0;border-top:1px solid var(--ln)}
- .s2-look{grid-template-columns:repeat(2,1fr);grid-auto-rows:180px}.s2-l1,.s2-l4{grid-column:span 2}
+ .s2-look{grid-template-columns:repeat(2,1fr);grid-auto-rows:180px}.s2-l0{grid-row:auto}.s2-l0,.s2-l1,.s2-l4,.s2-l5{grid-column:span 2}
  .s2-revs{grid-template-columns:1fr}.s2-ft-cols{grid-template-columns:1fr;gap:28px}.s2-ft-bottom{flex-direction:column;gap:6px}
 }
 `;

@@ -265,7 +265,8 @@ function toCopy(raw: Obj, brief: CardBrief): CardCopy {
     jobTitle: [S(raw.jobTitle, 60)].filter((x) => backed(x) && !isOther(x))[0] || tradeLabel(brief).slice(0, 60),
     tagline: keep(S(raw.tagline, 90)), about: keep(S(raw.about, 2200)),
     color: typeof raw.color === "string" && COLORS.includes(raw.color) ? raw.color : COLORS[0],
-    highlights: strs(raw.highlights, 8, 40).filter(backed).slice(0, 4),
+    // A point longer than a pill is left out, never cut mid-word ("Based in Delhi with courier delivery acr" — owner's demo, 17 Nov 2026).
+    highlights: strs(raw.highlights, 8, 400).filter((h) => h.length <= 40).filter(backed).slice(0, 4),
     services: (Array.isArray(raw.services) ? raw.services : []).map((x) => ({ name: S(obj(x).name, 60), desc: keep(S(obj(x).desc, 240)) }))
       .filter((x) => x.name && backed(x.name) && !productSet.has(x.name.toLowerCase())).slice(0, 7),
     offer: S(offer.text, 200) && backed(`${S(offer.title, 60)} ${S(offer.text, 200)}`) ? { title: S(offer.title, 60) || "Offer", text: S(offer.text, 200) } : null,

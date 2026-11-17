@@ -676,7 +676,7 @@ function ShopInner({ c, x, o, index }: { c: SiteContent; x: AdvCtx; o: Off; inde
       )}
       <p className="csg-count" role="status" aria-live="polite">{q || active !== "all" ? x.ui(`Showing ${shown.length} of ${o.items.length}`, `${o.items.length} में से ${shown.length}`) : ""}</p>
       {shown.length > 0 ? (
-        <div className="csg" key={`${active}|${needle}`}>
+        <div className="csg" key={`${active}|${needle}`} data-three={shown.length % 4 !== 0 && shown.length % 3 === 0 ? "" : undefined}>
           {shown.map(({ it, i }, k) => {
             const pc = offPct(it);
             return (
@@ -1121,7 +1121,7 @@ a.cix-link:focus-visible{outline-offset:-2px}
 .csg-count{min-height:1.4em;margin:0 0 var(--s3);font-size:var(--t-meta);color:var(--muted)}
 .csg{display:grid;gap:clamp(1.5rem,3vw,2.5rem) var(--s3);grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (min-width:640px){.csg{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--gap)}}
-@media (min-width:1100px){.csg{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:1100px){.csg{grid-template-columns:repeat(4,minmax(0,1fr))}.csg[data-three]{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .csg-card{display:flex;flex-direction:column;min-width:0;animation:csg-in .6s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0ms)}
 @keyframes csg-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 .csg-media{position:relative;aspect-ratio:4/5;border-radius:var(--r-card);overflow:hidden;background:var(--accent-soft);isolation:isolate}
