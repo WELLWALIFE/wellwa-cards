@@ -17,7 +17,7 @@ import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
 import { cardHomeShown } from "@/lib/site-url";
-import { applyLook, threeLooks, type Look } from "@/lib/site-looks";
+import { applyLook, styleFitsTrade, threeLooks, type Look } from "@/lib/site-looks";
 import { wearAdvanced, type AdvPreview } from "@/lib/adv-preview";
 import type { Card } from "@/lib/types";
 import type { OrderState } from "@/lib/site-order";
@@ -89,11 +89,13 @@ export default function ChooseDesignPage() {
     // A look is the basic website: a Premium design on the card is put aside for its preview.
     const plain: Card = advOn ? { ...card, site: { ...card.site, advancedOn: false } as Card["site"] } : card;
     const cur = card.site.style?.blueprint;
+    const keepOwn = styleFitsTrade(plain);
     const looks: Option[] = threeLooks(plain, plain.site?.style).slice(0, 6).map((l, i) => ({
       id: `s${l.key}`, look: l, name: `Design ${prem.length + i + 1}`, sub: hi ? l.hi : l.name,
       // The look the website wears now keeps its own colours and choices; the others are drawn from it.
-      card: l.key === cur ? plain : applyLook(plain, l), on: !advOn && l.key === cur,
-      swatch: (() => { const st = l.key === cur ? plain.site?.style : l.style; return swatchOf(st?.palette, st?.color ?? card.themeColor, st?.body === "dark" ? "dark" : "light", fontSetFor(st?.font)?.display.family); })(),
+      // …unless those colours are another trade's (a cleaning company made in cream and brown before 17 Nov 2026): then it is shown in its trade's.
+      card: l.key === cur && keepOwn ? plain : applyLook(plain, l), on: !advOn && l.key === cur,
+      swatch: (() => { const st = l.key === cur && keepOwn ? plain.site?.style : l.style; return swatchOf(st?.palette, st?.color ?? card.themeColor, st?.body === "dark" ? "dark" : "light", fontSetFor(st?.font)?.display.family); })(),
     }));
     // Twelve finished templates of the trade: they are the choice; the six general looks are not mixed in.
     if (prem.length > 6) return prem;

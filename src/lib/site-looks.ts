@@ -23,6 +23,12 @@ export type LookPlan = { blueprint: BlueprintKey; style: SiteStyle; order?: stri
 const LIGHT = new Set(["ivory", "pearl"]);
 const WARM = new Set(["saffron", "gold", "cocoa", "crimson", "rose", "ivory"]);
 
+/** Does the website's own style wear a colour of its trade (trade-colours.ts)? The business's own colour ("brand") always does. */
+export function styleFitsTrade(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>): boolean {
+  const pal = card.site?.style?.palette;
+  return pal === "brand" || paletteFits(tradeColours(card.seo?.categoryKey, groupOf(card.seo?.categoryKey)), pal);
+}
+
 /** The three, for this card: from the build's plans when it carried them, else derived from the designer's style. */
 export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>, designer: SiteStyle | undefined, plans?: LookPlan[]): Look[] {
   const d: SiteStyle = { ...(designer ?? card.site?.style ?? {}) };
