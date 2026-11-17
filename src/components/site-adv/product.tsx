@@ -329,7 +329,8 @@ function Rail({ list, c, x, cat, title, entry, ids }: { list: AdvItem[]; c: Site
 
 /** Previous and next item of the same page, as two big links: the visitor keeps browsing without going back. */
 function Neighbours({ item, items, x }: { item: AdvItem; items: AdvItem[]; x: AdvCtxPlus }) {
-  const row = items.filter((o) => o.page === item.page && o.kind === item.kind && (!o.twin || o.slug === item.slug));
+  const me = item.item.name.trim().toLowerCase();
+  const row = items.filter((o) => o.page === item.page && o.kind === item.kind && (o.slug === item.slug || (!o.twin && o.item.name.trim().toLowerCase() !== me)));
   const at = row.findIndex((o) => o.slug === item.slug);
   if (row.length < 3 || at < 0) return null;
   const prev = row[(at - 1 + row.length) % row.length], next = row[(at + 1) % row.length];
