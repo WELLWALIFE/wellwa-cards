@@ -58,6 +58,7 @@ function dropOtherAccounts(uid: string) {
 export function dropStaleLocal(user: { id?: string; user_metadata?: Record<string, unknown> } | null | undefined): boolean {
   const uid = user?.id ?? "";
   if (uid) dropOtherAccounts(uid);
+  dropStaleSite(uid, String(user?.user_metadata?.site_cleared_at ?? ""));
   const stamp = String(user?.user_metadata?.data_cleared_at ?? "");
   if (!uid || !stamp) return false;
   try {
@@ -96,4 +97,28 @@ export function onLocalReset(cb: (ownTab: boolean) => void): () => void {
   window.addEventListener(RESET_EVENT, own);
   window.addEventListener("storage", other);
   return () => { window.removeEventListener(RESET_EVENT, own); window.removeEventListener("storage", other); };
+}
+
+/* ---- website-only reset (17 Nov 2026): the built preview and the card editor's copies go, the form drafts stay ---- */
+const SITE_KEYS = ["vcard-preview", "site-edit"];
+const SITE_PREFIXES = ["ne-card-", "card-undo:"];
+const siteSeenKey = (uid: string) => `shubhora.site-cleared:${uid}`;
+
+/** Drops only this browser's copies of the old website. Safe without storage. */
+export function dropLocalSite() {
+  try {
+    for (const k of SITE_KEYS) localStorage.removeItem(k);
+    for (const k of localKeys()) if (SITE_PREFIXES.some((p) => k.startsWith(p))) localStorage.removeItem(k);
+    sessionStorage.removeItem("card-seed");
+  } catch { /* ignore */ }
+}
+
+function dropStaleSite(uid: string, stamp: string) {
+  if (!uid || !stamp) return;
+  try {
+    const seen = localStorage.getItem(siteSeenKey(uid));
+    if (seen && stamp <= seen) return;
+    dropLocalSite();
+    localStorage.setItem(siteSeenKey(uid), stamp);
+  } catch { /* ignore */ }
 }

@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { serviceConfigured, serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 import { rateLimited } from "@/lib/api-security";
-import { wipeMemberData } from "@/lib/member-wipe";
+import { wipeMemberWebsite } from "@/lib/member-wipe";
 
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
@@ -18,6 +18,6 @@ export async function POST(request: Request) {
   if (!ur.ok) return NextResponse.json({ error: "user not found" }, { status: 404 });
   const u = (await ur.json()) as { user_metadata?: Record<string, unknown> };
   if (u.user_metadata?.is_demo !== true) return NextResponse.json({ error: "Not a demo account." }, { status: 403 });
-  const { ok, cleared } = await wipeMemberData(me.id, h, u.user_metadata);
+  const { ok, cleared } = await wipeMemberWebsite(me.id, h, u.user_metadata);
   return NextResponse.json({ ok, cleared }, { status: ok ? 200 : 207 });
 }

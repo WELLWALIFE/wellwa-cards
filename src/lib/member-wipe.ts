@@ -70,3 +70,37 @@ export async function wipeMemberData(id: string, h: Record<string, string>, user
   const failed = Object.entries(cleared).filter(([, v]) => typeof v === "string" && v.startsWith("failed"));
   return { ok: failed.length === 0, cleared };
 }
+
+// Website only (owner's call, 17 Nov 2026: "admin se ya reset demo kare to user dwara feed data nahi hatana chahiye,
+// kevel website hate"). Used by Super Admin → Clear website and by the demo account's Reset button.
+//   removed: the V-Card / website rows (with their links, sections and the enquiries attached to them), the custom
+//            domains, their view counts, and the build job still running.
+//   kept:    everything the member filled in — the setup / business details, card facts (poster_profiles), products,
+//            reviews, posters, connections, CRM, orders — so the next "Make website" starts from the same answers.
+// Stamped site_cleared_at (not data_cleared_at), so a phone drops only its old built preview, never the form drafts.
+export async function wipeMemberWebsite(id: string, h: Record<string, string>, userMetadata: Record<string, unknown> | undefined): Promise<{ ok: boolean; cleared: Record<string, number | string> }> {
+  const cleared: Record<string, number | string> = {};
+  const slugs: string[] = [];
+  await forgetJob(id);
+  for (const [table, col] of [["card_domains", "owner_id"], ["cards", "owner_id"]] as [string, string][]) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${col}=eq.${id}`, { method: "DELETE", headers: { ...h, Prefer: "return=representation" } });
+    if (r.ok) {
+      const rows = (await r.json().catch(() => [])) as { username?: string }[];
+      if (rows.length) cleared[table] = rows.length;
+      if (table === "cards") for (const c of rows) if (c.username) slugs.push(c.username);
+    }
+    else if (r.status !== 404) cleared[table] = `failed ${r.status}`;
+  }
+  if (slugs.length) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/card_events?username=in.(${slugs.map((u) => `"${u.replace(/"/g, "")}"`).join(",")})`, { method: "DELETE", headers: { ...h, Prefer: "return=representation" } });
+    if (r.ok) { const rows = (await r.json().catch(() => [])) as unknown[]; if (rows.length) cleared.card_events = rows.length; }
+    else if (r.status !== 404) cleared.card_events = `failed ${r.status}`;
+  }
+  {
+    const md = { ...(userMetadata ?? {}), site_cleared_at: new Date().toISOString() };
+    const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { method: "PUT", headers: h, body: JSON.stringify({ user_metadata: md }) });
+    if (!r.ok) cleared.site_stamp = `failed ${r.status}`;
+  }
+  const failed = Object.entries(cleared).filter(([, v]) => typeof v === "string" && v.startsWith("failed"));
+  return { ok: failed.length === 0, cleared };
+}

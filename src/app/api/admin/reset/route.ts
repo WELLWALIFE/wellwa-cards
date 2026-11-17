@@ -6,10 +6,11 @@
 //   kept:    the login (mobile / email / password), the username, name and mobile, the partner ID and team,
 //            the plan, credits and wallet — money and the partner tree are never touched here.
 // The account then looks like one that has just signed up: the congratulations page, then the profile steps.
+// Since 17 Nov 2026 it removes the WEBSITE only (wipeMemberWebsite) — the member's filled data stays.
 // The wipe itself lives in lib/member-wipe.ts (the demo account's own Reset button uses the same one).
 //   POST { id, confirm: "<username or email>" } → { ok, cleared: { table: rows } }   Super-admin only.
 import { adminAllowed, serviceConfigured, serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
-import { wipeMemberData } from "@/lib/member-wipe";
+import { wipeMemberWebsite } from "@/lib/member-wipe";
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
@@ -32,6 +33,6 @@ export async function POST(request: Request) {
   const accepted = [username, u.email ?? "", (u.phone ?? "").replace(/\D/g, "")].map((x) => x.toLowerCase()).filter(Boolean);
   if (!typed || !accepted.includes(typed.replace(/^\+/, ""))) return Response.json({ error: `Type ${username || "the email"} to confirm.` }, { status: 400 });
 
-  const { ok, cleared } = await wipeMemberData(id, h, u.user_metadata);
+  const { ok, cleared } = await wipeMemberWebsite(id, h, u.user_metadata);
   return Response.json({ ok, username, cleared }, { status: ok ? 200 : 207 });
 }

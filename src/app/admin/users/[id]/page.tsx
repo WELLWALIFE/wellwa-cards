@@ -97,20 +97,20 @@ export default function AdminUserProfile() {
    *  and wallet stay. For a demo / test account that must start again from a fresh setup. */
   async function clearData() {
     const who = String(data?.profile?.username ?? "") || data?.auth.email || "";
-    const typed = prompt(`Clear ALL data of ${who}?\n\nDeleted for ever: V-Cards, posters, products, reviews, Facebook / Google / WhatsApp connections, leads, videos.\nKept: login, username, name, mobile, partner ID + team, plan, credits, wallet.\n\nType ${who} to confirm:`);
+    const typed = prompt(`Clear the WEBSITE of ${who}?\n\nDeleted: the V-Card / website (its links, sections, enquiries), custom domain, view counts.\nKept: everything the user filled in — business details, products, reviews, posters, connections, CRM, orders — and login, plan, credits, wallet.\n\nType ${who} to confirm:`);
     if (!typed) return;
     setBusy("clear");
     const r = await fetch("/api/admin/reset", { method: "POST", headers: await adminHeaders(), body: JSON.stringify({ id, confirm: typed }) });
     const j = await r.json().catch(() => ({})); setBusy("");
     if (!r.ok && r.status !== 207) { alert(j.error || "Failed"); return; }
     const parts = Object.entries((j.cleared ?? {}) as Record<string, unknown>).map(([k, v]) => `${k}: ${v}`);
-    setNote(`${r.status === 207 ? "Partly cleared" : "All data cleared"} — ${parts.join(", ") || "nothing was there"}. Setup starts again at the next login.`);
+    setNote(`${r.status === 207 ? "Partly cleared" : "Website cleared"} — ${parts.join(", ") || "nothing was there"}. The filled data stays; the website can be made again.`);
     void load();
   }
   /** Demo account on / off: the app shows this login a "Reset demo" pill that wipes everything back to fresh. */
   async function toggleDemo() {
     const on = !data?.auth.is_demo;
-    if (!confirm(on ? "Mark this account as the DEMO account?\n\nA red \"Reset demo\" button appears in the app for this login; one tap wipes its cards, products, connections and setup (the login, plan and partner ID stay)." : "Remove the demo mark? The Reset button disappears from the app.")) return;
+    if (!confirm(on ? "Mark this account as the DEMO account?\n\nA red \"Reset demo\" button appears in the app for this login; one tap deletes its website only (filled data, login, plan and partner ID stay)." : "Remove the demo mark? The Reset button disappears from the app.")) return;
     setBusy("demo");
     const r = await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ id, demo: on }) });
     const j = await r.json().catch(() => ({})); setBusy("");
@@ -151,7 +151,7 @@ export default function AdminUserProfile() {
         <button onClick={() => setEdit(true)} className="rounded-lg border border-border px-3 py-2 text-sm">Edit login / plan</button>
         <button onClick={() => suspend(!suspended)} disabled={busy === "susp" || !cards.length} className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40">{suspended ? "Reinstate" : "Suspend"}</button>
         <button onClick={toggleDemo} disabled={busy === "demo"} className={`rounded-lg border px-3 py-2 text-sm disabled:opacity-40 ${data.auth.is_demo ? "border-danger/40 bg-danger/10 text-danger" : "border-border"}`} title="A demo account gets a Reset button in the app that wipes it back to fresh">{busy === "demo" ? "…" : data.auth.is_demo ? "🧹 Demo account: ON" : "Mark as demo"}</button>
-        <button onClick={clearData} disabled={busy === "clear"} className="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger disabled:opacity-40" title="Delete cards, posters, products and connections — keep the login, username, partner ID, plan and credits">{busy === "clear" ? "Clearing…" : "Clear all data"}</button>
+        <button onClick={clearData} disabled={busy === "clear"} className="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger disabled:opacity-40" title="Delete only the website — the user's filled data stays">{busy === "clear" ? "Clearing…" : "Clear website"}</button>
         <button onClick={loginAs} disabled={busy === "login"} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"><KeyRound className="h-4 w-4" />{busy === "login" ? "…" : "Login as this user"}</button>
       </div>
 
