@@ -1073,4 +1073,44 @@ export const HEROES_NEW_CSS = `
 @media (prefers-reduced-motion:reduce){.aho-pic{transition:none}}
 `;
 
-export const HEROES_CSS = MOTION_CSS + HEROES_BASE_CSS + HEROES_MORE_CSS + HEROES_NEW_CSS;
+/* ================= storefront (the fashion store, 17 Nov 2026) ================= */
+/** The photograph edge to edge and almost no words: a small line, a modest title, "view the collection". How a clothing store opens. */
+export function HeroStorefront({ c, x, spec }: VariantProps) {
+  const { hm } = c;
+  return (
+    <section id="adv-hero" data-sec="hero" className="adv-hero ahs hero-dark" aria-label={hm.name}>
+      <div className="ahs-photo">
+        {hm.photo
+          ? <HeroPhoto photo={hm.photo} clip={hm.clip} clipOn="desktop" crop="cover" priority kenBurns side="center" />
+          : <ArtField seed={spec.seed} letter={initialOf(hm.name)} />}
+      </div>
+      <div className="adv-wrap ahs-inner hero-stagger">
+        <Kick c={c} x={x} className="ahs-kicker" />
+        <h1 className="ahs-title" lang={x.lang}>{x.t(hm.headline)}</h1>
+        {c.offerings
+          ? (
+            <div className="ahs-cta">
+              <a href="#adv-services" className="ahs-shop" onClick={(e) => { e.preventDefault(); x.track("hero-shop"); x.jump("services"); }}>{x.ui("View the collection", "कलेक्शन देखें")}</a>
+              {x.wa && !isShowcase(x) && <a href={x.waHref()} target="_blank" rel="noreferrer" className="ahs-wa" onClick={() => x.track("hero-wa")}><Icon name="whatsapp" size={16} />WhatsApp</a>}
+            </div>
+          )
+          : <Cta c={c} x={x} link />}
+      </div>
+    </section>
+  );
+}
+const HERO_STORE_CSS = `
+.ahs{position:relative;display:grid;align-items:end;min-height:min(86svh,860px);background:var(--hero-ink);color:#fff}
+.ahs-photo{position:absolute;inset:0;overflow:hidden}
+.ahs::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,0) 38%,rgba(0,0,0,.62) 100%);pointer-events:none}
+.ahs-inner{position:relative;z-index:2;display:grid;justify-items:center;gap:.9rem;text-align:center;padding-block:clamp(2.4rem,7vw,4.4rem)}
+.site[data-adv] .ahs-kicker{color:#fff;opacity:.92;letter-spacing:.3em;font-size:11px}
+.site[data-adv] .ahs-title{font-size:clamp(1.8rem,4.4vw,3.3rem);line-height:1.1;letter-spacing:.01em;color:#fff;max-width:22ch;text-wrap:balance}
+.site:lang(hi) .ahs-title{line-height:1.3}
+.ahs-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.9rem 1.6rem;margin-top:.5rem}
+.ahs-shop{display:inline-flex;align-items:center;min-height:46px;padding:0 1.9rem;background:#fff;color:#141414;font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;text-decoration:none;border-radius:var(--r-ctl)}
+.ahs-wa{display:inline-flex;align-items:center;gap:.5em;color:#fff;font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.6);padding-bottom:3px}
+.site:lang(hi) .ahs-shop,.site:lang(hi) .ahs-wa{letter-spacing:0;font-size:14px}
+`;
+
+export const HEROES_CSS = MOTION_CSS + HEROES_BASE_CSS + HEROES_MORE_CSS + HEROES_NEW_CSS + HERO_STORE_CSS;

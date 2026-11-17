@@ -1002,35 +1002,34 @@ function finish(arch: Archetype, group: string): Archetype {
 // luxury, festive — twelve different tops, six light pages and six dark, twelve colours. Bridal wear first (reference: a couture house's
 // bridal page — a quiet header, one full-bleed image, tall portraits in a row, the occasions as tiles, menswear beside it, much air).
 const FIXED: Record<string, Archetype[]> = {
+  // Wedding wear, rebuilt as a STORE (owner, 17 Nov 2026: "abhi bhi corporate style hai, lehenga chunne wali website nahi"): the photograph
+  // opens the page, the pieces come next as tall portraits with only a name and a price, then the lookbook, a short word about the
+  // house, "book your appointment" on a photograph, and a few questions folded away. No step cards, no trust chips, no long columns.
   bridal: [
-    // --- classic ---
-    a("bridal-couture-house", "The Couture House", "one full-bleed bridal image, a short centred line, then the collection as tall portraits in a row", "full-bleed", "about services gallery proof",
-      "about:pull-quote services:scroller gallery:filmstrip proof:testimonial-carousel trust:hairline process:numbered-list faq:accordion visit:address-poster cta:wide-band footer:big-wordmark", "sage light luxe", "Playfair Display/DM Sans", "sharp airy subtle", "quiet couture: ivory paper, a sage band, small caps, tall portraits, very slow pacing"),
-    a("bridal-lookbook", "The Bridal Lookbook", "the collection as a magazine: oversized type, a masonry of looks, captions in small caps", "editorial-marquee", "gallery services about proof",
-      "gallery:masonry services:magazine about:editorial-split proof:review-wall trust:ticker process:timeline-h faq:two-column visit:split cta:floating-card footer:atelier", "blush light", "Instrument Serif/Inter", "sharp airy rich", "editorial fashion photography; dusty pink and ink; looks numbered like a lookbook"),
-    a("bridal-bride-groom", "Bride & Groom", "two lanes side by side: her lehenga, his sherwani; each look a full-width row with its own enquiry", "split-frame", "services gallery about proof",
-      "services:listing-rows gallery:bento about:overlap-card proof:cards trust:strip process:steps faq:accordion visit:map-hours cta:band footer:columns", "ivory light", "Newsreader/Inter", "soft airy subtle", "ivory and warm brown; the couple together, then each alone; calm and exact"),
-    // --- bold ---
-    a("bridal-wedding-season", "The Wedding Season", "occasion-led: mehndi, haldi, sangeet, wedding, reception — each a large card with its own pieces", "stacked-poster", "services gallery proof about",
-      "services:feature-cards gallery:album-tabs proof:marquee-cards about:photo-collage trust:counters process:icon-cards faq:chat-bubble visit:hours-timeline cta:sticky-ribbon footer:link-grid", "crimson dark", "DM Serif Display/Manrope", "soft airy rich", "deep bridal red on dark; an arched photo; the functions as a row of big cards"),
-    a("bridal-collection", "The Collection", "the store as a shop: search, filters, every piece as a photo card with its price and an ask button", "mosaic", "services trust gallery proof",
-      "services:shop-grid trust:icon-row gallery:lightbox-grid proof:star-summary about:numbers-led process:steps faq:searchable visit:split cta:split-qr footer:mega", "gold light luxe", "Manrope/DM Sans", "soft compact subtle", "ivory and champagne gold; product-first; sizes, fabric and delivery said plainly"),
-    a("bridal-new-arrivals", "New Arrivals", "this season's pieces on a slanted photo, tabs by category, one look at a time on a stage", "diagonal", "services gallery trust proof",
-      "services:category-tabs gallery:stage trust:ticker proof:review-wall about:banner-columns process:icon-cards faq:accordion visit:map-hours cta:sticky-ribbon footer:mega", "plum dark", "Bricolage Grotesque/Inter", "pill compact rich", "plum and magenta on dark; bold type; a new-arrivals ticker; energetic"),
-    // --- luxury ---
-    a("bridal-private-viewing", "The Private Viewing", "one dramatic bridal image, 'book a private viewing', a letter from the designer, the appointment in steps", "centered-minimal", "about gallery process proof",
-      "about:founder-letter gallery:filmstrip process:numbered-list proof:spotlight services:index-rows trust:hairline faq:spotlight visit:address-poster cta:callback footer:minimal", "oxblood dark", "Playfair Display/Inter", "sharp airy rich", "oxblood and gold; ornate serif; very slow pacing; intimate, made-to-measure language"),
-    a("bridal-atelier-noir", "Atelier Noir", "black and brass: the words on a frosted card over the photo, signature pieces as an editorial grid, a pinned reel", "glass-card", "services about gallery proof",
-      "services:magazine about:manifesto gallery:pinned-reel proof:testimonial-carousel trust:bento process:stack-cards faq:numbered-accordion visit:contact-desk cta:wide-band footer:atelier", "brass dark", "Instrument Serif/Manrope", "sharp airy rich", "ink black and champagne gold; a few pieces shown very large; a heavy, quiet luxury"),
-    a("bridal-heirloom-craft", "Heirloom Craft", "the craft leads: zardozi, gota, hand embroidery — the making told in chapters, the pieces after it", "masthead", "about process gallery services",
-      "about:chapters process:timeline-h gallery:scrapbook services:scroller proof:cards trust:strip faq:accordion visit:address-poster cta:band footer:big-wordmark", "terracotta light luxe", "Fraunces/DM Sans", "soft airy subtle", "ivory paper and terracotta; embroidery close-ups; the karigar's hands; heritage, named techniques"),
-    // --- festive, local ---
-    a("bridal-shaadi-ghar", "Shaadi Ghar", "the wedding shop of the town: a floating collage, the whole wedding under one roof, families who came back", "parallax-collage", "services proof gallery about",
-      "services:feature-cards proof:clients-strip gallery:mosaic about:owner-card trust:counters process:steps faq:chat-bubble visit:branch-list cta:band footer:columns", "saffron dark", "Playfair Display/Mukta", "pill airy rich", "saffron, marigold and maroon; festive and warm; Hindi reads as well as English; the owner at the counter"),
-    a("bridal-made-to-measure", "Made to Measure", "the boutique's work: measure, stitch, fitting, delivery — the steps first, then a clear rate list", "pinned-story", "process services about gallery",
-      "process:stack-cards services:price-list about:owner-card gallery:rooms proof:receipt trust:split-cards faq:numbered-accordion visit:hours-timeline cta:split-qr footer:hotline", "teal light", "Lora/Mukta", "sharp compact subtle", "peacock teal and cream; tape, chalk and patterns; exact and honest; delivery dates said plainly"),
-    a("bridal-family-wedding", "The Family Wedding Store", "for the whole family: bride, groom, sisters, mothers — a giant headline with round photos in it, then everything by person", "kinetic-type", "services gallery proof about",
-      "services:grid gallery:masonry proof:marquee-cards about:story-columns trust:icon-row process:icon-cards faq:two-column visit:map-hours cta:floating-card footer:link-grid", "rose dark", "Fraunces/Manrope", "pill airy rich", "deep rose and pink; joyful; many faces; one stop for the wedding"),
+    a("bridal-couture-house", "The Couture House", "the store front of a couture house: one photograph, the pieces as a quiet shelf, the lookbook, an appointment", "storefront", "trust services gallery about",
+      "trust:usp-bar services:lookbook gallery:portrait-row about:editorial-split process:atelier-band proof:spotlight faq:fold visit:address-poster cta:band footer:minimal", "sage light luxe", "Playfair Display/DM Sans", "sharp airy subtle", "ivory and sage; small spaced capitals; the photograph leads, the words are few"),
+    a("bridal-lookbook", "The Bridal Lookbook", "a fashion magazine's opening spread, shop-by tiles, a wall of looks", "split-frame", "trust services gallery about",
+      "trust:usp-bar services:edit-tiles gallery:masonry about:overlap-card process:atelier-band proof:testimonial-carousel faq:fold visit:split cta:wide-band footer:atelier", "blush light", "Instrument Serif/Inter", "sharp airy subtle", "blush and ivory; tall quiet serif; tiles with the name over the photograph"),
+    a("bridal-bride-groom", "Bride & Groom", "bride and groom side by side in a photo board, then the pieces on a shelf you slide", "mosaic", "services trust gallery about",
+      "services:scroller trust:hairline gallery:portrait-row about:story-columns process:atelier-band proof:cards faq:fold visit:map-hours cta:floating-card footer:big-wordmark", "ivory light", "Newsreader/Inter", "soft airy subtle", "warm ivory; lehenga and sherwani given equal room; calm and bookish"),
+    a("bridal-wedding-season", "The Wedding Season", "the season's campaign photograph on a deep red ground, the pieces lit against it", "storefront", "trust services gallery proof",
+      "trust:ticker services:lookbook gallery:stage about:manifesto process:atelier-band proof:marquee-cards faq:fold visit:address-poster cta:band footer:minimal", "crimson dark", "DM Serif Display/Manrope", "sharp airy rich", "bridal red and gold on dark; heavy serif; festive, a campaign feel"),
+    a("bridal-collection", "The Collection", "the store as a shop: the film first, then search, filters and every piece as a photo card", "video-first", "trust services gallery proof",
+      "trust:usp-bar services:shop-grid gallery:lightbox-grid about:banner-columns process:atelier-band proof:star-summary faq:fold visit:split cta:split-qr footer:link-grid", "gold light luxe", "Manrope/DM Sans", "soft compact subtle", "ivory and champagne gold; product-first; sizes, fabric and delivery said plainly"),
+    a("bridal-new-arrivals", "New Arrivals", "this season's pieces on a slanted photograph, shop-by tiles, a new-arrivals ribbon", "diagonal", "trust services gallery proof",
+      "trust:ticker services:edit-tiles gallery:portrait-row about:photo-collage process:atelier-band proof:review-wall faq:fold visit:map-hours cta:wide-band footer:mega", "plum dark", "Bricolage Grotesque/Inter", "pill compact rich", "plum and magenta on dark; bold type; energetic and young"),
+    a("bridal-private-viewing", "The Private Viewing", "one small arched photograph and a great deal of air: 'book a private viewing', a letter from the designer", "centered-minimal", "services about gallery proof",
+      "services:lookbook about:founder-letter gallery:filmstrip trust:usp-bar process:atelier-band proof:spotlight faq:fold visit:address-poster cta:callback footer:minimal", "oxblood dark", "Playfair Display/Inter", "sharp airy rich", "oxblood and gold; ornate serif; slow pacing; intimate, made-to-measure language"),
+    a("bridal-atelier-noir", "Atelier Noir", "black and brass: the words on a frosted card over the photograph, a few pieces shown very large", "glass-card", "services gallery about proof",
+      "services:magazine gallery:pinned-reel about:pull-quote trust:hairline process:atelier-band proof:testimonial-carousel faq:numbered-accordion visit:contact-desk cta:wide-band footer:atelier", "brass dark", "Instrument Serif/Manrope", "sharp airy rich", "ink black and champagne gold; a heavy, quiet luxury"),
+    a("bridal-heirloom-craft", "Heirloom Craft", "the house's name as a magazine title, the craft told in chapters, the pieces as shop-by tiles", "masthead", "trust services about gallery",
+      "trust:usp-bar services:edit-tiles about:chapters gallery:portrait-row process:atelier-band proof:cards faq:fold visit:address-poster cta:band footer:big-wordmark", "terracotta light luxe", "Fraunces/DM Sans", "soft airy subtle", "ivory paper and terracotta; embroidery close-ups; heritage, named techniques"),
+    a("bridal-shaadi-ghar", "Shaadi Ghar", "the wedding shop of the town: a floating collage of photographs, the whole wedding under one roof", "parallax-collage", "trust services gallery about",
+      "trust:ticker services:lookbook gallery:mosaic about:owner-card process:atelier-band proof:cards faq:fold visit:branch-list cta:band footer:columns", "saffron dark", "Playfair Display/Mukta", "pill airy rich", "saffron, marigold and maroon; festive and warm; Hindi reads as well as English"),
+    a("bridal-made-to-measure", "Made to Measure", "the boutique's work: the photograph, the pieces, then measure, stitch, fitting and delivery as one line of steps", "full-bleed", "trust services process gallery",
+      "trust:usp-bar services:lookbook process:timeline-h gallery:portrait-row about:editorial-split proof:spotlight faq:two-column visit:hours-timeline cta:split-qr footer:hotline", "teal light", "Lora/Mukta", "sharp compact subtle", "peacock teal and cream; exact and honest; delivery dates said plainly"),
+    a("bridal-family-wedding", "The Family Wedding Store", "for the whole family: bride, groom, sisters, mothers - a store front, then everything by person as tiles", "storefront", "trust services gallery proof",
+      "trust:ticker services:edit-tiles gallery:bento about:story-columns process:atelier-band proof:marquee-cards faq:fold visit:map-hours cta:floating-card footer:link-grid", "rose dark", "Fraunces/Manrope", "pill airy rich", "deep rose and pink; joyful; many faces; one stop for the wedding"),
   ],
 };
 export const ARCHETYPES_BY_GROUP: Record<string, Archetype[]> = mergeGroups(LIBRARY, RESEARCHED, PREMIUM, FIXED);
@@ -1059,7 +1058,7 @@ export function fitOf(card: Card): Fit {
 }
 
 /** Heroes that need a photograph to look right. */
-export const PHOTO_HEROES: ReadonlySet<string> = new Set(["full-bleed", "glass-card", "video-first", "diagonal"]);
+export const PHOTO_HEROES: ReadonlySet<string> = new Set(["full-bleed", "glass-card", "video-first", "diagonal", "storefront"]);
 /** Heroes that stand on type alone: what a card with no banner gets. */
 export const TEXT_HEROES: readonly string[] = ["editorial-marquee", "masthead", "centered-minimal", "stacked-poster", "split-frame", "mosaic"];
 const PHOTO_SERVICES = new Set(["magazine", "scroller", "feature-cards"]);

@@ -782,6 +782,81 @@ export function ServicesRateList(p: VariantProps) {
 
 /* ================= CSS ================= */
 
+/* ================= lookbook / edit-tiles (the fashion store, 17 Nov 2026) ================= */
+
+/** One piece as a store shows it: the photograph, then only the name and the price. The whole tile opens the piece's own page
+ *  (the photo in the lightbox when it has none). */
+function StoreTile({ it, x, i, sizes, over = false }: { it: Offering; x: AdvCtx; i: number; sizes: string; over?: boolean }) {
+  const go = x.goto, slug = it.slug;
+  const inner = (
+    <>
+      <span className="clb-media">
+        <Photo src={it.images[0]} alt={x.t(it.name)} sizes={sizes} eager={i < 4} fallback={it.name} />
+        {it.badge && <span className="cz-badge">{x.t(it.badge)}</span>}
+        {over && <span className="cet-label"><b>{x.t(it.name)}</b>{it.price && <small>{it.price}</small>}</span>}
+      </span>
+      {!over && <span className="clb-name">{x.t(it.name)}</span>}
+      {!over && it.price && <span className="clb-price">{it.price}</span>}
+    </>
+  );
+  if (slug && go) return <a href={x.hrefFor(slug)} className="clb-tile" onClick={(e) => { e.preventDefault(); x.track("product-open"); go(slug); }}>{inner}</a>;
+  if (it.images[0]) return <button type="button" className="clb-tile" onClick={() => x.zoom(it.images, 0, x.t(it.name))}>{inner}</button>;
+  return <div className="clb-tile">{inner}</div>;
+}
+const storeCols = (n: number) => (n <= 5 ? n : n % 3 === 0 ? 3 : 4);
+
+/** lookbook: tall portrait photographs in a row (a sideways shelf on a phone), the name and price in small capitals under each. */
+export function ServicesLookbook({ c, x }: VariantProps) {
+  const o = c.offerings; if (!o) return null;
+  return (
+    <Sec k="services" wide className="clb">
+      <h2 className="st-h">{x.t(o.title)}</h2>
+      <ul className="clb-row" data-n={storeCols(o.items.length)}>
+        {o.items.map((it, i) => <li key={i}><StoreTile it={it} x={x} i={i} sizes="(min-width: 1024px) 25vw, 72vw" /></li>)}
+      </ul>
+      <More o={o} x={x} />
+    </Sec>
+  );
+}
+/** edit-tiles: large photographs with the name laid over the foot of each - the "shop by" tiles of a store's front page. */
+export function ServicesEditTiles({ c, x }: VariantProps) {
+  const o = c.offerings; if (!o) return null;
+  return (
+    <Sec k="services" wide className="cet">
+      <h2 className="st-h">{x.t(o.title)}</h2>
+      <ul className="cet-row" data-n={Math.min(o.items.length, 3)}>
+        {o.items.map((it, i) => <li key={i}><StoreTile it={it} x={x} i={i} sizes="(min-width: 1024px) 33vw, 50vw" over /></li>)}
+      </ul>
+      <More o={o} x={x} />
+    </Sec>
+  );
+}
+export const CATALOG_STORE_CSS = `
+.clb-row,.cet-row{list-style:none;margin:0;padding:0}
+.clb-row{display:grid;grid-auto-flow:column;grid-auto-columns:68%;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.clb-row::-webkit-scrollbar{display:none}
+.clb-row>li{scroll-snap-align:start}
+.clb-tile{display:grid;gap:.3rem;width:100%;padding:0;border:0;background:none;font:inherit;color:var(--ink);text-align:center;text-decoration:none;cursor:pointer}
+.clb-media{position:relative;display:block;aspect-ratio:2/3;overflow:hidden;background:var(--paper-2);border-radius:var(--r-img);margin-bottom:.55rem}
+.clb-media .adv-photo{transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.clb-tile:hover .adv-photo{transform:scale(1.04)}
+.clb-media .cz-badge{position:absolute;top:10px;left:10px}
+.clb-name{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;line-height:1.5}
+.clb-price{font-size:12.5px;letter-spacing:.06em;color:var(--muted)}
+.site:lang(hi) .clb-name{letter-spacing:0;font-size:14px}
+@media (min-width:640px){.clb-row{grid-auto-columns:40%}}
+@media (min-width:1024px){.clb-row{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(4,1fr);gap:34px 18px;overflow:visible}
+.clb-row[data-n="5"]{grid-template-columns:repeat(5,1fr)}.clb-row[data-n="3"]{grid-template-columns:repeat(3,1fr)}
+.clb-row[data-n="2"]{grid-template-columns:repeat(2,1fr);max-width:840px;margin-inline:auto}.clb-row[data-n="1"]{grid-template-columns:1fr;max-width:420px;margin-inline:auto}}
+.cet-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.cet-row .clb-media{aspect-ratio:3/4;margin:0}
+.cet-label{position:absolute;inset:auto 0 0 0;display:grid;gap:.2rem;padding:3.2rem 1rem 1.15rem;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.62));color:#fff;text-align:center}
+.cet-label b{font-size:12.5px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;line-height:1.45}
+.cet-label small{font-size:12px;letter-spacing:.06em;opacity:.85}
+.site:lang(hi) .cet-label b{letter-spacing:0;font-size:15px}
+@media (min-width:1024px){.cet-row{grid-template-columns:repeat(3,1fr);gap:16px}.cet-row[data-n="2"]{grid-template-columns:repeat(2,1fr)}.cet-row[data-n="1"]{grid-template-columns:1fr;max-width:520px;margin-inline:auto}.cet-label b{font-size:14px}}
+`;
+
 export const CATALOG_CSS = `
 .site[data-adv] .cz-sm{min-height:44px;padding:0 var(--s4);font-size:14px}
 .cz-cover{position:relative;display:block;width:100%;padding:0;border:0;background:var(--paper-2);color:inherit;cursor:zoom-in;overflow:hidden}

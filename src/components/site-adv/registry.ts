@@ -12,7 +12,7 @@ import type {
 import { VARIANT_IDS } from "@/lib/site-advanced";
 import {
   HeroCenteredMinimal, HeroDiagonal, HeroEditorialMarquee, HeroFullBleed, HeroGlassCard, HeroMasthead, HeroMosaic, HeroSplitFrame,
-  HeroStackedPoster, HeroVideoFirst, HeroKinetic, HeroPinnedStory, HeroCollage, HeroSpotlight, HEROES_CSS,
+  HeroStackedPoster, HeroVideoFirst, HeroKinetic, HeroPinnedStory, HeroCollage, HeroSpotlight, HeroStorefront, HEROES_CSS,
 } from "@/components/site-adv/heroes";
 import { AboutBannerColumns, AboutChapters, AboutFounderLetter, AboutManifesto, AboutOverlapCard, AboutStoryColumns, ABOUTS_CSS } from "@/components/site-adv/abouts";
 import { CtaBand, FaqAccordion, FooterColumns, GalleryMosaic, ProcessSteps, ProcessStackCards, ProofCards, ServicesGrid, TrustStrip, VisitSplit, BASICS_CSS } from "@/components/site-adv/basics";
@@ -22,7 +22,7 @@ import {
 } from "@/components/site-adv/about";
 import {
   ServicesCategoryTabs, ServicesFeatureCards, ServicesIndexRows, ServicesListingRows, ServicesMagazine, ServicesMenuLeaders, ServicesPriceList, ServicesRateList,
-  ServicesScroller, ServicesShopGrid, ServicesTiers, CATALOG_CSS,
+  ServicesScroller, ServicesShopGrid, ServicesTiers, ServicesLookbook, ServicesEditTiles, CATALOG_CSS, CATALOG_STORE_CSS,
 } from "@/components/site-adv/catalog";
 import {
   GalleryAlbumTabs, GalleryBento, GalleryFilmstrip, GalleryLightboxGrid, GalleryMasonry,
@@ -38,6 +38,7 @@ import {
   GalleryReel, GalleryRooms, GalleryScrapbook, GalleryStage, ProofMarquee, ProofReceipt, ProofSpotlight, TrustBento, TrustHairline, PROOF_MORE_CSS,
 } from "@/components/site-adv/proof-more";
 // SLOT imports (append new variant files here)
+import { FaqFold, GalleryPortraitRow, ProcessAtelierBand, TrustUspBar, STORE_CSS } from "@/components/site-adv/store";
 import { FaqSpotlight, FooterAtelier, FooterHotline } from "@/components/site-adv/close";
 import { CONTACT_CSS, CtaCallback, VisitContactDesk } from "@/components/site-adv/contactpage";
 
@@ -56,6 +57,7 @@ export const HERO_REGISTRY: Record<HeroVariantId, Variant> = {
   "pinned-story": HeroPinnedStory,
   "parallax-collage": HeroCollage,
   "product-spotlight": HeroSpotlight,
+  "storefront": HeroStorefront,
   // SLOT hero (append here)
 };
 export const TRUST_REGISTRY: Record<TrustVariantId, Variant> = {
@@ -66,6 +68,7 @@ export const TRUST_REGISTRY: Record<TrustVariantId, Variant> = {
   "split-cards": TrustSplitCards,
   "bento": TrustBento,
   "hairline": TrustHairline,
+  "usp-bar": TrustUspBar,
   // SLOT trust (append here)
 };
 export const ABOUT_REGISTRY: Record<AboutVariantId, Variant> = {
@@ -96,6 +99,8 @@ export const SERVICES_REGISTRY: Record<ServicesVariantId, Variant> = {
   "listing-rows": ServicesListingRows,
   "shop-grid": ServicesShopGrid,
   "rate-list": ServicesRateList,
+  "lookbook": ServicesLookbook,
+  "edit-tiles": ServicesEditTiles,
   // SLOT services (append here)
 };
 export const GALLERY_REGISTRY: Record<GalleryVariantId, Variant> = {
@@ -109,6 +114,7 @@ export const GALLERY_REGISTRY: Record<GalleryVariantId, Variant> = {
   "rooms": GalleryRooms,
   "pinned-reel": GalleryReel,
   "stage": GalleryStage,
+  "portrait-row": GalleryPortraitRow,
   // SLOT gallery (append here)
 };
 export const PROOF_REGISTRY: Record<ProofVariantId, Variant> = {
@@ -130,6 +136,7 @@ export const PROCESS_REGISTRY: Record<ProcessVariantId, Variant> = {
   "icon-cards": ProcessIconCards,
   "step-accordion": ProcessStepAccordion,
   "stack-cards": ProcessStackCards,
+  "atelier-band": ProcessAtelierBand,
   // SLOT process (append here)
 };
 export const FAQ_REGISTRY: Record<FaqVariantId, Variant> = {
@@ -139,6 +146,7 @@ export const FAQ_REGISTRY: Record<FaqVariantId, Variant> = {
   "searchable": FaqSearch,
   "chat-bubble": FaqChat,
   "spotlight": FaqSpotlight,
+  "fold": FaqFold,
   // SLOT faq (append here)
 };
 export const VISIT_REGISTRY: Record<VisitVariantId, Variant> = {
@@ -191,5 +199,6 @@ export const VARIANT_CSS = [
   PRODUCT_CSS,
   CONTACT_CSS,
   PROOF_MORE_CSS,
+  STORE_CSS, CATALOG_STORE_CSS,
   // SLOT css (append new variant CSS strings here)
 ].join("\n");

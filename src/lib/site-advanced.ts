@@ -40,6 +40,7 @@ export const HERO_IDS = [
   "pinned-story",  // a tall pinned stage: the claim, then the numbers, then the buttons, as you scroll
   "parallax-collage", // the headline in the middle of a layered, floating collage that follows the pointer
   "product-spotlight", // one product at a time on a round stage, cycling the catalogue with price and enquiry
+  "storefront",    // a store's front: the photo edge to edge, a small line, a modest title, "view the collection"
   // SLOT hero ids (append here)
 ] as const;
 export const TRUST_IDS = [
@@ -50,6 +51,7 @@ export const TRUST_IDS = [
   "split-cards",   // a statement on the left, the facts as cards on the right
   "bento",        // one huge number on the accent field, the rest on ink and paper tiles
   "hairline",     // a ruled grid, each cell numbered, the figure large at its foot
+  "usp-bar",       // one hairline row of the short facilities in small capitals
   // SLOT trust ids (append here)
 ] as const;
 export const ABOUT_IDS = [
@@ -80,6 +82,8 @@ export const SERVICES_IDS = [
   "listing-rows",  // full-width photo rows that alternate, a card with the name, price and buttons overlapping one side
   "shop-grid",     // a shop: search, filter chips, photo cards with a second photo on hover, badges, ask and share
   "rate-list",     // a ledger for traders: number, item and line, rate, an "ask rate" button; search from eight items
+  "lookbook",      // a store shelf: tall portrait photos in a row, only the name and price under each
+  "edit-tiles",    // "shop by" tiles: large photos with the name laid over the foot
   // SLOT services ids (append here)
 ] as const;
 export const GALLERY_IDS = [
@@ -93,6 +97,7 @@ export const GALLERY_IDS = [
   "rooms",        // a visible hairline grid, one big cell, every cell numbered with its caption under the photo
   "pinned-reel",  // the page pins and the photos slide sideways as you scroll (a swipe strip without scripting or with reduced motion)
   "stage",        // one large photo at a time with its caption, arrows and a rail of thumbnails
+  "portrait-row",  // the lookbook: tall portrait photos four across, no captions
   // SLOT gallery ids (append here)
 ] as const;
 export const PROOF_IDS = [
@@ -114,6 +119,7 @@ export const PROCESS_IDS = [
   "icon-cards",    // one card per step with an icon picked from what the step says
   "step-accordion", // steps that open one at a time
   "stack-cards",  // each step a tall card that sticks under the header while the next slides over it
+  "atelier-band",  // one photo edge to edge, "book your appointment", the steps as one line, one button
   // SLOT process ids (append here)
 ] as const;
 export const FAQ_IDS = [
@@ -123,6 +129,7 @@ export const FAQ_IDS = [
   "searchable",    // a search box over the questions; matches open and are marked (under four questions: a plain accordion)
   "chat-bubble",   // each question a message from the visitor, each answer a reply from the business
   "spotlight",     // the questions as a large list, the chosen answer set big on an accent card beside it
+  "fold",          // "good to know": a narrow centred fold of a few questions
   // SLOT faq ids (append here)
 ] as const;
 export const VISIT_IDS = [
