@@ -47,6 +47,7 @@ import { reviewDesign } from "@/lib/design-review";
 import { applyEdits } from "@/lib/card-edits";
 import { SITE_URL } from "@/lib/site-url";
 import { googleRow } from "@/lib/google-server";
+import { isBridalTrade } from "@/lib/site-advanced-archetypes";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase, ownOfferings } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, MAX_GALLERY_PHOTOS, MAX_WRITE_AGAIN_PHOTOS, mergeFacts, writeAgainCredits, type BuildResponse, type SavedProduct, type WriteAgainWant } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
@@ -402,7 +403,9 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
       // The full pool — twelve photos, and the clip for a paid site — before the page is laid out; only at the wait's
       // end is a shorter pool accepted. Starting here, it overlaps the paid pictures (80 s) and the copy.
       const waitMs = 175_000;
-      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "", brand, soon: paidPlan ? 99 : 12, waitMs }), waitMs + 5_000);
+      // A wedding-wear shop gets its own pool: "saree fabric shop" brought street stalls and washing lines (seen 16 Nov 2026).
+      const bridal = isBridalTrade(setup.category || "", [setup.business, setup.categoryLabel, setup.about, facts.work, facts.specialText].filter(Boolean).join(" "));
+      return await within(st.ensureCardMedia({ category: bridal ? "bridal" : setup.category || "other", label: bridal ? "bridal lehenga boutique" : setup.categoryLabel || "", brand, soon: paidPlan ? 99 : 12, waitMs }), waitMs + 5_000);
     } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
   })();
   // Paid only (owner's call, 1 Oct 2026). Making a picture costs real money every time, so a free card

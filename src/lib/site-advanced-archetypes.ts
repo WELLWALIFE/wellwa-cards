@@ -1014,7 +1014,7 @@ const FIXED: Record<string, Archetype[]> = {
     a("bridal-wedding-season", "The Wedding Season", "occasion-led: mehndi, haldi, sangeet, wedding, reception — each a large card with its own pieces", "stacked-poster", "services gallery proof about",
       "services:feature-cards gallery:album-tabs proof:marquee-cards about:photo-collage trust:counters process:icon-cards faq:chat-bubble visit:hours-timeline cta:sticky-ribbon footer:link-grid", "crimson dark", "DM Serif Display/Manrope", "soft airy rich", "deep bridal red on dark; an arched photo; the functions as a row of big cards"),
     a("bridal-collection", "The Collection", "the store as a shop: search, filters, every piece as a photo card with its price and an ask button", "mosaic", "services trust gallery proof",
-      "services:shop-grid trust:icon-row gallery:lightbox-grid proof:star-summary about:numbers-led process:steps faq:searchable visit:split cta:split-qr footer:mega", "pearl light", "Manrope/DM Sans", "soft compact subtle", "clean white and navy; product-first; sizes, fabric and delivery said plainly"),
+      "services:shop-grid trust:icon-row gallery:lightbox-grid proof:star-summary about:numbers-led process:steps faq:searchable visit:split cta:split-qr footer:mega", "gold light luxe", "Manrope/DM Sans", "soft compact subtle", "ivory and champagne gold; product-first; sizes, fabric and delivery said plainly"),
     a("bridal-new-arrivals", "New Arrivals", "this season's pieces on a slanted photo, tabs by category, one look at a time on a stage", "diagonal", "services gallery trust proof",
       "services:category-tabs gallery:stage trust:ticker proof:review-wall about:banner-columns process:icon-cards faq:accordion visit:map-hours cta:sticky-ribbon footer:mega", "plum dark", "Bricolage Grotesque/Inter", "pill compact rich", "plum and magenta on dark; bold type; a new-arrivals ticker; energetic"),
     // --- luxury ---
@@ -1028,7 +1028,7 @@ const FIXED: Record<string, Archetype[]> = {
     a("bridal-shaadi-ghar", "Shaadi Ghar", "the wedding shop of the town: a floating collage, the whole wedding under one roof, families who came back", "parallax-collage", "services proof gallery about",
       "services:feature-cards proof:clients-strip gallery:mosaic about:owner-card trust:counters process:steps faq:chat-bubble visit:branch-list cta:band footer:columns", "saffron dark", "Playfair Display/Mukta", "pill airy rich", "saffron, marigold and maroon; festive and warm; Hindi reads as well as English; the owner at the counter"),
     a("bridal-made-to-measure", "Made to Measure", "the boutique's work: measure, stitch, fitting, delivery — the steps first, then a clear rate list", "pinned-story", "process services about gallery",
-      "process:stack-cards services:price-list about:owner-card gallery:rooms proof:receipt trust:split-cards faq:numbered-accordion visit:hours-timeline cta:split-qr footer:hotline", "slate light", "Lora/Mukta", "sharp compact subtle", "grey-blue and cream; tape, chalk and patterns; exact and honest; delivery dates said plainly"),
+      "process:stack-cards services:price-list about:owner-card gallery:rooms proof:receipt trust:split-cards faq:numbered-accordion visit:hours-timeline cta:split-qr footer:hotline", "teal light", "Lora/Mukta", "sharp compact subtle", "peacock teal and cream; tape, chalk and patterns; exact and honest; delivery dates said plainly"),
     a("bridal-family-wedding", "The Family Wedding Store", "for the whole family: bride, groom, sisters, mothers — a giant headline with round photos in it, then everything by person", "kinetic-type", "services gallery proof about",
       "services:grid gallery:masonry proof:marquee-cards about:story-columns trust:icon-row process:icon-cards faq:two-column visit:map-hours cta:floating-card footer:link-grid", "rose dark", "Fraunces/Manrope", "pill airy rich", "deep rose and pink; joyful; many faces; one stop for the wedding"),
   ],
@@ -1235,6 +1235,10 @@ const LIGHT_ONLY = new Set(["ivory", "pearl"]);
 /** A clothing business whose own words say wedding wear (owner, 16 Nov 2026: "ladies lehenga, male wedding clothes, boutique"). */
 const BRIDAL_WORDS = /\b(bridal|bride|brides|lehenga|lehnga|lehanga|sherwani|wedding|groom|dulhan|dulha|shaadi|shadi)\b|लहंगा|लहँगा|शेरवानी|दुल्हन|दूल्हा|शादी|ब्राइडल/i;
 const CLOTHING = new Set(["garments", "textile", "tailor"]);
+/** The same test before there is a card (the build route picks the stock-photo pool with it). */
+export function isBridalTrade(category: string, text: string): boolean {
+  return CLOTHING.has((category || "").trim().toLowerCase()) && BRIDAL_WORDS.test(text || "");
+}
 /** The trade group of THIS card: its category's group, but a clothing business that says wedding wear is "bridal". */
 export function groupOfCard(card: Card): string {
   const cat = (card.seo?.categoryKey ?? "").trim().toLowerCase();
