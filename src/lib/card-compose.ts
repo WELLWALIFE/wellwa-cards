@@ -3,7 +3,7 @@
 // code, so nothing the owner did not give can appear.
 //
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
-import { groupOf } from "@/lib/site-advanced-archetypes";
+import { groupOf as tradeGroupOf } from "@/lib/site-advanced-archetypes";
 import { paletteFits, tradeColours } from "@/lib/trade-colours";
 import { chosenParts, partsLabel } from "@/lib/trade-parts";
 import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, SiteStyle, TestimonialItem } from "@/lib/types";
@@ -681,7 +681,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // trade — from the trade default, a liked website or the designer — becomes this trade's first. The logo's colour and a look the
   // owner picked by hand are theirs and stay.
   {
-    const tc = tradeColours(setup.category, groupOf(setup.category));
+    const tc = tradeColours(setup.category, tradeGroupOf(setup.category));
     const theirs = (siteStyle.palette === "brand" && !!input.logoColor) || !!cleanStyle(facts.style)?.palette;
     if (!theirs && !paletteFits(tc, siteStyle.palette)) { siteStyle.palette = tc.palettes[0]; delete siteStyle.color; }
   }
