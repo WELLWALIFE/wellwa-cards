@@ -37,6 +37,7 @@ import { AdvHeader, MobileBar, NAV_CSS, buildPages, chromeOf, useScrolled, type 
 import { AdvPageBody, PAGES_CSS, catalogueOf, itemsOf, routeOf } from "@/components/site-adv/pages";
 import { SeeMore } from "@/components/site-adv/page-parts";
 import { shotsOf } from "@/components/site-adv/page-more";
+import { STORE1_CSS, Store1, isStore1 } from "@/components/site-adv/store1";
 
 export type AdvancedSiteProps = {
   card: Card;
@@ -229,6 +230,28 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   const lang = <LanguagePicker lang={L.lang} setLang={L.setLang} busy={L.translating} theme={theme} />;
   const logo = c.hm.logo ? <Pic src={c.hm.logo} alt="" eager w={170} /> : <Wordmark name={t(c.name)} lang={L.lang} />;
   const bodyProps = { c, spec, x, chrome, slot, has, items, updates };
+
+  // Bridal Design 1 is a whole fashion store (store1.tsx): its own header, pages and footer; the pages it has no template for keep
+  // the advanced page bodies inside its shell.
+  if (isStore1(spec)) {
+    return (
+      <TranslateCtx.Provider value={t}>
+        <style dangerouslySetInnerHTML={{ __html: `${SMART_CSS}${HERO_CSS}.site[data-adv]{${advancedVars(card, spec)}}${ADV_BASE_CSS}${PAGES_CSS}${VARIANT_CSS}${INSTALL_APP_CSS}${STORE1_CSS}` }} />
+        <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-adv="" data-motion={spec.motion} data-shape={spec.shape} data-density={spec.density} data-page={route.kind === "page" ? route.entry.role : route.kind}>
+          <NoticeBar card={card} hi={hi} />
+          <Store1 card={card} c={c} x={x} items={items} route={route} open={open} logo={logo} lang={lang}
+            fallback={route.kind === "home" ? null : <AdvPageBody route={route} {...bodyProps} />} />
+          {linkBase !== undefined && !free && premiumOn(card) && <InstallSiteApp name={t(c.name)} hi={hi} accent="#7a1f2e" onTrack={(k) => track(k)} />}
+          {zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
+          {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={isHome ? "home" : slug} />}
+          {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={isHome ? "home" : slug} hi={hi} />}
+          {!free && premiumOn(card) && <CardChat username={card.username} name={card.name} theme={theme} />}
+          {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={isHome ? "home" : slug} />}
+          {shubhora && !brand && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={false} />}
+        </div>
+      </TranslateCtx.Provider>
+    );
+  }
 
   return (
     <TranslateCtx.Provider value={t}>
