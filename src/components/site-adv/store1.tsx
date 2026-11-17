@@ -40,7 +40,7 @@ function useStore(props: Props) {
   const shop = products.length ? products : items;
   const wa = (text?: string) => x.waHref(text);
   const call = x.phone ? linkHref(x.phone.type, x.phone.value) : "";
-  return { card, c, x, cat, about, contact, go, shop, wa, call };
+  return { card, c, x, cat, about, contact, go, shop, items, wa, call };
 }
 type S = ReturnType<typeof useStore>;
 
@@ -48,31 +48,23 @@ type S = ReturnType<typeof useStore>;
 
 function Header({ s, logo, lang }: { s: S; logo: ReactNode; lang: ReactNode }) {
   const { c, x, go } = s;
-  const [menu, setMenu] = useState(false);
   const tick = [...(c.offer ? [c.offer.title || c.offer.text] : []), ...c.highlights, `${x.t(c.trade)}${c.city ? ` · ${x.t(c.city)}` : ""}`, ...(x.wa ? [x.ui("Order on WhatsApp", "WhatsApp पर ऑर्डर करें")] : [])].filter(Boolean).slice(0, 5);
   const nav = x.pages.list.filter((e) => e.role !== "home");
-  const link = (e: AdvPageEntry) => <a key={e.slug} href={e.href} onClick={(ev) => { setMenu(false); go(e.slug)(ev); }} data-on={x.pages.active === e.slug ? "" : undefined}>{e.owner ? x.t(e.label) : e.label}</a>;
+  const link = (e: AdvPageEntry) => <a key={e.slug} href={e.href} onClick={go(e.slug)} data-on={x.pages.active === e.slug ? "" : undefined}>{e.owner ? x.t(e.label) : e.label}</a>;
   return (
     <>
       {tick.length > 0 && <div className="s1-tick" aria-hidden="true"><div className="s1-tick-in">{[...tick, ...tick].map((t, i) => <span key={i}>{x.t(t)}</span>)}</div></div>}
       <header className="s1-hd">
         <div className="s1-hd-row">
-          <div className="s1-hd-l"><button type="button" className="s1-ib" onClick={() => setMenu(true)} aria-label={x.ui("Menu", "मेनू")}><Icon name="menu" size={20} /><span>{x.ui("MENU", "मेनू")}</span></button><span className="s1-hide-sm">{lang}</span></div>
+          <div className="s1-hd-l">{lang}</div>
           <a className="s1-logo" href={x.hrefFor(x.pages.home)} onClick={go(x.pages.home)}>{logo}</a>
           <div className="s1-hd-r">
             {s.call && <a className="s1-ib s1-hide-sm" href={s.call} aria-label={x.ui("Call", "कॉल")} onClick={() => x.track("s1-call")}><Icon name="phone" size={20} /></a>}
             {x.wa && <a className="s1-ib s1-wa" href={s.wa()} target="_blank" rel="noreferrer" aria-label="WhatsApp" onClick={() => x.track("s1-wa")}><Icon name="whatsapp" size={21} /></a>}
           </div>
         </div>
-        <nav className="s1-nav">{nav.map(link)}</nav>
+        <nav className="s1-nav"><a href={x.hrefFor(x.pages.home)} onClick={go(x.pages.home)} data-on={x.pages.active === x.pages.home ? "" : undefined}>{x.ui("Home", "होम")}</a>{nav.map(link)}</nav>
       </header>
-      <div className="s1-drawer" data-open={menu ? "" : undefined}>
-        <button type="button" className="s1-drawer-x" onClick={() => setMenu(false)} aria-label={x.ui("Close", "बंद करें")}>×</button>
-        <a href={x.hrefFor(x.pages.home)} onClick={(ev) => { setMenu(false); go(x.pages.home)(ev); }}>{x.ui("Home", "होम")}</a>
-        {nav.map(link)}
-        <div className="s1-drawer-lang">{lang}</div>
-      </div>
-      <div className="s1-scrim" data-open={menu ? "" : undefined} onClick={() => setMenu(false)} />
     </>
   );
 }
@@ -113,7 +105,7 @@ function Card1({ s, it, eager = false }: { s: S; it: AdvItem; eager?: boolean })
         <Pic src={im[0]} alt={x.t(it.item.name)} ratio="3/4" eager={eager} sizes="(min-width:1024px) 20vw, 50vw" name={it.item.name} />
         {im[1] && <div className="s1-pc-alt"><Photo src={im[1]} alt="" sizes="(min-width:1024px) 20vw, 50vw" /></div>}
         {it.item.badge && <span className="s1-tag">{x.t(it.item.badge)}</span>}
-        {it.item.sample && <span className="s1-tag s1-tag-s">{x.ui("Sample", "नमूना")}</span>}
+        {it.item.sample && !/^sample$/i.test((it.item.badge ?? "").trim()) && <span className="s1-tag s1-tag-s">{x.ui("Sample", "नमूना")}</span>}
       </a>
       <button type="button" className="s1-heart" data-on={fav ? "" : undefined} onClick={() => setFav(!fav)} aria-label={x.ui("Save", "सेव करें")}><Heart size={18} /></button>
       <div className="s1-pc-body">
@@ -209,7 +201,8 @@ function Home({ s }: { s: S }) {
 
 function Collection({ s, entry }: { s: S; entry: AdvPageEntry }) {
   const { c, x, go } = s;
-  const all = s.shop.filter((i) => i.page === entry.slug).length ? s.shop.filter((i) => i.page === entry.slug) : s.shop;
+  const own = s.items.filter((i) => i.page === entry.slug);
+  const all = own.length ? own : s.shop;
   const cats = [...new Set(all.map((i) => (i.item.category ?? "").trim()).filter(Boolean))];
   const priced = all.map((i) => amount(i.item.price)).filter((n): n is number => n !== null);
   const max = priced.length ? Math.max(...priced) : 0;
@@ -224,19 +217,10 @@ function Collection({ s, entry }: { s: S; entry: AdvPageEntry }) {
     <>
       <div className="s1-wrap s1-crumb"><a href={x.hrefFor(x.pages.home)} onClick={go(x.pages.home)}>{x.ui("Home", "होम")}</a><ChevronRight size={12} /><span>{title}</span></div>
       <div className="s1-wrap s1-coll">
-        <aside className="s1-filters">
-          <div className="s1-fl-head">{x.ui("FILTER", "फ़िल्टर")}</div>
-          {cats.length > 1 && <details className="s1-fl" open><summary>{x.ui("Category", "कैटेगरी")}</summary><div>
-            <label><input type="radio" name="s1cat" checked={!catSel} onChange={() => setCat("")} /> {x.ui("All", "सभी")}</label>
-            {cats.map((k) => <label key={k}><input type="radio" name="s1cat" checked={catSel === k} onChange={() => setCat(k)} /> {x.t(k)}</label>)}</div></details>}
-          {bands.length > 1 && <details className="s1-fl" open><summary>{x.ui("Price", "दाम")}</summary><div>
-            <label><input type="radio" name="s1p" checked={!under} onChange={() => setUnder(0)} /> {x.ui("Any price", "कोई भी दाम")}</label>
-            {bands.map((b) => <label key={b}><input type="radio" name="s1p" checked={under === b} onChange={() => setUnder(b)} /> {x.ui("Under", "तक")} {inr(b)}</label>)}</div></details>}
-        </aside>
         <div className="s1-coll-main">
           <h1 className="s1-coll-h">{title}</h1>
           <p className="s1-coll-intro">{x.t(c.hm.sub)}</p>
-          {cats.length > 1 && <div className="s1-chips"><button type="button" data-on={!catSel ? "" : undefined} onClick={() => setCat("")}>{x.ui("All", "सभी")}</button>{cats.map((k) => <button type="button" key={k} data-on={catSel === k ? "" : undefined} onClick={() => setCat(k)}>{x.t(k)}</button>)}</div>}
+          {(cats.length > 1 || bands.length > 1) && <div className="s1-chips"><button type="button" data-on={!catSel && !under ? "" : undefined} onClick={() => { setCat(""); setUnder(0); }}>{x.ui("All", "सभी")}</button>{cats.length > 1 && cats.map((k) => <button type="button" key={k} data-on={catSel === k ? "" : undefined} onClick={() => setCat(k)}>{x.t(k)}</button>)}{bands.length > 1 && bands.map((b) => <button type="button" key={`u${b}`} data-on={under === b ? "" : undefined} onClick={() => setUnder(under === b ? 0 : b)}>{x.ui("Under", "तक")} {inr(b)}</button>)}</div>}
           <div className="s1-coll-bar"><span>{list.length} {x.ui(list.length === 1 ? "product" : "products", "प्रोडक्ट")}</span>
             {priced.length > 1 && <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label={x.ui("Sort", "क्रम")}><option value="featured">{x.ui("Sort: Featured", "क्रम: खास")}</option><option value="low">{x.ui("Price: low to high", "दाम: कम से ज़्यादा")}</option><option value="high">{x.ui("Price: high to low", "दाम: ज़्यादा से कम")}</option></select>}</div>
           <div className="s1-grid4">{list.map((it, i) => <Card1 key={it.slug} s={s} it={it} eager={i < 4} />)}</div>
@@ -424,6 +408,7 @@ export const STORE1_CSS = `
 .s1-stars{color:#e0a526;letter-spacing:2px}.s1-revc p{color:#4a4044;margin:10px 0}.s1-revc b{font-size:11px;letter-spacing:.12em}
 .s1-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
 .s1-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.s1-coll .s1-grid4{grid-template-columns:repeat(5,1fr)}
 .s1-pc{position:relative;background:#fff}
 .s1-pc-media{display:block;position:relative}
 .s1-pc-alt{position:absolute;inset:0;opacity:0;transition:opacity .4s}.s1-pc-alt .adv-photo{width:100%;height:100%;object-fit:cover}
@@ -442,7 +427,7 @@ export const STORE1_CSS = `
 .s1-about p{color:#4a4044;margin:0 0 12px;font-size:15px}
 .s1-about .s1-pic{border:3px solid var(--g);border-radius:20px}
 .s1-crumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);padding-top:18px;flex-wrap:wrap}.s1-crumb span{color:var(--rd)}
-.s1-coll{display:grid;grid-template-columns:230px minmax(0,1fr);gap:34px;padding-top:18px;padding-bottom:50px}
+.s1-coll{display:block;padding-top:18px;padding-bottom:50px}
 .s1-filters{position:sticky;top:130px;align-self:start}
 .s1-fl-head{font-size:12px;letter-spacing:.14em;font-weight:600;padding-bottom:12px;border-bottom:1px solid var(--ln)}
 .s1-fl{border-bottom:1px solid var(--ln)}
@@ -496,7 +481,7 @@ export const STORE1_CSS = `
 .s1-ft-pop h5{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}.s1-ft-pop p{font-size:12px;color:#4a4044;line-height:2}.s1-ft-pop a{text-decoration:underline}
 .s1-ft-bottom{text-align:center;font-size:11px;color:var(--mu);margin-top:22px}
 .s1-wa-float{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;background:var(--gr);color:#fff!important;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:45}
-@media (max-width:1024px){.s1-nav{display:none}.s1-cats{grid-template-columns:repeat(3,1fr)}.s1-grid5,.s1-grid4{grid-template-columns:repeat(3,1fr)}.s1-coll{grid-template-columns:minmax(0,1fr)}.s1-filters{display:none}.s1-rev{grid-template-columns:1fr 1fr}}
+@media (max-width:1024px){.s1-nav{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;gap:24px;padding:0 16px 10px}.s1-nav::-webkit-scrollbar{display:none}.s1-nav a{white-space:nowrap}.s1-coll .s1-grid4{grid-template-columns:repeat(3,1fr)}.s1-cats{grid-template-columns:repeat(3,1fr)}.s1-grid5,.s1-grid4{grid-template-columns:repeat(3,1fr)}.s1-coll{grid-template-columns:minmax(0,1fr)}.s1-filters{display:none}.s1-rev{grid-template-columns:1fr 1fr}}
 @media (max-width:720px){
  .s1-wrap{padding:0 14px}.s1-hd-row{padding:0 12px;height:58px}.s1-hide-sm{display:none}.s1-ib span{display:none}.s1-logo .hero-wordmark b{font-size:20px}
  .s1-sec{padding:30px 0}.s1-slide .s1-pic{min-height:0;aspect-ratio:4/5!important}
@@ -506,7 +491,7 @@ export const STORE1_CSS = `
  .s1-band .s1-pic{aspect-ratio:4/3!important}.s1-band-txt,.s1-band-txt.l{align-items:flex-start;text-align:left;justify-content:flex-end;padding:22px;background:linear-gradient(0deg,rgba(40,14,20,.72),transparent 66%)}
  .s1-bud{grid-template-columns:repeat(2,1fr);gap:10px}.s1-budc b{font-size:20px}
  .s1-rev{grid-template-columns:1fr}
- .s1-grid5,.s1-grid4{grid-template-columns:repeat(2,1fr);gap:8px}
+ .s1-grid5,.s1-grid4,.s1-coll .s1-grid4{grid-template-columns:repeat(2,1fr);gap:8px}
  .s1-pdp,.s1-about,.s1-contact{grid-template-columns:minmax(0,1fr);gap:22px}.s1-gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory}.s1-gal-i{flex:0 0 86%;scroll-snap-align:start}.s1-info{position:relative;top:0}
  .s1-btns{grid-template-columns:1fr}.s1-steps{grid-template-columns:repeat(2,1fr)}.s1-ft-cols{grid-template-columns:1fr;gap:26px}
 }
