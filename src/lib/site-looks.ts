@@ -11,6 +11,8 @@ import type { Card, SiteStyle } from "@/lib/types";
 import { BLUEPRINTS, type BlueprintKey, type TileKey } from "@/lib/site-blueprints";
 import { HERO_VARIANTS_BY_BP } from "@/lib/site-hero";
 import { goodBlueprints, rankBlueprints, tradeMood } from "@/lib/trade-moods";
+import { groupOf } from "@/lib/site-advanced-archetypes";
+import { paletteFits, tradeColours, type TradeColours } from "@/lib/trade-colours";
 
 export type LookKey = BlueprintKey;
 export type Look = { key: LookKey; name: string; hi: string; blurb: string; blurbHi: string; style: SiteStyle; order?: string[]; tiles?: TileKey[] };
@@ -24,6 +26,10 @@ const WARM = new Set(["saffron", "gold", "cocoa", "crimson", "rose", "ivory"]);
 /** The three, for this card: from the build's plans when it carried them, else derived from the designer's style. */
 export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>, designer: SiteStyle | undefined, plans?: LookPlan[]): Look[] {
   const d: SiteStyle = { ...(designer ?? card.site?.style ?? {}) };
+  // The trade's own colours (trade-colours.ts): a website made in another trade's palette (cream and brown on a cleaning company) is
+  // shown in the trade's first; the business's own colour ("brand") stays.
+  const tc = tradeColours(card.seo?.categoryKey, groupOf(card.seo?.categoryKey));
+  if (d.palette !== "brand" && !paletteFits(tc, d.palette)) { d.palette = tc.palettes[0]; delete d.color; }
   // The "Colour poster" is the first look and the one a new website opens on (owner, 14 Oct 2026); the designer's own pick follows it.
   const category = card.seo?.categoryKey;
   // After the poster and the designer's pick, the rest in the order they suit THIS trade (trade-moods.ts rankBlueprints) — a wholesaler's
@@ -31,7 +37,7 @@ export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>
   const designerPick = d.blueprint ?? rankBlueprints(category).find((k) => k !== "story") ?? "bento";
   const want: BlueprintKey[] = ["story", ...[designerPick, ...rankBlueprints(category)].filter((k, i, a) => k !== "story" && a.indexOf(k) === i)];
   const byKey = new Map((plans ?? []).map((p) => [p.blueprint, p]));
-  return dressApart(want.map((key) => {
+  return dressApart(tc, want.map((key) => {
     const bp = BLUEPRINTS.find((b) => b.key === key)!;
     const plan = byKey.get(key);
     // A plan from the designer AI carries its own few choices; the look's section layouts (the blueprint's defaults) fill
@@ -47,32 +53,25 @@ export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>
  *  own colours and type; every other look wears a palette and a font set of its own, so the difference shows at a glance — classic
  *  cream, green, bold red, ocean, plum and sage; the full-photo (cinematic) look is the dark one (black and gold, dark page). A Hindi website keeps its
  *  Hindi fonts on every look. */
-const VARIETY: { palette: string; font: string }[] = [
-  { palette: "ivory", font: "elegant" },
-  { palette: "emerald", font: "honest" },
-  { palette: "crimson", font: "bold" },
-  { palette: "ocean", font: "tech" },
-  { palette: "plum", font: "luxury" },
-  { palette: "sage", font: "editorial" },
-  { palette: "royal", font: "warm" },
-];
-/** The full-photo look: a dark page end to end (black and gold), the one dark look among the six. */
-const DARK_LOOK = { palette: "noir", font: "luxury" };
-const FESTIVE = { palette: "saffron", font: "honest" };
-function dressApart(looks: Look[]): Look[] {
+const VARIETY_FONTS = ["elegant", "honest", "bold", "tech", "luxury", "editorial", "warm"];
+function dressApart(tc: TradeColours, looks: Look[]): Look[] {
   if (looks.length < 2) return looks;
   const first = looks[0].style;
   const hindi = first.font === "hindi";
-  const pool = VARIETY.filter((v) => v.palette !== first.palette && (hindi || v.font !== first.font));
+  // Only the trade's own palettes (17 Nov 2026: a cleaning company's looks came in crimson, plum and saffron).
+  const variety = tc.palettes.map((palette, i) => ({ palette, font: VARIETY_FONTS[i % VARIETY_FONTS.length] }));
+  const festive = tc.palettes.includes("saffron") ? "saffron" : null;
+  const pool = variety.filter((v) => v.palette !== first.palette && v.palette !== festive);
   return looks.map((l, i) => {
     if (i === 0 || !pool.length) return l;
     const { color: _c, ...rest } = l.style; void _c;
     // The pages are paper under every other blueprint, so a dark palette would only darken the text there: the dark one is the cinematic look's.
-    if (l.key === "cinematic" && first.palette !== DARK_LOOK.palette) return { ...l, style: { ...rest, palette: DARK_LOOK.palette, font: hindi ? "hindi" : DARK_LOOK.font, body: "dark" } };
-    // The festive, local one (owner's list, 16 Nov 2026): saffron, a Hindi-ready face and a rangoli-like ring pattern on the photo collage.
-    if (l.key === "collage" && first.palette !== FESTIVE.palette) return { ...l, style: { ...rest, palette: FESTIVE.palette, font: hindi ? "hindi" : FESTIVE.font, pattern: "rings" } };
-    const pick = pool.shift() ?? VARIETY[i % VARIETY.length];
-    return { ...l, style: { ...rest, palette: pick.palette, font: hindi ? "hindi" : pick.font } };
+    if (l.key === "cinematic" && first.palette !== tc.dark) return { ...l, style: { ...rest, palette: tc.dark, font: hindi ? "hindi" : "luxury", body: "dark" } };
+    // The festive, local one (owner's list, 16 Nov 2026), for the trades saffron belongs to: saffron and a rangoli-like ring pattern.
+    if (l.key === "collage" && festive && first.palette !== festive) return { ...l, style: { ...rest, palette: festive, font: hindi ? "hindi" : "honest", pattern: "rings" } };
+    const pick = pool.shift() ?? variety[i % variety.length];
+    const font = pick.font === first.font ? VARIETY_FONTS[(i + 3) % VARIETY_FONTS.length] : pick.font;
+    return { ...l, style: { ...rest, palette: pick.palette, font: hindi ? "hindi" : font } };
   });
 }
 

@@ -20,6 +20,7 @@ import { tradeMood } from "./trade-moods";
 import { CURATED_PALETTES, FONT_PAIRINGS, curatedPalette } from "@/components/site-adv/theme";
 import { isEmptyBlock } from "./site-home";
 import type { Card, CardBlock } from "./types";
+import { hexFits, paletteFits, tradeColours } from "./trade-colours";
 
 /** One complete composition. Strings, not the id unions, on purpose: a variant added to the renderer later can be used here
  *  the same day, and one that is not there yet is repaired by validateSpec instead of failing the build. */
@@ -1402,4 +1403,28 @@ export function checkArchetypes(): string[] {
     }
   }
   return bad;
+}
+
+/* ================= the trade's own colours (trade-colours.ts) ================= */
+
+/** Every design in the trade's colour family (owner, 17 Nov 2026: "sabhi trade ke liye specific, mix na ho"). A design already in a
+ *  colour of the family keeps it; one in another trade's colour (plum on a cleaning company) takes the family's next unused colour,
+ *  so six designs stay six colours. The business's own colour ("brand" with no hex) always stays, and so do a trade's finished
+ *  templates (FIXED), which were coloured by hand. The dark / light tone of each design is kept. */
+export function tradeTint<T extends { palette: AdvancedSpec["palette"] }>(specs: T[], card: Card): T[] {
+  if (!specs.length || FIXED[groupOfCard(card)]?.length) return specs;
+  const cat = card.seo?.categoryKey;
+  const tc = tradeColours(cat, groupOf(cat));
+  const sig = (pal: AdvancedSpec["palette"]) => `${pal.key}|${(pal.color ?? "").toLowerCase()}`;
+  const ok = (pal: AdvancedSpec["palette"]) => (pal.key === "brand" ? !pal.color || hexFits(tc, pal.color) : paletteFits(tc, pal.key));
+  const used = new Set<string>();
+  // The ones that fit are counted first, so a repaired design never takes a colour a later design already wears.
+  const fits = specs.map((x) => { const good = ok(x.palette) && !used.has(sig(x.palette)); if (good) used.add(sig(x.palette)); return good; });
+  return specs.map((x, i) => {
+    if (fits[i]) return x;
+    const next = tc.hexes.find((h) => !used.has(`brand|${h.color.toLowerCase()}`)) ?? tc.hexes[i % tc.hexes.length];
+    used.add(`brand|${next.color.toLowerCase()}`);
+    const palette: AdvancedSpec["palette"] = { key: "brand", color: next.color, tone: x.palette.tone };
+    return { ...x, palette } as T;
+  });
 }

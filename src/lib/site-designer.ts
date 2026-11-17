@@ -20,6 +20,8 @@ import type { HeroVariant, SiteStyle } from "@/lib/types";
 import { BLUEPRINTS, cleanTiles, TILES, type BlueprintKey, type TileKey } from "@/lib/site-blueprints";
 import { HERO_VARIANTS_BY_BP } from "@/lib/site-hero";
 import { moodPlans, tradeMood, type MoodPlan } from "@/lib/trade-moods";
+import { groupOf } from "@/lib/site-advanced-archetypes";
+import { paletteFits, tradeColours } from "@/lib/trade-colours";
 
 export type SiteDesignPlan = {
   style: SiteStyle;
@@ -233,6 +235,13 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
   const color = typeof o.color === "string" && /^#[0-9a-f]{6}$/i.test(o.color.trim()) ? o.color.trim().toLowerCase() : "";
   if (palette === "brand" && color) { style.palette = "brand"; style.color = color; }
   else if (SITE_PALETTES.some((p) => p.key === palette && p.key !== "brand")) style.palette = palette;
+  // The trade's own colours (trade-colours.ts; owner, 17 Nov 2026: a cleaning company came out cream and brown). The logo's colour is
+  // the business's and stays; any other choice outside the trade's family becomes the trade's first palette.
+  {
+    const tc = tradeColours(b.setup.category, groupOf(b.setup.category));
+    const own = style.palette === "brand" && !!b.logoColor;
+    if (!own && !paletteFits(tc, style.palette)) { style.palette = tc.palettes[0]; delete style.color; }
+  }
   const font = typeof o.font === "string" ? o.font.trim().toLowerCase() : "";
   if (FONT_PAIRS.some((f) => f.key === font && f.key !== "look")) style.font = font;
   // A Hindi website reads best in the Devanagari pair, whatever the designer liked.

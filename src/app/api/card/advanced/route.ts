@@ -29,7 +29,7 @@ import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import { DESIGN_CREDITS } from "@/lib/adv-price";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
-import { fixedSpecs } from "@/lib/site-advanced-archetypes";
+import { fixedSpecs, tradeTint } from "@/lib/site-advanced-archetypes";
 import { isDemoAccount, readyIn, sitePending } from "@/lib/site-ready-server";
 import { packageRunning } from "@/lib/site-tier";
 
@@ -37,6 +37,14 @@ import { packageRunning } from "@/lib/site-tier";
 // The designs an owner has already made for a card: kept on disk (lib/adv-designs.ts), so "Try another layout" is measured against them,
 // an earlier one can be put live, and a closed screen or a restart never loses a design that was paid for.
 const seenItems = (uid: string, cardId: string) => advDesigns(uid, cardId);
+/** The kept designs of one card, each in a colour of the card's own trade (trade-colours.ts): designs kept before 17 Nov 2026 could
+ *  wear any trade's colour (plum and rust on a cleaning company); they are repaired as they are read, so the choose screen and the
+ *  design put live agree. */
+const tradeItems = async (uid: string, row: { id: string; data: Card }) => {
+  const list = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
+  const tinted = tradeTint(list.map((r) => ({ r, palette: (r.spec as AdvancedSpec).palette })), row.data);
+  return list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } }));
+};
 const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> => (await seenItems(uid, cardId)).map((r) => r.spec as AdvancedSpec).filter(Boolean);
 
 /** Six designs to choose from (owner, 14 Nov 2026), the same number as a Standard website's looks: the ones already made, filled up from
@@ -150,7 +158,7 @@ export async function POST(request: Request) {
   // { more: true }: the six to choose from, filled up from the library (no AI, no try spent). Answers the designs.
   if (b.more === true) {
     await fillDesigns(me.id, row).catch((e) => console.log("[advanced] more designs failed:", e instanceof Error ? e.message : e));
-    return NextResponse.json({ ok: true, current: advancedState(data), designs: (await seenItems(me.id, row.id)).filter((r) => r.cardId === row.id && r.spec) });
+    return NextResponse.json({ ok: true, current: advancedState(data), designs: await tradeItems(me.id, row) });
   }
 
   if (typeof b.accept === "string" || typeof b.acceptSeed === "string") {
@@ -158,7 +166,7 @@ export async function POST(request: Request) {
     let res = job?.result as Obj | undefined;
     const isCurrent = !!job && job.id === b.accept && job.state === "done" && !!res && res.mode === "preview" && res.cardId === row.id;
     // An earlier design of this round (design 1 after 2 and 3 were seen): found by its seed among the previews kept here.
-    if (!isCurrent) res = (await seenItems(me.id, row.id)).find((r) => (r.spec as AdvancedSpec | undefined)?.seed === b.acceptSeed && r.cardId === row.id);
+    if (!isCurrent) res = (await tradeItems(me.id, row)).find((r) => (r.spec as AdvancedSpec | undefined)?.seed === b.acceptSeed);
     if (!res) return NextResponse.json({ error: "That preview is no longer there. Please make it again." }, { status: 400 });
     // Saved onto the card as it is NOW (the owner may have edited it while looking at the preview).
     const fresh = (await myCard(me.id, row.id))?.data ?? data;
@@ -241,6 +249,8 @@ export async function POST(request: Request) {
     catch (e) { await refund?.().catch(() => undefined); throw e; }   // a design that did not come out costs nothing
     // A new design starts on a light background (owner, 25 Oct 2026: "default light"); Dark is one tap in Website edit → Background.
     if (result0.spec?.palette) result0.spec.palette.tone = "light";
+    // In a colour of this trade (trade-colours.ts), whatever the designer or the library drew.
+    if (result0.spec?.palette) result0.spec.palette = tradeTint([{ palette: result0.spec.palette }], data)[0].palette;
     // The sliding top banners come with the design (owner, 23 Oct 2026) when the card has none yet; owner-made ones are kept.
     const hasSlides = (data.site?.hero?.slides ?? []).length >= 2;
     const slides = hasSlides ? null : await writeSlides(data, true).catch(() => null);

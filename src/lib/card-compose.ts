@@ -3,6 +3,8 @@
 // code, so nothing the owner did not give can appear.
 //
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
+import { groupOf } from "@/lib/site-advanced-archetypes";
+import { paletteFits, tradeColours } from "@/lib/trade-colours";
 import { chosenParts, partsLabel } from "@/lib/trade-parts";
 import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, SiteStyle, TestimonialItem } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
@@ -675,6 +677,14 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     ...(heroVariant ? { hero: heroVariant } : {}),
     ...(cleanStyle(facts.style) ?? {}),
   };
+  // The trade's own colours (trade-colours.ts; owner, 17 Nov 2026: "sabhi trade ke liye specific, mix na ho"): a palette of another
+  // trade — from the trade default, a liked website or the designer — becomes this trade's first. The logo's colour and a look the
+  // owner picked by hand are theirs and stay.
+  {
+    const tc = tradeColours(setup.category, groupOf(setup.category));
+    const theirs = (siteStyle.palette === "brand" && !!input.logoColor) || !!cleanStyle(facts.style)?.palette;
+    if (!theirs && !paletteFits(tc, siteStyle.palette)) { siteStyle.palette = tc.palettes[0]; delete siteStyle.color; }
+  }
   // No logo: a monogram in the website's own colour, in its corner style — never a blank header.
   const brandHex = siteStyle.palette === "brand" ? (siteStyle.color ?? accent) : (SITE_PALETTES.find((p) => p.key === siteStyle.palette)?.mid ?? accent);
   const logoUrl = setup.logo || monogramUrl(setup.business || name, brandHex, siteStyle.radius === "round" ? "round" : siteStyle.radius === "sharp" ? "sharp" : "soft");
