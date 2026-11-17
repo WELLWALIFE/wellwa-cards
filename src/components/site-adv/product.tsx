@@ -329,7 +329,7 @@ function Rail({ list, c, x, cat, title, entry, ids }: { list: AdvItem[]; c: Site
 
 /** Previous and next item of the same page, as two big links: the visitor keeps browsing without going back. */
 function Neighbours({ item, items, x }: { item: AdvItem; items: AdvItem[]; x: AdvCtxPlus }) {
-  const row = items.filter((o) => o.page === item.page && o.kind === item.kind);
+  const row = items.filter((o) => o.page === item.page && o.kind === item.kind && (!o.twin || o.slug === item.slug));
   const at = row.findIndex((o) => o.slug === item.slug);
   if (row.length < 3 || at < 0) return null;
   const prev = row[(at - 1 + row.length) % row.length], next = row[(at + 1) % row.length];
@@ -395,13 +395,14 @@ export function ProductPage({ c, x: x0, item, items, entry }: Props) {
   const catEntry = entry ?? x.pages.byRole("catalogue");
   const wantQty = mode !== "offer" && !!pr.num && recipeFor(cat ?? "").cta === "order";
   const related = useMemo(() => {
-    const others = items.filter((o) => o.slug !== item.slug && o.kind === item.kind);
+    const me = it.name.trim().toLowerCase();
+    const others = items.filter((o) => o.slug !== item.slug && o.kind === item.kind && !o.twin && o.item.name.trim().toLowerCase() !== me);
     const same = others.filter((o) => (o.item.category ?? "") === (it.category ?? "") && o.page === item.page);
     return [...same, ...others.filter((o) => !same.includes(o))].slice(0, 8);
   }, [items, item, it.category]);
   const trail = [...(catEntry ? [{ label: x.t(catEntry.label), slug: catEntry.slug }] : [{ label: word }]), { label }];
   // Its place among the items of its page, for the big numeral of the offer stage.
-  const num = Math.max(1, items.filter((o) => o.page === item.page && o.kind === item.kind).findIndex((o) => o.slug === item.slug) + 1);
+  const num = Math.max(1, items.filter((o) => o.page === item.page && o.kind === item.kind && (!o.twin || o.slug === item.slug)).findIndex((o) => o.slug === item.slug) + 1);
   const ctx = { c, x, item, items, entry: catEntry, label, photos, pr, feats, specs, word, cat, wantQty, related, trail, mode, num };
   // The phone's sticky enquiry bar is for when the page's own button has scrolled away: while that button is on screen the bar steps
   // aside (a flag on <body> that the CSS reads), so the first screen never shows two enquiry buttons.

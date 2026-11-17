@@ -217,7 +217,7 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   const itemPrice = item ? (item.item.price ?? "").trim() : "";
   const word = catalogLabel(recipeFor(card.seo?.categoryKey ?? "").catalog, hi ? "hi" : "en");
   const catPage = pages.byRole("catalogue");
-  const catCount = catPage ? items.filter((i) => i.page === catPage.slug).length : 0;
+  const catCount = catPage ? items.filter((i) => i.page === catPage.slug && !i.twin).length : 0;
   const galPage = pages.byRole("gallery");
   const shotCount = galPage ? shotsOf(card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks)).length : 0;
   // On the home page a band after the catalogue and the gallery leads into the page that holds all of it.

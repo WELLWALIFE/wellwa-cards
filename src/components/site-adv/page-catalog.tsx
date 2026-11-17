@@ -26,7 +26,7 @@ function priceRange(items: AdvItem[]): string {
 /* ================= the catalogue ================= */
 
 export function CataloguePage({ c, spec, x, chrome, entry, items }: PageProps & { entry: AdvPageEntry; items: AdvItem[] }) {
-  const mine = items.filter((i) => i.page === entry.slug);
+  const mine = items.filter((i) => i.page === entry.slug && !i.twin);
   const products = mine.filter((i) => i.kind === "product");
   const services = mine.filter((i) => i.kind === "service");
   // What the page lists first: the products; a page of services only has the services as its main list.
@@ -137,7 +137,7 @@ export function ItemPage({ c, x: x0, item, items, entry }: Pick<PageProps, "c" |
   const specs = (it.specs ?? []).filter((s) => s.label?.trim() && s.value?.trim());
   const isService = item.kind === "service";
   const related = useMemo(() => {
-    const others = items.filter((o) => o.slug !== item.slug && o.kind === item.kind);
+    const others = items.filter((o) => o.slug !== item.slug && o.kind === item.kind && !o.twin && o.item.name.trim().toLowerCase() !== it.name.trim().toLowerCase());
     const same = others.filter((o) => (o.item.category ?? "") === (it.category ?? "") && o.page === item.page);
     return [...same, ...others.filter((o) => !same.includes(o))].slice(0, 4);
   }, [items, item, it.category]);

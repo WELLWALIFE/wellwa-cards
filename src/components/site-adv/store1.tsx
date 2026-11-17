@@ -45,7 +45,7 @@ function useStore(props: Props) {
   const all = products.length ? products : items;
   const catSlug = cat?.slug;
   const seen = new Set<string>();
-  const shop = [...all.filter((i) => i.page === catSlug), ...all.filter((i) => i.page !== catSlug)].filter((i) => {
+  const shop = [...all.filter((i) => i.page === catSlug && !i.twin), ...all.filter((i) => i.page !== catSlug && !i.twin), ...all.filter((i) => i.twin)].filter((i) => {
     const k = (i.item.name ?? "").trim().toLowerCase(); if (!k) return true; if (seen.has(k)) return false; seen.add(k); return true;
   });
   const wa = (text?: string) => x.waHref(text);
@@ -161,6 +161,8 @@ function Home({ s }: { s: S }) {
   const priced = shop.map((i) => amount(i.item.price)).filter((n): n is number => n !== null).sort((a, b) => a - b);
   const budgets = priced.length >= 4 ? [...new Set([0.25, 0.5, 0.75, 1].map((q) => { const v = priced[Math.min(priced.length - 1, Math.floor(q * (priced.length - 1)))]; const m = 10 ** Math.max(2, Math.floor(Math.log10(v)) - 1); return Math.ceil(v / m) * m; }))] : [];
   const revs = c.reviews.items.filter((r) => !r.sample);
+  // Bestsellers in full rows on every screen (5 on a computer left 3+2 on a tablet and one alone on a phone): 10, 6 or 4.
+  const best = shop.length >= 10 ? 10 : shop.length >= 6 ? 6 : Math.min(4, shop.length);
   const catHref = s.cat?.href ?? "#"; const toCat = go(s.cat?.slug);
   const bandImg = pool[3] ?? pool[0];
   const trialImg = c.about?.image ?? pool[4] ?? pool[1];
@@ -198,8 +200,8 @@ function Home({ s }: { s: S }) {
       {revs.length > 0 && <section className="s1-sec"><h2 className="s1-st">{x.ui("What our customers say", "हमारे ग्राहक क्या कहते हैं")}</h2><div className="s1-wrap s1-rev">{revs.slice(0, 6).map((r, i) => (
         <div key={i} className="s1-revc"><span className="s1-stars">{"★★★★★".slice(0, Math.max(1, Math.round(r.rating || 5)))}</span><p>“{x.t(r.text)}”</p><b>{x.t(r.name).toUpperCase()}</b></div>))}</div></section>}
 
-      {shop.length > 0 && <section className="s1-sec"><h2 className="s1-st">{x.ui("Bestsellers", "सबसे ज़्यादा पसंद")}</h2><div className="s1-grid5">{shop.slice(0, shop.length >= 10 ? 10 : Math.min(5, shop.length)).map((it, i) => <Card1 key={it.slug} s={s} it={it} eager={i < 5} />)}</div>
-        {s.cat && shop.length > 5 && <div className="s1-center"><a className="s1-btn s1-btn-outline" href={catHref} onClick={toCat}>{x.ui("View all", "सभी देखें")}</a></div>}</section>}
+      {shop.length > 0 && <section className="s1-sec"><h2 className="s1-st">{x.ui("Bestsellers", "सबसे ज़्यादा पसंद")}</h2><div className="s1-grid5" data-n={best}>{shop.slice(0, best).map((it, i) => <Card1 key={it.slug} s={s} it={it} eager={i < 5} />)}</div>
+        {s.cat && shop.length > best && <div className="s1-center"><a className="s1-btn s1-btn-outline" href={catHref} onClick={toCat}>{x.ui("View all", "सभी देखें")}</a></div>}</section>}
 
       {c.about && <section className="s1-sec"><div className="s1-wrap s1-about"><div><h2 className="s1-st l">{x.t(c.about.title)}</h2>{c.about.paras.slice(0, 2).map((p, i) => <p key={i}>{x.t(p)}</p>)}
         {s.about && <a className="s1-btn s1-btn-outline" href={s.about.href} onClick={go(s.about.slug)}>{x.ui("Our story", "हमारी कहानी")}</a>}</div>
@@ -211,7 +213,7 @@ function Home({ s }: { s: S }) {
 
 function Collection({ s, entry }: { s: S; entry: AdvPageEntry }) {
   const { c, x, go } = s;
-  const own = s.items.filter((i) => i.page === entry.slug);
+  const own = s.items.filter((i) => i.page === entry.slug && !i.twin);
   const all = own.length ? own : s.shop;
   const cats = [...new Set(all.map((i) => (i.item.category ?? "").trim()).filter(Boolean))];
   const priced = all.map((i) => amount(i.item.price)).filter((n): n is number => n !== null);
@@ -527,7 +529,7 @@ export const STORE1_CSS = `
 .s1-rev{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .s1-revc{border:1px solid var(--ln);border-radius:14px;padding:22px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.05)}
 .s1-stars{color:#e0a526;letter-spacing:2px}.s1-revc p{color:#4a4044;margin:10px 0}.s1-revc b{font-size:11px;letter-spacing:.12em}
-.s1-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+.s1-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:2px}.s1-grid5[data-n="6"]{grid-template-columns:repeat(3,1fr)}.s1-grid5[data-n="4"]{grid-template-columns:repeat(4,1fr)}.s1-grid5[data-n="1"],.s1-grid5[data-n="2"],.s1-grid5[data-n="3"]{grid-template-columns:repeat(3,1fr)}
 .s1-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 .s1-coll .s1-grid4{grid-template-columns:repeat(5,1fr)}
 .s1-pc{position:relative;background:#fff}
@@ -602,7 +604,7 @@ export const STORE1_CSS = `
 .s1-ft-pop h5{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}.s1-ft-pop p{font-size:12px;color:#4a4044;line-height:2}.s1-ft-pop a{text-decoration:underline}
 .s1-ft-bottom{text-align:center;font-size:11px;color:var(--mu);margin-top:22px}
 .s1-wa-float{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;background:var(--gr);color:#fff!important;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:45}
-@media (max-width:1024px){.s1-nav{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;gap:24px;padding:0 16px 10px}.s1-nav::-webkit-scrollbar{display:none}.s1-nav a{white-space:nowrap}.s1-coll .s1-grid4{grid-template-columns:repeat(3,1fr)}.s1-cats{grid-template-columns:repeat(3,1fr)}.s1-grid5,.s1-grid4{grid-template-columns:repeat(3,1fr)}.s1-coll{grid-template-columns:minmax(0,1fr)}.s1-filters{display:none}.s1-rev{grid-template-columns:1fr 1fr}}
+@media (max-width:1024px){.s1-nav{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;gap:24px;padding:0 16px 10px}.s1-nav::-webkit-scrollbar{display:none}.s1-nav a{white-space:nowrap}.s1-coll .s1-grid4{grid-template-columns:repeat(3,1fr)}.s1-cats{grid-template-columns:repeat(3,1fr)}.s1-grid4{grid-template-columns:repeat(3,1fr)}.s1-grid5{grid-template-columns:repeat(2,1fr)}.s1-grid5[data-n="6"]{grid-template-columns:repeat(3,1fr)}.s1-coll{grid-template-columns:minmax(0,1fr)}.s1-filters{display:none}.s1-rev{grid-template-columns:1fr 1fr}}
 @media (max-width:720px){
  .s1-wrap{padding:0 14px}.s1-hd-row{padding:0 12px;height:58px}.s1-hide-sm{display:none}.s1-ib span{display:none}.s1-logo .hero-wordmark b{font-size:20px}
  .s1-sec{padding:30px 0}.s1-slide .s1-pic{min-height:0;aspect-ratio:4/5!important}
@@ -612,7 +614,7 @@ export const STORE1_CSS = `
  .s1-band .s1-pic{aspect-ratio:4/3!important}.s1-band-txt,.s1-band-txt.l{align-items:flex-start;text-align:left;justify-content:flex-end;padding:22px;background:linear-gradient(0deg,rgba(40,14,20,.72),transparent 66%)}
  .s1-bud{grid-template-columns:repeat(2,1fr);gap:10px}.s1-budc b{font-size:20px}
  .s1-rev{grid-template-columns:1fr}
- .s1-grid5,.s1-grid4,.s1-coll .s1-grid4{grid-template-columns:repeat(2,1fr);gap:8px}
+ .s1-grid5,.s1-grid5[data-n],.s1-grid4,.s1-coll .s1-grid4{grid-template-columns:repeat(2,1fr);gap:8px}
  .s1-pdp,.s1-about,.s1-contact{grid-template-columns:minmax(0,1fr);gap:22px}.s1-gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory}.s1-gal-i{flex:0 0 86%;scroll-snap-align:start}.s1-info{position:relative;top:0}
  .s1-btns{grid-template-columns:1fr}.s1-steps{grid-template-columns:repeat(2,1fr)}.s1-ft-cols{grid-template-columns:1fr;gap:26px}
 }

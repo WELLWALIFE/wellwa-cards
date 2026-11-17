@@ -480,13 +480,25 @@ export function withAdvancedPages(card: Card): Card {
 
 /** Every product AND service of the site with the address it answers at. Products keep the address the basic site gave them
  *  (product-page.ts); a service ("Bridal makeup", "AC repair") gets one made the same way, so every item has a page of its own. */
-export type AdvItem = { item: ProductItem; slug: string; page: string; kind: "product" | "service" };
+export type AdvItem = { item: ProductItem; slug: string; page: string; kind: "product" | "service"; twin?: boolean };
 export function advancedItems(card: Card): AdvItem[] {
   const hidden = new Set(card.site?.hidden ?? []);
   // Pages made for the request (`adv-…`, `prod-…`) never hold the owner's items.
   const real = card.pages.filter((p) => !p.id.startsWith(ADV_PAGE_PREFIX) && !p.id.startsWith("prod-"));
   const base = { ...card, pages: real };
   const out: AdvItem[] = cardProducts(base).filter((p) => (p.item.name ?? "").trim() && !hidden.has(p.page)).map((p) => ({ ...p, kind: "product" as const }));
+  // The home page's featured few are the products page's items again (owner's demo, 17 Nov 2026: "Home > Home > Silk sarees", and
+  // Silk sarees under its own "You may also like"). A copy keeps its own address (the home page links to it) but belongs to the page
+  // that holds the most products, and is marked a twin so the lists show each product once.
+  const perPage = new Map<string, number>();
+  for (const o of out) perPage.set(o.page, (perPage.get(o.page) ?? 0) + 1);
+  const byName = new Map<string, AdvItem>();
+  for (const o of [...out].sort((a, b) => (perPage.get(b.page) ?? 0) - (perPage.get(a.page) ?? 0))) {
+    const k = o.item.name.trim().toLowerCase();
+    const first = byName.get(k);
+    if (!first) { byName.set(k, o); continue; }
+    o.twin = true; o.page = first.page;
+  }
   const used = new Set(out.map((o) => o.slug));
   for (const pg of real) {
     if (pg.hidden || hidden.has(pg.slug)) continue;
