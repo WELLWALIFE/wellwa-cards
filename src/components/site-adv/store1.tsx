@@ -17,8 +17,11 @@ import { linkHref } from "@/components/link-icon";
 
 /** The spec of Bridal Design 1 (the fixed template "bridal-couture-house"). */
 export const isStore1 = (spec: AdvancedSpec): boolean => typeof spec.seed === "string" && spec.seed.includes("|fix:bridal-couture-house");
+/** Bridal Design 2 — "The Bridal Lookbook" as a personal design studio (owner, 17 Nov 2026: a studio site, dark and quiet, appointment first). */
+export const isStore2 = (spec: AdvancedSpec): boolean => typeof spec.seed === "string" && spec.seed.includes("|fix:bridal-lookbook");
+export type StoreLook = "store" | "studio";
 
-type Props = { card: Card; c: SiteContent; x: AdvCtxPlus; items: AdvItem[]; route: AdvRoute; open: (slug: string) => void; logo: ReactNode; lang: ReactNode; fallback: ReactNode };
+type Props = { card: Card; c: SiteContent; x: AdvCtxPlus; items: AdvItem[]; route: AdvRoute; open: (slug: string) => void; logo: ReactNode; lang: ReactNode; fallback: ReactNode; look?: StoreLook };
 
 const amount = (s?: string): number | null => { const m = /\d[\d,]*(?:\.\d+)?/.exec(s ?? ""); if (!m) return null; const n = Number(m[0].replace(/,/g, "")); return Number.isFinite(n) && n > 0 ? n : null; };
 const inr = (n: number) => { const s = String(Math.round(n)); return s.length <= 3 ? `₹${s}` : `₹${s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",")},${s.slice(-3)}`; };
@@ -313,22 +316,133 @@ function Contact({ s, entry }: { s: S; entry: AdvPageEntry }) {
   );
 }
 
+
+/* ================= DESIGN 2: the personal studio ================= */
+
+const nameParts = (name: string): [string, string] => { const w = name.trim().split(/\s+/); return w.length > 1 ? [w[0], w.slice(1).join(" ")] : [name, ""]; };
+
+function StudioHeader({ s, lang }: { s: S; lang: ReactNode }) {
+  const { c, x, go } = s;
+  const [a, b] = nameParts(x.t(c.name));
+  const nav = x.pages.list.filter((e) => e.role !== "home");
+  const book = s.contact ? { href: s.contact.href, onClick: go(s.contact.slug) } : x.wa ? { href: s.wa(x.ui("Hi, I'd like to book an appointment", "नमस्ते, मुझे अपॉइंटमेंट बुक करना है")), target: "_blank", rel: "noreferrer" } : null;
+  return (
+    <header className="s2-hd">
+      <div className="s2-hd-row">
+        <a className="s2-name" href={x.hrefFor(x.pages.home)} onClick={go(x.pages.home)}>{a}{b && <em> {b}</em>}</a>
+        <nav className="s2-nav"><a href={x.hrefFor(x.pages.home)} onClick={go(x.pages.home)} data-on={x.pages.active === x.pages.home ? "" : undefined}>{x.ui("Home", "होम")}</a>
+          {nav.map((e) => <a key={e.slug} href={e.href} onClick={go(e.slug)} data-on={x.pages.active === e.slug ? "" : undefined}>{e.owner ? x.t(e.label) : e.label}</a>)}</nav>
+        <div className="s2-hd-r"><span className="s2-lang">{lang}</span>{book && <a className="s2-btn s2-btn-line" {...book} onClick={(book as { onClick?: (e: React.MouseEvent) => void }).onClick ?? (() => x.track("s2-book"))}>{x.ui("Book appointment", "अपॉइंटमेंट")}</a>}</div>
+      </div>
+    </header>
+  );
+}
+
+function StudioFooter({ s }: { s: S }) {
+  const { c, x, go, card } = s;
+  const [a, b] = nameParts(x.t(c.name));
+  const ig = card.links.find((l) => l.type === "instagram" && l.value.trim());
+  return (
+    <footer className="s2-ft"><div className="s1-wrap s2-ft-cols">
+      <div><p className="s2-name">{a}{b && <em> {b}</em>}</p><p className="s2-muted">{x.t(c.hm.sub)}</p>{c.city && <p className="s2-muted">{x.t(c.trade)} · {x.t(c.city)}</p>}</div>
+      <div><h4>{x.ui("Navigate", "पेज")}</h4>{x.pages.list.map((e) => <a key={e.slug} href={e.href} onClick={go(e.slug)}>{e.role === "home" ? x.ui("Home", "होम") : e.owner ? x.t(e.label) : e.label}</a>)}</div>
+      <div><h4>{x.ui("Get in touch", "संपर्क")}</h4>{x.phone && <a href={s.call}>{x.phone.value}</a>}{x.wa && <a href={s.wa()} target="_blank" rel="noreferrer">WhatsApp</a>}{c.visit?.address && <p className="s2-muted">{x.t(c.visit.address)}</p>}{ig && <a href={ig.value.startsWith("http") ? ig.value : `https://instagram.com/${ig.value.replace(/^@/, "")}`} target="_blank" rel="noreferrer">Instagram</a>}</div>
+    </div><div className="s1-wrap s2-ft-bottom"><span>© {new Date().getFullYear()} {x.t(c.name)}</span>{c.city && <span>{x.t(c.city)}</span>}</div></footer>
+  );
+}
+
+function StudioHome({ s }: { s: S }) {
+  const { c, x, go, card, shop } = s;
+  const pool = [c.hm.photo?.src, ...c.gallery.map((g) => g.url), ...c.photos].filter((u): u is string => !!u).filter((u, i, a) => a.indexOf(u) === i);
+  const headline = x.t(c.hm.headline); const hw = headline.split(" "); const cut = Math.ceil(hw.length / 2);
+  const catHref = s.cat?.href ?? "#"; const toCat = go(s.cat?.slug);
+  const bookWa = s.wa(x.ui("Hi, I'd like to book an appointment", "नमस्ते, मुझे अपॉइंटमेंट बुक करना है"));
+  // the collections: the owner's categories with their first item, else the first three items
+  const byCat = new Map<string, AdvItem>();
+  for (const it of shop) { const k = (it.item.category ?? "").trim(); if (k && !byCat.has(k)) byCat.set(k, it); }
+  const cols = (byCat.size >= 2 ? [...byCat.entries()].map(([k, it]) => ({ title: k, it, slug: s.cat?.slug })) : shop.map((it) => ({ title: it.item.name, it, slug: it.slug as string | undefined }))).slice(0, 3);
+  const marquee = [...new Set([...byCat.keys(), ...shop.map((i) => i.item.name)])].slice(0, 8);
+  const points = c.steps.length >= 2 ? c.steps.slice(0, 4).map((p) => ({ t: p.name, d: p.desc })) : c.highlights.slice(0, 4).map((h) => ({ t: h, d: "" }));
+  const revs = c.reviews.items.filter((r) => !r.sample).slice(0, 3);
+  const ig = card.links.find((l) => l.type === "instagram" && l.value.trim());
+  const [form, setForm] = useState({ name: "", occasion: "", date: "", msg: "" });
+  const occ = [x.ui("Bridal", "दुल्हन"), x.ui("Groom", "दूल्हा"), x.ui("Sangeet / Mehendi", "संगीत / मेहंदी"), x.ui("Reception", "रिसेप्शन"), x.ui("Family / group", "परिवार / ग्रुप"), x.ui("Other", "अन्य")];
+  const send = () => {
+    const lines = [x.ui(`Hi ${c.name}, I'd like to book a consultation.`, `नमस्ते ${c.name}, मुझे कंसल्टेशन बुक करना है।`), form.name && `${x.ui("Name", "नाम")}: ${form.name}`, form.occasion && `${x.ui("Occasion", "मौका")}: ${form.occasion}`, form.date && `${x.ui("Event date", "तारीख़")}: ${form.date}`, form.msg].filter(Boolean).join("\n");
+    x.track("s2-form"); window.open(s.wa(lines), "_blank", "noopener");
+  };
+  return (
+    <>
+      <section className="s2-hero">
+        <Pic src={pool[0]} ratio="16/9" eager sizes="100vw" name={c.name} />
+        <div className="s2-hero-frame" aria-hidden="true" />
+        <div className="s2-hero-txt">
+          <p className="s2-ey">{x.t(c.trade)}{c.city ? ` · ${x.t(c.city)}` : ""}</p>
+          <h1>{hw.slice(0, cut).join(" ")}{hw.length > 1 && <><br /><em>{hw.slice(cut).join(" ")}</em></>}</h1>
+          {c.hm.sub && <p className="s2-lede">{x.t(c.hm.sub)}</p>}
+          <div className="s2-btns">{s.cat && <a className="s2-btn s2-btn-fill" href={catHref} onClick={toCat}>{x.ui("Explore collections", "कलेक्शन देखें")}</a>}
+            {x.wa && <a className="s2-btn s2-btn-line" href={bookWa} target="_blank" rel="noreferrer" onClick={() => x.track("s2-hero-book")}>{x.ui("Book appointment", "अपॉइंटमेंट बुक करें")}</a>}</div>
+        </div>
+      </section>
+      {marquee.length > 2 && <div className="s2-marq" aria-hidden="true"><div className="s2-marq-in">{[...marquee, ...marquee].map((m, i) => <span key={i}>{x.t(m)}</span>)}</div></div>}
+
+      {cols.length > 0 && <section className="s2-sec"><div className="s2-head"><p className="s2-ey">{x.ui("Our collections", "हमारे कलेक्शन")}</p><h2>{x.ui("Dressed for Every Occasion", "हर मौके के लिए")}</h2><p className="s2-lede">{x.t(c.hm.sub)}</p></div>
+        <div className="s1-wrap s2-cols" data-n={cols.length}>{cols.map((k, i) => (
+          <div key={i} className="s2-col"><a href={k.slug ? x.hrefFor(k.slug) : catHref} onClick={go(k.slug ?? s.cat?.slug)}><Pic src={imgsOf(k.it)[0]} ratio="3/4" sizes="(min-width:1024px) 33vw, 100vw" name={k.title} /></a>
+            <div className="s2-col-txt"><h3>{x.t(k.title)}</h3>{k.it.item.desc && <p>{x.t(k.it.item.desc)}</p>}
+              {x.wa && <a className="s2-btn s2-btn-line" href={s.wa(x.ui(`Hi, I'd like to know about ${k.title}`, `नमस्ते, मुझे ${k.title} के बारे में जानना है`))} target="_blank" rel="noreferrer" onClick={() => x.track("s2-enquire")}>{x.ui("Enquire now", "पूछें")}</a>}</div></div>))}</div></section>}
+
+      {c.about && <section className="s2-sec s2-alt"><div className="s1-wrap s2-story">
+        <div className="s2-story-pic"><Pic src={c.about.image ?? pool[1]} ratio="4/5" sizes="(min-width:1024px) 40vw, 100vw" name={c.name} />{c.city && <span className="s2-badge">{x.t(c.city)}</span>}</div>
+        <div><p className="s2-ey">{x.ui("Our story", "हमारी कहानी")}</p><h2>{x.t(c.about.title)}</h2>{c.about.paras.slice(0, 3).map((p, i) => <p key={i} className="s2-p">{x.t(p)}</p>)}
+          {c.facts.length > 0 && <div className="s2-stats">{c.facts.slice(0, 3).map((f, i) => <div key={i}><b>{x.t(f.value)}</b><span>{x.t(f.label)}</span></div>)}</div>}
+          {x.wa && <a className="s2-btn s2-btn-fill" href={bookWa} target="_blank" rel="noreferrer">{x.ui("Book a consultation", "कंसल्टेशन बुक करें")}</a>}</div></div></section>}
+
+      {points.length >= 2 && <section className="s2-sec"><div className="s2-head"><p className="s2-ey">{x.ui("Why us", "हम क्यों")}</p><h2>{x.ui("Crafted With Intention", "दिल से बनाया")}</h2></div>
+        <div className="s1-wrap s2-points" data-n={points.length}>{points.map((p, i) => <div key={i}><i>✦</i><h3>{x.t(p.t)}</h3>{p.d && <p>{x.t(p.d)}</p>}</div>)}</div></section>}
+
+      {pool.length >= 3 && <section className="s2-sec s2-alt"><div className="s2-head"><p className="s2-ey">{x.ui("Lookbook", "लुकबुक")}</p><h2>{x.ui("A Glimpse of Our World", "हमारी दुनिया की एक झलक")}</h2></div>
+        <div className="s1-wrap s2-look">{pool.slice(0, 7).map((u, i) => <button key={i} type="button" className={`s2-look-i s2-l${i}`} onClick={() => x.zoom(pool, i, c.name)} aria-label={x.ui("View photo", "फ़ोटो देखें")}><Photo src={u} alt="" sizes="(min-width:1024px) 33vw, 50vw" /></button>)}</div>
+        {ig && <div className="s1-center"><a className="s2-btn s2-btn-line" href={ig.value.startsWith("http") ? ig.value : `https://instagram.com/${ig.value.replace(/^@/, "")}`} target="_blank" rel="noreferrer">{x.ui("View on Instagram", "Instagram पर देखें")}</a></div>}</section>}
+
+      {revs.length > 0 && <section className="s2-sec"><div className="s2-head"><p className="s2-ey">{x.ui("Client love", "ग्राहकों का प्यार")}</p><h2>{x.ui("What Our Clients Say", "हमारे ग्राहक क्या कहते हैं")}</h2></div>
+        <div className="s1-wrap s2-revs">{revs.map((r, i) => <div key={i} className="s2-rev"><span className="s2-stars">{"✦ ".repeat(Math.max(1, Math.round(r.rating || 5))).trim()}</span><p>“{x.t(r.text)}”</p><div className="s2-rev-who"><i>{Array.from(r.name)[0] ?? ""}</i><b>{x.t(r.name)}</b></div></div>)}</div></section>}
+
+      {x.wa && <section className="s2-cta"><div className="s1-wrap s2-cta-in"><div><p className="s2-ey">{x.ui("Your celebration awaits", "आपका जश्न इंतज़ार में है")}</p><h2>{x.ui("Ready to Find Your", "अपना")}<br /><em>{x.ui("Perfect Ensemble?", "परफ़ेक्ट लुक पाइए")}</em></h2></div>
+        <a className="s2-btn s2-btn-fill" href={bookWa} target="_blank" rel="noreferrer">{x.ui("Book an appointment", "अपॉइंटमेंट बुक करें")}</a></div></section>}
+
+      {x.wa && <section className="s2-sec" id="s2-contact"><div className="s1-wrap s2-contact">
+        <div><p className="s2-ey">{x.ui("Get in touch", "संपर्क करें")}</p><h2>{x.ui("Book Your", "अपना")}<br /><em>{x.ui("Consultation", "कंसल्टेशन बुक करें")}</em></h2>
+          <p className="s2-p">{x.ui("Tell us about your celebration and we will reply on WhatsApp.", "अपने जश्न के बारे में बताइए, हम WhatsApp पर जवाब देंगे।")}</p>
+          <div className="s2-clist">{x.phone && <a href={s.call}><Icon name="phone" size={18} />{x.phone.value}</a>}{c.visit?.address && <span><Icon name="pin" size={18} />{x.t(c.visit.address)}</span>}</div></div>
+        <form className="s2-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
+          <label>{x.ui("Your name", "आपका नाम")}<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label>{x.ui("Occasion", "मौका")}<select value={form.occasion} onChange={(e) => setForm({ ...form, occasion: e.target.value })}><option value="">{x.ui("Select an occasion", "मौका चुनें")}</option>{occ.map((o) => <option key={o}>{o}</option>)}</select></label>
+          <label>{x.ui("Event date (approx.)", "तारीख़ (लगभग)")}<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
+          <label>{x.ui("Tell us more", "और बताइए")}<textarea rows={3} value={form.msg} onChange={(e) => setForm({ ...form, msg: e.target.value })} /></label>
+          <button type="submit" className="s2-btn s2-btn-fill"><Icon name="whatsapp" size={18} />{x.ui("Send on WhatsApp", "WhatsApp पर भेजें")}</button>
+        </form></div></section>}
+    </>
+  );
+}
+
 /* ================= the site ================= */
 
 export function Store1(props: Props) {
   const s = useStore(props);
   const { route, fallback } = props;
   let body: ReactNode = fallback;
-  if (route.kind === "home") body = <Home s={s} />;
+  const studio = props.look === "studio";
+  if (route.kind === "home") body = studio ? <StudioHome s={s} /> : <Home s={s} />;
   else if (route.kind === "item") body = <Product s={s} it={route.item} />;
   else if (route.entry.role === "catalogue") body = <Collection s={s} entry={route.entry} />;
   else if (route.entry.role === "about") body = <About s={s} entry={route.entry} />;
   else if (route.entry.role === "contact") body = <Contact s={s} entry={route.entry} />;
   return (
-    <div className="s1">
-      <Header s={s} logo={props.logo} lang={props.lang} />
+    <div className={studio ? "s1 s1-studio" : "s1"}>
+      {studio ? <StudioHeader s={s} lang={props.lang} /> : <Header s={s} logo={props.logo} lang={props.lang} />}
       <main id="adv-main" tabIndex={-1} key={route.kind === "item" ? route.item.slug : route.kind === "page" ? route.entry.slug : "home"}>{body}</main>
-      <Footer s={s} />
+      {studio ? <StudioFooter s={s} /> : <Footer s={s} />}
       {s.x.wa && <a className="s1-wa-float" href={s.wa()} target="_blank" rel="noreferrer" aria-label="WhatsApp" onClick={() => s.x.track("s1-float")}><Icon name="whatsapp" size={28} /></a>}
     </div>
   );
@@ -494,5 +608,124 @@ export const STORE1_CSS = `
  .s1-grid5,.s1-grid4,.s1-coll .s1-grid4{grid-template-columns:repeat(2,1fr);gap:8px}
  .s1-pdp,.s1-about,.s1-contact{grid-template-columns:minmax(0,1fr);gap:22px}.s1-gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory}.s1-gal-i{flex:0 0 86%;scroll-snap-align:start}.s1-info{position:relative;top:0}
  .s1-btns{grid-template-columns:1fr}.s1-steps{grid-template-columns:repeat(2,1fr)}.s1-ft-cols{grid-template-columns:1fr;gap:26px}
+}
+/* ---- Design 2: the studio (dark, sage, quiet serif) ---- */
+.s1-studio{--bg:#0d100d;--bg2:#121612;--ink:#e8e4dc;--mu:#9aa298;--ln:rgba(232,228,220,.12);--m:#8fae8b;--m2:#a7c4a3;--g:rgba(143,174,139,.45);--rd:#e08a7e;--gr:#4fa36a;background:var(--bg);color:var(--ink);font-weight:300}
+.s1-studio .s1-pic{background:linear-gradient(135deg,#1a201a,#141814)}
+.s1-studio .s1-noimg{color:#3b463b}
+.s2-ey{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--m);font-weight:500}
+.s1-studio h1,.s1-studio h2,.s1-studio h3{font-family:var(--font-display);font-weight:400;color:var(--ink)}
+.s1-studio em{font-style:italic;color:var(--m)}
+.s2-lede{color:var(--mu);font-size:15px;max-width:52ch;line-height:1.8}
+.s2-p{color:var(--mu);font-size:15px;line-height:1.85;margin:0 0 14px}
+.s2-muted{color:var(--mu);font-size:13px;margin:6px 0}
+.s2-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:0 26px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;border-radius:2px;transition:.25s;white-space:nowrap}
+.s2-btn-fill{background:var(--m);color:#0d100d!important}.s2-btn-fill:hover{background:var(--m2)}
+.s2-btn-line{border:1px solid rgba(232,228,220,.55);color:var(--ink)}.s2-btn-line:hover{border-color:var(--m);color:var(--m)}
+.s2-hd{position:sticky;top:0;z-index:40;background:rgba(13,16,13,.88);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
+.s2-hd-row{display:flex;align-items:center;justify-content:space-between;gap:24px;max-width:1320px;margin:0 auto;padding:14px 24px}
+.s2-name{font:400 24px var(--font-display);letter-spacing:.04em;color:var(--ink)}
+.s2-nav{display:flex;gap:28px;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+.s2-nav a{color:var(--mu);padding:4px 0;border-bottom:1px solid transparent}.s2-nav a:hover,.s2-nav a[data-on]{color:var(--ink);border-color:var(--m)}
+.s2-hd-r{display:flex;align-items:center;gap:14px}
+.s2-lang{color:var(--mu)}
+.s2-hero{position:relative;overflow:hidden}
+.s2-hero .s1-pic{min-height:min(92svh,860px)}
+.s2-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,16,13,.35),rgba(13,16,13,.7) 70%,rgba(13,16,13,.95))}
+.s2-hero-frame{position:absolute;inset:28px;border:1px solid rgba(232,228,220,.18);z-index:1;pointer-events:none}
+.s2-hero-txt{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:center;gap:18px;max-width:1080px;margin:0 auto;padding:0 8%}
+.s2-hero-txt h1{font-size:clamp(44px,7vw,96px);line-height:1.02;letter-spacing:-.01em}
+.s2-btns{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
+.s2-marq{border-block:1px solid var(--ln);overflow:hidden;white-space:nowrap;background:var(--bg)}
+.s2-marq-in{display:inline-flex;gap:40px;padding:16px 0;animation:s1tick 45s linear infinite}
+.s2-marq-in span{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink)}
+.s2-marq-in span:after{content:"✦";margin-left:40px;color:var(--m)}
+.s2-sec{padding:96px 0}
+.s2-alt{background:var(--bg2)}
+.s2-head{text-align:center;max-width:720px;margin:0 auto 54px;padding:0 20px}
+.s2-head .s2-ey:after{content:"";display:block;width:40px;height:1px;background:var(--m);margin:16px auto 0;opacity:.6}
+.s2-head h2{font-size:clamp(32px,4.2vw,52px);margin-top:18px;line-height:1.1}
+.s2-head .s2-lede{margin:14px auto 0}
+.s2-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}.s2-cols[data-n="2"]{grid-template-columns:repeat(2,1fr)}.s2-cols[data-n="1"]{grid-template-columns:1fr;max-width:520px}
+.s2-col{background:var(--bg2);border:1px solid var(--ln)}
+.s2-col .s1-pic .adv-photo{transition:transform 1.2s}.s2-col:hover .s1-pic .adv-photo{transform:scale(1.04)}
+.s2-col-txt{padding:26px 26px 30px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.s2-col-txt h3{font-size:26px}.s2-col-txt p{color:var(--mu);font-size:14px;line-height:1.75;margin:0}
+.s2-story{display:grid;grid-template-columns:1fr 1.1fr;gap:72px;align-items:center}
+.s2-story h2{font-size:clamp(32px,4vw,48px);margin:16px 0 22px;line-height:1.1}
+.s2-story-pic{position:relative}
+.s2-badge{position:absolute;right:-18px;bottom:28px;background:var(--m);color:#0d100d;font:400 20px var(--font-display);padding:14px 22px}
+.s2-stats{display:flex;gap:0;margin:26px 0 28px;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)}
+.s2-stats div{flex:1;text-align:center;padding:18px 8px}.s2-stats div+div{border-left:1px solid var(--ln)}
+.s2-stats b{display:block;font:400 30px var(--font-display);color:var(--m)}.s2-stats span{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mu)}
+.s2-points{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ln)}.s2-points[data-n="3"]{grid-template-columns:repeat(3,1fr)}.s2-points[data-n="2"]{grid-template-columns:repeat(2,1fr)}
+.s2-points div{padding:34px 26px}.s2-points div+div{border-left:1px solid var(--ln)}
+.s2-points i{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--g);border-radius:50%;color:var(--m);font-style:normal;margin-bottom:18px}
+.s2-points h3{font-size:22px;margin-bottom:8px}.s2-points p{color:var(--mu);font-size:14px;line-height:1.75;margin:0}
+.s2-look{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:240px;gap:4px}
+.s2-look-i{position:relative;overflow:hidden;padding:0!important;cursor:zoom-in}
+.s2-look-i .adv-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1s}.s2-look-i:hover .adv-photo{transform:scale(1.05)}
+.s2-l0{grid-row:span 2}.s2-l1{grid-column:span 2}.s2-l4{grid-column:span 2}
+.s2-revs{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.s2-rev{background:var(--bg2);border:1px solid var(--ln);padding:30px}
+.s2-stars{color:var(--m);font-size:11px;letter-spacing:.2em}
+.s2-rev p{font:italic 400 18px/1.7 var(--font-display);color:var(--ink);margin:16px 0 22px}
+.s2-rev-who{display:flex;align-items:center;gap:12px;border-top:1px solid var(--ln);padding-top:16px}
+.s2-rev-who i{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:rgba(143,174,139,.25);color:var(--m);font-style:normal}
+.s2-rev-who b{font-weight:500;font-size:14px}
+.s2-cta{background:linear-gradient(90deg,#141c14,#0f140f);border-block:1px solid var(--ln);padding:72px 0}
+.s2-cta-in{display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap}
+.s2-cta h2{font-size:clamp(30px,3.6vw,46px);line-height:1.15;margin-top:12px}
+.s2-contact{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+.s2-contact h2{font-size:clamp(32px,4vw,52px);line-height:1.1;margin:14px 0 18px}
+.s2-clist{display:flex;flex-direction:column;gap:14px;margin-top:22px;color:var(--mu);font-size:14px}.s2-clist a,.s2-clist span{display:flex;gap:12px;align-items:center}.s2-clist svg{color:var(--m)}
+.s2-form{background:var(--bg2);border:1px solid var(--ln);padding:32px;display:grid;gap:16px}
+.s2-form label{display:grid;gap:8px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mu)}
+.s2-form input,.s2-form select,.s2-form textarea{background:#0b0e0b;border:1px solid var(--ln);color:var(--ink);font:inherit;font-size:14px;letter-spacing:0;text-transform:none;padding:12px;border-radius:2px;outline:none;color-scheme:dark}
+.s2-form input:focus,.s2-form select:focus,.s2-form textarea:focus{border-color:var(--m)}
+.s2-form .s2-btn{width:100%;margin-top:6px}
+.s2-ft{background:#0a0c0a;border-top:1px solid var(--ln);padding:64px 0 24px}
+.s2-ft-cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px}
+.s2-ft h4{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--m);font-weight:500;margin-bottom:16px}
+.s2-ft-cols>div>a{display:block;color:var(--mu);font-size:13px;padding:5px 0}.s2-ft-cols>div>a:hover{color:var(--ink)}
+.s2-ft-bottom{display:flex;justify-content:space-between;border-top:1px solid var(--ln);margin-top:40px;padding-top:20px;font-size:12px;color:var(--mu)}
+/* the shared inner pages in the studio's colours */
+.s1-studio .s1-crumb span{color:var(--m)}
+.s1-studio .s1-coll-h{color:var(--ink);font-weight:400}
+.s1-studio .s1-chips button{border-color:var(--g)!important;color:var(--ink)!important;border-radius:2px}
+.s1-studio .s1-chips button[data-on]{background:var(--m)!important;color:#0d100d!important}
+.s1-studio .s1-coll-bar select{background:var(--bg2);color:var(--ink);border-color:var(--ln)}
+.s1-studio .s1-pc{background:transparent}
+.s1-studio .s1-pc-name{color:var(--ink)}
+.s1-studio .s1-heart{background:rgba(13,16,13,.7)!important;color:var(--ink)}
+.s1-studio .s1-tag{background:var(--m);color:#0d100d}
+.s1-studio .s1-tag-s{background:rgba(13,16,13,.75);color:var(--mu)}
+.s1-studio .s1-pc-wa{background:transparent;border:1px solid var(--g);color:var(--m)!important}
+.s1-studio .s1-st{color:var(--m);font-weight:500;letter-spacing:.28em;font-size:12px}
+.s1-studio .s1-info h1{font:400 32px/1.2 var(--font-display)}
+.s1-studio .s1-btn{border-radius:2px;font-size:11px;letter-spacing:.2em}
+.s1-studio .s1-btn-solid{background:var(--m);color:#0d100d}.s1-studio .s1-btn-solid:hover{background:var(--m2)}
+.s1-studio .s1-btn-ghost{border-color:rgba(232,228,220,.55);color:var(--ink)}
+.s1-studio .s1-btn-outline{border-color:rgba(232,228,220,.55)}
+.s1-studio .s1-acc div,.s1-studio .s1-about p{color:var(--mu)}
+.s1-studio .s1-spec b{color:var(--ink)}
+.s1-studio .s1-trust{color:var(--m)}
+.s1-studio .s1-pagehero-txt{background:rgba(13,16,13,.55)}
+.s1-studio .s1-facts div{background:var(--bg2);border-color:var(--g)}.s1-studio .s1-facts b{color:var(--m)}
+.s1-studio .s1-steps div{border-color:var(--ln)}.s1-studio .s1-steps i{background:var(--m);color:#0d100d}
+.s1-studio .s1-clist a{border-color:var(--ln)}.s1-studio .s1-clist svg{color:var(--m)}
+.s1-studio .s1-about .s1-pic,.s1-studio .s1-contact .s1-pic{border-color:var(--g);border-radius:2px}
+.s1-studio .s1-hours td{border-color:var(--ln)}
+.s1-studio .s1-wa-float{background:var(--m);color:#0d100d!important}
+@media (max-width:1024px){.s2-nav{display:none}.s2-points,.s2-points[data-n="3"]{grid-template-columns:repeat(2,1fr)}.s2-points div:nth-child(3){border-left:0}.s2-points div:nth-child(n+3){border-top:1px solid var(--ln)}
+ .s2-hd{display:block}.s2-hd + main{scroll-margin-top:0}}
+@media (max-width:1024px){.s2-hd-row{flex-wrap:wrap}.s2-hd-row .s2-nav{display:flex;order:3;width:100%;overflow-x:auto;scrollbar-width:none;gap:22px}.s2-nav::-webkit-scrollbar{display:none}.s2-nav a{white-space:nowrap}}
+@media (max-width:720px){
+ .s2-hd-row{padding:10px 14px;gap:10px}.s2-name{font-size:20px}.s2-lang{display:none}.s2-hd-r .s2-btn{min-height:38px;padding:0 14px;font-size:10px;letter-spacing:.14em}
+ .s2-hero .s1-pic{min-height:0;aspect-ratio:3/4!important}.s2-hero-frame{inset:14px}.s2-hero-txt{justify-content:flex-end;padding:0 26px 46px}.s2-btns .s2-btn{flex:1 1 auto}
+ .s2-sec{padding:64px 0}.s2-cols,.s2-cols[data-n="2"]{grid-template-columns:1fr}.s2-story,.s2-contact{grid-template-columns:1fr;gap:34px}.s2-badge{right:10px}
+ .s2-points,.s2-points[data-n="3"],.s2-points[data-n="2"]{grid-template-columns:1fr}.s2-points div+div{border-left:0;border-top:1px solid var(--ln)}
+ .s2-look{grid-template-columns:repeat(2,1fr);grid-auto-rows:180px}.s2-l1,.s2-l4{grid-column:span 2}
+ .s2-revs{grid-template-columns:1fr}.s2-ft-cols{grid-template-columns:1fr;gap:28px}.s2-ft-bottom{flex-direction:column;gap:6px}
 }
 `;

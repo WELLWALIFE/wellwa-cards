@@ -37,7 +37,7 @@ import { AdvHeader, MobileBar, NAV_CSS, buildPages, chromeOf, useScrolled, type 
 import { AdvPageBody, PAGES_CSS, catalogueOf, itemsOf, routeOf } from "@/components/site-adv/pages";
 import { SeeMore } from "@/components/site-adv/page-parts";
 import { shotsOf } from "@/components/site-adv/page-more";
-import { STORE1_CSS, Store1, isStore1 } from "@/components/site-adv/store1";
+import { STORE1_CSS, Store1, isStore1, isStore2 } from "@/components/site-adv/store1";
 
 export type AdvancedSiteProps = {
   card: Card;
@@ -233,13 +233,13 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
 
   // Bridal Design 1 is a whole fashion store (store1.tsx): its own header, pages and footer; the pages it has no template for keep
   // the advanced page bodies inside its shell.
-  if (isStore1(spec)) {
+  if (isStore1(spec) || isStore2(spec)) {
     return (
       <TranslateCtx.Provider value={t}>
         <style dangerouslySetInnerHTML={{ __html: `${SMART_CSS}${HERO_CSS}.site[data-adv]{${advancedVars(card, spec)}}${ADV_BASE_CSS}${PAGES_CSS}${VARIANT_CSS}${INSTALL_APP_CSS}${STORE1_CSS}` }} />
         <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-adv="" data-motion={spec.motion} data-shape={spec.shape} data-density={spec.density} data-page={route.kind === "page" ? route.entry.role : route.kind}>
           <NoticeBar card={card} hi={hi} />
-          <Store1 card={card} c={c} x={x} items={items} route={route} open={open} logo={logo} lang={lang}
+          <Store1 card={card} c={c} x={x} items={items} route={route} open={open} logo={logo} lang={lang} look={isStore2(spec) ? "studio" : "store"}
             fallback={route.kind === "home" ? null : <AdvPageBody route={route} {...bodyProps} />} />
           {linkBase !== undefined && !free && premiumOn(card) && <InstallSiteApp name={t(c.name)} hi={hi} accent="#7a1f2e" onTrack={(k) => track(k)} />}
           {zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
