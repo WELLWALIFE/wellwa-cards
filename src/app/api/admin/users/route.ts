@@ -162,7 +162,8 @@ export async function GET(request: Request) {
       // the company root ID, the oldest of all, ends up at the bottom.
       users: [...users, ...partnerOnly].sort((a, b) => (b.joinedAt || "").localeCompare(a.joinedAt || "")),
       configured: true, subsTable: Boolean(sRes && sRes.ok),
-      partnerLinked: pm.ok, partnerError: pm.ok ? null : pm.data.error ?? `status ${pm.status}`,
+      // A franchise login never loads partner-panel IDs (by design), so that is not an error to warn about (18 Nov 2026).
+      partnerLinked: pm.ok || !!scope, partnerError: pm.ok || scope ? null : pm.data.error ?? `status ${pm.status}`,
       me: { role: me.role, rights: me.rights, franchise: me.franchise }, franchises: [...franchises.entries()].map(([id, code]) => ({ id, code })),
     });
   } catch (e) {
