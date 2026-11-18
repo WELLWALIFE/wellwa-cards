@@ -79,10 +79,10 @@ function firstRun(kind: Kind, en: boolean): { title: string; sub: string; bullet
   // prices at the start. The set-up makes the free card first; the website's plan is asked after "Make my website" (WebsitePlanSheet).
   return {
     title: en ? "Make your website and digital card\nin 5 minutes." : "अपनी website और digital card\n5 मिनट में बनाएँ।",
-    sub: en ? "Answer a few simple questions, choose your website plan and pay. Our team makes your website and digital card within 24 hours." : "कुछ आसान सवालों के जवाब दें, website का plan चुनें और payment करें। हमारी team 24 घंटे में आपकी website और digital card बनाती है।",
+    sub: en ? "Answer a few simple questions, choose your website plan and pay. Our team makes your website and digital card within 24 to 48 hours." : "कुछ आसान सवालों के जवाब दें, website का plan चुनें और payment करें। हमारी team 24 से 48 घंटे में आपकी website और digital card बनाती है।",
     bullets: en
-      ? ["Website + digital card on one link", "Website Standard ₹2,999 or Premium ₹5,999 a year", "Ready within 24 hours of the payment"]
-      : ["एक link पर website + digital card", "Website Standard ₹2,999 या Premium ₹5,999 / साल", "Payment के 24 घंटे में तैयार"],
+      ? ["Website + digital card on one link", "Website Standard ₹2,999 or Premium ₹5,999 a year", "Ready within 24 to 48 hours of the payment"]
+      : ["एक link पर website + digital card", "Website Standard ₹2,999 या Premium ₹5,999 / साल", "Payment के 24 से 48 घंटे में तैयार"],
     button: en ? "Make my website & card" : "मेरी website और card बनाएँ",
     note: "",
   };

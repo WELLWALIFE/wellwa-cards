@@ -105,8 +105,8 @@ export async function settleRequest(req: PaymentRequest, p: { paymentId: string;
   // The user's franchise earns on every payment that reaches Shubhora (src/lib/franchise-server.ts), once per payment id.
   await franchiseEarning(req.owner_id, { paise: p.amount, ref: p.paymentId, what: `${req.kind}:${what}` });
   await notify(req.owner_id, "payment", {
-    title: "Payment received", body: pkg ? `Thank you. ${rupeesOf(p.amount)} — ${what}. Your website will be delivered within 24 hours of your order.` : `Thank you. ${rupeesOf(p.amount)} — ${what}.`, path: pkg ? "/poster/site/order" : "/poster/plan", ref: p.paymentId,
-    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${pkg ? "धन्यवाद! आपकी website order के 24 घंटे के अंदर deliver होगी। Live होते ही WhatsApp पर बताएँगे।" : req.kind === "plan" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
+    title: "Payment received", body: pkg ? `Thank you. ${rupeesOf(p.amount)} — ${what}. Your website will be delivered within 24 to 48 hours of your order.` : `Thank you. ${rupeesOf(p.amount)} — ${what}.`, path: pkg ? "/poster/site/order" : "/poster/plan", ref: p.paymentId,
+    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${pkg ? "धन्यवाद! आपकी website order के 24 से 48 घंटे के अंदर deliver होगी। Live होते ही WhatsApp पर बताएँगे।" : req.kind === "plan" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
   }).catch(() => undefined);
   return { ok: true, replayed: false, applied: req.kind };
 }

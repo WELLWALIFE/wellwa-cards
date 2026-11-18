@@ -1,7 +1,7 @@
 "use client";
 // /poster/site/order — the order's page (owner, 13–14 Nov 2026 — lib/site-order.ts), the same every time it is opened until the website is live.
-//   ordered, not paid → "Thank you. Our team is working on your … website, delivered within 24 hours. Please make the payment." + Pay
-//   paid              → "Thank you for your payment. We will deliver your website within 24 hours" (24 hours from the ORDER; an order
+//   ordered, not paid → "Thank you. Our team is working on your … website, delivered within 24 to 48 hours. Please make the payment." + Pay
+//   paid              → "Thank you for your payment. We will deliver your website within 24 to 48 hours" (24 hours from the ORDER; an order
 //                       paid after them is made and live at once)
 // It never offers "Make my website" again. The website is made once, by the server, in the plan that was paid: this page only asks the
 // server to start (a build already running or finished is left alone).
@@ -60,7 +60,8 @@ export default function SiteOrderPage() {
           <h1 className="mt-3 text-2xl font-extrabold">{T("Thank you — your order is placed", "धन्यवाद — आपका order हो गया")}</h1>
           <p className="mt-1 text-sm text-white/90">{late
             ? T(`Your ${siteName} website is ready to be delivered. Please make the payment and it goes live right away.`, `आपकी ${siteName} website deliver होने के लिए तैयार है। Payment करें, और वो तुरंत live हो जाएगी।`)
-            : T(`Our team is working on your ${siteName} website. It will be delivered within 24 hours. Please make the payment.`, `हमारी team आपकी ${siteName} website पर काम कर रही है। 24 घंटे में deliver होगी। कृपया payment करें।`)}</p>
+            : T(`Our team is working on your ${siteName} website. It will be delivered within 24 to 48 hours. Please make the payment.`, `हमारी team आपकी ${siteName} website पर काम कर रही है। 24 से 48 घंटे में deliver होगी। कृपया payment करें।`)}</p>
+          {(o.custom || o.pkg === "custom") && <p className="mt-1 text-sm text-white/90">{T("The custom work is done within a week.", "Custom काम एक हफ़्ते के अंदर हो जाएगा।")}</p>}
         </section>
         <section className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card">
           <dl className="divide-y divide-border text-sm">
@@ -89,7 +90,8 @@ export default function SiteOrderPage() {
         <h1 className="mt-3 text-2xl font-extrabold">{live ? T("Your website is live", "आपकी website live है") : T("Thank you for your payment", "Payment के लिए धन्यवाद")}</h1>
         <p className="mt-1 text-sm text-white/90">{live
           ? T("Thank you. Open it, share it, and change anything you like.", "धन्यवाद। खोलें, share करें, और जो चाहें बदलें।")
-          : T(`Our team is working on your ${siteName} website. We will deliver it within 24 hours.`, `हमारी team आपकी ${siteName} website पर काम कर रही है। 24 घंटे में आपको मिल जाएगी।`)}</p>
+          : T(`Our team is working on your ${siteName} website. We will deliver it within 24 to 48 hours.`, `हमारी team आपकी ${siteName} website पर काम कर रही है। 24 से 48 घंटे में आपको मिल जाएगी।`)}</p>
+        {!live && (o.custom || o.pkg === "custom") && <p className="mt-1 text-sm text-white/90">{T("The custom work is done within a week.", "Custom काम एक हफ़्ते के अंदर हो जाएगा।")}</p>}
       </section>
       <section className="rounded-3xl border border-border bg-surface shadow-card">
         <dl className="divide-y divide-border text-sm">

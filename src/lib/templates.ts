@@ -1181,10 +1181,10 @@ const vcardReseller: CardTemplateDef = {
                 images: ["/art/shubhora/plan-website-standard.jpg"],
                 price: "₹2,999 / year",
                 badge: "Recommended",
-                desc: "A dynamic website and digital vCard for your business, ready in 24 hours — basic SEO, Google posts & review replies, your product catalogue and WhatsApp ordering. ₹2,999 a year, GST included; it renews at the same price.",
+                desc: "A dynamic website and digital vCard for your business, ready in 24 to 48 hours — basic SEO, Google posts & review replies, your product catalogue and WhatsApp ordering. ₹2,999 a year, GST included; it renews at the same price.",
                 features: [
                   "Website + Digital vCard (one link + QR)",
-                  "All 12 designs, ready in 24 hours",
+                  "All 12 designs, ready in 24 to 48 hours",
                   "Product catalogue + WhatsApp order",
                   "Basic SEO: home & main pages",
                   "Google Profile: posts & review replies",
