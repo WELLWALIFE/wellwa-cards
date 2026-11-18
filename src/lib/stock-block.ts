@@ -22,6 +22,13 @@ export function withoutBlockedStock<T extends Card>(card: T): T {
       if (images.length === b.images.length) return b;
       changed = true; return { ...b, images };
     }
+    // The About picture, and a picture / sliding-pictures block.
+    if (b.kind === "about" && stockBlocked(b.imageUrl)) { changed = true; return { ...b, imageUrl: undefined }; }
+    if (b.kind === "image" || b.kind === "carousel") {
+      const images = b.images.filter((i) => !stockBlocked(i.url));
+      if (images.length === b.images.length) return b;
+      changed = true; return { ...b, images };
+    }
     if (b.kind === "product") {
       let hit = false;
       const items = b.items.map((it) => {
@@ -36,8 +43,13 @@ export function withoutBlockedStock<T extends Card>(card: T): T {
     return b;
   }) }));
   const cover = stockBlocked(card.coverUrl);
-  if (!changed && !cover) return card;
-  return { ...card, pages, ...(cover ? { coverUrl: undefined } : {}) };
+  // The website's own banner and its sliding banners.
+  const hero = card.site?.hero;
+  const slides = hero?.slides?.filter((sl) => !stockBlocked(sl.imageUrl));
+  const heroHit = !!hero && (stockBlocked(hero.imageUrl) || (slides?.length ?? 0) !== (hero.slides?.length ?? 0));
+  if (!changed && !cover && !heroHit) return card;
+  const site = heroHit && card.site && hero ? { ...card.site, hero: { ...hero, ...(stockBlocked(hero.imageUrl) ? { imageUrl: undefined } : {}), ...(hero.slides ? { slides } : {}) } } : card.site;
+  return { ...card, pages, site, ...(cover ? { coverUrl: undefined } : {}) };
 }
 
 /** The word "Sample" never rides on a picture (owner, 18 Nov 2026: "ho sakta hai user isi ko hi rakhe, to sample word theek nahi"):
