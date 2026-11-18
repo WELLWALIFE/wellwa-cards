@@ -211,15 +211,33 @@ function Activity({ items, openTasks, onChanged }: { items: TimelineItem[]; open
 }
 
 function Details({ lead, onSave }: { lead: LeadPro; onSave: (p: Record<string, unknown>) => Promise<boolean> }) {
-  const { L } = useShell();
+  const { L, ws, as } = useShell();
+  // The business's own fields (Settings → Your own fields): loaded apart from the lead, saved with the same Save button.
+  const fields = ws.prefs.fields ?? [];
+  const [extra, setExtra] = useState<Record<string, string>>({});
+  const [extraState, setExtraState] = useState<"loading" | "ready" | "off" | "dirty">("loading");
+  const [extraErr, setExtraErr] = useState("");
+  useEffect(() => {
+    if (!fields.length) return;
+    let live = true;
+    api<{ values?: Record<string, string>; ready?: boolean }>(`/api/crm/fields?lead=${lead.id}${as ? `&as=${as}` : ""}`).then((r) => { if (!live) return; setExtra(r.ok ? r.data.values ?? {} : {}); setExtraState(r.ok && r.data.ready ? "ready" : "off"); }).catch(() => { if (live) setExtraState("off"); });
+    return () => { live = false; };
+  }, [lead.id, as, fields.length]);
   const [f, setF] = useState({ name: lead.name, alt_phone: lead.alt_phone ?? "", business: lead.business ?? "", city: lead.city, address: lead.address ?? "", pincode: lead.pincode ?? "", email: lead.email ?? "", birthday: lead.birthday ?? "", anniversary: lead.anniversary ?? "", lang: lead.lang ?? "", budget: lead.budget_paise ? String(lead.budget_paise / 100) : "", value: lead.value_paise ? String(lead.value_paise / 100) : "", tags: shownTags(lead.tags), notes: lead.notes, lost_reason: lead.lost_reason, opted_out: !!lead.opted_out });
   const [tag, setTag] = useState(""); const [busy, setBusy] = useState(false); const [ok, setOk] = useState(false);
   const addTag = () => { const t = tag.trim().replace(/^#/, "").slice(0, 24); if (t && !f.tags.includes(t)) setF({ ...f, tags: [...f.tags, t] }); setTag(""); };
   async function save() {
     setBusy(true); setOk(false);
     const done = await onSave({ name: f.name, alt_phone: f.alt_phone, business: f.business, city: f.city, address: f.address, pincode: f.pincode, email: f.email, birthday: f.birthday || null, anniversary: f.anniversary || null, lang: f.lang, budget_paise: Math.round((parseFloat(f.budget) || 0) * 100), value_paise: Math.round((parseFloat(f.value) || 0) * 100), tags: [...f.tags, ...(lead.tags ?? []).filter((t) => STAR_TAG.test(t) || TEMP_TAG.test(t))], notes: f.notes, lost_reason: f.lost_reason, opted_out: f.opted_out });
-    setBusy(false); setOk(done);
+    let extraOk = true;
+    if (done && extraState === "dirty") {
+      const r = await api<{ values?: Record<string, string>; error?: string }>("/api/crm/fields", { method: "PATCH", json: { lead_id: lead.id, values: extra, as: as ?? undefined } });
+      extraOk = r.ok; setExtraErr(r.ok ? "" : r.data.error || L.failed);
+      if (r.ok) { setExtra(r.data.values ?? extra); setExtraState("ready"); }
+    }
+    setBusy(false); setOk(done && extraOk);
   }
+  const setX = (k: string, v: string) => { setExtra((x) => ({ ...x, [k]: v })); setExtraState("dirty"); setOk(false); };
   const row = (k: keyof typeof f, label: string, type = "text", ph?: string) => <label className="text-xs text-muted">{label}<input type={type} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph} className={inputCls} /></label>;
   return (
     <div className="space-y-3 text-sm">
@@ -230,6 +248,25 @@ function Details({ lead, onSave }: { lead: LeadPro; onSave: (p: Record<string, u
       <div className="grid grid-cols-2 gap-2">{row("email", L.email, "email")}<label className="text-xs text-muted">{L.langPref}<select value={f.lang} onChange={(e) => setF({ ...f, lang: e.target.value })} className={inputCls}><option value="">—</option><option value="hi">हिंदी</option><option value="en">English</option></select></label></div>
       <div className="grid grid-cols-2 gap-2">{row("birthday", L.birthday, "date")}{row("anniversary", L.anniversary, "date")}</div>
       <div className="grid grid-cols-2 gap-2">{row("budget", L.budget, "text", "25000")}{row("value", L.dealValue, "text", "45000")}</div>
+      {fields.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-border bg-surface2/30 p-2.5">
+          <div className="text-xs font-semibold text-ink">{L.hi ? "आपके अपने field" : "Your own fields"}</div>
+          {extraState === "loading" ? <LoaderCircle className="h-4 w-4 animate-spin text-muted" />
+            : extraState === "off" ? <p className="text-xs text-muted">{L.hi ? "ये field अभी चालू नहीं हुए हैं। Support से कहें।" : "These fields are not switched on yet. Please ask support."}</p>
+            : (
+              <div className="grid grid-cols-2 gap-2">
+                {fields.map((fd) => (
+                  <label key={fd.key} className="text-xs text-muted">{fd.label}
+                    {fd.type === "choice"
+                      ? <select value={extra[fd.key] ?? ""} onChange={(e) => setX(fd.key, e.target.value)} className={inputCls}><option value="">—</option>{(fd.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}</select>
+                      : <input type={fd.type === "date" ? "date" : "text"} inputMode={fd.type === "number" ? "decimal" : undefined} value={extra[fd.key] ?? ""} onChange={(e) => setX(fd.key, e.target.value)} className={inputCls} />}
+                  </label>
+                ))}
+              </div>
+            )}
+          {extraErr && <p className="text-xs text-danger">{extraErr}</p>}
+        </div>
+      )}
       <div>
         <div className="mb-1 text-xs text-muted">{L.tags}</div>
         <div className="flex flex-wrap items-center gap-1.5">

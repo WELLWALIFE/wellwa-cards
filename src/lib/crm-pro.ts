@@ -30,8 +30,53 @@ export type Outcome = (typeof OUTCOMES)[number];
 export type CallRow = { id: string; owner_id: string; lead_id: string | null; agent_id: string | null; direction: "out" | "in"; channel: "phone" | "exotel" | "ai"; status: string; started_at: string; seconds: number; outcome: Outcome; note: string; recording_url: string | null; created_at: string };
 export const CALL_COLS = "id,owner_id,lead_id,agent_id,direction,channel,status,started_at,seconds,outcome,note,recording_url,created_at";
 export type BookingLite = { id: string; lead_id: string | null; name: string; phone: string; service: string; starts_at: string; status: string };
-export type CrmPrefs = { ask_outcome: boolean; retry_after_min: number; missed_call_wa: boolean; missed_call_text: string; auto_task_new_lead: boolean; daily_summary: boolean; birthday_wish: boolean; stale_days: number; round_robin: boolean; call_target: number; sales_target_k: number };
-export const DEFAULT_PREFS: CrmPrefs = { ask_outcome: true, retry_after_min: 180, missed_call_wa: false, missed_call_text: "Namaste {name} ji 🙏 {business} se call kiya tha, baat nahi ho paayi. Jab suvidha ho, is number par call ya message kar dein.", auto_task_new_lead: false, daily_summary: false, birthday_wish: false, stale_days: 7, round_robin: false, call_target: 0, sales_target_k: 0 };
+/** The business's own fields on a customer (owner, 18 Nov 2026: "professional CRM"): "Gaadi number", "Policy date", "Size"...
+ *  The definitions live in owner_prefs.crm.fields; the values in leads.extra (migration 0090), keyed by `key`. */
+export type CrmField = { key: string; label: string; type: "text" | "number" | "date" | "choice"; options?: string[] };
+/** A filter of the Customers list saved under a name ("Hot leads of Jaipur"). */
+export type CrmSegment = { name: string; q: Record<string, string | number> };
+export const FIELD_TYPES = ["text", "number", "date", "choice"] as const;
+export function cleanFields(v: unknown): CrmField[] {
+  if (!Array.isArray(v)) return [];
+  const seen = new Set<string>(); const out: CrmField[] = [];
+  for (const x of v as Record<string, unknown>[]) {
+    const key = String(x?.key ?? "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 24);
+    const label = String(x?.label ?? "").trim().slice(0, 40);
+    if (!key || !label || seen.has(key)) continue;
+    const type = (FIELD_TYPES as readonly string[]).includes(String(x?.type)) ? (x.type as CrmField["type"]) : "text";
+    const options = type === "choice" && Array.isArray(x?.options) ? [...new Set((x.options as unknown[]).map((o) => String(o).trim().slice(0, 40)).filter(Boolean))].slice(0, 20) : undefined;
+    if (type === "choice" && !options?.length) continue;
+    seen.add(key); out.push({ key, label, type, ...(options ? { options } : {}) });
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+const SEGMENT_KEYS = ["q", "stage", "kind", "assigned", "due", "idle", "sort", "tag", "stars"];
+export function cleanSegments(v: unknown): CrmSegment[] {
+  if (!Array.isArray(v)) return [];
+  const out: CrmSegment[] = [];
+  for (const x of v as Record<string, unknown>[]) {
+    const name = String(x?.name ?? "").trim().slice(0, 30);
+    if (!name || out.some((s) => s.name === name)) continue;
+    const q: CrmSegment["q"] = {};
+    for (const k of SEGMENT_KEYS) { const val = (x?.q as Record<string, unknown> | undefined)?.[k]; if (typeof val === "number" && Number.isFinite(val) && val) q[k] = Math.round(val); else if (typeof val === "string" && val.trim()) q[k] = val.trim().slice(0, 60); }
+    if (!Object.keys(q).length) continue;
+    out.push({ name, q });
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+/** One custom value as it is stored: "" clears it. */
+export function cleanFieldValue(f: CrmField, v: unknown): string | null {
+  const t = String(v ?? "").trim();
+  if (!t) return "";
+  if (f.type === "number") { const n = Number(t.replace(/,/g, "")); return Number.isFinite(n) ? String(n) : null; }
+  if (f.type === "date") return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null;
+  if (f.type === "choice") return f.options?.includes(t) ? t : null;
+  return t.slice(0, 200);
+}
+export type CrmPrefs = { ask_outcome: boolean; retry_after_min: number; missed_call_wa: boolean; missed_call_text: string; auto_task_new_lead: boolean; daily_summary: boolean; birthday_wish: boolean; stale_days: number; round_robin: boolean; call_target: number; sales_target_k: number; fields: CrmField[]; segments: CrmSegment[] };
+export const DEFAULT_PREFS: CrmPrefs = { ask_outcome: true, retry_after_min: 180, missed_call_wa: false, missed_call_text: "Namaste {name} ji 🙏 {business} se call kiya tha, baat nahi ho paayi. Jab suvidha ho, is number par call ya message kar dein.", auto_task_new_lead: false, daily_summary: false, birthday_wish: false, stale_days: 7, round_robin: false, call_target: 0, sales_target_k: 0, fields: [], segments: [] };
 
 const list = <T,>(r: { data: T[] | null }): T[] => (Array.isArray(r.data) ? r.data : []);
 const enc = encodeURIComponent;

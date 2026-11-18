@@ -5,14 +5,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, Plus, Phone, MessageCircle, Columns3, List, LoaderCircle, PhoneCall, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { Pipeline, AddLead } from "@/components/crm/crm";
-import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, waClick, Stars, starsOf, shownTags, previewOf, TempPill, tempOf, TEMP_LOOK } from "@/components/crm/shared";
+import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, type CrmSegment, waClick, Stars, starsOf, shownTags, previewOf, TempPill, tempOf, TEMP_LOOK } from "@/components/crm/shared";
 import { STAGE_LABEL, OUTCOME_LABEL } from "@/components/crm/i18n";
 
 type Q = { q: string; stage: string; kind: string; assigned: string; due: string; idle: number; sort: string; tag: string; stars: number };
 const EMPTY: Q = { q: "", stage: "", kind: "", assigned: "", due: "", idle: 0, sort: "", tag: "", stars: 0 };
 
 export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[]) => void }) {
-  const { L, ctx, as, openCustomer, startCall, version } = useShell();
+  const { L, ctx, ws, as, openCustomer, startCall, version } = useShell();
+  // Saved filters (owner, 18 Nov 2026): the filter of the moment kept under a name; the owner saves, the team uses them.
+  const [segs, setSegs] = useState<CrmSegment[]>(ws.prefs.segments ?? []);
+  const [naming, setNaming] = useState<string | null>(null);   // null = not naming
+  const [segErr, setSegErr] = useState("");
+  const canSaveSegs = ctx.role === "owner" && !as;
+  async function putSegs(next: CrmSegment[]) {
+    setSegErr("");
+    const r = await api<{ prefs?: { segments?: CrmSegment[] }; error?: string }>("/api/crm/automations", { method: "PUT", json: { segments: next } });
+    if (!r.ok) { setSegErr(r.data.error || L.failed); return false; }
+    setSegs(r.data.prefs?.segments ?? next); return true;
+  }
   const [qy, setQy] = useState<Q>(EMPTY);
   const [leads, setLeads] = useState<LeadPro[] | null>(null);
   const [more, setMore] = useState(false);
@@ -40,6 +51,13 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
   const set = (p: Partial<Q>) => setQy((x) => ({ ...x, ...p }));
   const toggle = (k: keyof Q, v: string | number) => set({ [k]: qy[k] === v ? (typeof v === "number" ? 0 : "") : v } as Partial<Q>);
   const active = Object.entries(qy).filter(([k, v]) => k !== "q" && k !== "sort" && v).length;
+  const sameQ = (g: CrmSegment) => (Object.keys(EMPTY) as (keyof Q)[]).every((k) => String(g.q[k] ?? (typeof EMPTY[k] === "number" ? 0 : "")) === String(qy[k]));
+  const onSeg = segs.find(sameQ);
+  async function saveSeg() {
+    const name = (naming ?? "").trim().slice(0, 30); if (!name) return;
+    const q: CrmSegment["q"] = {}; for (const [k, v] of Object.entries(qy)) if (v) q[k] = v;
+    if (await putSegs([...segs.filter((g) => g.name !== name), { name, q }].slice(-12))) setNaming(null);
+  }
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -54,6 +72,7 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
       </div>
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
         <Chip on={!qy.stage && !qy.kind && !qy.due && !qy.idle && !qy.assigned && !qy.tag && !qy.stars} onClick={() => setQy({ ...EMPTY, q: qy.q, sort: qy.sort })}>{L.all}</Chip>
+        {segs.map((g) => <Chip key={g.name} on={onSeg?.name === g.name} onClick={() => setQy(onSeg?.name === g.name ? EMPTY : { ...EMPTY, ...g.q } as Q)}>📌 {g.name}</Chip>)}
         <Chip on={qy.due === "any"} onClick={() => toggle("due", "any")}>⏰ {L.filterDue}</Chip>
         <Chip on={qy.stars === 1} onClick={() => toggle("stars", 1)}>⭐ {L.hi ? "स्टार वाले" : "Starred"}</Chip>
         {(["hot", "warm", "cold"] as const).map((t) => <Chip key={t} on={qy.tag === `temp:${t}`} onClick={() => toggle("tag", `temp:${t}`)}>{TEMP_LOOK[t].icon} {L.hi ? TEMP_LOOK[t].hi : TEMP_LOOK[t].en}</Chip>)}
@@ -63,6 +82,16 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
         {/* Chats the AI found personal (family, friends): kept out of the list until opened here (owner, 23 Oct 2026). */}
         <Chip on={qy.tag === "personal"} onClick={() => toggle("tag", "personal")}>🙂 {L.hi ? "Personal" : "Personal"}</Chip>
       </div>
+      {canSaveSegs && (active > 0 || qy.q) && !onSeg && naming === null && segs.length < 12 && <button type="button" onClick={() => setNaming("")} className="text-xs font-semibold text-brand-ink">📌 {L.hi ? "यह filter नाम देकर save करें" : "Save this filter with a name"}</button>}
+      {naming !== null && (
+        <div className="flex items-center gap-2">
+          <input autoFocus value={naming} onChange={(e) => setNaming(e.target.value.slice(0, 30))} onKeyDown={(e) => { if (e.key === "Enter") void saveSeg(); }} placeholder={L.hi ? "नाम, जैसे: Jaipur के hot lead" : "Name, e.g. Hot leads of Jaipur"} className={inputCls} />
+          <button type="button" disabled={!naming.trim()} onClick={() => void saveSeg()} className="grad-brand shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{L.save}</button>
+          <button type="button" onClick={() => setNaming(null)} className="shrink-0 p-1 text-muted" aria-label={L.close}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+      {canSaveSegs && onSeg && <button type="button" onClick={() => void putSegs(segs.filter((g) => g.name !== onSeg.name)).then((okk) => { if (okk) setQy(EMPTY); })} className="text-xs text-muted underline">{L.hi ? `"${onSeg.name}" filter हटाएँ` : `Remove the "${onSeg.name}" filter`}</button>}
+      {segErr && <p className="text-xs text-danger">{segErr}</p>}
       {filters && (
         <div className="space-y-2 rounded-xl border border-border bg-surface p-2.5 text-xs">
           <div className="flex flex-wrap items-center gap-1.5"><span className="text-muted">{L.lifecycle}:</span>{(["lead", "customer", "lost"] as const).map((k) => <Chip key={k} on={qy.kind === k} onClick={() => toggle("kind", k)}>{k === "lead" ? L.lead : k === "customer" ? L.customer : L.lost}</Chip>)}</div>

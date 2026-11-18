@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Zap, Users, GitBranch, Plug, Upload, Download, UserCheck, LoaderCircle, Check, PhoneCall } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { Templates, TeamSheet, ImportSheet, FlowSheet, IntegrationsSheet, AnalyticsSheet } from "@/components/crm/crm";
-import { useShell, inputCls, Chip, type Prefs } from "@/components/crm/shared";
+import { useShell, inputCls, Chip, type Prefs, type CrmField } from "@/components/crm/shared";
 import { DuplicatesSheet, ContactsImport, Leaderboard } from "@/components/crm/sales";
 
 export function SettingsSection({ onChanged }: { onChanged: () => void }) {
@@ -14,9 +14,11 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
   const [p, setP] = useState<Prefs>(ws.prefs);
   const [busy, setBusy] = useState(false); const [ok, setOk] = useState(false); const [err, setErr] = useState("");
   const owner = ctx.role === "owner";
+  const fieldList: CrmField[] = p.fields ?? [];
+  const setField = (i: number, patch: Partial<CrmField>) => { setOk(false); setP({ ...p, fields: fieldList.map((f, j) => (j === i ? { ...f, ...patch } : f)) }); };
   async function save() {
     setBusy(true); setOk(false); setErr("");
-    const r = await api<{ prefs: Prefs; error?: string }>("/api/crm/automations", { method: "PUT", json: { ...p, sales_target_k: undefined } });   // the target is set on Reports
+    const r = await api<{ prefs: Prefs; error?: string }>("/api/crm/automations", { method: "PUT", json: { ...p, sales_target_k: undefined, segments: undefined, fields: (p.fields ?? []).map((f) => ({ ...f, options: f.type === "choice" ? (f.options ?? []).map((o) => o.trim()).filter(Boolean) : undefined })) } });   // the target is set on Reports, saved filters on Customers
     setBusy(false); if (!r.ok) { setErr(r.data.error || L.failed); return; } setP(r.data.prefs); setOk(true); onChanged();
   }
   async function exportCsv() {
@@ -58,6 +60,28 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
           <label className="block text-xs text-ink">{L.hi ? "इतने दिन चुप रहे तो \"ठंडा पड़ रहा\" याद दिलाएँ (0 = नहीं)" : "Nudge me when a lead is quiet for (days, 0 = off)"}<input type="number" min={0} max={60} value={p.stale_days} onChange={(e) => setP({ ...p, stale_days: Math.max(0, parseInt(e.target.value || "0", 10)) })} className={inputCls + " mt-1 w-28"} /></label>
           <button type="button" disabled={busy} onClick={save} className="grad-brand inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : ok ? <Check className="h-4 w-4" /> : null} {ok ? L.saved : L.save}</button>
           <p className="text-[11px] text-muted">{L.hi ? "Review माँगना और त्योहार की शुभकामनाएँ Social → Reviews / Customers tools में हैं।" : "Review ask and festival wishes live under Social → Reviews / customer tools."}</p>
+        </section>
+      )}
+      {owner && !as && (
+        <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 text-sm">
+          <h3 className="font-bold text-ink">🧩 {L.hi ? "आपके अपने field" : "Your own fields"}</h3>
+          <p className="text-[11px] text-muted">{L.hi ? "अपने काम के हिसाब से ग्राहक पर नए field जोड़ें — जैसे गाड़ी नंबर, policy की तारीख, size। ये हर ग्राहक की Details में दिखेंगे। (12 तक)" : "Add fields that fit your work — vehicle number, policy date, size. They show in every customer's Details. (up to 12)"}</p>
+          {fieldList.map((fd, i) => (
+            <div key={fd.key} className="space-y-1.5 rounded-xl border border-border p-2">
+              <div className="flex items-center gap-2">
+                <input value={fd.label} onChange={(e) => setField(i, { label: e.target.value.slice(0, 40) })} placeholder={L.hi ? "field का नाम" : "Field name"} className={inputCls} />
+                <select value={fd.type} onChange={(e) => setField(i, { type: e.target.value as CrmField["type"] })} className={inputCls + " w-32 shrink-0"}>
+                  <option value="text">{L.hi ? "लिखावट" : "Text"}</option><option value="number">{L.hi ? "संख्या" : "Number"}</option><option value="date">{L.hi ? "तारीख" : "Date"}</option><option value="choice">{L.hi ? "चुनाव" : "Choice"}</option>
+                </select>
+                <button type="button" onClick={() => setP({ ...p, fields: fieldList.filter((_, j) => j !== i) })} className="shrink-0 rounded-lg px-2 py-1 text-xs text-danger" aria-label="remove">✕</button>
+              </div>
+              {fd.type === "choice" && <input value={(fd.options ?? []).join(", ")} onChange={(e) => setField(i, { options: e.target.value.split(",").map((o) => o.replace(/^\s+/, "").slice(0, 40)).slice(0, 20) })} placeholder={L.hi ? "विकल्प, comma से अलग: Small, Medium, Large" : "Choices, comma separated: Small, Medium, Large"} className={inputCls} />}
+            </div>
+          ))}
+          {fieldList.length < 12 && <button type="button" onClick={() => setP({ ...p, fields: [...fieldList, { key: `f${Date.now().toString(36)}`, label: "", type: "text" }] })} className="rounded-xl border border-dashed border-border px-3 py-2 text-xs font-semibold text-brand-ink">＋ {L.hi ? "field जोड़ें" : "Add a field"}</button>}
+          {fieldList.some((fd) => !fd.label.trim()) && <p className="text-[11px] text-danger">{L.hi ? "बिना नाम वाला field save नहीं होगा।" : "A field without a name is not saved."}</p>}
+          <p className="text-[11px] text-faint">{L.hi ? "field हटाने से ग्राहकों में भरी उसकी जानकारी दिखना बंद हो जाती है।" : "Removing a field hides what was filled in it."}</p>
+          <button type="button" disabled={busy} onClick={save} className="grad-brand inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : ok ? <Check className="h-4 w-4" /> : null} {ok ? L.saved : L.save}</button>
         </section>
       )}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

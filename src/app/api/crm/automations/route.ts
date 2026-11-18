@@ -2,7 +2,7 @@
 //   GET → { prefs }   PUT { ...partial } → { prefs }
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
-import { prefsOf, savePrefs, DEFAULT_PREFS, type CrmPrefs } from "@/lib/crm-pro";
+import { prefsOf, savePrefs, DEFAULT_PREFS, cleanFields, cleanSegments, type CrmPrefs } from "@/lib/crm-pro";
 
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
@@ -17,6 +17,8 @@ export async function PUT(request: Request) {
   const patch: Partial<CrmPrefs> = {};
   for (const k of Object.keys(DEFAULT_PREFS) as (keyof CrmPrefs)[]) {
     const v = b[k]; if (v === undefined) continue;
+    if (k === "fields") { if (Array.isArray(v)) patch.fields = cleanFields(v); continue; }
+    if (k === "segments") { if (Array.isArray(v)) patch.segments = cleanSegments(v); continue; }
     const want = typeof DEFAULT_PREFS[k];
     if (want === "boolean" && typeof v === "boolean") (patch as Record<string, unknown>)[k] = v;
     else if (want === "number" && typeof v === "number" && Number.isFinite(v)) (patch as Record<string, unknown>)[k] = Math.max(0, Math.min(100000, Math.round(v)));
