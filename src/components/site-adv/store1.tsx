@@ -617,10 +617,12 @@ export const STORE1_CSS = `
  .s1-pdp,.s1-about,.s1-contact{grid-template-columns:minmax(0,1fr);gap:22px}.s1-gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory}.s1-gal-i{flex:0 0 86%;scroll-snap-align:start}.s1-info{position:relative;top:0}
  .s1-btns{grid-template-columns:1fr}.s1-steps{grid-template-columns:repeat(2,1fr)}.s1-ft-cols{grid-template-columns:1fr;gap:26px}
 }
-/* ---- Design 2: the studio (dark, sage, quiet serif) ---- */
-.s1-studio{--bg:#0d100d;--bg2:#121612;--ink:#e8e4dc;--mu:#9aa298;--ln:rgba(232,228,220,.12);--m:#8fae8b;--m2:#a7c4a3;--g:rgba(143,174,139,.45);--rd:#e08a7e;--gr:#4fa36a;background:var(--bg);color:var(--ink);font-weight:300}
-.s1-studio .s1-pic{background:linear-gradient(135deg,#1a201a,#141814)}
-.s1-studio .s1-noimg{color:#3b463b}
+/* ---- Design 2: the studio (ivory, sage, quiet serif). It was a black page; the owner, 18 Nov 2026: "completely black si dikh rahi hai" -
+   so the page is ivory paper now, the sage kept; only the photograph's veil and the footer are deep green. --on is the text on a sage
+   button, --bl the outline of a line button; the hero, the page hero and the footer re-set the inks for their dark ground. ---- */
+.s1-studio{--bg:#f8f6f0;--bg2:#efece2;--ink:#1f2a22;--mu:#5b655d;--ln:rgba(31,42,34,.14);--m:#4a6e54;--m2:#3c5c45;--g:rgba(74,110,84,.4);--rd:#b4483c;--gr:#2f8a52;--on:#fff;--bl:rgba(31,42,34,.45);background:var(--bg);color:var(--ink);font-weight:300}
+.s1-studio .s1-pic{background:linear-gradient(135deg,#e8e5da,#dedbd0)}
+.s1-studio .s1-noimg{color:#a9ad9f}
 .s2-ey{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--m);font-weight:500}
 .s1-studio h1,.s1-studio h2,.s1-studio h3{font-family:var(--font-display);font-weight:400;color:var(--ink)}
 .s1-studio em{font-style:italic;color:var(--m)}
@@ -628,9 +630,9 @@ export const STORE1_CSS = `
 .s2-p{color:var(--mu);font-size:15px;line-height:1.85;margin:0 0 14px}
 .s2-muted{color:var(--mu);font-size:13px;margin:6px 0}
 .s2-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:0 26px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;border-radius:2px;transition:.25s;white-space:nowrap}
-.s2-btn-fill{background:var(--m);color:#0d100d!important}.s2-btn-fill:hover{background:var(--m2)}
-.s2-btn-line{border:1px solid rgba(232,228,220,.55);color:var(--ink)}.s2-btn-line:hover{border-color:var(--m);color:var(--m)}
-.s2-hd{position:sticky;top:0;z-index:40;background:rgba(13,16,13,.88);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
+.s2-btn-fill{background:var(--m);color:var(--on)!important}.s2-btn-fill:hover{background:var(--m2)}
+.s2-btn-line{border:1px solid var(--bl);color:var(--ink)}.s2-btn-line:hover{border-color:var(--m);color:var(--m)}
+.s2-hd{position:sticky;top:0;z-index:40;background:rgba(248,246,240,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
 .s2-hd-row{display:flex;align-items:center;justify-content:space-between;gap:24px;max-width:1320px;margin:0 auto;padding:14px 24px}
 .s2-name{font:400 24px var(--font-display);letter-spacing:.04em;color:var(--ink)}
 .s2-nav{display:flex;gap:28px;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
@@ -639,8 +641,9 @@ export const STORE1_CSS = `
 .s2-lang{color:var(--mu)}
 .s2-hero{position:relative;overflow:hidden}
 .s2-hero .s1-pic{min-height:min(92svh,860px)}
-.s2-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,16,13,.35),rgba(13,16,13,.7) 70%,rgba(13,16,13,.95))}
+.s2-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,34,26,.3),rgba(22,34,26,.55) 70%,rgba(22,34,26,.72))}
 .s2-hero-frame{position:absolute;inset:28px;border:1px solid rgba(232,228,220,.18);z-index:1;pointer-events:none}
+.s2-hero-txt,.s1-studio .s1-pagehero-txt{--ink:#f8f6f0;--mu:rgba(248,246,240,.86);--m:#c3dcbf;--m2:#d5e8d2;--on:#16221a;--bl:rgba(248,246,240,.6)}
 .s2-hero-txt{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:center;gap:18px;max-width:1080px;margin:0 auto;padding:0 8%}
 .s2-hero-txt h1{font-size:clamp(44px,7vw,96px);line-height:1.02;letter-spacing:-.01em}
 .s2-btns{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
@@ -662,7 +665,7 @@ export const STORE1_CSS = `
 .s2-story{display:grid;grid-template-columns:1fr 1.1fr;gap:72px;align-items:center}
 .s2-story h2{font-size:clamp(32px,4vw,48px);margin:16px 0 22px;line-height:1.1}
 .s2-story-pic{position:relative}
-.s2-badge{position:absolute;right:-18px;bottom:28px;background:var(--m);color:#0d100d;font:400 20px var(--font-display);padding:14px 22px}
+.s2-badge{position:absolute;right:-18px;bottom:28px;background:var(--m);color:var(--on);font:400 20px var(--font-display);padding:14px 22px}
 .s2-stats{display:flex;gap:0;margin:26px 0 28px;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)}
 .s2-stats div{flex:1;text-align:center;padding:18px 8px}.s2-stats div+div{border-left:1px solid var(--ln)}
 .s2-stats b{display:block;font:400 30px var(--font-display);color:var(--m)}.s2-stats span{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mu)}
@@ -681,7 +684,7 @@ export const STORE1_CSS = `
 .s2-rev-who{display:flex;align-items:center;gap:12px;border-top:1px solid var(--ln);padding-top:16px}
 .s2-rev-who i{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:rgba(143,174,139,.25);color:var(--m);font-style:normal}
 .s2-rev-who b{font-weight:500;font-size:14px}
-.s2-cta{background:linear-gradient(90deg,#141c14,#0f140f);border-block:1px solid var(--ln);padding:72px 0}
+.s2-cta{background:linear-gradient(90deg,#e3eadd,#edf0e6);border-block:1px solid var(--ln);padding:72px 0}
 .s2-cta-in{display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap}
 .s2-cta h2{font-size:clamp(30px,3.6vw,46px);line-height:1.15;margin-top:12px}
 .s2-contact{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
@@ -689,10 +692,12 @@ export const STORE1_CSS = `
 .s2-clist{display:flex;flex-direction:column;gap:14px;margin-top:22px;color:var(--mu);font-size:14px}.s2-clist a,.s2-clist span{display:flex;gap:12px;align-items:center}.s2-clist svg{color:var(--m)}
 .s2-form{background:var(--bg2);border:1px solid var(--ln);padding:32px;display:grid;gap:16px}
 .s2-form label{display:grid;gap:8px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mu)}
-.s2-form input,.s2-form select,.s2-form textarea{background:#0b0e0b;border:1px solid var(--ln);color:var(--ink);font:inherit;font-size:14px;letter-spacing:0;text-transform:none;padding:12px;border-radius:2px;outline:none;color-scheme:dark}
+.s2-form input,.s2-form select,.s2-form textarea{background:#fff;border:1px solid var(--ln);color:var(--ink);font:inherit;font-size:14px;letter-spacing:0;text-transform:none;padding:12px;border-radius:2px;outline:none;color-scheme:light}
 .s2-form input:focus,.s2-form select:focus,.s2-form textarea:focus{border-color:var(--m)}
 .s2-form .s2-btn{width:100%;margin-top:6px}
-.s2-ft{background:#0a0c0a;border-top:1px solid var(--ln);padding:64px 0 24px}
+/* The form's button is a <button>: the site's button reset cleared its fill, so the label had no ground to stand on. */
+.s1-studio .s2-form button.s2-btn-fill{background:var(--m);color:var(--on)!important}.s1-studio .s2-form button.s2-btn-fill:hover{background:var(--m2)}
+.s2-ft{--ink:#f1efe8;--mu:rgba(241,239,232,.72);--m:#c3dcbf;--ln:rgba(255,255,255,.14);color:var(--ink);background:#22352a;border-top:1px solid var(--ln);padding:64px 0 24px}
 .s2-ft-cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px}
 .s2-ft h4{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--m);font-weight:500;margin-bottom:16px}
 .s2-ft-cols>div>a{display:block;color:var(--mu);font-size:13px;padding:5px 0}.s2-ft-cols>div>a:hover{color:var(--ink)}
@@ -701,30 +706,30 @@ export const STORE1_CSS = `
 .s1-studio .s1-crumb span{color:var(--m)}
 .s1-studio .s1-coll-h{color:var(--ink);font-weight:400}
 .s1-studio .s1-chips button{border-color:var(--g)!important;color:var(--ink)!important;border-radius:2px}
-.s1-studio .s1-chips button[data-on]{background:var(--m)!important;color:#0d100d!important}
+.s1-studio .s1-chips button[data-on]{background:var(--m)!important;color:var(--on)!important}
 .s1-studio .s1-coll-bar select{background:var(--bg2);color:var(--ink);border-color:var(--ln)}
 .s1-studio .s1-pc{background:transparent}
 .s1-studio .s1-pc-name{color:var(--ink)}
-.s1-studio .s1-heart{background:rgba(13,16,13,.7)!important;color:var(--ink)}
-.s1-studio .s1-tag{background:var(--m);color:#0d100d}
-.s1-studio .s1-tag-s{background:rgba(13,16,13,.75);color:var(--mu)}
+.s1-studio .s1-heart{background:rgba(255,255,255,.88)!important;color:var(--ink)}
+.s1-studio .s1-tag{background:var(--m);color:var(--on)}
+.s1-studio .s1-tag-s{background:rgba(255,255,255,.9);color:var(--mu)}
 .s1-studio .s1-pc-wa{background:transparent;border:1px solid var(--g);color:var(--m)!important}
 .s1-studio .s1-st{color:var(--m);font-weight:500;letter-spacing:.28em;font-size:12px}
 .s1-studio .s1-info h1{font:400 32px/1.2 var(--font-display)}
 .s1-studio .s1-btn{border-radius:2px;font-size:11px;letter-spacing:.2em}
-.s1-studio .s1-btn-solid{background:var(--m);color:#0d100d}.s1-studio .s1-btn-solid:hover{background:var(--m2)}
-.s1-studio .s1-btn-ghost{border-color:rgba(232,228,220,.55);color:var(--ink)}
-.s1-studio .s1-btn-outline{border-color:rgba(232,228,220,.55)}
+.s1-studio .s1-btn-solid{background:var(--m);color:var(--on)}.s1-studio .s1-btn-solid:hover{background:var(--m2)}
+.s1-studio .s1-btn-ghost{border-color:var(--bl);color:var(--ink)}
+.s1-studio .s1-btn-outline{border-color:var(--bl)}
 .s1-studio .s1-acc div,.s1-studio .s1-about p{color:var(--mu)}
 .s1-studio .s1-spec b{color:var(--ink)}
 .s1-studio .s1-trust{color:var(--m)}
-.s1-studio .s1-pagehero-txt{background:rgba(13,16,13,.55)}
+.s1-studio .s1-pagehero-txt{background:rgba(22,34,26,.5)}
 .s1-studio .s1-facts div{background:var(--bg2);border-color:var(--g)}.s1-studio .s1-facts b{color:var(--m)}
-.s1-studio .s1-steps div{border-color:var(--ln)}.s1-studio .s1-steps i{background:var(--m);color:#0d100d}
+.s1-studio .s1-steps div{border-color:var(--ln)}.s1-studio .s1-steps i{background:var(--m);color:var(--on)}
 .s1-studio .s1-clist a{border-color:var(--ln)}.s1-studio .s1-clist svg{color:var(--m)}
 .s1-studio .s1-about .s1-pic,.s1-studio .s1-contact .s1-pic{border-color:var(--g);border-radius:2px}
 .s1-studio .s1-hours td{border-color:var(--ln)}
-.s1-studio .s1-wa-float{background:var(--m);color:#0d100d!important}
+.s1-studio .s1-wa-float{background:var(--m);color:var(--on)!important}
 @media (max-width:1024px){.s2-nav{display:none}.s2-points,.s2-points[data-n="3"]{grid-template-columns:repeat(2,1fr)}.s2-points div:nth-child(3){border-left:0}.s2-points div:nth-child(n+3){border-top:1px solid var(--ln)}
  .s2-hd{display:block}.s2-hd + main{scroll-margin-top:0}}
 @media (max-width:1024px){.s2-hd-row{flex-wrap:wrap}.s2-hd-row .s2-nav{display:flex;order:3;width:100%;overflow-x:auto;scrollbar-width:none;gap:22px}.s2-nav::-webkit-scrollbar{display:none}.s2-nav a{white-space:nowrap}}
