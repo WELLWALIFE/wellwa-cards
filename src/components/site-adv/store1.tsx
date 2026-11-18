@@ -115,7 +115,6 @@ function Card1({ s, it, eager = false }: { s: S; it: AdvItem; eager?: boolean })
         <Pic src={im[0]} alt={x.t(it.item.name)} ratio="3/4" eager={eager} sizes="(min-width:1024px) 20vw, 50vw" name={it.item.name} />
         {im[1] && <div className="s1-pc-alt"><Photo src={im[1]} alt="" sizes="(min-width:1024px) 20vw, 50vw" /></div>}
         {it.item.badge && <span className="s1-tag">{x.t(it.item.badge)}</span>}
-        {it.item.sample && !/^sample$/i.test((it.item.badge ?? "").trim()) && <span className="s1-tag s1-tag-s">{x.ui("Sample", "नमूना")}</span>}
       </a>
       <button type="button" className="s1-heart" data-on={fav ? "" : undefined} onClick={() => setFav(!fav)} aria-label={x.ui("Save", "सेव करें")}><Heart size={18} /></button>
       <div className="s1-pc-body">

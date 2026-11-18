@@ -953,7 +953,10 @@ export const HEROES_NEW_CSS = `
 .ahk-foot .hero-sub{max-width:38ch}
 .ahk-figs{display:flex;flex-wrap:wrap;gap:var(--s4) clamp(1.5rem,3.5vw,2.75rem)}
 .ahk-figs li>span:last-child{color:var(--muted)}
-@media (min-width:900px){.ahk-foot{grid-template-columns:minmax(0,1fr) auto auto;gap:clamp(2rem,5vw,4rem)}}
+/* The words keep a readable column (17 Nov 2026: three columns squeezed the sub-line to one word a line, the button over it): words +
+   buttons side by side with the figures on their own row, and all three in one row only on a wide screen. */
+@media (min-width:900px){.ahk-foot{grid-template-columns:minmax(18rem,1fr) auto;gap:clamp(1.5rem,4vw,3rem) clamp(2rem,5vw,4rem)}.ahk-foot .ahk-figs{grid-column:1/-1}}
+@media (min-width:1500px){.ahk-foot{grid-template-columns:minmax(22rem,1fr) auto auto}.ahk-foot .ahk-figs{grid-column:auto}}
 @media (max-width:899px){.ahk-foot .ahk-figs{padding-top:var(--s4);border-top:1px solid var(--line)}}
 
 /* pinned-story: a tall section, a sticky stage; switches chapters as --p moves (usePinProgress). Reduced motion: no pin, in flow. */

@@ -1,6 +1,7 @@
 "use client";
 // Renders the card saved in localStorage "vcard-preview" (written by /poster/card/build) with the real
 // website renderer. Nothing is sent anywhere; the page follows the preview live when the owner changes it.
+import { withoutBlockedStock, withoutSampleBadge } from "@/lib/stock-block";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { SiteView } from "@/components/site-view";
@@ -56,7 +57,7 @@ function readCard(): Card | null {
   try {
     const raw = localStorage.getItem(storageKey());
     const c = raw ? (JSON.parse(raw) as Card) : null;
-    return c && Array.isArray(c.pages) && Array.isArray(c.links) ? c : null;
+    return c && Array.isArray(c.pages) && Array.isArray(c.links) ? withoutSampleBadge(withoutBlockedStock(c)) : null;
   } catch {
     return null;
   }

@@ -5,6 +5,7 @@
 // first Premium design shows (the basic one, if live, shows until then). The hourly cron /api/cron/site-live sends the "it is live" message
 // and clears the field. Pure module: the public route, the app and the API share it.
 import type { Card } from "@/lib/types";
+import { withoutBlockedStock, withoutSampleBadge } from "@/lib/stock-block";
 
 /** Hours from the build to the website going live. The promise shown is 24–48 so an early morning build still reads true. */
 export const READY_HOURS = 24;
@@ -50,7 +51,7 @@ export function withoutSampleReviews<T extends Card>(card: T): T {
 
 /** The card as VISITORS see it: during the website's wait the card shows everywhere; during the Premium wait the basic website shows. */
 export function publicCard<T extends Card>(card0: T, now = Date.now()): T {
-  const card = withoutSampleReviews(card0);
+  const card = withoutSampleBadge(withoutBlockedStock(withoutSampleReviews(card0)));
   if (!card.site) return card;
   const s = card.site as SiteLike;
   const paused = s.paused === true;

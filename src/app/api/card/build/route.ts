@@ -13,6 +13,7 @@
 // The card is returned, not saved: the owner checks it and publishes. Free; rate-limited.
 // The build runs as a job (card-jobs.ts): it carries on when the screen is closed, a second tap joins it, and the
 // finished card waits on the server until the phone takes it.
+import { stockBlocked } from "@/lib/stock-block";
 import { researchTrade, researchText } from "@/lib/trade-research";
 import { NextResponse, after } from "next/server";
 import { claim, currentJob, jobView, startJob, touch, type BuildStage, type CardJob } from "@/lib/card-jobs";
@@ -571,7 +572,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   const samplePhotosP: Promise<(string | null)[]> = sampleRows.length ? (async () => {
     const urls: (string | null)[] = sampleRows.map(() => null);
     const skip = usedPhotoIds(me.id);
-    await pool(sampleSeeds.slice(0, sampleRows.length), 3, async (s, i) => { urls[i] = (await stockPhotoForProduct(me.id, s.en, setup.categoryLabel || setup.category || "", { skip, maxMs: 45_000 })).url; });
+    await pool(sampleSeeds.slice(0, sampleRows.length), 3, async (s, i) => { const u = (await stockPhotoForProduct(me.id, s.en, setup.categoryLabel || setup.category || "", { skip, maxMs: 45_000 })).url; urls[i] = stockBlocked(u) ? null : u; });
     return urls;
   })().catch(() => sampleRows.map(() => null)) : Promise.resolve([]);
   const guide = tdata ? {
@@ -660,7 +661,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     const pool = await mediaP;
     // This business's six from the trade's pool of twelve, by its name: the same shop gets the same pictures on
     // every rebuild, the next shop of the trade gets different ones (owner's call, 4 Oct 2026).
-    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}${fresh && wantsPhotos ? `|r${fresh.round}` : ""}`) } : null;
+    const media = pool ? { ...pool, photos: pickSix(pool.photos.filter((ph: { url?: string }) => !stockBlocked(ph.url)), `${setup.business}|${setup.person}|${setup.city}${fresh && wantsPhotos ? `|r${fresh.round}` : ""}`) } : null;
     stockUrls = media?.photos.map((p) => p.url) ?? [];
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.
@@ -718,7 +719,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
       if (!sampleNames.has(it.name.toLowerCase())) return it;
       const i = order.indexOf(it.name.toLowerCase());
       const photo = found[i] ?? (spare.length ? spare[(n++) % spare.length] : "");
-      return { ...it, sample: true, badge: "Sample", price: "", mrp: "", ...(photo ? { imageUrl: photo, images: [photo] } : {}) };
+      return { ...it, sample: true, price: "", mrp: "", ...(photo ? { imageUrl: photo, images: [photo] } : {}) };
     }) }) })) } as typeof built;
     console.log("[card] sample products", sampleRows.length, "photos", found.filter(Boolean).length);
   }
