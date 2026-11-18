@@ -1421,12 +1421,12 @@ export function tradeTint<T extends { palette: AdvancedSpec["palette"] }>(specs:
   // The ones that fit are counted first, so a repaired design never takes a colour a later design already wears.
   const fits = specs.map((x) => { const good = ok(x.palette) && !used.has(sig(x.palette)); if (good) used.add(sig(x.palette)); return good; });
   // A trade that is never dark (cleaning, clinics, schools, fresh produce): every design on a light page, its colour kept.
-  const lit = (x: T): T => (tc.lightOnly && x.palette.tone !== "light" ? ({ ...x, palette: { ...x.palette, tone: "light" } } as T) : x);
+  const lit = (x: T): T => (tc.lightOnly && (x.palette.tone !== "light" || !x.palette.deep) ? ({ ...x, palette: { ...x.palette, tone: "light", deep: true } } as T) : x);
   return specs.map((x, i) => {
     if (fits[i]) return lit(x);
     const next = tc.hexes.find((h) => !used.has(`brand|${h.color.toLowerCase()}`)) ?? tc.hexes[i % tc.hexes.length];
     used.add(`brand|${next.color.toLowerCase()}`);
-    const palette: AdvancedSpec["palette"] = { key: "brand", color: next.color, tone: tc.lightOnly ? "light" : x.palette.tone };
+    const palette: AdvancedSpec["palette"] = { key: "brand", color: next.color, tone: tc.lightOnly ? "light" : x.palette.tone, ...(tc.lightOnly ? { deep: true } : {}) };
     return { ...x, palette } as T;
   });
 }

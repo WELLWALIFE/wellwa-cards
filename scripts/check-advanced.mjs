@@ -84,7 +84,7 @@ const junk = (d = 0) => {
   if (d > 3 || t < 3) return pick([null, undefined, 0, 1.5, -7, "", "hero", "masthead", "\u0000", "#ffffff", true, [], {}, NaN, "x".repeat(200)]);
   if (t < 5) return Array.from({ length: Math.floor(rnd() * 6) }, () => junk(d + 1));
   const o = {};
-  const keys = [...SECTION_KEYS, "hero", "order", "sections", "palette", "fonts", "shape", "density", "motion", "seed", "archetype", "notes", "v", "key", "tone", "color", "luxe", "heading", "body", "toString", "constructor"];
+  const keys = [...SECTION_KEYS, "hero", "order", "sections", "palette", "fonts", "shape", "density", "motion", "seed", "archetype", "notes", "v", "key", "tone", "color", "luxe", "deep", "heading", "body", "toString", "constructor"];
   for (let i = 0, n = Math.floor(rnd() * 8); i < n; i++) o[pick(keys)] = junk(d + 1);
   return o;
 };

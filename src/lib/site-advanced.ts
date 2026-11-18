@@ -238,6 +238,9 @@ export type AdvancedPalette = {
   tone: "light" | "dark";
   /** Ivory paper, espresso ink, a gold line (jewellers, bridal, hotels). */
   luxe?: boolean;
+  /** The dark bands (call-back strip, number band, dark cards) in the design's own deep colour, not near-black: set for the trades that are
+   *  never dark (cleaning, clinics, schools - owner, 18 Nov 2026: "black jaisa"). */
+  deep?: boolean;
 };
 
 export type AdvancedSpec = {
@@ -315,7 +318,7 @@ export function validateSpec(input: unknown, fallbackSeed = "adv"): AdvancedSpec
     v: 1,
     seed: clean(o.seed, 80) || fallbackSeed,
     archetype: clean(o.archetype, 40) || SAFE_SPEC.archetype,
-    palette: { key, ...(key === "brand" && hex6(pal.color) ? { color: hex6(pal.color) } : {}), tone: pal.tone === "dark" ? "dark" : "light", ...(pal.luxe === true ? { luxe: true } : {}) },
+    palette: { key, ...(key === "brand" && hex6(pal.color) ? { color: hex6(pal.color) } : {}), tone: pal.tone === "dark" ? "dark" : "light", ...(pal.luxe === true ? { luxe: true } : {}), ...(pal.deep === true ? { deep: true } : {}) },
     fonts: {
       heading: has(HEADING_FONTS, fonts.heading) ? fonts.heading as string : SAFE_SPEC.fonts.heading,
       body: has(BODY_FONTS, fonts.body) ? fonts.body as string : SAFE_SPEC.fonts.body,
@@ -395,6 +398,8 @@ export function advancedVars(card: Pick<Card, "themeColor">, spec: AdvancedSpec)
   const devaHead = serif ? `"Tiro Devanagari Hindi"` : `"Hind"`;
   return [
     oklchVars(sp.h, pal.tone, { c: sp.c, luxe: pal.luxe }),
+    // After the palette's own tokens, so it wins: the same deep colour family as the footer, a shade lighter so the two never merge.
+    ...(pal.deep && pal.tone === "light" ? [`--hero-ink:oklch(.31 .09 ${sp.h})`] : []),
     `--font-display:${stackOf(spec.fonts.heading, serif, devaHead)}`,
     // The Devanagari text face first: its files carry a unicode-range, so Latin falls straight through to the chosen body face.
     `--font-text:"Noto Sans Devanagari", ${stackOf(spec.fonts.body, false, `"Mukta"`)}`,
