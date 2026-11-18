@@ -39,7 +39,11 @@ export const hue = (s: string) => { let h = 0; for (const c of s || "x") h = (h 
 export const isToday = (iso: string | null) => !!iso && new Date(iso).toLocaleDateString("en-CA", { timeZone: IST }) === new Date().toLocaleDateString("en-CA", { timeZone: IST });
 export const isPast = (iso: string | null) => !!iso && new Date(iso).getTime() < Date.now();
 export function fmtTime(iso: string, hi: boolean) { return new Date(iso).toLocaleTimeString(hi ? "hi-IN" : "en-IN", { timeZone: IST, hour: "numeric", minute: "2-digit" }); }
-export function fmtDay(iso: string, hi: boolean) { return new Date(iso).toLocaleDateString(hi ? "hi-IN" : "en-IN", { timeZone: IST, day: "numeric", month: "short" }); }
+/** "19 Nov" - and "19 Nov 2027" when it is not this year (a yearly renewal reminder read as if it were tomorrow, 18 Nov 2026). */
+export function fmtDay(iso: string, hi: boolean) {
+  const d = new Date(iso), yr = (x: Date) => x.toLocaleDateString("en-CA", { timeZone: IST }).slice(0, 4);
+  return d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { timeZone: IST, day: "numeric", month: "short", ...(yr(d) !== yr(new Date()) ? { year: "numeric" } : {}) });
+}
 export function fmtWhen(iso: string, hi: boolean) { return isToday(iso) ? `${hi ? "आज" : "Today"} ${fmtTime(iso, hi)}` : `${fmtDay(iso, hi)}, ${fmtTime(iso, hi)}`; }
 export function ago(iso: string | null | undefined, hi: boolean): string {
   if (!iso) return "";

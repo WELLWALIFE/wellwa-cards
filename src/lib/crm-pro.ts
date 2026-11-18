@@ -342,4 +342,5 @@ export async function patchCall(scope: Scope, id: string, p: { outcome?: Outcome
 }
 export const OUTCOME_TEXT: Record<string, string> = { connected: "Connected", no_answer: "No answer", busy: "Busy", switched_off: "Switched off", wrong_number: "Wrong number", call_back: "Call back later", not_interested: "Not interested", unknown: "Call" };
 
-export const fmtIst = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+/** "19 Nov, 11:00 am"; the year is added when it is not this year (a yearly reminder). */
+export const fmtIst = (iso: string) => { const d = new Date(iso), yr = (x: Date) => x.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }).slice(0, 4); return d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", ...(yr(d) !== yr(new Date()) ? { year: "numeric" } : {}), hour: "numeric", minute: "2-digit" }); };
