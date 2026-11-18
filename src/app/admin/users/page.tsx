@@ -304,6 +304,16 @@ export default function AdminUsers() {
     if (!quiet) { setLinkNote(r.ok ? `${code}: app login created — mobile ${d.login}${d.username ? `, username ${d.username}` : ""}.` : `${code}: ${d.error ?? r.status}`); if (r.ok) load(); }
     return r.ok;
   }
+  /** A partner ID made by mistake, removed from the tree for good. The partner panel refuses an ID that paid or has anyone under it. */
+  async function deleteId(u: User) {
+    const code = u.partner?.code; if (!code) return;
+    if (!confirm(`Remove partner ID ${code} (${u.name}) from the tree for good?\n\nThis cannot be undone. It works only for an ID that never paid and has nobody under it.`)) return;
+    setLinkNote("Working…");
+    const r = await fetch("/api/admin/users/partner-only", { method: "DELETE", headers: await adminHeaders(), body: JSON.stringify({ code }) });
+    const d = await r.json().catch(() => ({}));
+    setLinkNote(r.ok ? `${code} removed from the tree.` : `${code} was NOT removed: ${d.error ?? r.status}`);
+    if (r.ok) { setOpen(null); load(); }
+  }
   /** Every partner-only ID in the list (not the company root), one after another. */
   async function createAllLogins() {
     const list = users.filter((u) => !isAccount(u) && u.partner && !u.partner.isRoot);
@@ -587,6 +597,7 @@ export default function AdminUsers() {
                         {!acct && p && !p.isRoot && (
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             <button onClick={() => createLogin(u)} disabled={!live || !!creating} className={`${btn} border-brand text-brand-ink`} title="An app account for this ID: mobile login, name / username / email copied, tied to the ID">{creating === p.code ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />} Create app login</button>
+                            {!meFr && <button onClick={() => deleteId(u)} disabled={!live} className={`${btn} text-danger`} title="Remove this ID from the tree for good — only an ID that never paid and has nobody under it"><Trash2 className="h-3.5 w-3.5" /> Delete ID</button>}
                           </div>
                         )}
                       </div>

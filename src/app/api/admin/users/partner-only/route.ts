@@ -4,6 +4,7 @@
 //   GET   ?code=SH100180                      → the ID's details (for the edit form)
 //   PATCH { code, name?, username?, mobile?, email?, dob?, gender? }
 //                                             → saved on the partner ID (Staff Admin, tree, welcome letter)
+//   DELETE { code }                          → an unused ID (never paid, nobody under it) is removed from the tree
 //   POST  { op: "create_login", code }        → an app account for the ID: mobile login (like a mobile sign-up),
 //                                               its name / username / contact email copied over, tied to the ID.
 //                                               The person signs in with the mobile; the password is set with
@@ -58,6 +59,18 @@ export async function PATCH(request: Request) {
   if (b.gender !== undefined) pb.gender = S(b.gender, 10);
   if (Object.keys(pb).length <= 2) return Response.json({ error: "Nothing to change." }, { status: 400 });
   const r = await partnerCall("member_update", pb, 10000);
+  if (!r.ok) return Response.json({ error: r.data.error ?? (r.status === 404 ? `No partner ID ${code}.` : "partner panel not reachable") }, { status: r.status || 502 });
+  return Response.json({ ok: true, code });
+}
+
+/** DELETE { code } → the partner ID is removed from the tree for good (owner, 18 Nov 2026). The partner panel decides: only an ID that never
+ *  paid, has nobody under it and no records; anything else comes back with the reason and nothing is touched. */
+export async function DELETE(request: Request) {
+  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const code = S(b.code, 20).toUpperCase();
+  if (!CODE.test(code)) return Response.json({ error: "bad code" }, { status: 400 });
+  const r = await partnerCall<{ code?: string; name?: string }>("member_delete", { code, by: await who(request) }, 10000);
   if (!r.ok) return Response.json({ error: r.data.error ?? (r.status === 404 ? `No partner ID ${code}.` : "partner panel not reachable") }, { status: r.status || 502 });
   return Response.json({ ok: true, code });
 }
