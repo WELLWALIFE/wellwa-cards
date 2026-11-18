@@ -76,7 +76,7 @@ type View = "all" | "accounts" | "ids" | "partner" | "green" | "red" | "paid" | 
 const VIEWS: { id: View; label: string }[] = [
   { id: "all", label: "All" }, { id: "review", label: "To review" }, { id: "consumers", label: "Consumers" }, { id: "accounts", label: "App accounts" }, { id: "ids", label: "Partner IDs" }, { id: "partner", label: "Partner-only IDs" },
   { id: "green", label: "Green IDs" }, { id: "red", label: "Red IDs" }, { id: "paid", label: "Paid plan" },
-  { id: "check", label: "Check: same name / email / mobile" },
+  { id: "check", label: "Check: same email / mobile" },
 ];
 /** The account says one ID but is tied to another (or to none) — the old email-matching link left it mixed. */
 const mixed = (u: User) => u.kind !== "partner" && (u.associate || "") !== (u.partner?.code || "");
@@ -237,9 +237,10 @@ export default function AdminUsers() {
   }
 
   // Rows that share a name, email or mobile with another row — the place to spot one person with two IDs.
+  // The same email or the same mobile on two rows. A name is not counted (owner, 18 Nov 2026: "name to kisi ke bhi same ho sakte hain").
   const twins = useMemo(() => {
     const count = new Map<string, number>();
-    const keys = (u: User) => [norm(u.name) && `n:${norm(u.name)}`, norm(u.email) && `e:${norm(u.email)}`, norm(u.contactEmail ?? "") && `e:${norm(u.contactEmail ?? "")}`, digits(u.phone).length === 10 && `m:${digits(u.phone)}`, ...(u.phones ?? []).map((d) => `m:${d}`)].filter(Boolean) as string[];
+    const keys = (u: User) => [norm(u.email) && `e:${norm(u.email)}`, norm(u.contactEmail ?? "") && `e:${norm(u.contactEmail ?? "")}`, digits(u.phone).length === 10 && `m:${digits(u.phone)}`, ...(u.phones ?? []).map((d) => `m:${d}`)].filter(Boolean) as string[];
     for (const u of users) for (const k of keys(u)) count.set(k, (count.get(k) ?? 0) + 1);
     return new Set(users.filter((u) => keys(u).some((k) => (count.get(k) ?? 0) > 1)).map((u) => u.id));
   }, [users]);
@@ -526,7 +527,7 @@ export default function AdminUsers() {
                         ? <Link href={`/admin/users/${u.id}`} className="font-semibold text-brand-ink hover:underline">{u.name}</Link>
                         : <span className="font-semibold text-ink">{u.name}</span>}
                       {p?.isRoot && <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"><Crown className="h-3 w-3" /> ROOT</span>}
-                      {warn && <span title="Same name / email / mobile as another row, or the ID link needs fixing"><AlertTriangle className="h-3.5 w-3.5 text-amber-600" /></span>}
+                      {warn && <span title="Same email or mobile as another row, or the ID link needs fixing"><AlertTriangle className="h-3.5 w-3.5 text-amber-600" /></span>}
                     </div>
                     <p className="mono text-xs text-brand">{u.username ? `@${u.username}` : <span className="text-faint">no username</span>}</p>
                     <div className="mt-0.5 flex flex-wrap gap-1">
@@ -608,7 +609,7 @@ export default function AdminUsers() {
                           <>
                             <p className="text-xs text-muted">{p.isRoot ? "Top of the tree" : <>Sponsor <b className="text-ink">{p.sponsor ?? "—"}</b>{p.leg ? <> · {p.leg === "L" ? "Left" : "Right"} of {p.parent ?? "—"}</> : null}</>} · {p.directs} direct{p.directs === 1 ? "" : "s"}{p.subValidUntil ? ` · valid till ${p.subValidUntil}` : ""}</p>
                             {mixed(u) && <p className="mt-1 text-xs font-semibold text-amber-700">⚠ app shows {u.associate || "no ID"} — press Fix ID links</p>}
-                            {twins.has(u.id) && <p className="mt-1 text-xs font-semibold text-amber-700">Same name / email / mobile as another row</p>}
+                            {twins.has(u.id) && <p className="mt-1 text-xs font-semibold text-amber-700">Same email or mobile as another row</p>}
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {!p.isRoot && (acct
                                 ? <button onClick={() => unlinkId(u)} disabled={!live} className={btn}>Unlink ID</button>
