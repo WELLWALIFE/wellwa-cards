@@ -1120,10 +1120,10 @@ async function aiReply(jid, text, opts = {}) {
     || platformKnowledge.persona || "";
   const persona = personaText ? `\nPersona/tone: ${personaText}` : "";
   const brandK = brand?.brand_knowledge?.trim()
-    ? `\n\n${brand.brand_name || "BRAND"} KNOWLEDGE (company-wide product, price and spec facts):\n${brand.brand_knowledge.trim().slice(0, 14000)}`
+    ? `\n\n${brand.brand_name || "BRAND"} KNOWLEDGE (company-wide product, price and spec facts):\n${brand.brand_knowledge.trim().slice(0, 21000)}`
     : "";
   const brandFaq = brand?.brand_faq?.trim()
-    ? `\n\nCOMMON QUESTIONS & GOOD ANSWERS (match this style, translate to the customer's language):\n${brand.brand_faq.trim().slice(0, 8000)}`
+    ? `\n\nCOMMON QUESTIONS & GOOD ANSWERS (match this style, translate to the customer's language):\n${brand.brand_faq.trim().slice(0, 12000)}`
     : "";
   const globalK = platformKnowledge.knowledge
     ? `\n\nPlatform-wide info:\n${platformKnowledge.knowledge.slice(0, 3000)}`

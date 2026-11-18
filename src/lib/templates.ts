@@ -1324,7 +1324,7 @@ const vcardReseller: CardTemplateDef = {
             "🏦 Weekly payout, Wednesday transfer",
             "🧾 TDS as per law, no admin charge",
           ] },
-          { id: uid("vb", 6), kind: "pdf", title: "The Shubhora presentation (PDF)", fileLabel: "Shubhora-Presentation-Sep-2026.pdf", fileUrl: "/api/stock/demo/shubhora-presentation-2026-09.pdf", posterUrl: "/api/stock/demo/shubhora-presentation-cover.jpg", hint: "20 pages · the product, plans and prices, and the complete partner plan — BV, pairs, capping, ranks and payout rules · tap to download" },
+          { id: uid("vb", 6), kind: "pdf", title: "The Shubhora presentation (PDF)", fileLabel: "Shubhora-Presentation-Nov-2026.pdf", fileUrl: "/api/stock/demo/shubhora-presentation-2026-11.pdf", posterUrl: "/api/stock/demo/shubhora-presentation-cover.jpg", hint: "20 pages · the product, plans and prices, and the complete partner plan — BV, pairs, capping, ranks and payout rules · tap to download" },
           { id: uid("vb", 7), kind: "faq", title: "Questions people ask", items: [
             { q: "How much will I earn?", a: "Every pair pays ₹500. There are two binaries — new sales and renewals — each up to 10 pairs a day (₹5,000): up to ₹10,000 a day and ₹3,00,000 a month, paid every week to your bank. The more real businesses your team brings and keeps, the more you earn." },
             { q: "Is registration really free?", a: "Yes. Nobody has to buy anything to join. Turn your own plan on (Green ID) and every pair is paid." },

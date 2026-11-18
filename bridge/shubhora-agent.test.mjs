@@ -63,24 +63,24 @@ test("links: joining link from the owner's username, fallback, templates", () =>
   assert.ok(!l2.templates.some((t) => t.key === "vcard-reseller"));
 });
 
-test("facts: free for 1 year, own domain bought by the customer, plan caps, no callbacks", () => {
-  assert.match(SHUBHORA_KNOWLEDGE, /FREE for 1 year \(worth ₹1,499\)/);
+test("facts: no free card, own domain bought by the customer, the November 2026 plan, no callbacks", () => {
+  assert.match(SHUBHORA_KNOWLEDGE, /THERE IS NO FREE CARD OR FREE PLAN NOW/);
   assert.match(SHUBHORA_KNOWLEDGE, /personal domain \(yourbusiness\.com\) buys it itself from any domain company/);
-  assert.match(SHUBHORA_KNOWLEDGE, /1 pair = 2,500 BV on the left matched with 2,500 BV on the right .* = ₹500/);
-  assert.match(SHUBHORA_KNOWLEDGE, /up to 10 pairs a day in each binary = ₹5,000 a day per binary → up to ₹10,000 a day for both → up to ₹3,00,000 in a 30-day month/);
-  assert.match(SHUBHORA_KNOWLEDGE, /Every pair that forms is paid ₹500, by the plan's rules/);
-  assert.match(SHUBHORA_KNOWLEDGE, /the renewal is ₹1,499.*Never bring up the renewal yourself/s);
+  assert.match(SHUBHORA_KNOWLEDGE, /DIRECT SALE BONUS = 10% of the plan's BV.*₹250 on a Website Standard sale, ₹500 on a Website Premium sale/);
+  assert.match(SHUBHORA_KNOWLEDGE, /Website Standard ID up to ₹10,000 a day \(20 pairs × 2 closings × ₹250\); Website Premium ID up to ₹20,000 a day/);
+  assert.match(SHUBHORA_KNOWLEDGE, /Level 1 \(direct partners\) 40%, Level 2 20%, Level 3 20%, Level 4 10%, Level 5 10%/);
+  assert.match(SHUBHORA_KNOWLEDGE, /twice a day, at 3 PM and 3 AM.*Global Ambassador 6,00,000 — ₹60 crore.*every Wednesday, after TDS and a 5% admin charge/s);
   // no nervous disclaimers as facts (the owner, 27 Sep): the only mention is the rule against them
-  assert.doesNotMatch(SHUBHORA_KNOWLEDGE, /not a target or a promise|The cap is the most the plan can pay|No income guarantee/);
-  for (const t of [SHUBHORA_FAQ, SHUBHORA_PERSONA]) assert.doesNotMatch(t, /गारंटी\s*नहीं|guarantee|promise/i);
-  assert.match(SHUBHORA_FAQ, /हर पेयर का ₹500 प्लान के नियम से पक्का मिलता है/);
-  assert.match(SHUBHORA_FAQ, /1 साल बाद रिन्यूअल ₹1,499 है/);
+  assert.match(SHUBHORA_KNOWLEDGE, /INCOME IS NOT GUARANTEED and you never say it is/);
+  for (const t of [SHUBHORA_KNOWLEDGE, SHUBHORA_FAQ, SHUBHORA_PERSONA]) assert.doesNotMatch(t, /1,499|3,00,000 a month|हर पेयर पर ₹500|फ्री V-Card से/);
+  assert.match(SHUBHORA_FAQ, /नियम पक्का है — जो सेल होगी और जो पेयर बनेगा, उसका पैसा प्लान के हिसाब से मिलता है/);
+  assert.match(SHUBHORA_FAQ, /फ्री V-Card वाला ऑफर अब बंद हो गया है/);
   assert.match(SHUBHORA_FAQ, /वेबसाइट आपके Shubhora लिंक पर पहले दिन से चालू/);
   assert.doesNotMatch(SHUBHORA_FAQ, /डोमेन Shubhora नहीं देता/);
   for (const t of [SHUBHORA_KNOWLEDGE, SHUBHORA_FAQ, SHUBHORA_PERSONA]) {
     assert.doesNotMatch(t, /for ever|hamesha free|callback|call back/i);
   }
-  assert.match(SHUBHORA_FAQ, /1 साल तक फ्री/);
+  assert.match(SHUBHORA_FAQ, /TDS और 5% एडमिन चार्ज कटकर/);
   assert.equal(ownPersona(TEMPLATE_PERSONA), "");
   assert.equal(ownPersona("Friendly and short, Haryanvi touch"), "Friendly and short, Haryanvi touch");
 });
@@ -115,7 +115,7 @@ test("quick reads: openers, social, acks, menu numbers, topics, calls", () => {
   assert.equal(menuChoice("४"), 4);
   assert.equal(menuChoice("पार्टनर प्रोग्राम"), 4);
   assert.equal(menuChoice("अन्य जानकारी"), 5);
-  assert.equal(menuChoice("Free V-Card"), 1);
+  assert.equal(menuChoice("Website + V-Card"), 1);
   assert.equal(menuChoice("12"), 0);
   assert.ok(quickRead("pdf bhejo").topics.includes("pdf"));
   assert.ok(!quickRead("school app ki details").topics.includes("pdf"));
@@ -132,7 +132,7 @@ test("menu: the owner's format, card link, language line", () => {
     "नमस्ते जी! 🙏 मैं Niteen जी का AI असिस्टेंट हूँ।",
     "आप किस बारे में जानना चाहते हैं? (नंबर भेजें):",
     "",
-    "1️⃣ डिजिटल V-Card (फ्री/डेमो)",
+    "1️⃣ वेबसाइट + डिजिटल V-Card",
     "2️⃣ Shubhora सर्विसेज़",
     "3️⃣ कस्टम सॉफ्टवेयर",
     "4️⃣ पार्टनर प्रोग्राम",
@@ -147,18 +147,19 @@ test("menu: the owner's format, card link, language line", () => {
   assert.doesNotMatch(menuText({ lang: "hi", seller: "Niteen", cardUrl: links.card, web: true }), /🔗/);
 });
 
-test("menu options: free for 1 year, partner programme with the joining link and no call offer", () => {
+test("menu options: website + V-Card at ₹2,999 a year, partner programme with the joining link and no call offer", () => {
   const o1 = optionReply(1, { lang: "hi", seller: "Niteen", links });
-  assert.match(o1, /^डिजिटल V-Card ₹1,499 की वैल्यू का है — आपके लिए 1 साल तक बिल्कुल फ्री 🎉/);
-  assert.match(o1, /अपना फ्री कार्ड यहाँ से शुरू कीजिए 👉 https:\/\/shubhora.com\/join\/Delhi\n5 मिनट का वीडियो/, "the joining link first — no details asked");
+  assert.match(o1, /^आपकी अपनी वेबसाइट और डिजिटल V-Card — दोनों एक लिंक पर, सिर्फ ₹2,999 साल में \(GST सहित\) 🎉/);
+  assert.match(o1, /यहाँ से शुरू कीजिए 👉 https:\/\/shubhora.com\/join\/Delhi\nस्टेप-बाय-स्टेप वीडियो/, "the joining link first — no details asked");
   assert.match(o1, /मैं चेक करके बताऊँगा कि और अच्छा कैसे बने/);
   assert.ok(o1.indexOf(links.join) < o1.indexOf("आप क्या काम करते हैं?"), "the link comes before any question");
-  assert.match(optionReply(1, { lang: "en", seller: "Niteen", links }), /Start your free card here 👉 https:\/\/shubhora.com\/join\/Delhi/);
+  assert.match(optionReply(1, { lang: "en", seller: "Niteen", links }), /Start here 👉 https:\/\/shubhora.com\/join\/Delhi/);
   const o4 = optionReply(4, { lang: "hi", seller: "Niteen", links });
   assert.match(o4, /फ्री रजिस्ट्रेशन यहाँ से 👉 https:\/\/shubhora.com\/join\/Delhi/);
   assert.match(o4, /रजिस्ट्रेशन में कोई दिक्कत आए तो बताइए — मैं मदद करता हूँ।/);
-  assert.match(o4, /\[MEDIA\] https:\/\/shubhora.com\/api\/stock\/demo\/shubhora-presentation-2026-09.pdf$/);
-  assert.match(optionReply(1, { lang: "en", seller: "Niteen", links }), /free for you for a year/);
+  assert.match(o4, /\[MEDIA\] https:\/\/shubhora.com\/api\/stock\/demo\/shubhora-presentation-2026-11.pdf$/);
+  assert.match(optionReply(1, { lang: "en", seller: "Niteen", links }), /₹2,999 a year \(GST included\)/);
+  assert.doesNotMatch(o1 + o4, /1,499|फ्री कार्ड|₹3,00,000/);
   for (let n = 1; n <= 5; n++) for (const lang of ["hi", "en"]) {
     const r = optionReply(n, { lang, seller: "Niteen", links });
     assert.doesNotMatch(r, /Niteen|कॉल पर|call with|for ever|हमेशा/, `option ${n} ${lang}`);
@@ -215,9 +216,9 @@ test("cleaning: our links only, everyday Hindi, Roman words, placeholders, repea
 
 test("prompt: answers itself, facts, links, examples, no template tone", () => {
   const s = buildAgentSystem({ channel: "whatsapp", seller: "Niteen", card, links, lang: "hi", chat: { fresh: true, shared: ["card"] }, now: T0 });
-  for (const needle of ["YOU HANDLE IT YOURSELF", "NEVER offer on your own to connect them", "free for 1 year", "A personal domain only if they want one",
-    "up to ₹10,000 a day and ₹3,00,000 a month", "HOW YOU SELL — like a senior salesman", "never \"गारंटी नहीं\"", "हर पेयर का ₹500 प्लान के नियम से पक्का मिलता है",
-    "less than ₹100 a day", "renewal ₹1,499) only if they ask", "CARD CHECK", "अपना फ्री कार्ड यहाँ से शुरू कीजिए 👉",
+  for (const needle of ["YOU HANDLE IT YOURSELF", "NEVER offer on your own to connect them", "There is NO free card now", "A personal domain (.com / .in) only if they want one",
+    "up to ₹10,000 a day on a Standard ID and ₹20,000 on a Premium ID", "HOW YOU SELL — like a senior salesman", "never say income is guaranteed", "नियम पक्का है जी — जो सेल होगी और जो पेयर बनेगा",
+    "less than ₹100 a day", "less than ₹10 a day", "CARD CHECK", "यहाँ से शुरू कीजिए 👉",
     links.join, links.tutorial, links.planVideo, `[MEDIA] ${links.pdf}`, "templates/salon-spa", "PLAN FACTS", "DEVANAGARI",
     "ठीक है जी, मैं Niteen जी को बता देता हूँ — जैसे ही वो फ्री होंगे, आपसे बात कर लेंगे 🙏", "[[PERSONAL]]", "REPLY LANGUAGE"]) {
     assert.ok(s.includes(needle), needle);
@@ -226,20 +227,20 @@ test("prompt: answers itself, facts, links, examples, no template tone", () => {
   assert.ok(!s.includes("PRODUCT: old copy") && !s.includes("offer a callback"), "old frozen notes dropped");
   assert.ok(s.includes("My office: Jaipur"));
   assert.doesNotMatch(s, /for ever/i);
-  assert.doesNotMatch(s, /not a guarantee|ऊपरी लिमिट है, गारंटी नहीं|Shubhora डोमेन नहीं देता।/);
+  assert.doesNotMatch(s, /1,499|₹3,00,000 a month|फ्री कार्ड में न पैसा|Shubhora डोमेन नहीं देता।/);
   const web = buildAgentSystem({ channel: "web", seller: "Niteen", card, links, lang: "en", now: T0 });
   assert.ok(!web.includes("[[PERSONAL]]"));
 });
 
-test("no nervous disclaimers: 'गारंटी नहीं' goes, a made-up example keeps its note", () => {
-  assert.equal(dropDisclaimers("हर पेयर पर ₹500 — महीने में ₹3,00,000 तक। ये प्लान की ऊपरी लिमिट है, गारंटी नहीं।\nफ्री रजिस्ट्रेशन यहाँ से 👉 https://shubhora.com/join/Delhi"),
-    "हर पेयर पर ₹500 — महीने में ₹3,00,000 तक।\nफ्री रजिस्ट्रेशन यहाँ से 👉 https://shubhora.com/join/Delhi");
-  assert.equal(dropDisclaimers("Up to ₹3,00,000 a month. This is the cap, not a promise."), "Up to ₹3,00,000 a month.");
-  assert.equal(dropDisclaimers("No income guarantee."), "No income guarantee.", "nothing else left → kept rather than an empty reply");
-  const ex = "मान लीजिए लेफ्ट-राइट में 20-20 बिज़नेस जुड़ते हैं, तो 20 पेयर = ₹10,000 (ये उदाहरण है, गारंटी नहीं)।";
-  assert.equal(dropDisclaimers(ex), ex, "a made-up example keeps its short note");
-  assert.equal(hasDisclaimer("हर पेयर का ₹500 पक्का मिलता है"), false);
-  assert.equal(hasDisclaimer("कमाई की कोई गारंटी नहीं है"), true);
+test("capping add-ons go ('ये सिर्फ लिमिट है'); the plan's own 'income is not guaranteed' stays", () => {
+  assert.equal(dropDisclaimers("Standard ID पर रोज़ ₹10,000 तक। ये सिर्फ लिमिट है, टारगेट नहीं।\nफ्री रजिस्ट्रेशन यहाँ से 👉 https://shubhora.com/join/Delhi"),
+    "Standard ID पर रोज़ ₹10,000 तक।\nफ्री रजिस्ट्रेशन यहाँ से 👉 https://shubhora.com/join/Delhi");
+  assert.equal(dropDisclaimers("Up to ₹10,000 a day. This is the cap, not a target."), "Up to ₹10,000 a day.");
+  const honest = "नियम पक्का है — जो पेयर बनेगा उसका पैसा मिलता है। कमाई आपकी सेल पर है, तय रकम की कोई गारंटी नहीं।";
+  assert.equal(dropDisclaimers(honest), honest, "the honest answer about a guarantee is the plan's own line");
+  assert.equal(hasDisclaimer("हर सेल पर ₹250 Direct Bonus मिलता है"), false);
+  assert.equal(hasDisclaimer("कमाई की कोई गारंटी नहीं है"), false);
+  assert.equal(hasDisclaimer("ये सिर्फ लिमिट है"), true);
 });
 
 test("history → model messages: merged, gaps and the seller's own messages marked", () => {
@@ -273,8 +274,8 @@ test("new contact: Hi → menu → 1 → kirana → joining link → next-day nu
   assert.equal(r.calls.length, 0);
   assert.match(r.out.reply, /मैं Niteen जी का AI असिस्टेंट हूँ/);
   r = await say(c, "1");
-  assert.match(r.out.reply, /1 साल तक बिल्कुल फ्री/);
-  assert.match(r.out.reply, /अपना फ्री कार्ड यहाँ से शुरू कीजिए 👉 https:\/\/shubhora.com\/join\/Delhi/);
+  assert.match(r.out.reply, /सिर्फ ₹2,999 साल में/);
+  assert.match(r.out.reply, /यहाँ से शुरू कीजिए 👉 https:\/\/shubhora.com\/join\/Delhi/);
   assert.equal(c.state.stage, "self-card", "the joining link went out with option 1");
   r = await say(c, "kirana store hai", { answers: [`किराना के लिए कार्ड पर रेट लिस्ट और "WhatsApp पर ऑर्डर" बटन — ग्राहक घर बैठे ऑर्डर भेजेंगे। नमूना देखिए: ${links.card}\nऊपर वाला लिंक खोलकर शुरू कीजिए — कहीं अटकें तो बताइए।`] });
   assert.equal(c.state.stage, "self-card");
@@ -301,13 +302,13 @@ test("the AI answers itself: a draft that hands over to the partner is rewritten
   const c = newConvo();
   const r = await say(c, "kitna kama sakte hain?", { answers: [
     "कमाई की पूरी डिटेल Niteen जी आपको बताएँगे। चाहें तो Niteen जी से कॉल पर बात करवा दूँ?",
-    "एक पेयर ₹500 का है। दो बाइनरी हैं और हर बाइनरी में रोज़ ज़्यादा से ज़्यादा ₹5,000 — यानी महीने में ₹3,00,000 तक। ये ऊपरी लिमिट है, गारंटी नहीं।",
+    "हर पेयर पर 10% — Standard ID पर ₹250; रोज़ 2 क्लोज़िंग, यानी रोज़ ₹10,000 तक। ये सिर्फ लिमिट है, टारगेट नहीं।",
   ] });
   assert.equal(r.calls.length, 2);
   assert.match(r.calls[1].system, /handed the customer over to Niteen/);
-  assert.match(r.out.reply, /₹3,00,000 तक/);
+  assert.match(r.out.reply, /₹10,000 तक/);
   assert.doesNotMatch(r.out.reply, /Niteen/);
-  assert.doesNotMatch(r.out.reply, /गारंटी/, "no nervous 'no guarantee' line");
+  assert.doesNotMatch(r.out.reply, /लिमिट है/, "no nervous add-on about the capping");
   // both drafts hand over → only those sentences go
   const c2 = newConvo();
   const r2 = await say(c2, "red id kya hoti hai", { answers: [
@@ -362,7 +363,7 @@ test("PDF always goes out as the file; the right video goes with it", async () =
   let c = newConvo();
   let r = await say(c, "pdf bhejo", { answers: ["ये रही पूरी डिटेल 👇"] });
   assert.match(r.calls[0].system, /They want the PDF .*the Shubhora video/);
-  assert.match(r.out.reply, /\[MEDIA\] https:\/\/shubhora.com\/api\/stock\/demo\/shubhora-presentation-2026-09.pdf$/);
+  assert.match(r.out.reply, /\[MEDIA\] https:\/\/shubhora.com\/api\/stock\/demo\/shubhora-presentation-2026-11.pdf$/);
   c = newConvo();
   r = await say(c, "business plan ki pdf bhejo", { answers: ["ये रहा पूरा प्लान 👇"] });
   assert.match(r.calls[0].system, /They want the PDF .*the partner-plan video/);
@@ -382,7 +383,7 @@ test("language switch: 'English' on a new chat → English menu, remembered", as
   const c = newConvo();
   await say(c, "Hello");
   let r = await say(c, "English");
-  assert.match(r.out.reply, /1️⃣ Digital V-Card \(free\/demo\)/);
+  assert.match(r.out.reply, /1️⃣ Website \+ digital V-Card/);
   assert.doesNotMatch(r.out.reply, /🔗/, "the card link was already in the Hindi menu");
   assert.equal(c.state.langExplicit, true);
   r = await say(c, "4");
