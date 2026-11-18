@@ -67,15 +67,18 @@ function dressApart(tc: TradeColours, looks: Look[]): Look[] {
   // Only the trade's own palettes (17 Nov 2026: a cleaning company's looks came in crimson, plum and saffron).
   const variety = tc.palettes.map((palette, i) => ({ palette, font: VARIETY_FONTS[i % VARIETY_FONTS.length] }));
   const festive = tc.palettes.includes("saffron") ? "saffron" : null;
-  const pool = variety.filter((v) => v.palette !== first.palette && v.palette !== festive);
+  // A trade that is never dark (cleaning, clinics, schools) has no black look at all: its full-photo look wears a colour of the family.
+  const pool = variety.filter((v) => v.palette !== first.palette && v.palette !== festive && !(tc.lightOnly && v.palette === tc.dark));
   return looks.map((l, i) => {
     if (i === 0 || !pool.length) return l;
     const { color: _c, ...rest } = l.style; void _c;
     // The pages are paper under every other blueprint, so a dark palette would only darken the text there: the dark one is the cinematic look's.
-    if (l.key === "cinematic" && first.palette !== tc.dark) return { ...l, style: { ...rest, palette: tc.dark, font: hindi ? "hindi" : "luxury", body: "dark" } };
+    if (l.key === "cinematic" && !tc.lightOnly && first.palette !== tc.dark) return { ...l, style: { ...rest, palette: tc.dark, font: hindi ? "hindi" : "luxury", body: "dark" } };
     // The festive, local one (owner's list, 16 Nov 2026), for the trades saffron belongs to: saffron and a rangoli-like ring pattern.
     if (l.key === "collage" && festive && first.palette !== festive) return { ...l, style: { ...rest, palette: festive, font: hindi ? "hindi" : "honest", pattern: "rings" } };
-    const pick = pool.shift() ?? variety[i % variety.length];
+    // The full-photo look needs a colour that carries white type: never the paper-white palettes.
+    const at = l.key === "cinematic" ? pool.findIndex((v) => !LIGHT.has(v.palette)) : 0;
+    const pick = (at >= 0 ? pool.splice(at, 1)[0] : pool.shift()) ?? variety[i % variety.length];
     const font = pick.font === first.font ? VARIETY_FONTS[(i + 3) % VARIETY_FONTS.length] : pick.font;
     return { ...l, style: { ...rest, palette: pick.palette, font: hindi ? "hindi" : font } };
   });

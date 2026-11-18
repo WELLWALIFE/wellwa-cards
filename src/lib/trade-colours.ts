@@ -13,12 +13,15 @@ export type TradeColours = {
   palettes: string[];
   /** The dark palette of the full-photo look. */
   dark: string;
+  /** No dark pages for this trade (owner, 18 Nov 2026: a cleaning company's designs came out "black jaisa"): hygiene, children and
+   *  fresh produce read clean and bright, so every design is on a light page. */
+  lightOnly: boolean;
 };
 
 const L = (color: string): TradeHex => ({ color, tone: "light" });
 const D = (color: string): TradeHex => ({ color, tone: "dark" });
 
-const FAMILIES: Record<string, Omit<TradeColours, "family">> = {
+const FAMILIES: Record<string, Omit<TradeColours, "family" | "lightOnly">> = {
   // clean water, hygiene, health: blues, teals, fresh greens
   fresh: { hexes: [L("#0d95d2"), L("#0c8590"), L("#2150d9"), D("#0f6070"), L("#1e8a5a"), L("#3f5f80"), D("#1763b8"), D("#0a7a6a")], palettes: ["ocean", "teal", "pearl", "emerald", "steel", "sage", "midnight"], dark: "midnight" },
   // stock, rates, machines, repairs: trusted blues and steel, one working orange
@@ -56,10 +59,13 @@ const KEY_FAMILY: Record<string, string> = {
   ayurveda: "nature", spa: "living", security: "pro", it: "pro", courier: "trade", printing: "trade",
 };
 
+const LIGHT_ONLY = new Set(["fresh", "kids", "nature"]);
 export function tradeColours(categoryKey: string | undefined | null, group: string | undefined | null): TradeColours {
   const key = (categoryKey ?? "").trim().toLowerCase();
   const family = KEY_FAMILY[key] ?? GROUP_FAMILY[(group ?? "").trim().toLowerCase()] ?? "pro";
-  return { family, ...FAMILIES[family] };
+  const f = FAMILIES[family], lightOnly = LIGHT_ONLY.has(family);
+  // A never-dark trade has no dark palette to fit: a website already on one is moved to the family's first.
+  return { family, ...f, palettes: lightOnly ? f.palettes.filter((p) => p !== f.dark) : f.palettes, lightOnly };
 }
 
 /** Is this named palette one the trade may wear? */
