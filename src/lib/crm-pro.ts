@@ -262,7 +262,9 @@ const SERVICE_RE = /^\[service:(\d{1,2})\]/;
 export const serviceMonths = (text: string) => { const m = SERVICE_RE.exec(text ?? ""); const n = m ? Number(m[1]) : 0; return n >= 1 && n <= 36 ? n : 0; };
 /** 11 am IST, N months after `from`. */
 export function monthsLater(from: Date, n: number): string {
-  const x = new Date(from.getTime() + 5.5 * 3600_000); x.setUTCMonth(x.getUTCMonth() + n); x.setUTCHours(11, 0, 0, 0);
+  const x = new Date(from.getTime() + 5.5 * 3600_000);
+  // The 31st plus one month is the last day of the next month, not the 3rd of the one after (found 18 Nov 2026).
+  const day = x.getUTCDate(); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth() + n); x.setUTCDate(Math.min(day, new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth() + 1, 0)).getUTCDate())); x.setUTCHours(11, 0, 0, 0);
   return new Date(x.getTime() - 5.5 * 3600_000).toISOString();
 }
 export async function createServiceTask(scope: Scope, leadId: string, months: number, what: string, from = new Date()): Promise<TaskRow | null> {
@@ -270,6 +272,25 @@ export async function createServiceTask(scope: Scope, leadId: string, months: nu
   const open = list(await restAsService<{ id: string }[]>(`crm_tasks?lead_id=eq.${leadId}&owner_id=eq.${scope.ownerId}&done_at=is.null&text=like.${enc("[service:*")}&select=id&limit=1`));
   if (open.length) return null;
   return createTask(scope, { lead_id: leadId, kind: "call", title: `🔧 Service${what ? ` — ${what}` : ""}`.slice(0, 120), text: `[service:${months}] ${what}`.slice(0, 1000), due_at: monthsLater(from, months), source: "auto" });
+}
+/* ---------------- repeat reminders (owner, 18 Nov 2026: renewal / AMC / premium without a sale) ---------------- */
+/** A reminder that comes back carries "[repeat:N]" at the start of its text: N months between two of them. When it is done the same
+ *  reminder (kind and title) is made N months after its DUE date - a policy that renews on the 5th stays on the 5th even when the
+ *  call was made late - and never in the past. Not for WhatsApp tasks: their text is the message that is sent. */
+const REPEAT_RE = /^\[repeat:(\d{1,2})\]/;
+export const repeatMonths = (text: string) => { const m = REPEAT_RE.exec(text ?? ""); const n = m ? Number(m[1]) : 0; return n >= 1 && n <= 36 ? n : 0; };
+export const withRepeat = (text: string, months: number) => { const rest = (text ?? "").replace(REPEAT_RE, "").trim(); return months >= 1 && months <= 36 ? `[repeat:${Math.round(months)}] ${rest}`.trim() : rest; };
+async function nextRepeatAfter(scope: Scope, t: Pick<TaskRow, "lead_id" | "text" | "title" | "kind" | "due_at" | "assigned_to">): Promise<void> {
+  const n = repeatMonths(t.text);
+  if (!n || t.kind === "whatsapp") return;
+  // Done, undone and done again must not make two: an open one with the same title is the next one already.
+  if (t.lead_id) {
+    const open = list(await restAsService<{ id: string; title: string }[]>(`crm_tasks?lead_id=eq.${t.lead_id}&owner_id=eq.${scope.ownerId}&done_at=is.null&text=like.${enc("[repeat:*")}&select=id,title&limit=20`));
+    if (open.some((o) => o.title === t.title)) return;
+  }
+  let due = monthsLater(new Date(t.due_at), n);
+  for (let i = 0; i < 40 && new Date(due).getTime() < Date.now(); i += 1) due = monthsLater(new Date(due), n);
+  await createTask(scope, { lead_id: t.lead_id, kind: t.kind, title: t.title, text: t.text, due_at: due, assigned_to: t.assigned_to, source: "auto" }).catch(() => null);
 }
 /** A finished service reminder makes the next one. */
 export async function nextServiceAfter(scope: Scope, t: Pick<TaskRow, "lead_id" | "text" | "title">): Promise<void> {
@@ -293,7 +314,7 @@ export async function patchTask(scope: Scope, id: string, p: { done?: boolean; o
   const task = Array.isArray(r.data) ? r.data[0] : null;
   if (task && task.lead_id) {
     if (p.done === true) await addEvent(scope.token, scope.ownerId, task.lead_id, "task_done", `☑ ${task.title || task.kind}${task.outcome ? ` — ${task.outcome}` : ""}`).catch(() => null);
-    if (p.done === true && !before.done_at) await nextServiceAfter(scope, task);
+    if (p.done === true && !before.done_at) { await nextServiceAfter(scope, task); await nextRepeatAfter(scope, task); }
     else if (p.snooze_to) await addEvent(scope.token, scope.ownerId, task.lead_id, "followup", `⏰ ${task.title || task.kind} → ${fmtIst(task.due_at)}`).catch(() => null);
   }
   return task;

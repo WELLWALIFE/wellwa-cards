@@ -37,6 +37,8 @@ export function TaskSheet({ leadId, task, onClose, onSaved }: { leadId: string |
   const [title, setTitle] = useState(task?.title ?? "");
   const [key, setKey] = useState<string>(task ? "custom" : "tomorrow11");
   const [custom, setCustom] = useState(task ? toLocalInput(task.due_at) : "");
+  /** Months between two of these (renewal, AMC, premium); 0 = once. Only when the reminder is new and about a customer. */
+  const [repeat, setRepeat] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const due = key === "custom" ? (custom ? new Date(custom).toISOString() : "") : moments.find((m) => m.key === key)?.iso ?? "";
@@ -44,7 +46,7 @@ export function TaskSheet({ leadId, task, onClose, onSaved }: { leadId: string |
     if (!due || busy) return; setBusy(true); setErr("");
     const r = task
       ? await api<{ task: Task; error?: string }>("/api/crm/tasks", { method: "PATCH", json: { id: task.id, as: as ?? undefined, kind, title: title.trim(), due_at: due } })
-      : await api<{ task: Task; error?: string }>("/api/crm/tasks", { method: "POST", json: { lead_id: leadId, as: as ?? undefined, kind, title: title.trim() || kindLabel(L, kind), due_at: due } });
+      : await api<{ task: Task; error?: string }>("/api/crm/tasks", { method: "POST", json: { lead_id: leadId, as: as ?? undefined, kind, title: title.trim() || kindLabel(L, kind), due_at: due, repeat_months: kind !== "whatsapp" && repeat ? repeat : undefined } });
     setBusy(false);
     if (!r.ok) { setErr(r.data.error || L.failed); return; }
     onSaved(r.data.task); onClose();
@@ -59,6 +61,12 @@ export function TaskSheet({ leadId, task, onClose, onSaved }: { leadId: string |
           {key === "custom" && <input type="datetime-local" value={custom} onChange={(e) => setCustom(e.target.value)} className={inputCls + " mt-1.5"} />}
           {due && <p className="mt-1 text-[11px] text-muted">→ {fmtWhen(due, L.hi)}</p>}
         </div>
+        {!task && leadId && kind !== "whatsapp" && (
+          <div><div className="mb-1 text-xs text-muted">{L.hi ? "दोहराएँ (renewal, AMC, किस्त)" : "Repeat (renewal, AMC, premium)"}</div>
+            <div className="flex flex-wrap gap-1.5">{[0, 1, 3, 6, 12].map((n) => <Chip key={n} on={repeat === n} onClick={() => setRepeat(n)}>{n === 0 ? (L.hi ? "एक बार" : "Once") : n === 12 ? (L.hi ? "हर साल" : "Every year") : L.hi ? `हर ${n} महीने` : n === 1 ? "Every month" : `Every ${n} months`}</Chip>)}</div>
+            {repeat > 0 && <p className="mt-1 text-[11px] text-muted">{L.hi ? "पूरा करते ही अगला अपने-आप बन जाएगा, उसी तारीख के हिसाब से।" : "When you mark it done, the next one is made by itself, on the same day of the month."}</p>}
+          </div>
+        )}
         {err && <p role="alert" className="text-xs text-danger">{err}</p>}
         <button type="button" disabled={!due || busy} onClick={save} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl py-2.5 font-semibold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {L.save}</button>
       </div>
@@ -86,7 +94,7 @@ export function TaskRow({ task, onChanged, showLead }: { task: Task; onChanged: 
     <div className={`flex items-start gap-2 rounded-xl border border-border px-2.5 py-2 text-xs ${done ? "opacity-60" : ""}`}>
       <button type="button" disabled={!!busy} onClick={() => patch({ done: !done }, "done")} className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${done ? "border-good bg-good text-white" : "border-border"}`} aria-label={L.done}>{busy === "done" ? <LoaderCircle className="h-3 w-3 animate-spin" /> : done ? <Check className="h-3 w-3" /> : null}</button>
       <div className="min-w-0 flex-1">
-        <p className={`flex items-center gap-1 font-semibold text-ink ${done ? "line-through" : ""}`}><I className="h-3.5 w-3.5 text-brand" /> {task.title || kindLabel(L, task.kind)}{showLead && <span className="font-normal text-muted">· {showLead}</span>}</p>
+        <p className={`flex items-center gap-1 font-semibold text-ink ${done ? "line-through" : ""}`}><I className="h-3.5 w-3.5 text-brand" /> {task.title || kindLabel(L, task.kind)}{/^\[repeat:\d{1,2}\]/.test(task.text ?? "") && <span title={L.hi ? "दोहराता है" : "Repeats"}>🔁</span>}{showLead && <span className="font-normal text-muted">· {showLead}</span>}</p>
         <p className={`${late ? "text-danger" : "text-muted"}`}>{fmtWhen(task.due_at, L.hi)}{late ? ` · ${L.overdueTag}` : ""}{task.outcome ? ` · ${task.outcome}` : ""}</p>
         {err && <p className="text-danger">{err}</p>}
       </div>

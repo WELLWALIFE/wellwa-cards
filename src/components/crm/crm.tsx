@@ -628,9 +628,30 @@ export function Profile({ lead, events, error, onClose, onSave }: { lead: Lead; 
 }
 
 /* ---------------- add lead ---------------- */
+/** "Ramesh Sharma 98765 43210 Jaipur" → name, +91 number, city. Digits may come in groups or as Hindi numerals. */
+export function spokenLead(said: string): { name: string; phone: string; city: string } {
+  const t = said.replace(/[०-९]/g, (d) => String("०१२३४५६७८९".indexOf(d))).replace(/[,.;:|-]/g, " ").replace(/\s+/g, " ").trim();
+  const m = /(\+?\d[\d ]{8,}\d)/.exec(t);
+  if (!m) return { name: t.replace(/\d+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80), phone: "", city: "" };
+  let d = m[1].replace(/\D/g, ""); if (d.length > 10 && d.startsWith("91")) d = d.slice(-10); if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  const clean = (x: string) => x.replace(/\b(mobile|number|no|phone|naam|name|city|shahar|se|ka|ki|hai)\b/gi, " ").replace(/\s+/g, " ").trim();
+  return { name: clean(t.slice(0, m.index)).slice(0, 80), phone: d.length === 10 ? d : "", city: clean(t.slice(m.index + m[1].length)).slice(0, 60) };
+}
 export function AddLead({ ctx, onClose, onAdded }: { ctx: Ctx; onClose: () => void; onAdded: (l: Lead) => void }) {
   const [f, setF] = useState({ name: "", phone: "", city: "", note: "" });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  // Say it instead of typing it (owner, 18 Nov 2026): "Ramesh Sharma 98765 43210 Jaipur" - the ten digits are the number, the words
+  // before them the name, the words after them the city. The phone's own speech recognition; nothing is saved until "Add lead".
+  const [listening, setListening] = useState(false);
+  type Rec = { lang: string; interimResults: boolean; onresult: ((e: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void };
+  const SR = typeof window === "undefined" ? undefined : ((window as unknown as { SpeechRecognition?: new () => Rec; webkitSpeechRecognition?: new () => Rec }).SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: new () => Rec }).webkitSpeechRecognition);
+  function speak() {
+    if (!SR || listening) return;
+    const r = new SR(); r.lang = "hi-IN"; r.interimResults = false;
+    r.onresult = (e) => { const heard = spokenLead(e.results?.[0]?.[0]?.transcript ?? ""); setF((x) => ({ ...x, phone: heard.phone || x.phone, name: heard.name || x.name, city: heard.city || x.city })); if (!heard.phone) setErr("Number not heard clearly — say all ten digits, or type it."); else setErr(""); };
+    r.onend = () => setListening(false); r.onerror = () => setListening(false);
+    setListening(true); r.start();
+  }
   async function add() {
     setBusy(true); setErr("");
     const r = await api<{ lead: Lead; error?: string; id?: string }>("/api/crm/lead", { method: "POST", json: { ...f, as: ctx.as ?? undefined } });
@@ -641,6 +662,7 @@ export function AddLead({ ctx, onClose, onAdded }: { ctx: Ctx; onClose: () => vo
   return (
     <Sheet title="Add lead" onClose={onClose}>
       <div className="space-y-2 text-sm">
+        {SR && <button type="button" onClick={speak} disabled={listening} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2 text-xs font-semibold text-brand-ink disabled:opacity-60">🎤 {listening ? "Listening… say the name, then the number" : "Speak: name, mobile number, city"}</button>}
         <input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} inputMode="tel" placeholder="Mobile number *" className={inputCls} autoFocus />
         <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Name" className={inputCls} />
         <input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} placeholder="City" className={inputCls} />

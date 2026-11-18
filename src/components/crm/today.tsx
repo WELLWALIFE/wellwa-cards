@@ -36,6 +36,32 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
   const callable: CallListItem[] = [...dueNow, ...d.callbacks, ...[...d.fresh].reverse()]
     .filter((x, i, a) => a.findIndex((y) => y.lead.id === x.lead.id) === i && x.lead.phone && !calledJustNow(x))
     .map((x) => ({ lead: x.lead, task: x.task, why: x.why }));
+  // "Who first?" (owner, 18 Nov 2026): the five people worth the first calls of the day, each with the reason in words. Worked out from
+  // what the CRM already knows - how late the follow-up is, hot / stars, the unread message, the deal's value, the AI's score and its
+  // suggested next step - so it costs nothing and is there the moment the screen opens.
+  const first = (() => {
+    const seen = new Map<string, { x: Item; pts: number; why: string[] }>();
+    const add = (x: Item, pts: number, why: string) => {
+      if (!x.lead.phone || x.lead.id.startsWith("b-") || calledJustNow(x)) return;
+      const e = seen.get(x.lead.id) ?? { x, pts: 0, why: [] as string[] };
+      e.pts += pts; if (why && !e.why.includes(why)) e.why.push(why); if (x.task && !e.x.task) e.x = x;
+      seen.set(x.lead.id, e);
+    };
+    for (const x of d.overdue) { const days = x.task ? Math.max(0, Math.floor((nowMs - new Date(x.task.due_at).getTime()) / 864e5)) : 0; add(x, 40 + Math.min(20, days * 4), days >= 1 ? (L.hi ? `follow-up ${days} दिन late` : `follow-up ${days} day${days === 1 ? "" : "s"} late`) : (L.hi ? "follow-up का समय निकल गया" : "follow-up time has passed")); }
+    for (const x of dueNow) add(x, 30, L.hi ? "आज का follow-up" : "follow-up due today");
+    for (const x of d.callbacks) add(x, 34, L.hi ? "call back माँगा था" : "asked for a call back");
+    for (const x of d.unread) add(x, 22, L.hi ? "message का जवाब बाकी" : "message waiting for a reply");
+    for (const x of d.fresh) add(x, 18, L.hi ? "नया lead, अभी call नहीं हुई" : "new lead, not called yet");
+    for (const x of d.cold) add(x, 8, L.hi ? "ठंडा पड़ रहा है" : "going cold");
+    for (const e of seen.values()) {
+      const l = e.x.lead, t = tempOf(l), st = starsOf(l.tags);
+      if (t === "hot") { e.pts += 25; e.why.push("🔥 Hot"); } else if (t === "warm") e.pts += 8;
+      if (st) { e.pts += st * 5; e.why.push(`${st}⭐`); }
+      if (l.value_paise > 0) { e.pts += Math.min(15, Math.log10(l.value_paise / 100 + 1) * 3); e.why.push(`₹${Math.round(l.value_paise / 100).toLocaleString("en-IN")}`); }
+      e.pts += Math.min(10, (l.score ?? 0) / 10);
+    }
+    return [...seen.values()].sort((a, b) => b.pts - a.pts).slice(0, 5);
+  })();
   const nextLater = laterToday.map((x) => x.task!.due_at).sort()[0];
   const total = d.overdue.length + d.due.length + d.unread.length + d.fresh.length + d.bookings.length + d.callbacks.length + d.cold.length;
   const date = new Date().toLocaleDateString(L.hi ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" });
@@ -60,6 +86,24 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
         ))}
       </div>
       {callable.length > 0 && <button type="button" onClick={() => onCallList(callable)} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white"><PhoneCall className="h-4 w-4" /> {L.startCalling(callable.length)}</button>}
+      {first.length >= 2 && (
+        <section className="overflow-hidden rounded-2xl border border-ai/30 bg-ai/5">
+          <p className="px-3 pt-2 text-xs font-bold uppercase tracking-wide text-ai">✨ {L.hi ? "सबसे पहले इन्हें" : "Call these first"}</p>
+          <ol className="divide-y divide-border/60">
+            {first.map((e, i) => (
+              <li key={e.x.lead.id} className="flex items-center gap-2 px-3 py-2">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-ai/15 text-[11px] font-bold text-ai">{i + 1}</span>
+                <button type="button" onClick={() => openCustomer(e.x.lead.id)} className="min-w-0 flex-1 text-left">
+                  <p className="truncate text-sm font-semibold text-ink">{e.x.lead.name || e.x.lead.phone}</p>
+                  <p className="truncate text-[11px] text-muted">{e.why.slice(0, 4).join(" · ")}</p>
+                  {e.x.lead.ai_next && <p className="truncate text-[11px] text-ai">→ {e.x.lead.ai_next}</p>}
+                </button>
+                <button type="button" onClick={() => startCall(e.x.lead, load)} className="rounded-lg bg-brand-soft p-2 text-brand-ink" aria-label={L.call}><Phone className="h-4 w-4" /></button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       {laterToday.length > 0 && nextLater && <p className="text-center text-[11px] text-muted">{L.hi ? `⏳ आज बाद में ${laterToday.length} call — अपने समय पर list में आएँगे (अगली ${fmtTime(nextLater, true)} बजे)` : `⏳ ${laterToday.length} more call${laterToday.length === 1 ? "" : "s"} later today — they join the list at their time (next at ${fmtTime(nextLater, false)})`}</p>}
       {err && <p className="text-xs text-danger">{err}</p>}
       {total === 0 && <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">{L.allClear}</p>}

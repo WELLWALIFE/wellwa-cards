@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { resolveScope } from "@/lib/crm-server";
-import { createTask, patchTask, deleteTask, isUuid, isTeamMember, TASK_COLS, TASK_KINDS, type TaskKind, type TaskRow } from "@/lib/crm-pro";
+import { createTask, patchTask, deleteTask, isUuid, isTeamMember, TASK_COLS, TASK_KINDS, type TaskKind, type TaskRow, withRepeat } from "@/lib/crm-pro";
 
 const enc = encodeURIComponent;
 const iso = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   // An agent's task is always their own; the owner / a manager may hand it to someone in the team (and nobody else).
   const assigned_to = scope.role !== "agent" && isUuid(b.assigned_to) ? b.assigned_to : undefined;
   if (assigned_to && !(await isTeamMember(scope.ownerId, assigned_to))) return NextResponse.json({ error: "That person is not in your team." }, { status: 400 });
-  const task = await createTask(scope, { lead_id, kind, title: String(b.title ?? "").trim(), text: typeof b.text === "string" ? b.text : "", due_at: due, assigned_to, remind_at: iso(b.remind_at), source: b.source === "ai" ? "ai" : "manual" });
+  const task = await createTask(scope, { lead_id, kind, title: String(b.title ?? "").trim(), text: kind !== "whatsapp" && Number(b.repeat_months) >= 1 ? withRepeat(typeof b.text === "string" ? b.text : "", Number(b.repeat_months)) : typeof b.text === "string" ? b.text : "", due_at: due, assigned_to, remind_at: iso(b.remind_at), source: b.source === "ai" ? "ai" : "manual" });
   if (!task) return NextResponse.json({ error: "Could not save the task. Please try again." }, { status: 502 });
   return NextResponse.json({ task });
 }
