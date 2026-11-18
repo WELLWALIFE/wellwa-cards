@@ -22,11 +22,12 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
     setBusy(false); if (!r.ok) { setErr(r.data.error || L.failed); return; } setP(r.data.prefs); setOk(true); onChanged();
   }
   async function exportCsv() {
-    const rows = [["Name", "Phone", "City", "Business", "Stage", "Kind", "Tags", "Score", "Value", "Follow-up", "Source", "Calls", "Last activity", "Notes", "Created"]];
+    const own = ws.prefs.fields ?? [];   // the business's own fields, one column each
+    const rows = [["Name", "Phone", "City", "Business", "Stage", "Kind", "Tags", "Score", "Value", "Follow-up", "Source", "Calls", "Last activity", "Notes", "Created", ...own.map((f) => f.label)]];
     for (let page = 0; page < 40; page += 1) {
-      const r = await api<{ leads: Record<string, unknown>[]; more: boolean }>(`/api/crm/leads?page=${page}${as ? `&as=${as}` : ""}`);
+      const r = await api<{ leads: Record<string, unknown>[]; more: boolean }>(`/api/crm/leads?page=${page}${own.length ? "&extra=1" : ""}${as ? `&as=${as}` : ""}`);
       if (!r.ok) break;
-      for (const l of r.data.leads) rows.push([l.name, l.phone, l.city, l.business, l.status, l.kind, (l.tags as string[] ?? []).join(" "), l.score, Number(l.value_paise ?? 0) / 100, l.next_follow_up ?? "", l.source, l.calls_count, l.last_activity_at, l.notes, l.created_at].map((v) => String(v ?? "")));
+      for (const l of r.data.leads) rows.push([l.name, l.phone, l.city, l.business, l.status, l.kind, (l.tags as string[] ?? []).join(" "), l.score, Number(l.value_paise ?? 0) / 100, l.next_follow_up ?? "", l.source, l.calls_count, l.last_activity_at, l.notes, l.created_at, ...own.map((f) => (l.extra as Record<string, string> | undefined)?.[f.key] ?? "")].map((v) => String(v ?? "")));
       if (!r.data.more) break;
     }
     const csv = "﻿" + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");

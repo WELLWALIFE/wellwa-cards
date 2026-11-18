@@ -110,6 +110,7 @@ export type ListQuery = { q?: string; stage?: string; kind?: string; tag?: strin
 export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: LeadPro[]; page: number; more: boolean }> {
   const page = Math.max(0, qy.page ?? 0), size = 50;
   const f: string[] = [scopeFilter(scope)];
+  let orAt = -1, orPlain = "";   // where the search filter sits, and the same search without the custom fields
   // Characters that are syntax inside a PostgREST or=(...) list (and the ilike wildcards) are dropped from the search.
   const q = (qy.q ?? "").trim().replace(/[,.()"\\*:]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
   if (q) {
@@ -119,7 +120,12 @@ export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: L
     // (or with) the 91 is still found; the other phone (alt_phone) is searched too.
     const d0 = q.replace(/\D/g, ""), dq = d0.length > 10 ? d0.slice(-10) : d0;
     const byDigits = dq.length >= 4 ? `,phone.ilike.${enc(`*${dq}*`)},alt_phone.ilike.${enc(`*${dq}*`)}` : "";
-    f.push(`or=(name.ilike.${enc(like)},phone.ilike.${enc(like)}${byDigits},city.ilike.${enc(like)},business.ilike.${enc(like)},ai_intent.ilike.${enc(like)},message.ilike.${enc(like)})`);
+    const base = `name.ilike.${enc(like)},phone.ilike.${enc(like)}${byDigits},city.ilike.${enc(like)},business.ilike.${enc(like)},ai_intent.ilike.${enc(like)},message.ilike.${enc(like)}`;
+    // The business's own fields are searched too ("HR26" finds the customer with that vehicle number): leads.extra, migration 0090.
+    const own = (await prefsOf(scope.ownerId).catch(() => null))?.fields ?? [];
+    const inOwn = own.filter((x) => x.type !== "date").map((x) => `,extra->>${x.key}.ilike.${enc(like)}`).join("");
+    orAt = f.length; orPlain = `or=(${base})`;
+    f.push(inOwn ? `or=(${base}${inOwn})` : orPlain);
   }
   if (qy.stage) f.push(`status=eq.${enc(qy.stage)}`);
   if (qy.kind) f.push(`kind=eq.${enc(qy.kind)}`);
@@ -137,7 +143,11 @@ export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: L
   else if (qy.due === "any") f.push("next_follow_up=not.is.null", OPEN);
   if (qy.idle && qy.idle > 0) f.push(`last_activity_at=lt.${enc(new Date(Date.now() - qy.idle * 86400000).toISOString())}`, OPEN);
   const order = qy.sort === "newest" ? "created_at.desc" : qy.sort === "followup" ? "next_follow_up.asc.nullslast,last_activity_at.desc" : qy.sort === "value" ? "value_paise.desc,last_activity_at.desc" : qy.sort === "score" ? "score.desc,last_activity_at.desc" : "last_activity_at.desc";
-  const rows = list(await restAsService<LeadPro[]>(`leads?${f.join("&")}&select=${PRO_COLS}&order=${order}&limit=${size + 1}&offset=${page * size}`));
+  const run = () => restAsService<LeadPro[]>(`leads?${f.join("&")}&select=${PRO_COLS}&order=${order}&limit=${size + 1}&offset=${page * size}`);
+  let res = await run();
+  // A search that the custom fields broke (the column not there yet) is run again without them: the list never goes empty for that.
+  if (!res.ok && orAt >= 0 && f[orAt] !== orPlain) { f[orAt] = orPlain; res = await run(); }
+  const rows = list(res);
   return { leads: await enrichLeads(scope.ownerId, rows.slice(0, size)), page, more: rows.length > size };
 }
 
