@@ -130,6 +130,17 @@ export async function POST(request: Request) {
 
   if (b.action === "register") {
     const p = await profile(me.token, me.id);
+    // An account whose chosen username was refused has none yet. It was registered all the same: a partner ID with no name, under the
+    // company (found 18 Nov 2026 - SH100255). Now it first gets a username made from its name, under the sponsor its sign-up link named.
+    if (!p?.username) {
+      const md = (await authUser(me.id)).meta;
+      const by = typeof md.introduced_by === "string" ? md.introduced_by.trim().slice(0, 40) : "";
+      const leg = md.introduced_leg === "L" || md.introduced_leg === "R" ? md.introduced_leg : undefined;
+      const made = await autoAccount(me, by || null, leg);
+      if (!made) return NextResponse.json({ ok: false, error: "Choose a username first." }, { status: 409 });
+      const sum = partnerLinked() ? await partnerCall<PartnerSummary>("summary", { suiteUserId: me.id }, 5000) : null;
+      return NextResponse.json({ ok: true, username: made, code: sum?.ok ? sum.data.code : undefined });
+    }
     const reg = await registerPartner(me.id, p?.username ?? null, p?.referred_by ?? null);
     return NextResponse.json(reg, { status: reg.ok ? 200 : 502 });
   }

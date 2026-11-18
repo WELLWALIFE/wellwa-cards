@@ -7,10 +7,10 @@ import { PARTNER_URL } from "@/lib/site-url";
 // here too and gets an app login with one click (owner, 20 Oct 2026: "such IDs should be normal too").
 // Passwords are never stored or displayed.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Ban, CircleCheck, Search, KeyRound, Trash2,
-  Pencil, X, LoaderCircle, RefreshCw, CreditCard, ExternalLink, Coins, History, Crown, AlertTriangle,
+  Pencil, X, LoaderCircle, RefreshCw, CreditCard, ExternalLink, Coins, History, Crown, AlertTriangle, Eye, LogIn, ChevronDown, Download,
 } from "lucide-react";
 import Link from "next/link";
 import { PaymentRequestModal } from "@/components/admin/payment-request";
@@ -71,6 +71,7 @@ type User = {
 };
 
 
+type SortKey = "name" | "sponsor" | "joined" | "id" | "plan" | "credits" | "cards";
 type View = "all" | "accounts" | "ids" | "partner" | "green" | "red" | "paid" | "check" | "review" | "consumers";
 const VIEWS: { id: View; label: string }[] = [
   { id: "all", label: "All" }, { id: "review", label: "To review" }, { id: "consumers", label: "Consumers" }, { id: "accounts", label: "App accounts" }, { id: "ids", label: "Partner IDs" }, { id: "partner", label: "Partner-only IDs" },
@@ -93,6 +94,8 @@ export default function AdminUsers() {
   const [partnerNote, setPartnerNote] = useState("");
   const [view, setView] = useState<View>("all");
   const [q, setQ] = useState("");
+  const [open, setOpen] = useState<string | null>(null);   // the row whose Manage panel is open
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);   // null = newest first, as loaded
   // Admin v2: the franchise filter (a franchise login is already limited to its own users by the server).
   const [franchises, setFranchises] = useState<{ id: string; code: string }[]>([]);
   const [fr, setFr] = useState("");
@@ -348,6 +351,49 @@ export default function AdminUsers() {
     );
   }, [users, q, view, twins, fr]);
 
+  // Sorting by a column of the header (Wellwa-style): the first press sorts A→Z / newest first, the second turns it round.
+  const sorted = useMemo(() => {
+    if (!sort) return shown;
+    const val = (u: User): string | number =>
+      sort.key === "name" ? u.name.toLowerCase()
+        : sort.key === "sponsor" ? (u.partner?.sponsor ?? "~").toLowerCase()
+        : sort.key === "joined" ? ((u as { joinedAt?: string }).joinedAt || u.joined || "")
+        : sort.key === "id" ? (u.partner ? (u.partner.status === "green" ? "0" : "1") + u.partner.code : "9")
+        : sort.key === "plan" ? (u.package === "site_premium" ? 0 : u.package === "site_standard" ? 1 : u.package === "custom" ? 2 : u.plan && u.plan !== "free" ? 3 : 9)
+        : sort.key === "credits" ? -(u.credits ?? 0)
+        : -(u.cards ?? 0);
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...shown].sort((x, y) => { const a = val(x), b = val(y); return (a < b ? -1 : a > b ? 1 : 0) * dir; });
+  }, [shown, sort]);
+  const th = (key: SortKey, label: string) => (
+    <th className="px-3 py-3.5">
+      <button type="button" onClick={() => setSort((x) => (x?.key === key ? (x.dir === "asc" ? { key, dir: "desc" } : null) : { key, dir: "asc" }))} className="inline-flex items-center gap-1 uppercase tracking-wide hover:underline" title="Sort">
+        {label} <span className={sort?.key === key ? "text-sky-300" : "opacity-50"}>{sort?.key === key ? (sort.dir === "asc" ? "↑" : "↓") : "↕"}</span>
+      </button>
+    </th>
+  );
+  /** "18 Nov 2026 · 14:05" (India time). */
+  const when = (u: User) => {
+    const iso = (u as { joinedAt?: string }).joinedAt;
+    if (!iso) return u.joined || "—";
+    const d = new Date(iso);
+    return `${d.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })} · ${d.toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}`;
+  };
+  const act = "inline-grid h-8 w-8 place-items-center rounded-lg text-white hover:opacity-90";
+  const btn = "inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-surface2 disabled:opacity-40";
+  /** The list as it is shown (the view, the search, the sort), as a spreadsheet. */
+  function downloadCsv() {
+    const rows = [["#", "Name", "Username", "Partner ID", "ID status", "Sponsor", "Placed", "Phone", "Email", "Registered", "Plan", "Credits", "Cards", "Kind", "Status"]];
+    sorted.forEach((u, i) => {
+      const p = u.partner;
+      rows.push([String(i + 1), u.name, u.username ?? "", p?.code ?? "", p ? (p.status === "green" ? "Active" : "Inactive") : "", p?.sponsor ?? "", p?.leg ? `${p.leg === "L" ? "Left" : "Right"} of ${p.parent ?? ""}` : "",
+        mobileLogin(u.email) ? displayLogin(u.email) : u.phone ?? "", u.contactEmail || (mobileLogin(u.email) ? "" : u.email), when(u),
+        [u.package ? PKG_LABEL[u.package] ?? u.package : "", u.plan && u.plan !== "free" ? "Growth" : ""].filter(Boolean).join(" + ") || "Free", String(u.credits ?? 0), String(u.cards ?? 0), isAccount(u) ? u.accountKind ?? "partner" : "partner ID only", u.status]);
+    });
+    const csv = "\ufeff" + rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" })); a.download = `shubhora-users-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  }
+
   const accounts = users.filter(isAccount);
   const partnerIds = users.filter((u) => u.partner);
   const revenue = accounts
@@ -377,11 +423,6 @@ export default function AdminUsers() {
           <button onClick={load} className="ed-icon" title="Refresh" aria-label="Refresh">
             {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </button>
-          <label className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 w-full sm:w-72 focus-within:ring-1 focus-within:ring-brand">
-            <Search className="h-4 w-4 text-faint shrink-0" />
-            <input className="flex-1 bg-transparent text-sm outline-none" placeholder="Search name, username, SH code, mobile (any form), email…"
-              value={q} onChange={(e) => setQ(e.target.value)} />
-          </label>
         </div>
       </div>
 
@@ -415,112 +456,176 @@ export default function AdminUsers() {
         <Stat label="MRR (est.)" value={`₹${revenue.toLocaleString("en-IN")}`} accent on={false} onClick={() => pick("paid")} hint="Paid accounts" />
       </div>
 
-      <div ref={listTop} className="flex flex-wrap gap-2 scroll-mt-20">
-        {VIEWS.filter((v) => !meFr || !["ids", "partner", "green", "red", "review", "consumers"].includes(v.id)).map((v) => {
-          const on = view === v.id;
-          return (
-            <button key={v.id} onClick={() => setView(v.id)}
-              className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted hover:text-ink"}`}>
-              {v.label}
-            </button>
-          );
-        })}
+      {/* The list, in the layout of the Wellwa admin (owner, 18 Nov 2026: "aisa design karo, proper aur professional"): one line a person -
+          serial number, name and username, sponsor, phone, email, registered, ID, plan - under a dark header whose columns sort; search, the
+          view and CSV in one bar above. Everything that was a small button inside the row lives in "Manage", which opens under the row. */}
+      <div ref={listTop} className="flex flex-wrap items-center gap-2 scroll-mt-20 rounded-2xl border border-border bg-surface p-3 shadow-card">
+        <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 focus-within:ring-1 focus-within:ring-brand">
+          <Search className="h-4 w-4 shrink-0 text-faint" />
+          <input className="flex-1 bg-transparent text-sm outline-none" placeholder="Search name, username, SH code, mobile, email…" value={q} onChange={(e) => setQ(e.target.value)} />
+          {q && <button type="button" onClick={() => setQ("")} aria-label="Clear search"><X className="h-4 w-4 text-faint" /></button>}
+        </label>
+        <select value={view} onChange={(e) => setView(e.target.value as View)} aria-label="Show" className="rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink outline-none">
+          {VIEWS.filter((v) => !meFr || !["ids", "partner", "green", "red", "review", "consumers"].includes(v.id)).map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+        </select>
         {!meFr && franchises.length > 0 && (
-          <select value={fr} onChange={(e) => setFr(e.target.value)} className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted outline-none">
-            <option value="">Franchise: all</option>
+          <select value={fr} onChange={(e) => setFr(e.target.value)} aria-label="Franchise" className="rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink outline-none">
+            <option value="">All franchises</option>
             <option value="none">No franchise</option>
             {franchises.map((f) => <option key={f.id} value={f.id}>{f.code}</option>)}
           </select>
         )}
-        {meFr && <span className="self-center rounded-full bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand-ink">Franchise {meFr.code} · your users only</span>}
-        <span className="self-center text-xs text-faint ml-1">{shown.length} shown</span>
+        {meFr && <span className="rounded-full bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-ink">Franchise {meFr.code} · your users only</span>}
+        <span className="px-1 text-sm text-muted"><b className="text-brand-ink">{sorted.length}</b> of {users.length}</span>
+        <button type="button" onClick={downloadCsv} disabled={!sorted.length} className="inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"><Download className="h-4 w-4" /> CSV</button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface overflow-hidden shadow-card">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1040px]">
+          <table className="w-full min-w-[1180px] text-sm">
             <thead>
-              <tr className="text-left text-faint mono text-xs uppercase tracking-wide border-b border-border">
-                <th className="px-4 py-3 font-semibold">User</th>
-                {!meFr && <th className="px-4 py-3 font-semibold">Partner ID</th>}
-                <th className="px-4 py-3 font-semibold">Plan</th>
-                <th className="px-4 py-3 font-semibold">Subscription</th>
-                <th className="px-4 py-3 font-semibold">Cards</th>
-                <th className="px-4 py-3 font-semibold">Joined</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold text-right">Actions</th>
+              <tr className="bg-[#0b3d6b] text-left text-[11px] font-semibold uppercase tracking-wide text-white">
+                <th className="w-12 px-4 py-3.5">#</th>
+                {th("name", "Name · Username")}
+                {!meFr && th("sponsor", "Sponsor")}
+                <th className="px-3 py-3.5">Phone</th>
+                <th className="px-3 py-3.5">Email</th>
+                {th("joined", "Registered")}
+                {!meFr && th("id", "Partner ID")}
+                {th("plan", "Plan")}
+                {th("credits", "Credits")}
+                {th("cards", "Cards")}
+                <th className="px-3 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {shown.map((u) => {
+              {sorted.map((u, i) => {
                 const acct = isAccount(u);
                 const p = u.partner;
+                const isOpen = open === u.id;
+                const warn = twins.has(u.id) || mixed(u);
+                const phone = mobileLogin(u.email) ? displayLogin(u.email) : u.phone ? `+${u.phone.replace(/^\+/, "")}` : "";
+                const mail = u.contactEmail || (mobileLogin(u.email) ? "" : u.email);
                 return (
-                <tr key={u.id} className={`hover:bg-surface2/50 ${p?.isRoot ? "bg-amber-500/5" : ""}`}>
-                  <td className="px-4 py-3">
+                <Fragment key={u.id}>
+                <tr className={`align-middle ${isOpen ? "bg-brand-soft/30" : i % 2 ? "bg-surface2/30" : ""} hover:bg-brand-soft/20 ${p?.isRoot ? "bg-amber-500/5" : ""}`}>
+                  <td className="px-4 py-3 text-xs tabular-nums text-muted">{i + 1}</td>
+                  <td className="px-3 py-3">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {acct
-                        ? <Link href={`/admin/users/${u.id}`} className="font-medium text-brand-ink hover:underline">{u.name}</Link>
-                        : <span className="font-medium">{u.name}</span>}
-                      {p?.isRoot && <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"><Crown className="h-3 w-3" /> ROOT ID</span>}
-                      {!acct && <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">no app login</span>}
+                        ? <Link href={`/admin/users/${u.id}`} className="font-semibold text-brand-ink hover:underline">{u.name}</Link>
+                        : <span className="font-semibold text-ink">{u.name}</span>}
+                      {p?.isRoot && <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"><Crown className="h-3 w-3" /> ROOT</span>}
+                      {warn && <span title="Same name / email / mobile as another row, or the ID link needs fixing"><AlertTriangle className="h-3.5 w-3.5 text-amber-600" /></span>}
                     </div>
-                    {u.username && <p className="text-xs font-semibold text-ink mono">@{u.username}</p>}
-                    {u.franchise && <p className="text-[10px] font-semibold text-violet-700">Franchise {u.franchise}</p>}
-                    <p className="text-xs text-muted mono">{mobileLogin(u.email) ? <>{loginOf(u.email)}{u.contactEmail ? ` · ${u.contactEmail}` : ""}</> : <>{u.email || "—"}{u.phone ? ` · +${u.phone.replace(/^\+/, "")}` : ""}</>}</p>
-                    <p className="text-[11px] text-faint">{mobileLogin(u.email) ? "signed up with mobile" : u.provider ? `via ${u.provider}` : ""}{u.posterProfiles?.length ? ` · profiles: ${u.posterProfiles.join(", ")}` : ""}{u.posterPlan && u.posterPlan !== "free" ? ` · poster ${u.posterPlan}` : ""}</p>
-                    {acct ? (
-                      <>
-                        {!meFr && <button onClick={() => loginAs(u)} disabled={!live || busyLogin === u.id} className="mt-1 inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold text-brand-ink hover:bg-brand-soft disabled:opacity-40">{busyLogin === u.id ? "…" : "Login as"}</button>}
-                        <Link href={`/admin/users/${u.id}`} className="ml-1 inline-flex rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2">Profile</Link>
-                    {!meFr && <Link href={`/admin/users/${u.id}?edit=profile`} className="ml-1 inline-flex rounded-md border border-brand/40 bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">Edit</Link>}
-                      </>
-                    ) : null}
+                    <p className="mono text-xs text-brand">{u.username ? `@${u.username}` : <span className="text-faint">no username</span>}</p>
+                    <div className="mt-0.5 flex flex-wrap gap-1">
+                      {!acct && <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">no app login</span>}
+                      {acct && u.accountKind === "pending" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">to review</span>}
+                      {acct && u.accountKind === "consumer" && <span className="rounded bg-good/10 px-1.5 py-0.5 text-[10px] font-semibold text-good">consumer</span>}
+                      {u.franchise && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">{u.franchise}</span>}
+                    </div>
                   </td>
-                  {!meFr && <td className="px-4 py-3">
-                    {p ? (
-                      <div className="text-xs space-y-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <a href={`${PARTNER_URL}/admin/members/${p.code}`} target="_blank" rel="noreferrer" className="rounded bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand-ink mono hover:underline">{p.code}</a>
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${p.status === "green" ? "bg-good/15 text-good" : "bg-danger/10 text-danger"}`}>{p.status}</span>
-                          {p.blocked && <span className="rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white">blocked</span>}
-                        </div>
-                        <p className="text-muted">{p.isRoot ? "Top of the tree" : <>Sponsor <b className="text-ink">{p.sponsor ?? "—"}</b>{p.leg ? <> · {p.leg === "L" ? "Left" : "Right"} of {p.parent ?? "—"}</> : null}</>}</p>
-                        <p className="text-faint">{p.directs} direct{p.directs === 1 ? "" : "s"}{p.subValidUntil ? ` · valid till ${p.subValidUntil}` : ""}</p>
-                        {mixed(u) && <p className="font-semibold text-amber-700">⚠ app shows {u.associate || "no ID"} — press Fix ID links</p>}
-                        {twins.has(u.id) && <p className="font-semibold text-amber-700">Same name / email / mobile as another row</p>}
-                        {!p.isRoot && (acct
-                          ? <button onClick={() => unlinkId(u)} disabled={!live} className="mt-0.5 rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2 disabled:opacity-40">Unlink ID</button>
-                          : <button onClick={() => linkId(u)} disabled={!live} className="mt-0.5 rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2 disabled:opacity-40">Link app account</button>)}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-faint space-y-0.5">
-                        <span>{u.associate ? <><span className="mono">{u.associate}</span> <b className="text-amber-700">⚠ not tied — press Fix ID links</b></> : "not registered"}</span>
-                        {acct && u.accountKind === "pending" && <p className="font-semibold text-amber-700">New from the website: to review</p>}
-                        {acct && u.accountKind === "consumer" && <p className="font-semibold text-good">Consumer: app only, no partner ID</p>}
-                        {acct && (
-                          <div className="flex flex-wrap gap-1.5">
-                            <button onClick={() => makePartner(u)} disabled={!live} className="rounded-md bg-brand px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40">Make partner ID</button>
-                            {u.accountKind !== "consumer" && <button onClick={() => makeConsumer(u)} disabled={!live} className="rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2 disabled:opacity-40">Consumer</button>}
-                            <button onClick={() => linkId(u)} disabled={!live} className="rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2 disabled:opacity-40">Link ID</button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  {!meFr && <td className="px-3 py-3">
+                    {p ? (p.isRoot ? <span className="text-xs text-muted">Top of the tree</span> : (
+                      <>
+                        <p className="font-semibold text-ink">{p.sponsor ?? "—"}</p>
+                        {p.leg && <p className="text-xs text-muted">{p.leg === "L" ? "Left" : "Right"} of {p.parent ?? "—"}</p>}
+                      </>
+                    )) : <span className="text-faint">—</span>}
                   </td>}
-                  <td className="px-4 py-3">
-                    {/* The plan (owner, 5 Nov 2026): the new names only. Website Standard / Premium = a year (package); Growth = months
-                        (profiles.plan "pro"); Custom = marked with a note. The badges show what runs now and till when. */}
+                  <td className="mono whitespace-nowrap px-3 py-3 text-xs text-ink">{phone || <span className="text-faint">—</span>}</td>
+                  <td className="max-w-[210px] truncate px-3 py-3 text-xs text-muted" title={mail}>{mail || <span className="text-faint">—</span>}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-xs text-muted">{when(u)}</td>
+                  {!meFr && <td className="px-3 py-3">
+                    {p ? (
+                      <div className="flex flex-wrap items-center gap-1">
+                        <a href={`${PARTNER_URL}/admin/members/${p.code}`} target="_blank" rel="noreferrer" className="mono rounded bg-brand-soft px-1.5 py-0.5 text-[11px] font-bold text-brand-ink hover:underline">{p.code}</a>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${p.status === "green" ? "bg-good/15 text-good" : "bg-danger/10 text-danger"}`}>{p.status === "green" ? "Active" : "Inactive"}</span>
+                        {p.blocked && <span className="rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white">blocked</span>}
+                      </div>
+                    ) : <span className="text-xs text-faint">{u.associate ? <span className="font-semibold text-amber-700">{u.associate} · not tied</span> : "—"}</span>}
+                  </td>}
+                  <td className="px-3 py-3">
                     <div className="flex flex-wrap items-center gap-1">
                       {u.package && u.package !== "custom" && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-violet-800" title={u.packageNote || ""}>{PKG_LABEL[u.package]}{u.packageUntil ? ` · ${u.packageUntil}` : ""}</span>}
                       {u.package === "custom" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800" title={u.packageNote || ""}>Custom{u.packageUntil ? ` · ${u.packageUntil}` : ""}</span>}
                       {u.plan && u.plan !== "free" && <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${planStyle[u.plan] ?? planStyle.free}`}>Growth{u.planExpires ? ` · ${u.planExpires}` : ""}</span>}
                       {!u.package && (!u.plan || u.plan === "free") && <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${planStyle.free}`}>Free</span>}
                     </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <button onClick={() => setViewingCredits(u)} disabled={!live || !acct} className="inline-flex items-center gap-1 text-sm font-semibold tabular-nums text-ink disabled:opacity-40" title="Balance & history"><Coins className="h-3.5 w-3.5 text-amber-500" /> {u.credits ?? 0}</button>
+                  </td>
+                  <td className="px-3 py-3 tabular-nums">{u.cards}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right">
+                    <div className="inline-flex items-center gap-1">
+                      {acct && <Link href={`/admin/users/${u.id}`} className={`${act} bg-[#0b3d6b]`} title="View profile" aria-label="View profile"><Eye className="h-4 w-4" /></Link>}
+                      {acct && !meFr && <Link href={`/admin/users/${u.id}?edit=profile`} className={`${act} bg-brand`} title="Edit profile (name, username, mobile, business…)" aria-label="Edit profile"><Pencil className="h-4 w-4" /></Link>}
+                      {acct && !meFr && <button onClick={() => loginAs(u)} disabled={!live || busyLogin === u.id} className={`${act} bg-good disabled:opacity-40`} title="Login as this user" aria-label="Login as">{busyLogin === u.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}</button>}
+                      {!acct && p && !p.isRoot && <button onClick={() => setEditingPartner(u)} disabled={!live} className={`${act} bg-brand disabled:opacity-40`} title="Edit this ID (name, username, mobile, email, DOB)" aria-label="Edit partner ID"><Pencil className="h-4 w-4" /></button>}
+                      {!acct && p && <a href={`${PARTNER_URL}/admin/members/${p.code}`} target="_blank" rel="noreferrer" className={`${act} bg-[#0b3d6b]`} title="Open in Staff Admin" aria-label="Open in Staff Admin"><ExternalLink className="h-4 w-4" /></a>}
+                      <button onClick={() => setOpen(isOpen ? null : u.id)} className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2.5 text-xs font-semibold ${isOpen ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink hover:bg-surface2"}`} aria-expanded={isOpen}>Manage <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} /></button>
+                    </div>
+                  </td>
+                </tr>
+                {isOpen && (
+                <tr className="bg-brand-soft/20">
+                  <td colSpan={meFr ? 9 : 11} className="px-4 pb-4 pt-1">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted">Account</p>
+                        <p className="text-xs text-muted">{mobileLogin(u.email) ? "Signed up with mobile" : u.provider ? `Signed up via ${u.provider}` : acct ? "" : "Partner panel only (no app login)"}{u.posterProfiles?.length ? ` · profiles: ${u.posterProfiles.join(", ")}` : ""}</p>
+                        {u.usernames?.length ? <p className="mt-1 flex flex-wrap gap-2 text-xs">{u.usernames.slice(0, 3).map((n) => <Link key={n} href={`/c/${n}`} target="_blank" className="mono inline-flex items-center gap-0.5 text-brand-ink hover:underline">/{n} <ExternalLink className="h-3 w-3" /></Link>)}</p> : null}
+                        {acct && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {!meFr && <button onClick={() => setEditing(u)} disabled={!live} className={btn}><KeyRound className="h-3.5 w-3.5" /> Login &amp; password</button>}
+                            <button onClick={() => toggleSuspend(u)} disabled={!live} className={`${btn} ${u.status === "active" ? "" : "border-danger text-danger"}`} title={u.status === "active" ? "Block this user's cards" : "Unblock"}>{u.status === "active" ? <><CircleCheck className="h-3.5 w-3.5 text-good" /> Active · block</> : <><Ban className="h-3.5 w-3.5" /> Blocked · unblock</>}</button>
+                            {!meFr && <button onClick={() => remove(u)} disabled={!live || !!p?.isRoot} className={`${btn} text-danger`} title={p?.isRoot ? "The root ID's account cannot be deleted here" : "Delete this user"}><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
+                          </div>
+                        )}
+                        {!acct && p && !p.isRoot && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <button onClick={() => createLogin(u)} disabled={!live || !!creating} className={`${btn} border-brand text-brand-ink`} title="An app account for this ID: mobile login, name / username / email copied, tied to the ID">{creating === p.code ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />} Create app login</button>
+                          </div>
+                        )}
+                      </div>
+                      {!meFr && (
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted">Partner ID</p>
+                        {p ? (
+                          <>
+                            <p className="text-xs text-muted">{p.isRoot ? "Top of the tree" : <>Sponsor <b className="text-ink">{p.sponsor ?? "—"}</b>{p.leg ? <> · {p.leg === "L" ? "Left" : "Right"} of {p.parent ?? "—"}</> : null}</>} · {p.directs} direct{p.directs === 1 ? "" : "s"}{p.subValidUntil ? ` · valid till ${p.subValidUntil}` : ""}</p>
+                            {mixed(u) && <p className="mt-1 text-xs font-semibold text-amber-700">⚠ app shows {u.associate || "no ID"} — press Fix ID links</p>}
+                            {twins.has(u.id) && <p className="mt-1 text-xs font-semibold text-amber-700">Same name / email / mobile as another row</p>}
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {!p.isRoot && (acct
+                                ? <button onClick={() => unlinkId(u)} disabled={!live} className={btn}>Unlink ID</button>
+                                : <button onClick={() => linkId(u)} disabled={!live} className={btn}>Link app account</button>)}
+                              <a href={`${PARTNER_URL}/admin/members/${p.code}`} target="_blank" rel="noreferrer" className={btn}>Staff Admin <ExternalLink className="h-3 w-3" /></a>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-muted">{u.associate ? <><span className="mono">{u.associate}</span> <b className="text-amber-700">⚠ not tied — press Fix ID links</b></> : "No partner ID."}{acct && u.accountKind === "pending" ? " New from the website: to review." : acct && u.accountKind === "consumer" ? " Consumer: app only." : ""}</p>
+                            {acct && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                <button onClick={() => makePartner(u)} disabled={!live} className={`${btn} border-brand bg-brand text-white hover:bg-brand`}>Make partner ID</button>
+                                {u.accountKind !== "consumer" && <button onClick={() => makeConsumer(u)} disabled={!live} className={btn}>Mark consumer</button>}
+                                <button onClick={() => linkId(u)} disabled={!live} className={btn}>Link ID</button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      )}
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted">Plan &amp; credits</p>
+                        {u.plan !== "free" && <p className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-good"><CreditCard className="h-3.5 w-3.5" /> ₹{(u.subscription?.amount ?? PLAN_MRR[u.plan] ?? 0).toLocaleString("en-IN")}/mo · {u.subscription?.renews ? `renews ${u.subscription.renews}` : "manual (admin set)"}</p>}
                     <select value="" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v === "site_standard" || v === "site_premium" || v === "custom") void setPackage(u, v); else if (v === "growth") void setPlan(u, "pro"); else if (v === "free") void makeFree(u); }}
                       disabled={!live || !acct || (!!meFr && !meFr.canActivate)}
                       title={meFr && !meFr.canActivate ? "Only Shubhora activates plans for your users (ask for \"May activate plans\")" : "Give or change the plan"}
-                      className="mono mt-1 max-w-[150px] rounded border border-border bg-surface px-1.5 py-1 text-[11px] font-semibold text-ink outline-none disabled:opacity-40">
+                      className="mono max-w-[220px] rounded border border-border bg-surface px-1.5 py-1 text-[11px] font-semibold text-ink outline-none disabled:opacity-40">
                       <option value="">Set plan…</option>
                       <option value="site_standard">Website Standard · 1 year</option>
                       <option value="site_premium">Website Premium · 1 year</option>
@@ -552,89 +657,16 @@ export default function AdminUsers() {
                         </button>
                       );
                     })}
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.plan === "free" ? (
-                      <span className="text-xs text-faint">—</span>
-                    ) : (
-                      <div className="text-xs">
-                        <span className="inline-flex items-center gap-1 font-medium text-good">
-                          <CreditCard className="h-3.5 w-3.5" />
-                          ₹{(u.subscription?.amount ?? PLAN_MRR[u.plan] ?? 0).toLocaleString("en-IN")}/mo
-                        </span>
-                        <p className="text-faint mt-0.5">
-                          {u.subscription?.renews ? `renews ${u.subscription.renews}` : "manual (admin set)"}
-                        </p>
                       </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="tabular-nums">{u.cards}</span>
-                    {u.usernames?.length ? (
-                      <div className="mt-0.5 flex flex-wrap gap-1">
-                        {u.usernames.slice(0, 2).map((n) => (
-                          <Link key={n} href={`/c/${n}`} target="_blank"
-                            className="inline-flex items-center gap-0.5 text-[10px] mono text-muted hover:text-ink">
-                            /{n} <ExternalLink className="h-2.5 w-2.5" />
-                          </Link>
-                        ))}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-muted mono text-xs">{u.joined}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => toggleSuspend(u)} disabled={!live || !acct}
-                      title={u.status === "active" ? "Click to block this user's cards" : "Click to unblock"}
-                      className={`inline-flex items-center gap-1 text-xs font-medium disabled:opacity-40 ${u.status === "active" ? "text-good hover:text-danger" : "text-danger hover:text-good"}`}>
-                      {u.status === "active" ? <CircleCheck className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
-                      {u.status}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {acct && meFr ? (
-                      <Link href={`/admin/users/${u.id}`} className="ed-icon inline-grid" title="Open" aria-label="Open user"><ExternalLink className="h-4 w-4" /></Link>
-                    ) : acct ? (
-                      <>
-                        <Link href={`/admin/users/${u.id}?edit=profile`}
-                          className="ed-icon inline-grid" title="Edit profile (name, username, mobile, business…)" aria-label="Edit profile">
-                          <Pencil className="h-4 w-4" />
-                        </Link>
-                        <button onClick={() => setEditing(u)} disabled={!live}
-                          className="ed-icon disabled:opacity-40 ml-1" title="Login / plan (email, password, plan)" aria-label="Edit login and plan">
-                          <KeyRound className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => remove(u)} disabled={!live || !!p?.isRoot}
-                          className="ed-icon hover:text-danger disabled:opacity-40 ml-1" title={p?.isRoot ? "The root ID's account cannot be deleted here" : "Delete"} aria-label="Delete user">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </>
-                    ) : p ? (
-                      <div className="inline-flex flex-wrap items-center justify-end gap-1">
-                        {!p.isRoot && (
-                          <>
-                            <button onClick={() => setEditingPartner(u)} disabled={!live}
-                              className="ed-icon disabled:opacity-40" title="Edit this ID (name, username, mobile, email, DOB)" aria-label="Edit partner ID">
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button onClick={() => createLogin(u)} disabled={!live || !!creating}
-                              className="inline-flex items-center gap-1 rounded-md border border-brand px-2 py-1 text-[11px] font-semibold text-brand-ink hover:bg-brand-soft disabled:opacity-40"
-                              title="An app account for this ID: mobile login, name / username / email copied, tied to the ID">
-                              {creating === p.code ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <KeyRound className="h-3 w-3" />} Create app login
-                            </button>
-                          </>
-                        )}
-                        <a href={`${PARTNER_URL}/admin/members/${p.code}`} target="_blank" rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-semibold hover:bg-surface2">
-                          Staff Admin <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                    ) : null}
+                    </div>
                   </td>
                 </tr>
+                )}
+                </Fragment>
                 );
               })}
-              {shown.length === 0 && !loading && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted">{q ? <>No users match &ldquo;{q}&rdquo;.</> : err ? "Nothing to show." : "No users in this view."}</td></tr>
+              {sorted.length === 0 && !loading && (
+                <tr><td colSpan={meFr ? 9 : 11} className="px-4 py-10 text-center text-muted">{q ? <>No users match &ldquo;{q}&rdquo;.</> : err ? "Nothing to show." : "No users in this view."}</td></tr>
               )}
             </tbody>
           </table>

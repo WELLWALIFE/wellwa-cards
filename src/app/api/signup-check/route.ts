@@ -1,11 +1,33 @@
 // Sign-up form: is this mobile / email already registered? GET ?mobile=9876543210&email=a@b.com
+//   GET ?username=Name → { username: true (free) | false (taken or not allowed) | null (could not check) }
 //   → { mobile?: boolean, email?: boolean }   (a field left out = not checked, e.g. the database function is missing)
 // Only yes / no — never whose account it is. Rate-limited per IP so it cannot be used to sweep numbers.
 import { NextResponse } from "next/server";
 import { clientKey, rateLimited } from "@/lib/api-security";
 import { SUPA_URL, serviceHeaders, serviceConfigured } from "@/lib/admin-guard";
+import { cleanAccountUsername, usernameOk } from "@/lib/username";
+import { partnerCall, partnerLinked } from "@/lib/partner-link";
+
+/** Is this username free? Asked by the server, as nobody: the database function lets a signed-in person "take" their own username, so a
+ *  browser still logged in to an earlier account was told that account's username was available, and the new sign-up was then left
+ *  without a username (found 18 Nov 2026). A partner ID that carries the name in the partner panel counts as taken too. */
+async function usernameFree(u: string): Promise<boolean | null> {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/rpc/account_username_available`, { method: "POST", headers: serviceHeaders(), cache: "no-store", body: JSON.stringify({ p_username: u }) });
+    if (!r.ok) return null;
+    if ((await r.json()) !== true) return false;
+    if (partnerLinked()) { const m = await partnerCall("resolve", { handle: u }, 4000); if (m.ok) return false; }
+    return true;
+  } catch { return null; }
+}
 
 export async function GET(request: Request) {
+  const username = cleanAccountUsername(new URL(request.url).searchParams.get("username") ?? "");
+  if (username) {
+    if (rateLimited(clientKey(request, "signup-username"), 200, 10 * 60_000)) return NextResponse.json({ error: "Too many checks — wait a few minutes." }, { status: 429 });
+    if (!usernameOk(username) || !serviceConfigured()) return NextResponse.json({ username: usernameOk(username) ? null : false });
+    return NextResponse.json({ username: await usernameFree(username) });   // true = free, false = taken, null = could not check
+  }
   if (rateLimited(clientKey(request, "signup-check"), 60, 10 * 60_000)) {
     return NextResponse.json({ error: "Too many checks — wait a few minutes." }, { status: 429 });
   }

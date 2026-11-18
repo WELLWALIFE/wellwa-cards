@@ -53,7 +53,8 @@ export async function registerPartner(userId: string, username: string | null, r
   const r = await partnerCall<{ code?: string; username?: string | null; status?: string }>("register", {
     suiteUserId: userId, username, name: me.name, mobile: me.mobile || undefined, email: me.email || undefined,
     dob: typeof me.meta.dob === "string" ? me.meta.dob : undefined, gender: typeof me.meta.gender === "string" ? me.meta.gender : undefined,
-    introducerSuiteUserId: referredBy ?? undefined, introducer: introducerHandle || undefined,
+    // No sponsor passed in: the one the sign-up link named (kept on the account) - never silently "under the company" when one is known.
+    introducerSuiteUserId: referredBy ?? undefined, introducer: introducerHandle || (!referredBy && typeof me.meta.introduced_by === "string" ? me.meta.introduced_by.trim().slice(0, 40) : "") || undefined,
     // the side the link asked for (partner panel's left / right links); a retry without it reads the sign-up's choice
     leg: leg ?? (me.meta.introduced_leg === "L" || me.meta.introduced_leg === "R" ? me.meta.introduced_leg : undefined),
   });

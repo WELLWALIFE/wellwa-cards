@@ -10,6 +10,11 @@ import { toE164, phoneEmail } from "@/lib/phone";
 import { cleanAccountUsername, looksLikePartnerId, usernameOk, USERNAME_HINT, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 
 type Check = { state: "idle" | "checking" | "ok" | "bad"; reason?: string };
+/** Free (true), taken (false) or not known (null). Asked through the server, which checks as nobody: a browser still logged in to an
+ *  earlier account must not be told that account's own username is free (18 Nov 2026). */
+async function usernameFree(u: string): Promise<boolean | null> {
+  try { const r = await fetch(`/api/signup-check?username=${encodeURIComponent(u)}`, { cache: "no-store" }); if (!r.ok) return null; const j = (await r.json()) as { username?: boolean | null }; return typeof j.username === "boolean" ? j.username : null; } catch { return null; }
+}
 
 /** Whole years from a yyyy-mm-dd date to today, or null when the date is not real. */
 /** Under the mobile / email box: "already registered — log in", or a small typing hint. */
@@ -94,9 +99,9 @@ function SignupInner() {
       const tries = [base, ...Array.from({ length: 4 }, () => `${base}${Math.floor(10 + Math.random() * 990)}`)];
       for (const u of tries) {
         if (!usernameOk(u)) continue;
-        const { data, error } = await sb.rpc("account_username_available", { p_username: u });
-        if (error) return;
-        if (data === true) { setUsername(u); setCheck({ state: "ok" }); return; }
+        const free = await usernameFree(u);
+        if (free === null) return;
+        if (free) { setUsername(u); setCheck({ state: "ok" }); return; }
       }
     }, 600);
     return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
@@ -161,9 +166,9 @@ function SignupInner() {
     setCheck({ state: "checking" });
     timer.current = setTimeout(async () => {
       if (!sb) { setCheck({ state: "idle" }); return; }
-      const { data, error } = await sb.rpc("account_username_available", { p_username: u });
-      if (error) { setCheck({ state: "idle" }); return; }
-      setCheck(data === true ? { state: "ok" } : { state: "bad", reason: "Taken — try another" });
+      const free = await usernameFree(u);
+      if (free === null) { setCheck({ state: "idle" }); return; }
+      setCheck(free ? { state: "ok" } : { state: "bad", reason: "Taken — try another" });
     }, 350);
   }
 
@@ -189,6 +194,8 @@ function SignupInner() {
     if (t.email) { setError("This email is already registered — log in instead."); return; }
     if (check.state === "bad") { setError("That username is not available — choose another."); return; }
     setBusy(true);
+    // Once more at the moment of Create (the tick beside the box can be a few seconds old, or was never asked).
+    if ((await usernameFree(username)) === false) { setBusy(false); setCheck({ state: "bad", reason: "Taken — try another" }); setError("That username is not available — choose another."); return; }
     // Mobile is the primary login when given (no OTP — password only); the email, if any, is stored on the profile.
     const { data, error } = await sb.auth.signUp({
       email: phone ? phoneEmail(phone) : email.trim().toLowerCase(),
