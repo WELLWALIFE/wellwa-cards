@@ -1540,18 +1540,19 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 @media (max-width:560px){.at-cols>div{grid-column:1/-1}}
 
 /* ---- footer: hotline ---- */
-.hl-top{display:grid;gap:clamp(2rem,5vw,3.5rem);padding-bottom:clamp(2rem,5vw,3.5rem);border-bottom:1px solid var(--hero-line)}
+.ft.ft-hl{padding-top:clamp(2.25rem,4.5vw,3.25rem)}
+.hl-top{display:grid;gap:clamp(1.5rem,3vw,2.25rem);padding-bottom:clamp(1.5rem,3vw,2.25rem);border-bottom:1px solid var(--hero-line)}
 .hl-call{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4);min-width:0}
-.hl-num{display:block;max-width:100%;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.1rem,9.4vw,7rem);line-height:1;letter-spacing:-.01em;font-variant-numeric:lining-nums;color:var(--hero-text);text-decoration:none;overflow-wrap:anywhere;background:linear-gradient(var(--accent),var(--accent)) 0 100%/0 .06em no-repeat;transition:background-size .5s cubic-bezier(.2,.7,.2,1)}
+.hl-num{display:block;max-width:100%;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.75rem,5vw,3.5rem);line-height:1.05;letter-spacing:-.01em;font-variant-numeric:lining-nums;color:var(--hero-text);text-decoration:none;white-space:nowrap;background:linear-gradient(var(--accent),var(--accent)) 0 100%/0 .06em no-repeat;transition:background-size .5s cubic-bezier(.2,.7,.2,1)}
 .hl-num:hover{background-size:100% .06em}
 .hl-btns{margin-top:var(--s2)}
 .hl-side{display:grid;gap:var(--s4);align-content:start}
 .hl-side .ft-blurb,.hl-side .ft-soc{margin:0}
 .hl-addr{max-width:26rem}
-.hl-cols{display:grid;gap:var(--s7) var(--s6);grid-template-columns:repeat(2,minmax(0,1fr));padding-top:clamp(2rem,5vw,3rem)}
+.hl-cols{display:grid;gap:var(--s6);grid-template-columns:repeat(2,minmax(0,1fr));padding-top:clamp(1.5rem,3vw,2.25rem)}
 .hl-qr{display:flex;flex-direction:column;gap:var(--s2)}
 .hl-qr p{max-width:15rem}
-@media (min-width:900px){.hl-top{grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr);align-items:end}.hl-cols{grid-template-columns:1fr 1.3fr 1fr}}
+@media (min-width:900px){.hl-top{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start}.hl-cols{grid-template-columns:1fr 1.3fr 1fr}}
 @media (max-width:560px){.hl-cols>div{grid-column:1/-1}}
 
 /* ---- faq: spotlight ---- */
