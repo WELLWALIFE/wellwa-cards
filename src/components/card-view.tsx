@@ -641,6 +641,9 @@ function CardGallery({ block, t }: { block: Extract<CardBlock, { kind: "gallery"
   const [q, setQ] = useState("");
   const [zoom, setZoom] = useState<{ list: string[]; i: number; alt: string } | null>(null);
   const all = block.images.filter((g) => g.url);
+  // A gallery section with no photo yet draws nothing: it used to read the first photo anyway and the whole editor fell over
+  // ("This page couldn't load" in Text & pages on a new card, 19 Nov 2026).
+  if (!all.length) return null;
   const videos: Record<string, string> = {};
   for (const g of all) { const id = g.video ? youtubeId(g.video) : ""; if (id) videos[g.url!] = id; }
   const heads = [...new Set(all.map((g) => (g.group ?? "").trim()).filter(Boolean))];
