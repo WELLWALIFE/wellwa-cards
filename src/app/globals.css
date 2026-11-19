@@ -157,6 +157,9 @@ body {
   border-radius: 0.55rem; padding: 0.55rem 0.7rem; font-size: 0.85rem;
   outline: none; color: var(--ink);
 }
+/* A small name over every box of the editor (19 Nov 2026: boxes with no name could not be told apart). */
+.ed-lab { display: block; flex: 1 1 0%; min-width: 0; }
+.ed-lab > span, .ed-lab-t { display: block; margin: 0 0 3px 2px; font-size: 11px; font-weight: 600; color: var(--muted); }
 .ed-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent); }
 .ed-icon {
   display: grid; place-items: center; height: 1.75rem; width: 1.75rem;

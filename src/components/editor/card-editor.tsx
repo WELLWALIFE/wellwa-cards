@@ -1,5 +1,6 @@
 "use client";
 import { authHeaders } from "@/lib/auth-headers";
+import { isEmptyBlock } from "@/lib/site-home";
 import { isShubhoraCard } from "../../../bridge/shubhora-kb.mjs";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage } from "@/lib/shubhora-page";
 import { SITE_HOST } from "@/lib/site-url";
@@ -400,6 +401,8 @@ export function CardEditor({ id }: { id: string }) {
   const setPages = (pages: CardPage[]) => patch({ pages });
   // Pages are shown as a list of names; one opens at a time (owner, 19 Nov 2026: "text hide kar de, header saare dikhe, click par text open").
   const [openPage, setOpenPage] = useState("");
+  /** The one section whose boxes are open (the rest show as bars with their heading). */
+  const [openBlock, setOpenBlock] = useState("");
   const [dragPage, setDragPage] = useState("");
   const [overPage, setOverPage] = useState("");
   const updatePage = (pid: string, up: Partial<CardPage>) =>
@@ -532,7 +535,7 @@ export function CardEditor({ id }: { id: string }) {
   function flash(elId: string) {
     // The page that holds the place is opened first (pages are shown closed, as a list of names).
     if (elId.startsWith("ed-page-")) setOpenPage(elId.slice(8));
-    else if (elId.startsWith("ed-block-")) { const pg = card.pages.find((p) => p.blocks.some((b) => `ed-block-${b.id}` === elId)); if (pg) setOpenPage(pg.id); }
+    else if (elId.startsWith("ed-block-")) { const pg = card.pages.find((p) => p.blocks.some((b) => `ed-block-${b.id}` === elId)); if (pg) setOpenPage(pg.id); setOpenBlock(elId.slice(9)); }
     setTimeout(() => {
       const el = document.getElementById(elId);
       if (!el) return;
@@ -810,7 +813,8 @@ export function CardEditor({ id }: { id: string }) {
                   onRename={(label) => updatePage(p.id, { label, slug: label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "page" })}
                   onMove={(dir) => movePage(p.id, dir)} onRemove={() => removePage(p.id)}
                   onBlocks={(blocks) => updatePage(p.id, { blocks })} onFocus={() => setActivePage(p.id)}
-                  open={openPage === p.id} onToggle={() => { setActivePage(p.id); setOpenPage((o) => (o === p.id ? "" : p.id)); }} />
+                  open={openPage === p.id} onToggle={() => { setActivePage(p.id); setOpenPage((o) => (o === p.id ? "" : p.id)); }}
+                  openBlock={openBlock} onOpenBlock={setOpenBlock} />
               ))}
             </div>
           )}
@@ -1040,7 +1044,8 @@ function indianMobile(v: string): string {
 }
 
 /** One page of the card in the editor: its name (tap to rename), arrows, bin — and every section on it, open for editing. */
-function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlocks, onFocus, open, onToggle }: {
+function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlocks, onFocus, open, onToggle, openBlock, onOpenBlock }: {
+  openBlock: string; onOpenBlock: (id: string) => void;
   /** Closed = only the page's name row shows; a tap on it opens the page's text and photos. */ open: boolean; onToggle: () => void;
   page: CardPage; index: number; total: number; L: (en: string, hi: string) => string;
   onRename: (label: string) => void; onMove: (dir: -1 | 1) => void; onRemove: () => void; onBlocks: (blocks: CardBlock[]) => void; onFocus: () => void;
@@ -1070,13 +1075,13 @@ function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlo
         {!open && <button type="button" onClick={onToggle} className="shrink-0 rounded-full border border-brand/40 bg-surface px-2.5 py-1 text-[11px] font-semibold text-brand-ink">{L("Open", "खोलें")} · {page.blocks.length}</button>}
       </div>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted">{L("Tap any box to change it. Arrows move a section; the bin removes it.", "किसी भी box में tap करके बदलें। तीर से हिस्सा ऊपर-नीचे करें; bin से हटाएँ।")}</p>
+        <p className="text-xs text-muted">{L("Tap a section to open it. Drag it, or use the arrows, to move it; the bin removes it.", "हिस्से पर tap करके खोलें। खींचकर या तीर से ऊपर-नीचे करें; bin से हटाएँ।")}</p>
         <div className="relative shrink-0">
           <button className="ed-add !w-auto" onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5" /> {L("Add section", "हिस्सा जोड़ें")}</button>
           {adding && (
             <div className="absolute right-0 mt-1 z-20 w-48 max-h-72 overflow-y-auto rounded-xl border border-border bg-surface shadow-float p-1">
               {blockKinds.map(({ kind, label, icon: Icon }) => (
-                <button key={kind} onClick={() => { onBlocks([...page.blocks, newBlock(kind)]); setAdding(false); }} className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-surface2">
+                <button key={kind} onClick={() => { const nb = newBlock(kind); onBlocks([...page.blocks, nb]); onOpenBlock(nb.id); setAdding(false); }} className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-surface2">
                   <Icon className="h-4 w-4 text-muted" /> {label}
                 </button>
               ))}
@@ -1085,12 +1090,24 @@ function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlo
         </div>
       </div>
       <div className="space-y-3">
-        {page.blocks.map((b, i) => (
-          <div key={b.id} id={`ed-block-${b.id}`} data-sync-text={"title" in b ? b.title ?? "" : ""} data-sync-page={page.slug} {...dnd.drop(i)} className={`scroll-mt-28 transition-shadow ${dnd.over === i ? "rounded-xl ring-1 ring-brand ring-dashed" : ""}`}>
-            <BlockEditor block={b} onChange={(nb) => update(b.id, nb)} onRemove={() => remove(b.id)} onMoveUp={() => move(i, -1)} onMoveDown={() => move(i, 1)}
-              canUp={i > 0} canDown={i < page.blocks.length - 1} dragHandleProps={dnd.handle(i)} />
-          </div>
-        ))}
+        {/* What the website shows first, in its order; a section with nothing in it yet (an empty gallery, an offer with no words) is not on the
+            website, so it waits under its own line below (owner, 19 Nov 2026). Each is a bar with its heading; one opens at a time. */}
+        {[false, true].map((empty) => {
+          const rows = page.blocks.map((b, i) => ({ b, i })).filter(({ b }) => isEmptyBlock(b) === empty);
+          if (!rows.length) return null;
+          return (
+            <div key={String(empty)} className="space-y-2">
+              {empty && <p className="pt-2 text-[11px] font-bold uppercase tracking-wide text-muted">{L("Not on your website yet — open one and fill it", "अभी website पर नहीं — खोलकर भरें")}</p>}
+              {rows.map(({ b, i }) => (
+                <div key={b.id} id={`ed-block-${b.id}`} data-sync-text={"title" in b ? b.title ?? "" : ""} data-sync-page={page.slug} {...dnd.drop(i)} className={`scroll-mt-28 transition-shadow ${dnd.over === i ? "rounded-xl ring-1 ring-brand ring-dashed" : ""} ${empty && openBlock !== b.id ? "opacity-70" : ""}`}>
+                  <BlockEditor block={b} onChange={(nb) => update(b.id, nb)} onRemove={() => remove(b.id)} onMoveUp={() => move(i, -1)} onMoveDown={() => move(i, 1)}
+                    canUp={i > 0} canDown={i < page.blocks.length - 1} dragHandleProps={dnd.handle(i)}
+                    open={openBlock === b.id} onToggle={() => onOpenBlock(openBlock === b.id ? "" : b.id)} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
         {page.blocks.length === 0 && <p className="text-sm text-faint">{L("Nothing on this page yet — tap “Add section”.", "इस page पर अभी कुछ नहीं — “हिस्सा जोड़ें” दबाएँ।")}</p>}
       </div>
     </section>
