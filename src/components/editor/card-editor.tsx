@@ -398,13 +398,15 @@ export function CardEditor({ id }: { id: string }) {
   const patch = (p: Partial<Card>) => setCard((c) => ({ ...c, ...p }));
 
   const setPages = (pages: CardPage[]) => patch({ pages });
+  // Pages are shown as a list of names; one opens at a time (owner, 19 Nov 2026: "text hide kar de, header saare dikhe, click par text open").
+  const [openPage, setOpenPage] = useState("");
   const [dragPage, setDragPage] = useState("");
   const [overPage, setOverPage] = useState("");
   const updatePage = (pid: string, up: Partial<CardPage>) =>
     setPages(card.pages.map((p) => (p.id === pid ? { ...p, ...up } : p)));
   const addPage = () => {
     const np: CardPage = { id: uid(), slug: "page-" + (card.pages.length + 1), label: "New Page", blocks: [] };
-    setPages([...card.pages, np]); setActivePage(np.id); setTab("content");
+    setPages([...card.pages, np]); setActivePage(np.id); setOpenPage(np.id); setTab("content");
   };
   const removePage = (pid: string) => {
     if (card.pages.length <= 1) return;
@@ -528,6 +530,9 @@ export function CardEditor({ id }: { id: string }) {
 
   /* ---------- jump to a part of the card: ✏️ on the preview, or ?focus=… from the card checklist ---------- */
   function flash(elId: string) {
+    // The page that holds the place is opened first (pages are shown closed, as a list of names).
+    if (elId.startsWith("ed-page-")) setOpenPage(elId.slice(8));
+    else if (elId.startsWith("ed-block-")) { const pg = card.pages.find((p) => p.blocks.some((b) => `ed-block-${b.id}` === elId)); if (pg) setOpenPage(pg.id); }
     setTimeout(() => {
       const el = document.getElementById(elId);
       if (!el) return;
@@ -780,7 +785,7 @@ export function CardEditor({ id }: { id: string }) {
                   <h2 className="text-sm font-semibold">{onlyPages ? L("Pages", "Pages") : L("Pages on your card", "Card के pages")} <span className="font-normal text-muted">({card.pages.length})</span></h2>
                   <button className="ed-add !w-auto" onClick={addPage}><Plus className="h-3.5 w-3.5" /> {L("Add page", "Page जोड़ें")}</button>
                 </div>
-                <p className="mt-1 text-xs text-muted">{L("Tap a page name to jump to it. Drag a name to change the order of the pages. Below, every page's text and photos are open for editing.", "Page के नाम पर tap करके वहाँ जाएँ। नाम को खींचकर pages का क्रम बदलें। नीचे हर page के शब्द और photo बदल सकते हैं।")}</p>
+                <p className="mt-1 text-xs text-muted">{L("Tap a page name to open it. Drag a name to change the order of the pages.", "Page के नाम पर tap करके उसे खोलें। नाम को खींचकर pages का क्रम बदलें।")}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {/* A page name can be dragged to a new place (owner, 19 Nov 2026: "drag and drop … pages aage peechhe"); on a phone the arrows on each page do the same. */}
                   {card.pages.map((p) => (
@@ -804,7 +809,8 @@ export function CardEditor({ id }: { id: string }) {
                 <PageSections key={p.id} page={p} index={i} total={card.pages.length} L={L}
                   onRename={(label) => updatePage(p.id, { label, slug: label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "page" })}
                   onMove={(dir) => movePage(p.id, dir)} onRemove={() => removePage(p.id)}
-                  onBlocks={(blocks) => updatePage(p.id, { blocks })} onFocus={() => setActivePage(p.id)} />
+                  onBlocks={(blocks) => updatePage(p.id, { blocks })} onFocus={() => setActivePage(p.id)}
+                  open={openPage === p.id} onToggle={() => { setActivePage(p.id); setOpenPage((o) => (o === p.id ? "" : p.id)); }} />
               ))}
             </div>
           )}
@@ -1034,7 +1040,8 @@ function indianMobile(v: string): string {
 }
 
 /** One page of the card in the editor: its name (tap to rename), arrows, bin — and every section on it, open for editing. */
-function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlocks, onFocus }: {
+function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlocks, onFocus, open, onToggle }: {
+  /** Closed = only the page's name row shows; a tap on it opens the page's text and photos. */ open: boolean; onToggle: () => void;
   page: CardPage; index: number; total: number; L: (en: string, hi: string) => string;
   onRename: (label: string) => void; onMove: (dir: -1 | 1) => void; onRemove: () => void; onBlocks: (blocks: CardBlock[]) => void; onFocus: () => void;
 }) {
@@ -1050,14 +1057,17 @@ function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlo
     onBlocks(next);
   };
   return (
-    <section id={`ed-page-${page.id}`} className="scroll-mt-28 rounded-2xl border border-brand/30 bg-surface p-3 shadow-card space-y-3" onFocusCapture={onFocus}>
+    <section id={`ed-page-${page.id}`} className={`scroll-mt-28 rounded-2xl border bg-surface p-3 shadow-card space-y-3 ${open ? "border-brand/30" : "border-border [&>*:not(:first-child)]:hidden"}`} onFocusCapture={onFocus}>
       <div className="flex items-center gap-2 rounded-xl bg-brand-soft/50 p-2">
-        <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">{L("Page", "Page")} {index + 1}</span>
+        <button type="button" onClick={onToggle} aria-expanded={open} title={open ? L("Close this page", "यह page बंद करें") : L("Open this page to change its text and photos", "इस page के शब्द और photo बदलने के लिए खोलें")}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "" : "-rotate-90"}`} />{L("Page", "Page")} {index + 1}</button>
         <input className="ed-input !bg-transparent !px-2 flex-1 !border-dashed font-semibold focus:!border-solid" value={page.label} title={L("Tap to rename this page", "नाम बदलने के लिए tap करें")} placeholder={L("Page name", "Page का नाम")}
           onChange={(e) => onRename(e.target.value)} />
         <button className="ed-icon" onClick={() => onMove(-1)} disabled={index === 0} aria-label="Move page up"><ChevronUp className="h-4 w-4" /></button>
         <button className="ed-icon" onClick={() => onMove(1)} disabled={index === total - 1} aria-label="Move page down"><ChevronDown className="h-4 w-4" /></button>
-        <button className="ed-icon hover:text-danger" onClick={() => { if (total > 1 && confirm(L(`Remove the page "${page.label}" and everything on it?`, `"${page.label}" page और उसका सारा सामान हटा दें?`))) onRemove(); }} disabled={total <= 1} aria-label="Remove page"><Trash2 className="h-4 w-4" /></button>
+        <button className={`ed-icon hover:text-danger ${open ? "" : "hidden"}`} onClick={() => { if (total > 1 && confirm(L(`Remove the page "${page.label}" and everything on it?`, `"${page.label}" page और उसका सारा सामान हटा दें?`))) onRemove(); }} disabled={total <= 1} aria-label="Remove page"><Trash2 className="h-4 w-4" /></button>
+        {!open && <button type="button" onClick={onToggle} className="shrink-0 rounded-full border border-brand/40 bg-surface px-2.5 py-1 text-[11px] font-semibold text-brand-ink">{L("Open", "खोलें")} · {page.blocks.length}</button>}
       </div>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted">{L("Tap any box to change it. Arrows move a section; the bin removes it.", "किसी भी box में tap करके बदलें। तीर से हिस्सा ऊपर-नीचे करें; bin से हटाएँ।")}</p>
