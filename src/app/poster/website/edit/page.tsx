@@ -15,7 +15,8 @@ import { goBack } from "@/lib/nav-back";
 import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
-import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES } from "@/lib/site-advanced";
+import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, repairOrder, type SectionKey } from "@/lib/site-advanced";
+import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
@@ -236,6 +237,62 @@ export default function WebsiteEditPage() {
   // (owner, 23 Oct 2026: tapping a colour did nothing on a Premium site), and the basic site's colour along with it.
   const adv = (site as { advancedOn?: boolean }).advancedOn !== false && site.advanced ? site.advanced as { palette?: { key?: string; color?: string } } & Record<string, unknown> : null;
   const storeDesign = !!adv && typeof adv.seed === "string" && /\|fix:bridal-(couture-house|lookbook)/.test(adv.seed);
+  // The Premium home page, top to bottom, as the website draws it (its design owns the order — the sections of "Text & pages" feed it but do
+  // not order it; owner, 19 Nov 2026: "right side ka sequence screen jaisa nahi hai"). Only the sections that have something to show.
+  const advRows = useMemo(() => {
+    if (!adv || storeDesign || !card) return [] as { key: SectionKey; name: string; fixed: boolean }[];
+    const c = buildContent(card, card.language === "hi" ? "hi" : "en");
+    const hasContact = card.links.some((l) => l.type === "phone" || l.type === "whatsapp");
+    const blocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
+    const titleOf = (...kinds: string[]) => (blocks.find((b) => kinds.includes(b.kind) && (b.title ?? "").trim())?.title ?? "").trim();
+    const names: Record<string, [string, string]> = {
+      hero: ["Top of the page (big line and banner)", "सबसे ऊपर (बड़ी line और banner)"], trust: ["Key points strip", "खास बातों की पट्टी"],
+      about: [titleOf("about") || "About", titleOf("about") || "हमारे बारे में"], services: [titleOf("services", "product") || "Services / products", titleOf("services", "product") || "Services / products"],
+      gallery: [titleOf("gallery", "image", "carousel") || "Photos", titleOf("gallery", "image", "carousel") || "Photos"], proof: [titleOf("testimonials") || "Customer reviews", titleOf("testimonials") || "Customer reviews"],
+      process: ["Step by step", "Step by step"], faq: [titleOf("faq") || "Questions", titleOf("faq") || "सवाल-जवाब"],
+      visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip (WhatsApp / Call)", "Contact पट्टी (WhatsApp / Call)"], footer: ["Bottom of the page", "सबसे नीचे"],
+    };
+    return repairOrder(adv.order).filter((k) => sectionHasContent(k, c, hasContact)).map((k) => ({ key: k, name: (names[k] ?? [k, k])[hi ? 1 : 0], fixed: k === "hero" || k === "footer" }));
+  }, [adv, storeDesign, card, hi]);
+  const [advDrag, setAdvDrag] = useState("");
+  const [advOver, setAdvOver] = useState("");
+  /** Moves one Premium section to another's place; shown in the window at once and saved by itself a moment later. */
+  function moveAdv(from: SectionKey, to: SectionKey) {
+    if (!adv || from === to) return;
+    const all: SectionKey[] = repairOrder(adv.order).filter((k) => k !== "hero" && k !== "footer");
+    const i = all.indexOf(from), j = all.indexOf(to);
+    if (i < 0 || j < 0) return;
+    all.splice(i, 1); all.splice(j, 0, from);
+    advOrderTouched.current = true;
+    setAdv({ order: ["hero", ...all, "footer"] });
+  }
+  const advOrderPanel = advRows.length > 2 && (
+    <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+      <p className="text-sm font-semibold">{hi ? "Home page का क्रम — जैसा website पर है" : "Order of your home page — as it is on the website"}</p>
+      <p className="mt-0.5 text-[11px] text-muted">{hi ? "खींचकर या तीर से ऊपर-नीचे करें। Website पर तुरंत बदलता है और अपने-आप save होता है।" : "Drag a row, or use the arrows. The website changes at once and it saves by itself."}</p>
+      <ul className="mt-2 space-y-1.5">
+        {advRows.map((r, i) => {
+          const prev = advRows[i - 1], next = advRows[i + 1];
+          return (
+            <li key={r.key} draggable={!r.fixed}
+              onDragStart={(e) => { setAdvDrag(r.key); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", r.key); } catch { /* ignore */ } }}
+              onDragOver={(e) => { if (advDrag && !r.fixed && advDrag !== r.key) { e.preventDefault(); setAdvOver(r.key); } }}
+              onDragEnd={() => { setAdvDrag(""); setAdvOver(""); }}
+              onDrop={(e) => { e.preventDefault(); const f = advDrag as SectionKey; setAdvDrag(""); setAdvOver(""); if (f && !r.fixed) moveAdv(f, r.key); }}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 ${r.fixed ? "border-border bg-surface2 text-muted" : "cursor-grab border-border bg-surface active:cursor-grabbing"} ${advDrag === r.key ? "opacity-40" : ""} ${advOver === r.key ? "ring-2 ring-brand/40" : ""}`}>
+              <span className="w-5 shrink-0 text-center text-[11px] font-bold text-muted">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.name}</span>
+              {r.fixed ? <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[10px] font-semibold text-muted">{hi ? "🔒 यहीं रहता है" : "🔒 stays here"}</span> : (<>
+                <button type="button" onClick={() => prev && !prev.fixed && moveAdv(r.key, prev.key)} disabled={!prev || prev.fixed} className="rounded p-1 text-muted disabled:opacity-30" aria-label="Up"><ChevronUp className="h-4 w-4" /></button>
+                <button type="button" onClick={() => next && !next.fixed && moveAdv(r.key, next.key)} disabled={!next || next.fixed} className="rounded p-1 text-muted disabled:opacity-30" aria-label="Down"><ChevronDown className="h-4 w-4" /></button>
+              </>)}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2 text-[11px] text-muted">{hi ? "शब्द और photo बदलने के लिए नीचे उस हिस्से को खोलें।" : "To change the words and photos, open that section below."}</p>
+    </section>
+  );
   const paletteKey = adv ? (adv.palette?.key && (adv.palette.key === "brand" || SITE_PALETTES.some((p) => p.key === adv.palette?.key)) ? adv.palette.key : "brand")
     : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
   /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
@@ -303,7 +360,7 @@ export default function WebsiteEditPage() {
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
         ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}), ...((adv.palette as { own?: boolean }).own ? { own: true } : {}) } } : {}),
-        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}) } } : {}),
+        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}), ...(Array.isArray(adv.order) ? { order: adv.order as string[] } : {}) } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1);
@@ -315,10 +372,11 @@ export default function WebsiteEditPage() {
   // Letters & look and Top of page save by themselves a moment after a change (owner, 19 Nov 2026: "jo bhi edit kare saath ke saath save
   // kar de"); Undo on the bar puts the last one back. One try per change: a save that failed waits for the Save button, it is not hammered.
   const autoTried = useRef<Card | null>(null);
+  const advOrderTouched = useRef(false);
   const saveRef = useRef(save);
   useEffect(() => { saveRef.current = save; });
   useEffect(() => {
-    if (!dirty || !open || busy || !card || (tab !== "look" && tab !== "hero") || autoTried.current === card) return;
+    if (!dirty || !open || busy || !card || (tab !== "look" && tab !== "hero" && !(advOrderTouched.current && (tab === "text" || tab === "home"))) || autoTried.current === card) return;
     const t = setTimeout(() => { autoTried.current = card; void saveRef.current(); }, tab === "hero" ? 1800 : 900);
     return () => clearTimeout(t);
   }, [dirty, open, busy, card, tab]);
@@ -549,6 +607,7 @@ export default function WebsiteEditPage() {
         </label>
       )}
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
+      {tab === "text" && advOrderPanel}
       {embedSrc && (
         <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick} onSync={setSync}
           onLive={setEmbedView} onDirty={setEmbedDirty}
@@ -696,6 +755,7 @@ export default function WebsiteEditPage() {
         </section>
       )}
 
+      {tab === "home" && advOrderPanel}
       {tab === "home" && (
         <section className="space-y-4 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <div>
