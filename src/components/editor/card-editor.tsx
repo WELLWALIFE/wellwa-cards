@@ -398,6 +398,8 @@ export function CardEditor({ id }: { id: string }) {
   const patch = (p: Partial<Card>) => setCard((c) => ({ ...c, ...p }));
 
   const setPages = (pages: CardPage[]) => patch({ pages });
+  const [dragPage, setDragPage] = useState("");
+  const [overPage, setOverPage] = useState("");
   const updatePage = (pid: string, up: Partial<CardPage>) =>
     setPages(card.pages.map((p) => (p.id === pid ? { ...p, ...up } : p)));
   const addPage = () => {
@@ -778,11 +780,23 @@ export function CardEditor({ id }: { id: string }) {
                   <h2 className="text-sm font-semibold">{onlyPages ? L("Pages", "Pages") : L("Pages on your card", "Card के pages")} <span className="font-normal text-muted">({card.pages.length})</span></h2>
                   <button className="ed-add !w-auto" onClick={addPage}><Plus className="h-3.5 w-3.5" /> {L("Add page", "Page जोड़ें")}</button>
                 </div>
-                <p className="mt-1 text-xs text-muted">{L("Tap a page name to jump to it. Below, every page's text and photos are open for editing.", "Page के नाम पर tap करके वहाँ जाएँ। नीचे हर page के शब्द और photo बदल सकते हैं।")}</p>
+                <p className="mt-1 text-xs text-muted">{L("Tap a page name to jump to it. Drag a name to change the order of the pages. Below, every page's text and photos are open for editing.", "Page के नाम पर tap करके वहाँ जाएँ। नाम को खींचकर pages का क्रम बदलें। नीचे हर page के शब्द और photo बदल सकते हैं।")}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
+                  {/* A page name can be dragged to a new place (owner, 19 Nov 2026: "drag and drop … pages aage peechhe"); on a phone the arrows on each page do the same. */}
                   {card.pages.map((p) => (
-                    <button key={p.id} type="button" onClick={() => { setActivePage(p.id); flash(`ed-page-${p.id}`); }}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${p.id === activePage ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted"}`}>{p.label || L("Page", "Page")}</button>
+                    <button key={p.id} type="button" draggable onClick={() => { setActivePage(p.id); flash(`ed-page-${p.id}`); }}
+                      onDragStart={(e) => { setDragPage(p.id); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", p.id); } catch { /* ignore */ } }}
+                      onDragOver={(e) => { if (dragPage && dragPage !== p.id) { e.preventDefault(); setOverPage(p.id); } }}
+                      onDragLeave={() => setOverPage((o) => (o === p.id ? "" : o))}
+                      onDragEnd={() => { setDragPage(""); setOverPage(""); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const from = card.pages.findIndex((x) => x.id === dragPage), to = card.pages.findIndex((x) => x.id === p.id);
+                        setDragPage(""); setOverPage("");
+                        if (from < 0 || to < 0 || from === to) return;
+                        const next = card.pages.slice(); const [m] = next.splice(from, 1); next.splice(to, 0, m); setPages(next);
+                      }}
+                      className={`cursor-grab rounded-full border px-3 py-1 text-xs font-semibold active:cursor-grabbing ${dragPage === p.id ? "opacity-40" : ""} ${overPage === p.id ? "border-brand ring-2 ring-brand/40" : p.id === activePage ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted"}`}>{p.label || L("Page", "Page")}</button>
                   ))}
                 </div>
               </div>

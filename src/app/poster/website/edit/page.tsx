@@ -323,6 +323,15 @@ export default function WebsiteEditPage() {
     return () => clearTimeout(t);
   }, [dirty, open, busy, card, tab]);
 
+  // Text & pages and Buttons (the full editor, shown inside this page) go live by themselves as well, a moment after the last change
+  // (owner, 19 Nov 2026: "jo bhi changes karte hain site par live dikhne chahiye"). The forms with their own Save button are left alone.
+  useEffect(() => {
+    if (!embedDirty || !open || (tab !== "text" && tab !== "buttons" && tab !== "pages")) return;
+    const t = setTimeout(() => { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); }, 2500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one try per change: only a new "unsaved" from the editor starts it
+  }, [embedDirty, open, tab]);
+
   async function copyLook() {
     if (!s?.hasCard || !refUrl.trim()) return;
     setBusy("ref"); setNote(null);
