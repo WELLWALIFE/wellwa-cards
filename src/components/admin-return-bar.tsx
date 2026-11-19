@@ -52,7 +52,9 @@ export function AdminReturnBar() {
     window.location.href = to;
   }
 
-  if (!saved) return null;
+  // Inside an embedded screen (the editor and the products list open inside the Edit website page) the pill is not drawn a second time:
+  // it sat on "Add page" and "Add product" there (19 Nov 2026). The page around it already shows it.
+  if (!saved || (typeof window !== "undefined" && window.self !== window.top)) return null;
   return (
     // A small pill in the top-right corner (owner's call, 2 Oct 2026): the wide bar at the foot sat on the app's
     // Home / Create / Leads tabs. The name is in the tooltip; the pill says only "← Admin".

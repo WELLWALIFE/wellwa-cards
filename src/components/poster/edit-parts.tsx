@@ -137,10 +137,13 @@ export function PartHead({ part, group, hi, onBack }: { part: MenuPart<string>; 
       </button>
       <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONES[group] ?? TONES.settings}`}><part.Icon className="h-[18px] w-[18px]" /></span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-bold leading-tight">{part.label}</p>
-        <p className="truncate text-[11px] text-muted">{part.sub}</p>
+        {/* The whole name shows (on a phone "Photos & banne…" was cut by the tag beside it, 19 Nov 2026): the tag sits under it. */}
+        <p className="text-base font-bold leading-tight">{part.label}</p>
+        <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${part.scope === "both" ? "bg-good/15 text-good" : "bg-brand/10 text-brand-ink"}`}>{tag}</span>
+          <span className="truncate">{part.sub}</span>
+        </p>
       </div>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${part.scope === "both" ? "bg-good/15 text-good" : "bg-brand/10 text-brand-ink"}`}>{tag}</span>
     </div>
   );
 }

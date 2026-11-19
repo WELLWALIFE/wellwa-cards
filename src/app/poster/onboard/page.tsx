@@ -2310,12 +2310,12 @@ function Onboard() {
               </button>
             </div>
             {aboutErr && <FieldErr id="aboutai" msg={aboutErr} />}
-            <textarea id="about" value={biz.about ?? ""} onChange={(e) => { touch("about"); clearFE("about"); setAboutErr(""); const v = e.target.value; setBiz({ ...biz, about: words(v) > ABOUT_MAX_WORDS ? v.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") : v, aboutMade: undefined }); }} rows={4}
+            <textarea id="about" value={biz.about ?? ""} onChange={(e) => { touch("about"); clearFE("about"); setAboutErr(""); const v = e.target.value; const cap = Math.max(ABOUT_MAX_WORDS, words(biz.about ?? "")); setBiz({ ...biz, about: words(v) > cap ? v.trim().split(/\s+/).slice(0, cap).join(" ") : v, aboutMade: undefined }); }} rows={4}
               placeholder={T(`A few words is enough — e.g. “${copy.aboutEg}” — then tap Write with AI.`, `थोड़े शब्द काफ़ी हैं — जैसे “${copy.aboutEgHi}” — फिर AI से लिखवाएँ दबाएँ।`)} className={`${cField} ${fe("about") ? "border-danger" : ""}`} />
             <FieldErr id="about" msg={fe("about")} />
             <span className="mt-1 flex justify-between gap-2 text-xs font-normal text-muted">
               <span>{T("Used on your card and website.", "Card और website पर यही जाएगा।")}</span>
-              <span className={`shrink-0 tabular-nums ${words(biz.about ?? "") >= ABOUT_MAX_WORDS ? "text-amber" : ""}`}>{words(biz.about ?? "")}/{ABOUT_MAX_WORDS}</span>
+              <span className={`shrink-0 tabular-nums ${words(biz.about ?? "") >= ABOUT_MAX_WORDS ? "text-amber" : ""}`}>{words(biz.about ?? "")}/{Math.max(ABOUT_MAX_WORDS, words(biz.about ?? ""))}</span>
             </span>
           </div>
           {(biz.role === "business" || !!(biz.name ?? "").trim()) && <div><div className="flex items-center"><Photo url={biz.logo} label={biz.role === "business" ? T("your logo", "अपना logo") : T("company / brand logo", "company / brand logo")}

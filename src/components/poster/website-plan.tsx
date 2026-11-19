@@ -118,7 +118,7 @@ export function SiteProgress({ hi, stage, when }: { hi: boolean; stage: 1 | 2; w
   const T = (en: string, h: string) => (hi ? h : en);
   const steps = [
     { icon: CheckCircle2, t: T("Payment received", "Payment मिल गया"), s: "" },
-    { icon: Clock, t: T("Your website is being made", "आपकी website बन रही है"), s: when || T("Within 24 hours", "24 से 48 घंटे में") },
+    { icon: Clock, t: T("Your website is being made", "आपकी website बन रही है"), s: when || T("Within 24 to 48 hours", "24 से 48 घंटे में") },
     { icon: Globe, t: T("Website live", "Website live"), s: T("We will WhatsApp you", "WhatsApp पर बताएँगे") },
   ];
   return (

@@ -48,7 +48,8 @@ export default function SiteOrderPage() {
     return () => { stop = true; if (timer) clearTimeout(timer); };
   }, [router, tick]);
   if (!o) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
-  const siteName = `${o.wanted === "site_standard" || o.pkg === "site_standard" ? "Standard" : "Premium"}${o.custom ? " + Customise" : ""}`;
+  // The plan that is PAID names the website (an order for Standard that was given Premium said "Standard website" beside "Website Premium", 19 Nov 2026).
+  const siteName = `${(o.pkg === "site_standard" || o.pkg === "site_premium" ? o.pkg : o.wanted) === "site_standard" ? "Standard" : "Premium"}${o.custom ? " + Customise" : ""}`;
   if (o.stage === "pay" && o.pay) {
     const due = o.orderedAt ? Date.parse(o.orderedAt) + ORDER_HOURS * 3600_000 : 0;
     const late = !!due && due <= Date.now();
