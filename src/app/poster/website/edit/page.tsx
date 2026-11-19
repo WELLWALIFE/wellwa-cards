@@ -4,7 +4,7 @@
 // Everything here changes card.site.* only; the phone card, the pages and their text are untouched (those are
 // edited in the full editor). One Save writes it all through PATCH /api/site/status.
 import { SiteLink } from "@/components/poster/card-sheet";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Children, Fragment, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
@@ -376,6 +376,10 @@ export default function WebsiteEditPage() {
   }
   // Letters & look and Top of page save by themselves a moment after a change (owner, 19 Nov 2026: "jo bhi edit kare saath ke saath save
   // kar de"); Undo on the bar puts the last one back. One try per change: a save that failed waits for the Save button, it is not hammered.
+  // Which heading of a long part is open ("hero:2"); nothing chosen yet = the first one.
+  const [foldAt, setFoldAt] = useState("");
+  const foldIs = (id: string, first: boolean) => foldAt === id || (first && !foldAt.startsWith(`${id.split(":")[0]}:`));
+  const foldTap = (id: string, first: boolean) => setFoldAt(foldIs(id, first) ? `${id.split(":")[0]}:none` : id);
   const autoTried = useRef<Card | null>(null);
   const advOrderTouched = useRef(false);
   const saveRef = useRef(save);
@@ -650,7 +654,8 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "look" && (
-        <section className="space-y-5 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+          <FoldGroups prefix="look" is={foldIs} tap={foldTap}>
           {/* A Premium website's own design lives on the Premium page (owner, 25 Oct 2026: "premium hai to premium design par jaana chahiye"). */}
           <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href={adv ? "/poster/site/advanced" : "/poster/card/build?improve=1"} className="font-semibold text-brand-ink">{adv ? (hi ? "Premium design" : "Premium design") : (hi ? "Website का design" : "Website design")}</Link>.</p>
           {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
@@ -709,15 +714,23 @@ export default function WebsiteEditPage() {
             {line("ref", "mt-2")}
             {site.reference?.url && <p className="text-[11px] text-muted mt-1.5">{hi ? "अभी का लुक इस वेबसाइट से:" : "Your look is copied from:"} {site.reference.url.replace(/^https?:\/\//, "")}</p>}
           </div>
+          </FoldGroups>
         </section>
       )}
 
       {tab === "hero" && (
-        <section className="space-y-4 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
-          <SlidesEditor hi={hi} card={card} images={s.images} slides={site.hero?.slides ?? []} onChange={(slides) => setHero({ slides })} cardId={s.cardId} />
+        <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+          {/* One heading, its own boxes under it; one opens at a time (owner, 19 Nov 2026: "jo heading hai uski editing usi ke andar ho"). */}
+          <Fold title={hi ? "बड़ी line और उसके नीचे के शब्द" : "Big line and the words under it"} open={foldIs("hero:0", true)} onToggle={() => foldTap("hero:0", true)}>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "सबसे ऊपर की बड़ी लाइन" : "Big line at the top"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "बड़ी लाइन के नीचे 1–2 लाइन" : "One or two lines under the big line"}</span><textarea value={site.hero?.sub ?? ""} onChange={(e) => setHero({ sub: e.target.value })} placeholder={s.defaults.sub} rows={2} maxLength={240} className={field} /></label>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "WhatsApp बटन का टेक्स्ट" : "Words on the WhatsApp button"}</span><input value={site.hero?.ctaLabel ?? ""} onChange={(e) => setHero({ ctaLabel: e.target.value })} placeholder="WhatsApp" maxLength={30} className={field} /></label>
+          <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5"><span className="text-sm font-medium">{hi ? "बड़ी लाइन के नीचे मेरी फ़ोटो + नाम" : "My photo + name under the big line"}</span><input type="checkbox" className="h-5 w-5" checked={!site.hideProfile} onChange={(e) => set({ hideProfile: !e.target.checked })} /></label>
+          </Fold>
+          <Fold title={hi ? "बदलते banner (2–3, अपने-आप बदलते हैं)" : "Sliding banners (2–3 that change by themselves)"} open={foldIs("hero:1", false)} onToggle={() => foldTap("hero:1", false)}>
+          <SlidesEditor hi={hi} card={card} images={s.images} slides={site.hero?.slides ?? []} onChange={(slides) => setHero({ slides })} cardId={s.cardId} />
+          </Fold>
+          <Fold title={hi ? "ऊपर की picture" : "Picture at the top"} open={foldIs("hero:2", false)} onToggle={() => foldTap("hero:2", false)}>
           <div>
             <p className="text-xs font-semibold text-muted mb-1.5">{hi ? "ऊपर की इमेज (प्रोडक्ट या लोगो)" : "Picture at the top (a product or your logo)"}</p>
             <div className="flex flex-wrap gap-2">
@@ -733,6 +746,8 @@ export default function WebsiteEditPage() {
             {line("ai", "mt-2")}
             <p className="text-[11px] text-muted mt-1">{hi ? "कुछ न चुनें तो पहले product की photo लग जाती है। अपनी खुद की फ़ोटो यहाँ न लगाएँ।" : "If you choose nothing, your first product photo is used. Do not put a photo of your own face here."}</p>
           </div>
+          </Fold>
+          <Fold title={hi ? "Website का logo" : "Website logo"} open={foldIs("hero:3", false)} onToggle={() => foldTap("hero:3", false)}>
           <div>
             <p className="text-xs font-semibold text-muted mb-1.5">{hi ? "वेबसाइट लोगो (ऊपर और नीचे दिखेगा)" : "Website logo (shown at the top and bottom)"}</p>
             <div className="flex flex-wrap gap-2">
@@ -743,13 +758,8 @@ export default function WebsiteEditPage() {
             </div>
             {line("logo", "mt-2")}
           </div>
-          <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5"><span className="text-sm font-medium">{hi ? "बड़ी लाइन के नीचे मेरी फ़ोटो + नाम" : "My photo + name under the big line"}</span><input type="checkbox" className="h-5 w-5" checked={!site.hideProfile} onChange={(e) => set({ hideProfile: !e.target.checked })} /></label>
-          {/* News / offers live in ONE place now — Card & Website → News (the notice bar / pop-up, src/lib/notice.ts); the old
-              announcement bar here is gone (audit, 7 Oct 2026: two announcement systems). */}
-          <div className="rounded-lg border border-border p-3">
-            <p className="text-sm font-semibold">📣 {hi ? "न्यूज़ / ऑफ़र की पट्टी" : "Offer bar"}</p>
-            <p className="mt-1 text-[11px] text-muted">{hi ? "ऑफ़र, छुट्टी या ख़बर की पट्टी और पॉप-अप अब एक जगह से लगती है:" : "Offer, holiday and news bars and pop-ups are now set in one place:"} <Link href="/poster/site?edit=site" className="font-semibold text-brand-ink">{hi ? "Card & Website → News" : "Card & Website → News"}</Link></p>
-          </div>
+          </Fold>
+          <Fold title={hi ? "गोल बटन (WhatsApp / Call)" : "Round button (WhatsApp / Call)"} open={foldIs("hero:4", false)} onToggle={() => foldTap("hero:4", false)}>
           <div>
             <p className="text-sm font-semibold">{hi ? "गोल बटन (वेबसाइट पर)" : "Round button on the website"}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
@@ -757,6 +767,8 @@ export default function WebsiteEditPage() {
             </div>
             <p className="text-[11px] text-muted">{hi ? "कंप्यूटर पर यह गोल बटन नीचे-बाएँ रहता है। फ़ोन पर नीचे Call · WhatsApp · Directions की पट्टी हमेशा रहती है।" : "On a computer the round button sits at the bottom left. On a phone, a Call · WhatsApp · Directions bar is always at the bottom."}</p>
           </div>
+          </Fold>
+          <button type="button" onClick={() => openPart("offer")} className="flex w-full items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 text-left text-sm font-semibold">📣 {hi ? "Offer की पट्टी या pop-up लगाना है? “Offer / pop-up” खोलें" : "Want an offer bar or a pop-up? Open “Offer / pop-up”"}<span className="text-brand-ink">→</span></button>
         </section>
       )}
 
@@ -889,4 +901,31 @@ function keepTouched(fresh: Card, mine: Card, touched: Set<string>): Card {
     } else site[k] = b[k];
   }
   return { ...fresh, site: site as Card["site"] };
+}
+
+/** One heading of a long part: a bar, and its boxes under it when open. */
+function Fold({ title, open, onToggle, children }: { title: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div className={`rounded-xl border ${open ? "border-brand/40" : "border-border"}`}>
+      <button type="button" onClick={onToggle} aria-expanded={open} className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold ${open ? "rounded-t-xl bg-brand-soft/50" : "rounded-xl"}`}>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-brand transition-transform ${open ? "" : "-rotate-90"}`} /><span className="min-w-0 flex-1">{title}</span>
+      </button>
+      {open && <div className="space-y-3 p-3">{children}</div>}
+    </div>
+  );
+}
+/** Folds the groups of a part by themselves: every <div> that starts with its heading line becomes a bar with the rest under it. */
+function FoldGroups({ prefix, is, tap, children }: { prefix: string; is: (id: string, first: boolean) => boolean; tap: (id: string, first: boolean) => void; children: React.ReactNode }) {
+  const flat: React.ReactNode[] = [];
+  const walk = (n: React.ReactNode) => Children.forEach(n, (c) => { if (isValidElement(c) && c.type === Fragment) walk((c.props as { children?: React.ReactNode }).children); else flat.push(c); });
+  walk(children);
+  let n = 0;
+  return <>{flat.map((c, i) => {
+    if (!isValidElement(c) || c.type !== "div") return <Fragment key={i}>{c}</Fragment>;
+    const kids = Children.toArray((c.props as { children?: React.ReactNode }).children);
+    const head = kids[0];
+    if (!isValidElement(head) || head.type !== "p" || !/font-semibold/.test(String((head.props as { className?: string }).className ?? ""))) return <Fragment key={i}>{c}</Fragment>;
+    const id = `${prefix}:${n}`, first = n === 0; n += 1;
+    return <Fold key={i} title={(head.props as { children?: React.ReactNode }).children} open={is(id, first)} onToggle={() => tap(id, first)}>{kids.slice(1)}</Fold>;
+  })}</>;
 }
