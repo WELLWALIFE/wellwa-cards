@@ -8,7 +8,7 @@ const BRIDGE = "http://127.0.0.1:8787";
 
 const ALLOWED = new Set([
   "status", "qr", "pair", "config", "contacts", "send", "logout",
-  "followups/start", "followups/stop", "followups/test",
+  "followups", "followups/start", "followups/stop", "followups/test",
 ]);
 
 async function proxy(request: Request, path: string[]) {

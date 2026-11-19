@@ -69,7 +69,13 @@ export async function GET(
   if (!card) return Response.json({ v2: false });
   const platform = await getPlatformKnowledge();
   const page = new URL(_request.url).searchParams.get("page");
-  if (v2Mode(platform.aiV2, sellsShubhora(card, page), card.username) !== "shubhora") return Response.json({ v2: false, sales: salesMeta(card) });
+  if (v2Mode(platform.aiV2, sellsShubhora(card, page), card.username) !== "shubhora") {
+    // The owner's own first message (AI Training → "Pehla message") greets on the website chat too: one welcome for both.
+    const w = card.botFollow?.welcome;
+    const own = w?.mode === "own" ? String(w.text ?? "").replace(/\{\s*(naam|name|नाम)\s*\}/gi, "").replace(/\s{2,}/g, " ").replace(/\s+([,!?।])/g, "$1").trim() : "";
+    const sales = salesMeta(card);
+    return Response.json({ v2: false, sales: own ? { ...sales, greeting: own } : sales });
+  }
   const seller = firstName(card.name);
   return Response.json({
     v2: true,

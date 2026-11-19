@@ -286,6 +286,8 @@ async function followupImage(step) {
   // The festival and evergreen artwork is Wellwa's (water / hydration / free test) — never on a Shubhora partner's
   // follow-up. Those go as plain text when there is no daily banner.
   if (isShubhoraCard(cardContext?.data)) return null;
+  // Every other business: plain text (19 Nov 2026 — a saree shop's customer must never get a water-ionizer picture).
+  if (!isWellwaCard()) return null;
   const now = new Date();
   for (const o of FU_OCCASIONS) {
     if (o.y && o.y !== now.getFullYear()) continue;
@@ -466,7 +468,29 @@ function saveFollowups() {
 
 const DAY = 24 * 60 * 60 * 1000;
 // Gap before the send at each step (from the previous event): d1, d3, d6, then weekly.
-const stepGap = (step) => ([1, 2, 3][step] ?? 7) * DAY;
+/* ---------------- the owner's own message plan (AI Training → "AI ke messages", card.botFollow) ----------------
+ * Every part is optional: nothing set = the AI writes every message on the old days (1 → 3 → 6, then weekly).
+ *   welcome: { mode: "ai" | "own", text }                       the first message to a new customer
+ *   steps:   [{ on, mode: "ai" | "own", text, after, imageUrl }] messages 2, 3, 4 — `after` = days after the previous one
+ *   weekly:  false stops the weekly check-in after the last step
+ *   start / end: the hours (IST) messages may go out; perTick: how many at most each run */
+function ownPlan() {
+  const f = cardContext?.data?.botFollow;
+  return f && typeof f === "object" ? f : {};
+}
+const planStep = (step) => { const s = ownPlan().steps; return Array.isArray(s) && s[step] && typeof s[step] === "object" ? s[step] : null; };
+/** The owner's text with the customer's first name in place of {naam} / {name}. */
+function ownText(text, name) {
+  const first = String(name || "").trim().split(/\s+/)[0] || "";
+  return String(text || "").replace(/\{\s*(naam|name|नाम)\s*\}/gi, first).replace(/\s{2,}/g, " ").replace(/\s+([,!?।])/g, "$1").trim();
+}
+/** Wellwa's own number (smart water ionizers): the only card whose follow-ups talk about water and carry its artwork. */
+const isWellwaCard = () => /wellwa/i.test(String(cardContext?.data?.company || cardContext?.data?.name || config.businessName || ""));
+
+const stepGap = (step) => {
+  const d = Number(planStep(step)?.after);
+  return (Number.isFinite(d) && d >= 1 && d <= 60 ? d : ([1, 2, 3][step] ?? 7)) * DAY;
+};
 
 // Known 1-to-1 WhatsApp chats (people the owner has an existing thread with).
 // Captured passively from history sync + live traffic. jid -> {name, lastSeen}
@@ -528,9 +552,14 @@ const OPT_OUT_RE = /\b(stop|unsubscribe|opt.?out|band karo|band kar do|mat bhejo
 const IST_MS = 5.5 * 3600 * 1000;
 const istHour = (ts = Date.now()) => new Date(ts + IST_MS).getUTCHours();
 // Snap a timestamp into the next allowed business-hours window (IST).
+function planHours() {
+  const fu = config.followup || {}, p = ownPlan();
+  const ok = (n) => Number.isInteger(n) && n >= 0 && n <= 24;
+  const start = ok(p.start) ? p.start : fu.businessStart ?? 9, end = ok(p.end) && p.end > (ok(p.start) ? p.start : 9) ? p.end : fu.businessEnd ?? 20;
+  return { start, end };
+}
 function nextBusinessTime(ts) {
-  const fu = config.followup || {};
-  const start = fu.businessStart ?? 9, end = fu.businessEnd ?? 20;
+  const { start, end } = planHours();
   const d = new Date(ts + IST_MS); // UTC fields of this Date = the IST wall clock
   if (d.getUTCHours() < start) d.setUTCHours(start, 0, 0, 0);
   else if (d.getUTCHours() >= end) { d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(start, 0, 0, 0); }
@@ -1244,9 +1273,12 @@ async function followupMessage(entry, jid) {
   ].filter(Boolean).join("\n\n");
   const persona = card?.botPersona?.trim() || (shubhora ? shubhoraTraining(shubhoraOverride).brand_persona : "") || platformKnowledge.persona || "";
   // What the business offers and what to invite people to — a Shubhora partner sells Shubhora, not water ionizers.
-  const offer = shubhora ? "the Shubhora digital V-Card, website and WhatsApp AI assistant (free to start)" : "smart water ionizers";
-  const invite = shubhora ? "a free demo card made with their own name, or a quick call" : "a FREE live demo on a video call (or the demo video)"; // never a home demo (owner, 23 Oct 2026)
-  const tip = shubhora ? "getting more customers online (WhatsApp, Google reviews, a daily poster, replying fast)" : "water / hydration / wellness";
+  // Wellwa sells water ionizers; every other business is told about from its own card (19 Nov 2026: the ionizer words went to every card).
+  const wellwa = !shubhora && isWellwaCard();
+  const biz = String(card?.company || card?.name || config.businessName || "the business").trim();
+  const offer = shubhora ? "the Shubhora digital V-Card, website and WhatsApp AI assistant (free to start)" : wellwa ? "smart water ionizers" : `what ${biz} offers (see the business knowledge)`;
+  const invite = shubhora ? "a free demo card made with their own name, or a quick call" : wellwa ? "a FREE live demo on a video call (or the demo video)" : "ask any question, see the products / services, or call or visit"; // never a home demo (owner, 23 Oct 2026)
+  const tip = shubhora ? "getting more customers online (WhatsApp, Google reviews, a daily poster, replying fast)" : wellwa ? "water / hydration / wellness" : `something genuinely useful for a customer of ${biz}`;
 
   const hour = istHour();
   const partOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
@@ -1290,7 +1322,7 @@ async function runFollowups() {
   if (state !== "connected" || !sock) return;
   const now = Date.now();
   const hour = istHour(now);
-  const start = fu.businessStart ?? 9, end = fu.businessEnd ?? 20;
+  const { start, end } = planHours();
   const inHours = hour >= start && hour < end;
 
   const due = Object.entries(followups)
@@ -1306,7 +1338,7 @@ async function runFollowups() {
   }
 
   let sent = 0;
-  const cap = fu.maxPerTick ?? 3;
+  const cap = Number.isInteger(ownPlan().perTick) && ownPlan().perTick >= 1 && ownPlan().perTick <= 10 ? ownPlan().perTick : fu.maxPerTick ?? 3;
   for (const [jid, e] of due) {
     if (sent >= cap) break;
     // Never follow up a number on the never-reply list, or (new AI) a personal contact.
@@ -1314,11 +1346,17 @@ async function runFollowups() {
       e.active = false; e.updatedAt = Date.now(); saveFollowups();
       continue;
     }
-    const msg = await followupMessage(e, jid);
+    // The owner's plan for this step: off = skipped (the next one keeps its own days), their own words / picture, or the AI's.
+    const own = (e.step ?? 0) <= 2 ? planStep(e.step ?? 0) : null;
+    if ((e.step ?? 0) >= 3 && ownPlan().weekly === false) { e.active = false; e.updatedAt = Date.now(); saveFollowups(); continue; }
+    const skip = !!own && own.on === false;
+    const mine = !skip && own && own.mode === "own" && String(own.text || "").trim() ? ownText(own.text, e.name) : "";
+    const msg = skip ? null : mine || await followupMessage(e, jid);
     if (msg) {
       try {
         if (humanMuted(jid)) { console.log(`[followup] skip (human active) ${jid}`); continue; }
-        const art = await followupImage(e.step);
+        const ownPic = own && /^https:\/\//.test(String(own.imageUrl || "")) ? { url: own.imageUrl, greet: "" } : null;
+        const art = ownPic || (mine ? null : await followupImage(e.step));
         const caption = (art?.greet ? art.greet + "\n\n" : "") + splitMedia(msg).text;
         await typing(jid, 2500);
         if (art) await sock.sendMessage(jid, { image: { url: art.url }, caption: caption + BOT_MARKER });
@@ -1377,6 +1415,18 @@ async function buildReply(jid, text, opts = {}) {
   const ai = await aiReply(jid, text, opts);
   if (ai) return ai;
   return welcomeOrFallback(jid);
+}
+
+/** The owner's own first message to a new customer (AI Training → "Pehla message"): sent before the AI's answer. Returns true when the
+ *  customer only said hello — the welcome is then the whole reply. Never on a Shubhora partner's card (its playbook greets). */
+async function ownWelcome(jid, name, text, firstContact) {
+  const w = ownPlan().welcome;
+  if (!firstContact || !w || w.mode !== "own" || !String(w.text || "").trim() || isShubhoraCard(cardContext?.data)) return false;
+  const line = ownText(w.text, name);
+  rememberTurn(jid, "assistant", line);
+  await deliver(jid, line);
+  const k = quickRead(text).kind;
+  return k === "opener" || k === "social" || k === "ack";
 }
 
 /* ---------------- the new assistant (Super Admin → Shubhora AI → "New AI") ----------------
@@ -1589,6 +1639,7 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd,
   if (q.kind === "social" && (hist.length || known)) { console.log(`[v2] ${jid}: greeting from a known contact — silent`); return; }
   const firstContact = hist.length === 0;
   if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { saveLead(jid, name, text); noteFollowupInbound(jid, name, text); return; }
+  if (await ownWelcome(jid, name, text, firstContact).catch(() => false)) { saveLead(jid, name, text); noteFollowupInbound(jid, name, text); return; }
   const botOut = firstContact && AD_OPENER_RE.test(text)
     ? adOpenerReply(jid, name)
     : await buildReply(jid, text, { history: hist, personalCheck: !flags.notPersonal, known, saved: savedName(jid) });
@@ -1893,6 +1944,7 @@ async function startWhatsApp() {
 
         const firstContact = (history.get(jid)?.length ?? 0) === 0;
         if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { console.log(`[flow] handled ${jid}: ${text.slice(0, 30)}`); continue; }
+        if (await ownWelcome(jid, name, text, firstContact).catch(() => false)) continue;
         const botOut = firstContact && AD_OPENER_RE.test(text)
           ? adOpenerReply(jid, name)
           : await buildReply(jid, text, { personalCheck: !isFromAd(m.message) && !(await leadFlags(jid).catch(() => ({ notPersonal: false }))).notPersonal, known: knownBefore, saved: savedName(jid) });
@@ -2338,13 +2390,22 @@ const server = createServer(async (req, res) => {
       });
     }
     if (req.method === "POST" && url.pathname === "/followups/test") {
-      const { step = 0, lastMsg = "", to, outreach = false, name = "" } = await readBody(req);
-      const msg = await followupMessage({ step, lastMsg, outreach, name });
-      if (msg && to && state === "connected") {
-        const jid = to.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
-        await sock.sendMessage(jid, { text: msg + BOT_MARKER });
+      // AI Training → "Test": `toMe` sends it to the owner's own WhatsApp ("message yourself"), never to a customer. `text` = the
+      // owner's own words for that step (not saved yet), `step` -1 = the welcome. Without `text` the AI writes it as it would.
+      const { step = 0, lastMsg = "", to, toMe = false, outreach = false, name = "", text = "", imageUrl = "" } = await readBody(req);
+      const own = String(text || "").trim();
+      const msg = own ? ownText(own, name || "Rahul") : Number(step) < 0 ? null : await followupMessage({ step: Number(step) || 0, lastMsg, outreach, name });
+      const meNum = String(me?.id || "").split(":")[0].split("@")[0];
+      const dest = toMe ? meNum : String(to || "").replace(/[^0-9]/g, "");
+      let sent = false;
+      if (msg && dest && state === "connected") {
+        const jid = dest + "@s.whatsapp.net";
+        const pic = /^https:\/\//.test(String(imageUrl || "")) ? imageUrl : "";
+        if (pic) await sock.sendMessage(jid, { image: { url: pic }, caption: msg + BOT_MARKER });
+        else await sock.sendMessage(jid, { text: msg + BOT_MARKER });
+        sent = true;
       }
-      return json(res, 200, { message: msg, sent: !!(msg && to) });
+      return json(res, 200, { message: msg, sent, connected: state === "connected" });
     }
     if (req.method === "POST" && url.pathname === "/notify-lead") {
       if (!planActive()) return json(res, 402, { error: "plan_expired" });

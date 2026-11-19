@@ -252,10 +252,10 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // The advanced website holds a hidden stub page per item instead, so every item opens without a reload (advancedItemStubs).
   const itemStubs = adv ? advancedItemStubs(card) : [];
   const pub = adv
-    ? { ...card, botPersona: undefined, botKnowledge: undefined, pages: [...card.pages, ...itemStubs] }
+    ? { ...card, botPersona: undefined, botKnowledge: undefined, botFollow: undefined, pages: [...card.pages, ...itemStubs] }
     : product
-      ? { ...card, botPersona: undefined, botKnowledge: undefined, pages: [...card.pages, page!] }
-      : { ...card, botPersona: undefined, botKnowledge: undefined };
+      ? { ...card, botPersona: undefined, botKnowledge: undefined, botFollow: undefined, pages: [...card.pages, page!] }
+      : { ...card, botPersona: undefined, botKnowledge: undefined, botFollow: undefined };
   const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd(card, { url: product ? `${home}/${product.slug}` : urlFor(home, card, page), homeUrl: home, page, product: product?.item })).replace(/</g, "\\u003c") }} />;
   // "updates" is the website's own page (recent posters), not one of the card's pages.
   const initialPage = page?.slug ?? (slug === "updates" ? "updates" : undefined);

@@ -258,6 +258,9 @@ export interface Card {
   // ---- AI bot training (used by on-card chat + WhatsApp auto-reply) ----
   botPersona?: string;   // tone/role, e.g. "Friendly water-ionizer expert"
   botKnowledge?: string; // product/business facts, FAQs, prices (manual + PDF-extracted)
+  /** The owner's message plan (AI Training → "AI ke messages", 19 Nov 2026), read by the WhatsApp bridge. Every part optional:
+   *  unset = the AI writes each message on the old days (1 → 3 → 6, then weekly). */
+  botFollow?: BotFollow;
   /** The owner's OWN website (owner's call, 10 Oct 2026: "bot meri website suggest kare, card nahi"): the assistant
    *  sends customers this link instead of the card's, and its knowledge is read from it (Train AI bot → Read website). */
   botSite?: string;
@@ -381,3 +384,17 @@ export interface Lead {
   score: number; // 0-100, AI lead score
   createdAt: string;
 }
+
+/** One message of the owner's plan: on/off, the AI's words or the owner's own ({naam} = the customer's first name), days after the
+ *  previous message, an optional picture. */
+export type BotFollowStep = { on: boolean; mode: "ai" | "own"; text?: string; after: number; imageUrl?: string };
+export type BotFollow = {
+  /** The first message to a new customer: the AI's own greeting, or the owner's words sent before the AI answers. */
+  welcome?: { mode: "ai" | "own"; text?: string };
+  /** Messages 2, 3 and 4. */
+  steps?: BotFollowStep[];
+  /** The weekly check-in after the last step (default on). */
+  weekly?: boolean;
+  /** Hours (IST, 0–24) messages may go out. */
+  start?: number; end?: number;
+};
