@@ -312,6 +312,17 @@ export default function WebsiteEditPage() {
     } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
+  // Letters & look and Top of page save by themselves a moment after a change (owner, 19 Nov 2026: "jo bhi edit kare saath ke saath save
+  // kar de"); Undo on the bar puts the last one back. One try per change: a save that failed waits for the Save button, it is not hammered.
+  const autoTried = useRef<Card | null>(null);
+  const saveRef = useRef(save);
+  useEffect(() => { saveRef.current = save; });
+  useEffect(() => {
+    if (!dirty || !open || busy || !card || (tab !== "look" && tab !== "hero") || autoTried.current === card) return;
+    const t = setTimeout(() => { autoTried.current = card; void saveRef.current(); }, tab === "hero" ? 1800 : 900);
+    return () => clearTimeout(t);
+  }, [dirty, open, busy, card, tab]);
+
   async function copyLook() {
     if (!s?.hasCard || !refUrl.trim()) return;
     setBusy("ref"); setNote(null);
@@ -603,7 +614,7 @@ export default function WebsiteEditPage() {
             <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => setStyle({ hero: undefined })} className={chip(!style.hero)}>{hi ? "अपने-आप" : "Automatic"}</button>
-              {HERO_LAYOUTS.map((h) => <button key={h.key} type="button" onClick={() => setStyle({ hero: h.key })} className={chip(style.hero === h.key)} title={h.blurb}>{hi ? h.hi : h.name}</button>)}
+              {HERO_LAYOUTS.map((h) => <button key={h.key} type="button" onClick={() => setStyle({ hero: h.key, blueprint: undefined })} className={chip(style.hero === h.key)} title={h.blurb}>{hi ? h.hi : h.name}</button>)}
             </div>
             <p className="text-[11px] text-muted mt-1">{style.hero ? HERO_LAYOUTS.find((h) => h.key === style.hero)?.blurb : (hi ? "अपने-आप: product की photo हो तो शब्द + picture, banner हो तो बड़ी photo।" : "Automatic: words + picture when you have a product photo, a big photo when you have a banner.")}</p>
           </div>
