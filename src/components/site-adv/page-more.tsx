@@ -335,7 +335,8 @@ export function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteCont
     case "video": {
       const id = youtubeId(b.url ?? "");
       const src = id ? `https://www.youtube-nocookie.com/embed/${id}` : "";
-      if (!src && !/^https?:\/\/.+\.(mp4|webm)(\?|$)/i.test(b.url ?? "")) return null;
+      // A clip of our own library ("/api/stock/…mp4") or any web address of an .mp4 / .webm plays in the page's own player.
+      if (!src && !/^(https?:\/\/|\/)[^\s]+\.(mp4|webm)(\?|$)/i.test(b.url ?? "")) return null;
       return (
         <Sec k={`b${i}`} tone={tone} label={title(b.title)}>
           <Head title={title(b.title)} />
