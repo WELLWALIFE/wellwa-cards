@@ -152,7 +152,7 @@ function PreviewInner() {
           }
         }
         // A part of the editor opened, or its words were not found (owner, 26 Oct 2026: "niche edit karne par screen me wahi space dikhe"): the section it changes.
-        if (!el && d.part) {
+        if (!el && d.part && !d.top) {
           const rx = PART_RX[d.part];
           if (rx) {
             const heads = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,.look-title"));
