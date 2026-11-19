@@ -1959,7 +1959,7 @@ export default function BuildCard() {
             <ul className="space-y-1">
               {li(T("Choose which website you want", "चुनें कौन सी website चाहिए"))}
               {li(T("Our team makes your website and digital card", "हमारी team आपकी website और digital card बनाती है"))}
-              {li(T("Delivered within 24 hours", "24 घंटे में तैयार"))}
+              {li(T("Delivered within 24 to 48 hours", "24 से 48 घंटे में तैयार"))}
             </ul>
             {/* Which website? (owner, 14 Nov 2026) — the price on each button; a tap places the order and opens its page (thank you + Pay). */}
             {([
