@@ -137,7 +137,7 @@ export default function WebsiteEditPage() {
   const [big, setBig] = useState(false);
   // One screen of the website, not the whole page (a one-screen-tall hero grew with a page-tall frame; 24 Oct 2026): it scrolls inside.
   const [boxH, setBoxH] = useState(230);
-  const focusAsk = useRef<{ top?: boolean; text?: string } | null>(null);
+  const focusAsk = useRef<{ top?: boolean; text?: string; sec?: string } | null>(null);
   /** Show this part in the window: the top of the website, or the section / line with this text. */
   const focus = (f: { top?: boolean; text?: string }) => { focusAsk.current = f; };
 
@@ -265,11 +265,14 @@ export default function WebsiteEditPage() {
     all.splice(i, 1); all.splice(j, 0, from);
     advOrderTouched.current = true;
     setAdv({ order: ["hero", ...all, "footer"] });
+    focusAsk.current = { sec: from };   // the window follows the section that was moved
   }
+  /** A row tapped: the window above shows that part of the website (owner, 19 Nov 2026). */
+  const showAdv = (k: SectionKey) => { const f = k === "hero" ? { top: true } : { sec: k }; lastFocus.current = f; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } };
   const advOrderPanel = advRows.length > 2 && (
     <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
       <p className="text-sm font-semibold">{hi ? "Home page का क्रम — जैसा website पर है" : "Order of your home page — as it is on the website"}</p>
-      <p className="mt-0.5 text-[11px] text-muted">{hi ? "खींचकर या तीर से ऊपर-नीचे करें। Website पर तुरंत बदलता है और अपने-आप save होता है।" : "Drag a row, or use the arrows. The website changes at once and it saves by itself."}</p>
+      <p className="mt-0.5 text-[11px] text-muted">{hi ? "नाम पर tap करें तो website का वही हिस्सा दिखेगा। खींचकर या तीर से ऊपर-नीचे करें — अपने-आप save होता है।" : "Tap a name to see that part on the website. Drag a row, or use the arrows, to move it — it saves by itself."}</p>
       <ul className="mt-2 space-y-1.5">
         {advRows.map((r, i) => {
           const prev = advRows[i - 1], next = advRows[i + 1];
@@ -281,7 +284,7 @@ export default function WebsiteEditPage() {
               onDrop={(e) => { e.preventDefault(); const f = advDrag as SectionKey; setAdvDrag(""); setAdvOver(""); if (f && !r.fixed) moveAdv(f, r.key); }}
               className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 ${r.fixed ? "border-border bg-surface2 text-muted" : "cursor-grab border-border bg-surface active:cursor-grabbing"} ${advDrag === r.key ? "opacity-40" : ""} ${advOver === r.key ? "ring-2 ring-brand/40" : ""}`}>
               <span className="w-5 shrink-0 text-center text-[11px] font-bold text-muted">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.name}</span>
+              <button type="button" onClick={() => showAdv(r.key)} title={hi ? "Website पर यह हिस्सा दिखाएँ" : "Show this part on the website"} className="min-w-0 flex-1 truncate text-left text-sm font-medium hover:text-brand-ink">{r.name}</button>
               {r.fixed ? <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[10px] font-semibold text-muted">{hi ? "🔒 यहीं रहता है" : "🔒 stays here"}</span> : (<>
                 <button type="button" onClick={() => prev && !prev.fixed && moveAdv(r.key, prev.key)} disabled={!prev || prev.fixed} className="rounded p-1 text-muted disabled:opacity-30" aria-label="Up"><ChevronUp className="h-4 w-4" /></button>
                 <button type="button" onClick={() => next && !next.fixed && moveAdv(r.key, next.key)} disabled={!next || next.fixed} className="rounded p-1 text-muted disabled:opacity-30" aria-label="Down"><ChevronDown className="h-4 w-4" /></button>

@@ -129,12 +129,13 @@ function PreviewInner() {
       if (e.data === `preview:${key}`) { setCard(readCard()); return; }
       // The editor asks to show the part just changed (owner, 24 Oct 2026: "jo change hua wo hi portion apne aap window me dikhe"):
       // after the new paint, find it (the top, or a heading / line with that text), tell the editor where it is and mark it for a moment.
-      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean; part?: string; quiet?: boolean } | null;
+      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean; part?: string; quiet?: boolean; /** A Premium section by its key (about, services…): the row tapped in "Order of your home page". */ sec?: string } | null;
       if (!d || d.type !== "preview-focus" || d.key !== key) return;
       setTimeout(() => {
         let el: HTMLElement | null = null;
         const want = (d.text ?? "").trim().toLowerCase();
-        if (!d.top && want) {
+        if (!d.top && d.sec && /^[a-z]{2,12}$/.test(d.sec)) el = document.querySelector<HTMLElement>(`[data-sec="${d.sec}"]`);
+        if (!el && !d.top && want) {
           const all = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,b,strong,dt,dd,p,span"));
           el = all.find((x) => /^H[1-4]$/.test(x.tagName) && (x.textContent ?? "").trim().toLowerCase().includes(want))
             ?? all.find((x) => (x.textContent ?? "").trim().toLowerCase() === want)
