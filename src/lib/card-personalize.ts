@@ -138,7 +138,7 @@ function withoutSamples(d: Partial<Card>, own: OwnDetails | null): Partial<Card>
  *  When the cards cannot be loaded (no internet), nothing is changed either. */
 /** The set-up's words and pictures that the live website shows: each one is written onto the card only when it
  *  CHANGED in this save (old → new), so a word the owner typed in the editor is never replaced by a stale set-up. */
-export type SetupSync = { about?: string; oldAbout?: string; hours?: string; oldHours?: string; address?: string; oldAddress?: string; /** The map pin / Google Maps link. */ map?: string; /** UPI and social, as typed (undefined = leave as is, "" = take off). */ upi?: string; instagram?: string; facebook?: string; youtube?: string; banner?: string; oldBanner?: string; photos?: string[]; oldPhotos?: string[] };
+export type SetupSync = { about?: string; oldAbout?: string; hours?: string; oldHours?: string; address?: string; oldAddress?: string; /** The map pin / Google Maps link. */ map?: string; /** UPI and social, as typed (undefined = leave as is, "" = take off). */ upi?: string; instagram?: string; facebook?: string; youtube?: string; banner?: string; oldBanner?: string; photos?: string[]; oldPhotos?: string[]; /** "Your role in the shop" (Owner, Founder…): shown under the name on the card. */ designation?: string; oldDesignation?: string };
 
 /** "Mon–Sat 10 AM – 8 PM" → { day: "Mon–Sat", time: "10 AM – 8 PM" }; a line with no time keeps the whole line as the day. */
 function hoursRows(text: string): { day: string; time: string }[] {
@@ -151,7 +151,7 @@ function hoursRows(text: string): { day: string; time: string }[] {
 
 /** What the setup's answers make of the card, without saving: the same change Save publishes, so a live window can show it while
  *  the owner types (owner, 24 Oct 2026: "jo change kar raha hai usko sath ke sath dikhana chahiye"). */
-export type SetupApply = { name: string; business: string; photo: string | null; logo: string | null; phone: string; /** A separate WhatsApp number and an optional second number (undefined = leave the card as it is). */ whatsapp?: string; phone2?: string; oldPhoto?: string | null; oldLogo?: string | null; facts?: SetupSync };
+export type SetupApply = { name: string; business: string; photo: string | null; logo: string | null; phone: string; /** A separate WhatsApp number and an optional second number (undefined = leave the card as it is). */ whatsapp?: string; phone2?: string; /** The contact email, when one was typed: the card's Email button follows it. */ email?: string; oldPhoto?: string | null; oldLogo?: string | null; facts?: SetupSync };
 export function applySetup(c: Card, s: SetupApply): Card {
   const next = structuredClone(c);
   if (s.name) next.name = s.name;
@@ -182,6 +182,7 @@ export function applySetup(c: Card, s: SetupApply): Card {
     }
     next.links = links;
   }
+  if (s.email) next.links = next.links.map((l) => (l.type === "email" ? { ...l, value: s.email! } : l));
   // The focused edits from Card & Website → Edit (owner's call, 7 Oct 2026): what was changed here lands on the live
   // website at once — before, a new timing or about waited for "Write again".
   const f = s.facts;
@@ -193,7 +194,17 @@ export function applySetup(c: Card, s: SetupApply): Card {
       let first = true;
       mapBlocks((b) => (b.kind === "about" && first ? (first = false, { ...b, body: f.about!.trim() }) : b));
     }
+    // The role chosen in Edit → About & logo was kept on the account only; the card went on showing the old one (live walk, 19 Nov 2026).
+    if (changed(f.designation, f.oldDesignation)) next.jobTitle = f.designation!.trim();
     if (changed(f.hours, f.oldHours)) mapBlocks((b) => (b.kind === "hours" ? { ...b, rows: hoursRows(f.hours!) } : b.kind === "appointment" ? { ...b, note: f.hours!.trim() } : b));
+    // A FAQ answer that tells the old timings ("open Monday to Saturday between 10 AM and 8 PM") is rewritten with the new ones: after a
+    // change of timings the website said two different things (found on the live walk, 19 Nov 2026). Only an answer about opening time is touched.
+    if (changed(f.hours, f.oldHours)) {
+      const line = f.hours!.split(/\n|·|;/).map((x) => x.trim()).filter(Boolean).join(", ");
+      const isTime = (q: string, a: string) => /\b\d{1,2}(:\d{2})?\s?(am|pm)\b|\d{1,2}\s?बजे/i.test(a) && /open|timing|hours|close|खुल|समय|बंद/i.test(`${q} ${a}`);
+      const hiFaq = next.language === "hi";
+      mapBlocks((b) => (b.kind === "faq" ? { ...b, items: b.items.map((it) => (isTime(it.q ?? "", it.a ?? "") ? { ...it, a: hiFaq ? `हमारा समय: ${line}।` : `Our timings: ${line}.` } : it)) } : b));
+    }
     if (changed(f.address, f.oldAddress)) mapBlocks((b) => (b.kind === "location" ? { ...b, address: f.address!.trim() } : b));
     // A website made without a timings or address section (found on the live walk, 24 Oct 2026: the owner filled both and nothing showed,
     // and "Map & timings" never turned ✓) gets one, on its Contact page (else the first page) — the same blocks a fresh build makes.

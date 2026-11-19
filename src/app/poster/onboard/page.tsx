@@ -153,7 +153,7 @@ function Onboard() {
   const back = SAFE_PATH.test(params.get("back") ?? "") ? params.get("back")! : "";
   const editing = !!back;
   /** What the set-up had when it opened: a focused edit writes onto the live card only what CHANGED here. */
-  const atLoad = useRef<{ about: string; hours: string; address: string; banner: string; photos: string[]; name?: string }>({ about: "", hours: "", address: "", banner: "", photos: [] });
+  const atLoad = useRef<{ about: string; hours: string; address: string; banner: string; photos: string[]; name?: string; designation?: string }>({ about: "", hours: "", address: "", banner: "", photos: [] });
   const stepRef = useRef(step);
   stepRef.current = step;
   // Every screen of the walk has an address of its own (…?step=trade), one history entry each (owner, 15 Oct 2026: "back matlab previous
@@ -427,7 +427,7 @@ function Onboard() {
       const p = prof.data.profiles?.find((x) => x.is_default) ?? prof.data.profiles?.[0] ?? null;
       setProfile(p);
       if (f) setFacts(f);
-      atLoad.current = { about: meta.business?.about ?? "", hours: f?.hours ?? "", address: [meta.business?.address, meta.business?.city].filter(Boolean).join(", "), banner: f?.bannerUrl ?? "", photos: f?.photos ?? [], name: meta.business?.name ?? "" };
+      atLoad.current = { about: meta.business?.about ?? "", hours: f?.hours ?? "", address: [meta.business?.address, meta.business?.city].filter(Boolean).join(", "), banner: f?.bannerUrl ?? "", photos: f?.photos ?? [], name: meta.business?.name ?? "", designation: f?.designation ?? "" };
       const phone0 = (p?.phone || meta.phone || "").replace(/^\+91/, "");
       // Before the profile exists the WhatsApp number waits on the account (step 1 saves it there).
       const wa = f?.whatsapp || (meta.whatsapp ?? "").replace(/\D/g, "").slice(-10);
@@ -705,6 +705,8 @@ function Onboard() {
         // address go on the account's business right away.
         if (profile) await api("/api/card/facts", { method: "PATCH", json: { facts: youFacts() } }).catch(() => undefined);
         if (!editing) await getBrowserSupabase()?.auth.updateUser({ data: { ...home, ...emailMeta(), business: bizMeta() } }).catch(() => undefined);
+        // Edit → Name, number, photo: the email typed here was never kept (it came back as the old one after Save, 19 Nov 2026).
+        else if (emailMeta().contact_email) await getBrowserSupabase()?.auth.updateUser({ data: emailMeta() }).catch(() => undefined);
         partnerMissed = !!r.data.note;
         // The name and number were changed on the server: refresh this session's copy of them.
         await getBrowserSupabase()?.auth.refreshSession().catch(() => undefined);
@@ -712,7 +714,7 @@ function Onboard() {
         // take our own step-1 write for "changed elsewhere" and reload the form away.
         await bumpServerBase();
         await syncCardFromSetup({
-          name: you.name.trim(), business: (biz.name ?? "").trim(), photo: you.photo || null, logo: biz.logo || null, phone, ...(factsLoaded.current ? { whatsapp: youFacts().whatsapp, phone2: youFacts().phone2 } : {}),
+          name: you.name.trim(), business: (biz.name ?? "").trim(), photo: you.photo || null, logo: biz.logo || null, phone, ...(factsLoaded.current ? { whatsapp: youFacts().whatsapp, phone2: youFacts().phone2 } : {}), ...(emailMeta().contact_email ? { email: emailMeta().contact_email } : {}),
           oldPhoto: profile?.photo_url ?? null, oldLogo: profile?.logo_url ?? null,
         }).catch(() => undefined);
       } catch {
@@ -1626,7 +1628,7 @@ function Onboard() {
       await syncCardFromSetup({
         name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone, ...(factsLoaded.current ? { whatsapp: youFacts().whatsapp, phone2: youFacts().phone2 } : {}),
         oldPhoto: before?.photo_url ?? null, oldLogo: before?.logo_url ?? null,
-        ...(rebuilds ? {} : { facts: { about: (biz.about ?? "").trim(), oldAbout: atLoad.current.about, hours: facts.hours, oldHours: atLoad.current.hours, address: [(biz.address ?? "").trim(), city].filter(Boolean).join(", "), oldAddress: atLoad.current.address, map: (biz.map ?? "").trim(), ...linksSync(), banner: facts.bannerUrl, oldBanner: atLoad.current.banner, photos: facts.photos, oldPhotos: atLoad.current.photos } }),
+        ...(rebuilds ? {} : { facts: { about: (biz.about ?? "").trim(), oldAbout: atLoad.current.about, hours: facts.hours, oldHours: atLoad.current.hours, address: [(biz.address ?? "").trim(), city].filter(Boolean).join(", "), oldAddress: atLoad.current.address, map: (biz.map ?? "").trim(), ...linksSync(), banner: facts.bannerUrl, oldBanner: atLoad.current.banner, photos: facts.photos, oldPhotos: atLoad.current.photos, designation: facts.designation, oldDesignation: atLoad.current.designation ?? "" } }),
       }).catch(() => undefined);
       clearDraft();
       if (!stillOn(from)) return;   // Back / Cancel was pressed while it saved: it is saved, and they stay where they went

@@ -39,7 +39,8 @@ const EMPTY_HINT: Record<string, [string, string]> = {
   about: ["Let AI write two lines about you", "AI से अपने बारे में 2 लाइन लिखवाएँ"],
   details: ["3–4 things you offer", "आप क्या देते हैं — 3-4 बातें"],
   reviews: ["Ask for a review on WhatsApp — the message is ready", "WhatsApp पर review माँगें — message तैयार है"],
-  you: ["Add your photo and number", "अपनी photo और number लगाएँ"],
+  // The number is nearly always there already (it is the sign-up mobile): the line asked for it again (19 Nov 2026).
+  you: ["Add your photo, check your number", "अपनी photo लगाएँ, number देख लें"],
   where: ["Add your address and opening hours", "पता और खुलने का समय लिखें"],
   links: ["Add UPI so people can pay you", "UPI लगाएँ — लोग सीधे pay करें"],
   buttons: ["Add Call and WhatsApp buttons", "Call और WhatsApp बटन जोड़ें"],

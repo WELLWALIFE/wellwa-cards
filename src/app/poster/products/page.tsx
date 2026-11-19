@@ -767,9 +767,11 @@ export default function ProductsPage() {
         )}
         {list.map((p) => (
           <div key={p.id}>
-          <div className={`flex items-center gap-3 rounded-2xl border p-3 shadow-sm ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border bg-surface"}`}>
+          <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border p-3 shadow-sm sm:flex-nowrap ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border bg-surface"}`}>
             <div className="h-14 w-14 rounded-xl bg-surface2 overflow-hidden grid place-items-center shrink-0">{p.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt="" className="h-full w-full object-contain" /> : "📦"}</div>
-            <div className="min-w-0 flex-1">
+            {/* On a phone the name and price take the first line and the buttons go under them: beside four buttons the name had no room at all
+                and the row showed no name (found on the live walk, 19 Nov 2026). */}
+            <div className="min-w-0 flex-1 basis-[calc(100%-4.5rem)] sm:basis-0">
               <p className="text-sm font-semibold truncate">{p.name}</p>
               {/* ₹ only before a number ("₹On request" / "₹FREE" read wrong); no internal counts like "0 lines". */}
               <p className="text-xs text-muted truncate">{p.price ? <b className="text-ink">{rs(p.price)}</b> : null}{mrpShown(p.price, p.mrp) ? <> <s>{rs(p.mrp ?? "")}</s></> : null}{p.price && (p.brand || p.category) ? " · " : ""}{[p.brand, p.category].filter(Boolean).join(" · ")}</p>

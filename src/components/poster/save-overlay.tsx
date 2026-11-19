@@ -39,6 +39,8 @@ export function WindowBar({ hi, onBack, see, big, onBig, save, switcher, history
     return () => clearTimeout(t);
   }, [save.note]);
   const icon = "grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border bg-surface text-ink active:scale-95";
+  // On a phone the bar has no room for the word "Website" beside Save / Saved / Undo: the pill ran off the right edge (live walk, 19 Nov 2026).
+  const tight = !!(save.show || save.undo || save.dirty || save.busy);
   return (
     <div className="relative flex items-center gap-1 border-t border-border bg-surface px-2 py-1.5">
       {shown && <p role={shown.bad ? "alert" : "status"} className={`pointer-events-none absolute inset-x-2 bottom-[calc(100%+8px)] rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-card ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p>}
@@ -48,7 +50,7 @@ export function WindowBar({ hi, onBack, see, big, onBig, save, switcher, history
             {(["card", "site"] as const).map((w) => (
               <button key={w} type="button" role="tab" aria-selected={switcher.at === w} aria-label={w === "card" ? "Card" : "Website"} title={w === "card" ? "Card" : "Website"} onClick={() => w !== switcher.at && switcher.onSwitch(w)}
                 className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-bold transition ${switcher.at === w ? "bg-surface text-brand-ink shadow-sm" : "text-muted"}`}>
-                {w === "card" ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}{switcher.at === w && <span>{w === "card" ? "Card" : "Website"}</span>}
+                {w === "card" ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}{switcher.at === w && <span className={tight ? "hidden sm:inline" : ""}>{w === "card" ? "Card" : "Website"}</span>}
               </button>
             ))}
           </span>
