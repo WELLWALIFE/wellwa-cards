@@ -164,7 +164,7 @@ export default function WebsiteEditPage() {
     try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(shown)); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
     // A part's screen that only says "the top" (most do) leaves the window on the section that part changes.
-    const ef = open ? { ...(sync ? { text: sync.text, quiet: true } : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
+    const ef = open ? { ...(sync ? (sync.text ? { text: sync.text, quiet: true } : { top: true }) : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
     const f = focusAsk.current ?? ef ?? null; focusAsk.current = null;
     if (f) { lastFocus.current = f; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }
   }, [card, embedView, open, tab, sync]);
@@ -266,9 +266,11 @@ export default function WebsiteEditPage() {
     advOrderTouched.current = true;
     setAdv({ order: ["hero", ...all, "footer"] });
     focusAsk.current = { sec: from };   // the window follows the section that was moved
+    setSync({ text: "", page: "home" });
   }
   /** A row tapped: the window above shows that part of the website (owner, 19 Nov 2026). */
-  const showAdv = (k: SectionKey) => { const f = k === "hero" ? { top: true } : { sec: k }; lastFocus.current = f; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } };
+  // The window may be on another page (About, Plans…): it comes back to Home first, then goes to the part.
+  const showAdv = (k: SectionKey) => { const f = k === "hero" ? { top: true } : { sec: k }; focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); };
   const advOrderPanel = advRows.length > 2 && (
     <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
       <p className="text-sm font-semibold">{hi ? "Home page का क्रम — जैसा website पर है" : "Order of your home page — as it is on the website"}</p>

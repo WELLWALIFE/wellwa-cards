@@ -33,7 +33,8 @@ export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onErro
       const top = f.getBoundingClientRect().top, line = window.innerHeight * 0.55;
       const all = Array.from(doc.querySelectorAll<HTMLElement>("[data-sync-text]"));
       let at: HTMLElement | null = null;
-      for (const el of all) { if (top + el.getBoundingClientRect().top <= line) at = el; else break; }
+      // A section of a closed page is not on screen at all (its box measures 0): it must not be taken for "the one above the line".
+      for (const el of all) { if (el.offsetParent === null) continue; if (top + el.getBoundingClientRect().top <= line) at = el; else break; }
       const text = at?.dataset.syncText?.trim() ?? "";
       const key = at ? `${at.id}|${text}` : "";
       if (!at || !text || key === last) return;
@@ -52,6 +53,7 @@ export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onErro
       const m = e.data as { type?: string; h?: number; saved?: boolean } & Partial<EmbedLive>;
       if (m?.type === "embed-height" && typeof m.h === "number") { setH(Math.max(320, Math.min(m.h, 20000))); setReadyFor(keyRef.current); }
       else if (m?.type === "embed-live" && m.card) cb.current.onLive({ card: m.card, page: m.page, focus: m.focus });
+      else if (m?.type === "embed-sync") cb.current.onSync?.({ text: String((m as { text?: string }).text ?? ""), page: (m as { page?: string }).page });
       else if (m?.type === "embed-dirty") cb.current.onDirty?.(!!(m as { dirty?: boolean }).dirty);
       else if (m?.type === "embed-saved") cb.current.onSaved?.();
       else if (m?.type === "embed-error") cb.current.onError?.(String((m as { text?: string }).text ?? ""));

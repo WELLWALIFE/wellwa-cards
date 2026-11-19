@@ -403,6 +403,13 @@ export function CardEditor({ id }: { id: string }) {
   const [openPage, setOpenPage] = useState("");
   /** The one section whose boxes are open (the rest show as bars with their heading). */
   const [openBlock, setOpenBlock] = useState("");
+  /** Inside "Text & pages": the window above goes to the page (and the section) that was just opened here, whichever page it was showing
+   *  (owner, 19 Nov 2026: "kisi bhi page par screen ho, side wale link par click karein to wahi live mein dikhe"). */
+  const showInWindow = (pageId: string, blockId?: string) => {
+    const pg = card.pages.find((x) => x.id === pageId); if (!pg) return;
+    const b = blockId ? pg.blocks.find((x) => x.id === blockId) : undefined;
+    try { if (window.parent !== window) window.parent.postMessage({ type: "embed-sync", page: pg.slug, text: b && "title" in b ? (b.title ?? "").trim() : "" }, window.location.origin); } catch { /* ignore */ }
+  };
   const [dragPage, setDragPage] = useState("");
   const [overPage, setOverPage] = useState("");
   const updatePage = (pid: string, up: Partial<CardPage>) =>
@@ -792,7 +799,7 @@ export function CardEditor({ id }: { id: string }) {
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {/* A page name can be dragged to a new place (owner, 19 Nov 2026: "drag and drop … pages aage peechhe"); on a phone the arrows on each page do the same. */}
                   {card.pages.map((p) => (
-                    <button key={p.id} type="button" draggable onClick={() => { setActivePage(p.id); flash(`ed-page-${p.id}`); }}
+                    <button key={p.id} type="button" draggable onClick={() => { setActivePage(p.id); flash(`ed-page-${p.id}`); showInWindow(p.id); }}
                       onDragStart={(e) => { setDragPage(p.id); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", p.id); } catch { /* ignore */ } }}
                       onDragOver={(e) => { if (dragPage && dragPage !== p.id) { e.preventDefault(); setOverPage(p.id); } }}
                       onDragLeave={() => setOverPage((o) => (o === p.id ? "" : o))}
@@ -813,8 +820,8 @@ export function CardEditor({ id }: { id: string }) {
                   onRename={(label) => updatePage(p.id, { label, slug: label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "page" })}
                   onMove={(dir) => movePage(p.id, dir)} onRemove={() => removePage(p.id)}
                   onBlocks={(blocks) => updatePage(p.id, { blocks })} onFocus={() => setActivePage(p.id)}
-                  open={openPage === p.id} onToggle={() => { setActivePage(p.id); setOpenPage((o) => (o === p.id ? "" : p.id)); }}
-                  openBlock={openBlock} onOpenBlock={setOpenBlock} />
+                  open={openPage === p.id} onToggle={() => { setActivePage(p.id); if (openPage !== p.id) showInWindow(p.id); setOpenPage((o) => (o === p.id ? "" : p.id)); }}
+                  openBlock={openBlock} onOpenBlock={(bid) => { setOpenBlock(bid); if (bid) showInWindow(p.id, bid); }} />
               ))}
             </div>
           )}
