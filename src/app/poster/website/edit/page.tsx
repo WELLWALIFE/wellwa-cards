@@ -90,7 +90,7 @@ export default function WebsiteEditPage() {
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
   /** The section the owner has scrolled to inside Text & pages: the window follows it (and opens its page). */
-  const [sync, setSync] = useState<{ text: string; page?: string; alt?: string[]; sec?: string } | null>(null);
+  const [sync, setSync] = useState<{ text: string; page?: string; alt?: string[]; sec?: string; blk?: string } | null>(null);
   // Opened from the Card editor's switch with a part open (?part=): that part opens here too.
   const partDone = useRef(false);
   useEffect(() => {
@@ -166,7 +166,7 @@ export default function WebsiteEditPage() {
     try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(shown)); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
     // A part's screen that only says "the top" (most do) leaves the window on the section that part changes.
-    const ef = open ? { ...(sync ? (sync.text || sync.alt?.length || sync.sec ? { text: sync.text, alt: sync.alt, sec: sync.sec, quiet: true } : { top: true }) : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
+    const ef = open ? { ...(sync ? (sync.text || sync.alt?.length || sync.sec || sync.blk ? { text: sync.text, alt: sync.alt, sec: sync.sec, blk: sync.blk, quiet: true } : { top: true }) : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
     const f = focusAsk.current ?? ef ?? null; focusAsk.current = null;
     if (f) { lastFocus.current = f; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }
   }, [card, embedView, open, tab, sync]);
@@ -174,7 +174,7 @@ export default function WebsiteEditPage() {
   // A part opened: the window goes to the section it changes (back to the top on the list).
   useEffect(() => {
     // With the place the part's content sits at (partPlace → sync): the part's name alone sent the window to whatever heading matched a word.
-    const t = setTimeout(() => { const sy = syncRef.current; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? (sy ? (sy.text || sy.alt?.length || sy.sec ? { text: sy.text, alt: sy.alt, sec: sy.sec, part: tab } : { top: true }) : { part: tab }) : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
+    const t = setTimeout(() => { const sy = syncRef.current; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? (sy ? (sy.text || sy.alt?.length || sy.sec || sy.blk ? { text: sy.text, alt: sy.alt, sec: sy.sec, blk: sy.blk, part: tab } : { top: true }) : { part: tab }) : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
     return () => clearTimeout(t);
   }, [open, tab]);
 
@@ -274,6 +274,8 @@ export default function WebsiteEditPage() {
   /** A row tapped: the window above shows that part of the website (owner, 19 Nov 2026). */
   // The window may be on another page (About, Plans…): it comes back to Home first, then goes to the part.
   const showAdv = (k: SectionKey) => { const f = k === "hero" ? { top: true } : { sec: k }; focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); };
+  // The order of the home page is now the Home page's own sections (Text & pages → Home): this panel is not drawn any more.
+  void showAdv;
   const advOrderPanel = advRows.length > 2 && (
     <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
       <p className="text-sm font-semibold">{hi ? "Home page का क्रम — जैसा website पर है" : "Order of your home page — as it is on the website"}</p>
@@ -305,6 +307,7 @@ export default function WebsiteEditPage() {
       <p className="mt-2 text-[11px] text-muted">{hi ? "शब्द और photo बदलने के लिए नीचे उस हिस्से को खोलें।" : "To change the words and photos, open that section below."}</p>
     </section>
   );
+  void advOrderPanel;
   const paletteKey = adv ? (adv.palette?.key && (adv.palette.key === "brand" || SITE_PALETTES.some((p) => p.key === adv.palette?.key)) ? adv.palette.key : "brand")
     : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
   /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
@@ -534,7 +537,7 @@ export default function WebsiteEditPage() {
     if (at) setSync(at);
   };
   /** Where a part's content sits on the website: { page, text (the section's heading), alt (its first lines) }; null = leave it to the part's own rule. */
-  function partPlace(key: string): { text: string; page?: string; alt?: string[]; sec?: string } | null {
+  function partPlace(key: string): { text: string; page?: string; alt?: string[]; sec?: string; blk?: string } | null {
     if (!card) return null;
     const KINDS: Record<string, string[][]> = {
       products: [["product"], ["table"], ["services"]], reviews: [["testimonials"]], about: [["about"]], details: [["services"], ["highlights"]],
@@ -553,7 +556,7 @@ export default function WebsiteEditPage() {
       if (typeof first === "string") alt.push(first);
       else if (first && typeof first === "object") { const o = first as { name?: string; q?: string; title?: string; text?: string }; for (const v of [o.name, o.q, o.title, o.text]) if (v && v.trim()) alt.push(v.trim()); }
       if (b.kind === "about" && (b.body ?? "").trim()) alt.push((b.body ?? "").trim().split(/[.\n]/)[0].slice(0, 60));
-      return { ...(pg.slug === "home" || !pg.slug ? { sec: SEC[key] } : {}), text: ("title" in b ? b.title ?? "" : "").trim(), page: pg.slug, alt: alt.map((x) => x.replace(/^[^\p{L}\p{N}]+/u, "").slice(0, 60)).filter(Boolean).slice(0, 3) };
+      return { blk: b.id, ...(pg.slug === "home" || !pg.slug ? { sec: SEC[key] } : {}), text: ("title" in b ? b.title ?? "" : "").trim(), page: pg.slug, alt: alt.map((x) => x.replace(/^[^\p{L}\p{N}]+/u, "").slice(0, 60)).filter(Boolean).slice(0, 3) };
     }
     return null;
   }
@@ -651,7 +654,6 @@ export default function WebsiteEditPage() {
         </label>
       )}
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
-      {tab === "text" && advOrderPanel}
       {embedSrc && (
         <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick} onSync={setSync}
           onLive={setEmbedView} onDirty={setEmbedDirty}
@@ -807,7 +809,6 @@ export default function WebsiteEditPage() {
         </section>
       )}
 
-      {tab === "home" && advOrderPanel}
       {tab === "home" && (
         <section className="space-y-4 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <div>

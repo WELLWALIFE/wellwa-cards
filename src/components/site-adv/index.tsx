@@ -28,10 +28,11 @@ import { Pic } from "@/components/pic";
 import { HERO_CSS, SMART_CSS, Wordmark } from "@/components/site-smart";
 import { trackClick } from "@/lib/track";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
-import { advancedPalette, advancedVars, validateSpec, variantOf, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
+import { advancedPalette, advancedVars, homeSlugOf, validateSpec, variantOf, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
+import { FlowSections } from "@/components/site-adv/flow";
 import type { SiteUpdate } from "@/components/site-view";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
-import { ADV_BASE_CSS, type VariantProps, isShowcase } from "@/components/site-adv/shared";
+import { ADV_BASE_CSS, type SiteContent, type VariantProps, isShowcase } from "@/components/site-adv/shared";
 import { VARIANT_CSS, variantComponent } from "@/components/site-adv/registry";
 import { AdvHeader, MobileBar, NAV_CSS, buildPages, chromeOf, useScrolled, type AdvCtxPlus } from "@/components/site-adv/nav";
 import { AdvPageBody, PAGES_CSS, catalogueOf, itemsOf, routeOf } from "@/components/site-adv/pages";
@@ -118,7 +119,7 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   const track = (what: string) => trackClick(card.username, `adv-${what}`);
 
   /* ---- the pages and the one on screen ---- */
-  const first = card.pages[0]?.slug ?? "home";
+  const first = homeSlugOf(card);
   const slug = page ?? first;
   const items = useMemo(() => itemsOf(card), [card]);
   const pages0 = buildPages(card, { hrefFor: addr, hasUpdates: updates.length > 0 && !(card.site?.hidden ?? []).includes("updates"), active: slug, hi });
@@ -185,11 +186,12 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   // A section in the variant the spec names (createElement: the registry's component is looked up per section, not created).
   // The hero with 2–3 sliding banners when the owner set them (site.hero.slides), else the one hero.
   const slides = (card.site?.hero?.slides ?? []).filter((sl) => sl && sl.headline).slice(0, 3);
-  const slot = (k: SectionKey, index: number) => k === "hero" && slides.length >= 2
-    ? createElement(HeroSlides, { c, spec, x, index, slides, Hero: variantComponent(k, variantOf(spec, k)) as ComponentType<VariantProps> })
-    : k === "gallery" && framesOf(c, x).length < 3
-      ? createElement(GallerySmall, { c, spec, x, index })
-      : createElement(variantComponent(k, variantOf(spec, k)), { c, spec, x, index });
+  const slotWith = (k: SectionKey, index: number, cc: SiteContent) => k === "hero" && slides.length >= 2
+    ? createElement(HeroSlides, { c: cc, spec, x, index, slides, Hero: variantComponent(k, variantOf(spec, k)) as ComponentType<VariantProps> })
+    : k === "gallery" && framesOf(cc, x).length < 3
+      ? createElement(GallerySmall, { c: cc, spec, x, index })
+      : createElement(variantComponent(k, variantOf(spec, k)), { c: cc, spec, x, index });
+  const slot = (k: SectionKey, index: number) => slotWith(k, index, c);
 
   // Section links of other files (`#adv-about` in a footer) become the real address of the page, so they open in a new tab and
   // crawl; their click already goes through `jump`.
@@ -229,7 +231,8 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
 
   const lang = <LanguagePicker lang={L.lang} setLang={L.setLang} busy={L.translating} theme={theme} />;
   const logo = c.hm.logo ? <Pic src={c.hm.logo} alt="" eager w={170} /> : <Wordmark name={t(c.name)} lang={L.lang} />;
-  const bodyProps = { c, spec, x, chrome, slot, has, items, updates };
+  const bodyProps = { c, spec, x, chrome, slot, has, items, updates, slotWith, lang: L.lang, hasContact };
+  const homePage = card.pages.find((p) => p.slug === first);
 
   // Bridal Design 1 is a whole fashion store (store1.tsx): its own header, pages and footer; the pages it has no template for keep
   // the advanced page bodies inside its shell.
@@ -279,13 +282,17 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
 
         <main className={`relative flex-1 nv-page ${moved ? "nv-curtain" : ""}`} key={slug} id="adv-main" tabIndex={-1}>
           {route.kind === "home"
-            ? drawn.map((k, i) => (
-              <Fragment key={k}>
-                {slot(k, i)}
-                {k === "hero" && <div ref={heroEnd} aria-hidden="true" style={{ height: 1, marginTop: -1 }} />}
-                {seeMore(k)}
-              </Fragment>
-            ))
+            // The home page is the hero, the business's facts, then the Home page's OWN sections in the owner's order (rasta 2,
+            // 19 Nov 2026), and the WhatsApp / Call strip. Nothing of another page is drawn here.
+            ? (
+              <>
+                {slot("hero", 0)}
+                <div ref={heroEnd} aria-hidden="true" style={{ height: 1, marginTop: -1 }} />
+                {has("trust") && slot("trust", 1)}
+                {homePage && <FlowSections card={card} page={homePage} c={c} spec={spec} x={x} chrome={chrome} lang={L.lang} hasContact={hasContact} slotWith={slotWith} items={items} home after={(k, cc) => (k === "services" && cc.offerings && cc.offerings.total > cc.offerings.items.length ? seeMore(k) : null)} start={2} />}
+                {has("cta") && slot("cta", 40)}
+              </>
+            )
             : <AdvPageBody route={route} {...bodyProps} />}
         </main>
         {slot("footer", drawn.length)}

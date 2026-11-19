@@ -25,7 +25,7 @@ function priceRange(items: AdvItem[]): string {
 
 /* ================= the catalogue ================= */
 
-export function CataloguePage({ c, spec, x, chrome, entry, items }: PageProps & { entry: AdvPageEntry; items: AdvItem[] }) {
+export function CataloguePage({ c, spec, x, chrome, entry, items, bare = false }: PageProps & { entry: AdvPageEntry; items: AdvItem[]; /** Drawn inside a page of the owner's: no masthead of its own. */ bare?: boolean }) {
   const mine = items.filter((i) => i.page === entry.slug && !i.twin);
   const products = mine.filter((i) => i.kind === "product");
   const services = mine.filter((i) => i.kind === "service");
@@ -59,10 +59,10 @@ export function CataloguePage({ c, spec, x, chrome, entry, items }: PageProps & 
 
   return (
     <>
-      <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={lead}
+      {!bare && <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={lead}
         trail={[{ label: x.t(entry.label) }]}
         lede={x.hi ? `${main.length} ${word}${range ? ` · ${range}` : ""}` : `${main.length} ${word.toLowerCase()}${range ? ` · ${range}` : ""}`}
-        aside={x.wa ? <a className="btn-primary" href={x.waHref()} target="_blank" rel="noreferrer" onClick={() => x.track("cat-enquire")}><Icon name="whatsapp" /> {enquireLabel(x, {}, x.card.seo?.categoryKey)}</a> : undefined} />
+        aside={x.wa ? <a className="btn-primary" href={x.waHref()} target="_blank" rel="noreferrer" onClick={() => x.track("cat-enquire")}><Icon name="whatsapp" /> {enquireLabel(x, {}, x.card.seo?.categoryKey)}</a> : undefined} />}
       <section className="cg" aria-label={x.t(entry.label)}>
         <div className="adv-wrap adv-wide">
           {(main.length >= 6 || cats.length >= 2 || priced >= 4) && (

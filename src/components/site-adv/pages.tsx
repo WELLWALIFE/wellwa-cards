@@ -18,7 +18,9 @@ import type { AdvCtxPlus, AdvPageEntry, AdvPages, Chrome } from "@/components/si
 import { CATALOG_PAGE_CSS, CataloguePage } from "@/components/site-adv/page-catalog";
 import { ProductPage } from "@/components/site-adv/product";
 import { AboutPage, ContactPage, GalleryPage, GenericPage, MORE_CSS, UpdatesPage, type Slot } from "@/components/site-adv/page-more";
-import { Masthead, PARTS_CSS } from "@/components/site-adv/page-parts";
+import { Masthead, PARTS_CSS, ShareBtn } from "@/components/site-adv/page-parts";
+import { FlowSections, type SlotWith } from "@/components/site-adv/flow";
+import { firstSentence } from "@/lib/first-sentence";
 
 export type AdvRoute =
   | { kind: "home" }
@@ -47,21 +49,37 @@ type BodyProps = {
   route: Exclude<AdvRoute, { kind: "home" }>;
   c: SiteContent; spec: AdvancedSpec; x: AdvCtxPlus; chrome: Chrome; slot: Slot; has: (k: SectionKey) => boolean;
   items: AdvItem[]; updates: SiteUpdate[];
+  /** For the owner's pages drawn section by section (flow.tsx). */
+  slotWith: SlotWith; lang: string; hasContact: boolean;
 };
 
 /** The body of an inner page (everything between the header and the footer). */
-export function AdvPageBody({ route, c, spec, x, chrome, slot, has, items, updates }: BodyProps): ReactNode {
+export function AdvPageBody({ route, c, spec, x, chrome, slot, has, items, updates, slotWith, lang, hasContact }: BodyProps): ReactNode {
   if (route.kind === "item") {
     return <ProductPage c={c} spec={spec} x={x} item={route.item} items={items} entry={x.pages.list.find((e) => e.slug === route.item.page)} />;
   }
   const { entry, page } = route;
   const common = { c, spec, x, chrome, slot, has };
+  if (entry.role === "updates") return <UpdatesPage c={c} x={x} chrome={chrome} entry={entry} updates={updates} />;
+  // A page of the owner's: its own sections, in its own order (rasta 2, 19 Nov 2026), under a masthead with its name.
+  if (page) {
+    const firstAbout = page.blocks.find((b) => b.kind === "about" && (b.body ?? "").trim());
+    const pagePhoto = page.blocks.flatMap((b) => b.kind === "gallery" ? b.images.map((q) => q.url ?? "") : b.kind === "image" || b.kind === "carousel" ? b.images.map((q) => q.url) : b.kind === "about" ? [b.imageUrl ?? ""] : []).find(Boolean);
+    return (
+      <>
+        <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={pagePhoto || c.hm.photo?.src || c.photos[0]}
+          lede={firstAbout && firstAbout.kind === "about" ? x.t(firstSentence(firstAbout.body)) : undefined} trail={[{ label: x.t(entry.label) }]} />
+        <FlowSections card={x.card} page={page} c={c} spec={spec} x={x} chrome={chrome} lang={lang} hasContact={hasContact} slotWith={slotWith} items={items} home={false} start={1} />
+        <div className="gb-share adv-wrap adv-wide"><ShareBtn x={x} title={`${x.t(entry.label)} — ${c.name}`} /></div>
+        {has("cta") && slot("cta", 99)}
+      </>
+    );
+  }
   switch (entry.role) {
     case "catalogue": return <CataloguePage {...common} entry={entry} items={items} />;
     case "about": return <AboutPage {...common} entry={entry} />;
     case "gallery": return <GalleryPage {...common} entry={entry} />;
     case "contact": return <ContactPage {...common} entry={entry} page={page} />;
-    case "updates": return <UpdatesPage c={c} x={x} chrome={chrome} entry={entry} updates={updates} />;
     case "faq": return (
       <>
         <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]} trail={[{ label: x.t(entry.label) }]} />

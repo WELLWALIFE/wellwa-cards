@@ -22,7 +22,7 @@ import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
 import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
 import { searchListed } from "@/lib/seo-urls";
-import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages } from "@/lib/site-advanced";
+import { activeAdvanced, advancedItemStubs, findAdvancedItem, homeSlugOf, withAdvancedPages } from "@/lib/site-advanced";
 import { publicCard, sitePending } from "@/lib/site-ready";
 import { restAsService } from "@/lib/poster-server";
 import { addonOn } from "@/lib/addons-server";
@@ -87,7 +87,7 @@ async function addresses(card: Card) {
   const linkBase = onPlatform ? `/c/${card.username}` : "";
   return { brand, home, linkBase };
 }
-const urlFor = (home: string, card: Card, page: CardPage | null) => (page && page !== card.pages[0] ? `${home}/${page.slug}` : home);
+const urlFor = (home: string, card: Card, page: CardPage | null) => (page && page.slug !== homeSlugOf(card) ? `${home}/${page.slug}` : home);
 
 export async function cardMetadata(username: string, slug?: string | null): Promise<Metadata> {
   const card = await loadCard(username);

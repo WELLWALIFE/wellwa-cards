@@ -418,7 +418,8 @@ export function CardEditor({ id }: { id: string }) {
 
   // The Home page stays first, whatever is dragged: the website takes its FIRST page for the home page, so another page put above it
   // became a second "Home" on the menu and its sections took over the home page (seen live, 19 Nov 2026).
-  const setPages = (pages: CardPage[]) => { const h = pages.findIndex((p) => p.slug === "home"); patch({ pages: h > 0 ? [pages[h], ...pages.slice(0, h), ...pages.slice(h + 1)] : pages }); };
+  // Any order the owner likes: the website knows its home page by its name (homeSlugOf), not by its place (rasta 2, 19 Nov 2026).
+  const setPages = (pages: CardPage[]) => patch({ pages });
   // Pages are shown as a list of names; one opens at a time (owner, 19 Nov 2026: "text hide kar de, header saare dikhe, click par text open").
   const [openPage, setOpenPage] = useState("");
   /** The one section whose boxes are open (the rest show as bars with their heading). */
@@ -436,7 +437,7 @@ export function CardEditor({ id }: { id: string }) {
       else if (first && typeof first === "object") { const o = first as { name?: string; q?: string; title?: string; text?: string }; for (const v of [o.name, o.q, o.title, o.text]) if (v && v.trim()) alt.push(v.trim()); }
       if (b.kind === "about" && (b.body ?? "").trim()) alt.push((b.body ?? "").trim().split(/[.\n]/)[0].slice(0, 60));
     }
-    try { if (window.parent !== window) window.parent.postMessage({ type: "embed-sync", page: pg.slug, text: b && "title" in b ? (b.title ?? "").trim() : "", alt: alt.map((x) => x.replace(/^[^\p{L}\p{N}]+/u, "").slice(0, 60)).filter(Boolean).slice(0, 3) }, window.location.origin); } catch { /* ignore */ }
+    try { if (window.parent !== window) window.parent.postMessage({ type: "embed-sync", page: pg.slug, blk: b?.id, text: b && "title" in b ? (b.title ?? "").trim() : "", alt: alt.map((x) => x.replace(/^[^\p{L}\p{N}]+/u, "").slice(0, 60)).filter(Boolean).slice(0, 3) }, window.location.origin); } catch { /* ignore */ }
   };
   const [dragPage, setDragPage] = useState("");
   const [overPage, setOverPage] = useState("");
@@ -823,7 +824,7 @@ export function CardEditor({ id }: { id: string }) {
                   <h2 className="text-sm font-semibold">{onlyPages ? L("Pages", "Pages") : L("Pages on your card", "Card के pages")} <span className="font-normal text-muted">({card.pages.length})</span></h2>
                   <button className="ed-add !w-auto" onClick={addPage}><Plus className="h-3.5 w-3.5" /> {L("Add page", "Page जोड़ें")}</button>
                 </div>
-                <p className="mt-1 text-xs text-muted">{L("Tap a page name to open it. Drag a name to change the order of the pages. Home always stays first.", "Page के नाम पर tap करके उसे खोलें। नाम को खींचकर pages का क्रम बदलें। Home हमेशा सबसे पहले रहता है।")}</p>
+                <p className="mt-1 text-xs text-muted">{L("Tap a page name to open it. Drag a name to change the order of the pages.", "Page के नाम पर tap करके उसे खोलें। नाम को खींचकर pages का क्रम बदलें।")}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {/* A page name can be dragged to a new place (owner, 19 Nov 2026: "drag and drop … pages aage peechhe"); on a phone the arrows on each page do the same. */}
                   {card.pages.map((p) => (

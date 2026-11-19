@@ -7,7 +7,7 @@
 // shell any more than they share a hero. No colour, radius or font is written here: the root's tokens (advancedVars) carry them.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Card, CardPage } from "@/lib/types";
-import { hash32, livePages, pageRole, type AdvPageRole, type AdvancedSpec } from "@/lib/site-advanced";
+import { hash32, livePages, pageRole, type AdvPageRole, type AdvancedSpec, homeSlugOf } from "@/lib/site-advanced";
 import type { AdvCtx } from "@/components/site-adv/shared";
 import { Icon } from "@/components/site-icons";
 import { linkHref } from "@/components/link-icon";
@@ -48,16 +48,17 @@ const SECTION_ROLE: Record<string, AdvPageEntry["role"]> = {
 
 export function buildPages(card: Card, opts: { hrefFor: (slug: string) => string; hasUpdates: boolean; active: string; hi: boolean }): AdvPages {
   const live = livePages(card);
-  const first = card.pages[0]?.slug ?? "home";
-  const rows = live.map((p: CardPage, i): AdvPageEntry => {
-    const role = i === 0 || p.slug === first ? "home" : pageRole(card, p);
+  const first = homeSlugOf(card);
+  const rows = live.map((p: CardPage): AdvPageEntry => {
+    const role = p.slug === first ? "home" : pageRole(card, p);
     // The About and Gallery pages made for the advanced site (withAdvancedPages) are interface words, said in the visitor's language.
     const made = p.id === "adv-about" ? (opts.hi ? "हमारे बारे में" : "About") : p.id === "adv-gallery" ? (opts.hi ? "फ़ोटो" : "Gallery") : "";
     return { slug: p.slug, role, label: made || p.label, owner: !made, href: opts.hrefFor(p.slug), primary: false };
   });
   if (opts.hasUpdates) rows.push({ slug: "updates", role: "updates", label: opts.hi ? "अपडेट" : "Updates", owner: false, href: opts.hrefFor("updates"), primary: false });
-  const list = [...rows].sort((a, b) => RANK[a.role] - RANK[b.role] || rows.indexOf(a) - rows.indexOf(b));
-  // Six links fit a header; the first of each role leads, then the rest in order (a second catalogue page is kept: "Products" + "Services").
+  // The menu is the owner's order of pages (Home first, Updates last); six fit the header, every one is in the full menu (19 Nov 2026).
+  const list = [...rows.filter((e) => e.role === "home"), ...rows.filter((e) => e.role !== "home")];
+  void RANK;
   list.forEach((e, i) => { e.primary = e.role !== "home" && i <= 6; });
   const home = list.find((e) => e.role === "home")?.slug ?? first;
   const byRole: AdvPages["byRole"] = (role) => list.find((e) => e.role === role);

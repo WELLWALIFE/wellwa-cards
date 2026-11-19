@@ -428,9 +428,15 @@ export type AdvPageRole = "home" | "catalogue" | "about" | "gallery" | "contact"
 /** A services block whose first item starts "1. " is the owner's steps ("how it works"), not an offering (content.ts says the same). */
 const isStepsBlock = (b: Extract<CardBlock, { kind: "services" }>) => /^\s*1[.)]\s/.test(b.items[0]?.name ?? "");
 
+/** The home page of the card: the page named "home" wherever the owner put it; a card with no such page takes its first page.
+ *  (19 Nov 2026, owner: "koi bhi page kahin bhi lagaye" — moving a page above Home must not turn it into the home page.) */
+export function homeSlugOf(card: Pick<Card, "pages">): string {
+  return card.pages.find((p) => p.slug === "home")?.slug ?? card.pages[0]?.slug ?? "home";
+}
+
 /** What a page of the card is, from the blocks it carries: the slug alone cannot say ("visit" is a contact page, "menu" a catalogue). */
 export function pageRole(card: Pick<Card, "pages">, p: CardPage): AdvPageRole {
-  if (p === card.pages[0] || p.slug === "home") return "home";
+  if (p.slug === homeSlugOf(card)) return "home";
   const bs = p.blocks.filter((b) => !isEmptyBlock(b));
   const kinds = new Set(bs.map((b) => b.kind));
   if (kinds.has("product") || bs.some((b) => b.kind === "services" && !isStepsBlock(b))) return "catalogue";
@@ -445,7 +451,8 @@ export function pageRole(card: Pick<Card, "pages">, p: CardPage): AdvPageRole {
 /** The pages of the card that are drawn at all: not hidden by the owner, not the Shubhora page, not empty (home always). */
 export function livePages(card: Pick<Card, "pages" | "site">): CardPage[] {
   const hidden = new Set(card.site?.hidden ?? []);
-  return card.pages.filter((p, i) => !p.hidden && !hidden.has(p.slug) && (i === 0 || p.slug === "home" || p.blocks.some((b) => !isEmptyBlock(b))));
+  const home = homeSlugOf(card);
+  return card.pages.filter((p) => !p.hidden && !hidden.has(p.slug) && (p.slug === home || p.blocks.some((b) => !isEmptyBlock(b))));
 }
 
 /** Ids of pages made for the advanced site at request time (never stored on the card): `adv-` + a name. */
@@ -460,6 +467,10 @@ const imagesOf = (b: CardBlock): { url: string; label: string; group?: string; v
  *  (from every photo block of the card, three or more). Each is a normal page, so titles, descriptions, links and the sitemap
  *  logic of the basic site work on it unchanged. Done at request time; a page the card already has, or the owner hid, is left alone. */
 export function withAdvancedPages(card: Card): Card {
+  // The website is the owner's own pages, in the owner's order, with nothing added behind their back (owner, 19 Nov 2026: rasta 2).
+  // The About and Gallery pages this used to make are not made any more; the code below is kept for reference only.
+  const made = (card.site as { autoPages?: boolean } | undefined)?.autoPages === true;   // never set today: the old behaviour stays reachable for a later choice
+  if (!made) return card;
   const hidden = new Set(card.site?.hidden ?? []);
   const live = livePages(card);
   const roles = live.map((p) => pageRole(card, p));

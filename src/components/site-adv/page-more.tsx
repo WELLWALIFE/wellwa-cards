@@ -15,6 +15,7 @@ import { Btn, Head, Photo, Sec, Stars, type SiteContent } from "@/components/sit
 import type { AdvCtxPlus, AdvPageEntry, Chrome } from "@/components/site-adv/nav";
 import { AdvForm, Masthead, ShareBtn } from "@/components/site-adv/page-parts";
 import { shownValue } from "@/components/site-adv/close";
+import { youtubeId } from "@/lib/youtube";
 
 export type Slot = (k: SectionKey, index: number) => ReactNode;
 type Props = { c: SiteContent; spec: AdvancedSpec; x: AdvCtxPlus; chrome: Chrome; slot: Slot; has: (k: SectionKey) => boolean };
@@ -298,7 +299,7 @@ export function UpdatesPage({ c, x, chrome, entry, updates }: Pick<Props, "c" | 
 
 /* ================= any other page of the card, block by block ================= */
 
-function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteContent; i: number }): ReactNode {
+export function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteContent; i: number }): ReactNode {
   const tone = i % 2 ? "alt" : "paper";
   const title = (s?: string) => (s ?? "").trim() ? x.t(s!.trim()) : "";
   switch (b.kind) {
@@ -330,13 +331,39 @@ function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteContent; i:
     case "location": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} />{b.address && <address className="gb-addr">{x.t(b.address)}</address>}{(b.mapUrl || b.address) && <Btn kind="ghost" href={b.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}`} external><Icon name="directions" /> {x.ui("Get directions", "रास्ता देखें")}</Btn>}</Sec>;
     case "compare": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><div className="gb-table"><table><thead><tr><th scope="col" /><th scope="col">{x.t(b.leftLabel)}</th><th scope="col">{x.t(b.rightLabel)}</th></tr></thead><tbody>{b.rows.map((r, k) => <tr key={k}><th scope="row">{x.t(r.feature)}</th><td>{x.t(r.left)}</td><td>{x.t(r.right)}</td></tr>)}</tbody></table></div></Sec>;
     case "showcase": return <Sec k={`b${i}`} tone={tone} wide label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-show">{b.items.filter((s) => s.imageUrl).map((s, k) => <li key={k}><div><Photo src={s.imageUrl} alt={s.label} sizes="(min-width:900px) 30vw, 90vw" /></div><b>{x.t(s.label)}</b>{s.sub && <span>{x.t(s.sub)}</span>}</li>)}</ul></Sec>;
-    case "contact": return null;
+    // The parts a page of the owner's may hold anywhere now (19 Nov 2026: every page draws its own sections, in the owner's order).
+    case "video": {
+      const id = youtubeId(b.url ?? "");
+      const src = id ? `https://www.youtube-nocookie.com/embed/${id}` : "";
+      if (!src && !/^https?:\/\/.+\.(mp4|webm)(\?|$)/i.test(b.url ?? "")) return null;
+      return (
+        <Sec k={`b${i}`} tone={tone} label={title(b.title)}>
+          <Head title={title(b.title)} />
+          <div style={{ position: "relative", aspectRatio: "16/9", borderRadius: "var(--r-card)", overflow: "hidden", background: "#000" }}>
+            {src ? <iframe src={src} title={title(b.title) || x.ui("Video", "वीडियो")} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
+              : <video src={b.url} poster={b.posterUrl || undefined} controls preload="metadata" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />}
+          </div>
+          {(b.caption ?? "").trim() && <p className="adv-body" style={{ marginTop: "var(--s3)" }}>{x.t(b.caption.trim())}</p>}
+        </Sec>
+      );
+    }
+    case "cta": {
+      const href = (b.joinUrl ?? "").trim();
+      return (
+        <Sec k={`b${i}`} tone="ink" label={title(b.title)}>
+          <Head title={title(b.title)} lede={(b.body ?? "").trim() ? x.t(b.body!.trim()) : undefined} />
+          {href && <Btn href={/^#/.test(href) ? (x.hrefFor?.(href.slice(1)) ?? href) : href} external={/^https?:/i.test(href)}>{x.t((b.joinLabel ?? "").trim() || x.ui("Open", "खोलें"))}</Btn>}
+        </Sec>
+      );
+    }
+    case "pdf": return (b.fileUrl ?? "").trim() ? <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} lede={(b.hint ?? "").trim() ? x.t(b.hint!.trim()) : undefined} /><Btn href={b.fileUrl!} external>{x.t((b.fileLabel ?? "").trim() || x.ui("Open the file", "फ़ाइल खोलें"))}</Btn></Sec> : null;
+    case "contact": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><div className="gb-form"><Head title={title(b.title) || x.ui("Send us a message", "हमें संदेश भेजें")} lede={(b.note ?? "").trim() ? x.t(b.note!.trim()) : undefined} /><AdvForm x={x} title={b.title || x.ui("Send us a message", "हमें संदेश भेजें")} /></div></Sec>;
     default: return null;
   }
 }
 
 export function GenericPage({ c, x, chrome, slot, has, entry, page }: Props & { entry: AdvPageEntry; page?: CardPage }) {
-  const blocks = (page?.blocks ?? []).filter((b) => b.kind !== "contact");
+  const blocks = page?.blocks ?? [];
   const lede = blocks.find((b) => b.kind === "about");
   let i = 0;
   return (

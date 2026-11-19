@@ -194,8 +194,9 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
     ...card.pages.filter((p) => !hidden.has(p.slug) && (p.slug === "home" || p.blocks.some((b) => !isEmpty(b)))),
     ...(showUpdates ? [{ id: "__updates", slug: UPDATES, label: hiLang ? "अपडेट" : "Updates", blocks: [] as CardBlock[] }] : []),
   ];
-  const first = card.pages[0]?.slug ?? "home";
-  const [active, setActive] = useState(initialPage && pages.some((p) => p.slug === initialPage) ? initialPage : pages[0]?.slug ?? "home");
+  // The home page is the page named "home" wherever it sits (the owner may order the pages as they like), else the first one.
+  const first = card.pages.find((p) => p.slug === "home")?.slug ?? card.pages[0]?.slug ?? "home";
+  const [active, setActive] = useState(initialPage && pages.some((p) => p.slug === initialPage) ? initialPage : pages.some((p) => p.slug === first) ? first : pages[0]?.slug ?? "home");
   // Every page has its own address (search engines index each one); "#slug" in the editor preview.
   const hrefFor = (slug: string) => (linkBase === undefined ? `#${slug}` : pageHref(linkBase, encodeURIComponent(slug), slug === first));
   const page = pages.find((p) => p.slug === active) ?? pages[0];
