@@ -48,19 +48,20 @@ export async function PATCH(request: Request) {
   }
   const style = cleanStyle(b.style); if (style) patch.style = style;
   if (b.advancedLook && typeof b.advancedLook === "object") {
-    const L = b.advancedLook as { heading?: unknown; hero?: unknown; shape?: unknown; tone?: unknown };
+    const L = b.advancedLook as { heading?: unknown; hero?: unknown; shape?: unknown; tone?: unknown; corners?: unknown };
     const look = {
       ...(typeof L.heading === "string" && (HEADING_FONTS as string[]).includes(L.heading) ? { heading: L.heading } : {}),
       ...(typeof L.hero === "string" && (HERO_IDS as readonly string[]).includes(L.hero) ? { hero: L.hero } : {}),
       ...(typeof L.shape === "string" && (SHAPES as readonly string[]).includes(L.shape) ? { shape: L.shape } : {}),
       ...(L.tone === "light" || L.tone === "dark" ? { tone: L.tone as "light" | "dark" } : {}),
+      ...(L.corners === true ? { corners: true } : {}),
     };
     if (Object.keys(look).length) patch.advancedLook = look;
   }
   if (b.advancedPalette && typeof b.advancedPalette === "object") {
     const k = String((b.advancedPalette as { key?: unknown }).key ?? "");
     const col = String((b.advancedPalette as { color?: unknown }).color ?? "");
-    if (k === "brand" || PALETTE_KEYS.includes(k)) patch.advancedPalette = { key: k, ...(/^#[0-9a-f]{6}$/i.test(col) ? { color: col.toLowerCase() } : {}) };
+    if (k === "brand" || PALETTE_KEYS.includes(k)) patch.advancedPalette = { key: k, ...(/^#[0-9a-f]{6}$/i.test(col) ? { color: col.toLowerCase() } : {}), ...((b.advancedPalette as { own?: unknown }).own === true ? { own: true } : {}) };
   }
   if (b.bar === null) patch.bar = null;
   else if (b.bar && typeof b.bar === "object") {

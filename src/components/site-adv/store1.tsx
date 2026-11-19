@@ -21,7 +21,7 @@ export const isStore1 = (spec: AdvancedSpec): boolean => typeof spec.seed === "s
 export const isStore2 = (spec: AdvancedSpec): boolean => typeof spec.seed === "string" && spec.seed.includes("|fix:bridal-lookbook");
 export type StoreLook = "store" | "studio";
 
-type Props = { card: Card; c: SiteContent; x: AdvCtxPlus; items: AdvItem[]; route: AdvRoute; open: (slug: string) => void; logo: ReactNode; lang: ReactNode; fallback: ReactNode; look?: StoreLook };
+type Props = { card: Card; c: SiteContent; x: AdvCtxPlus; items: AdvItem[]; route: AdvRoute; open: (slug: string) => void; logo: ReactNode; lang: ReactNode; fallback: ReactNode; look?: StoreLook; /** The owner's own colour (hue, chroma) and corners, when chosen in the editor. */ tint?: { h: number; c: number } | null; corners?: string };
 
 const amount = (s?: string): number | null => { const m = /\d[\d,]*(?:\.\d+)?/.exec(s ?? ""); if (!m) return null; const n = Number(m[0].replace(/,/g, "")); return Number.isFinite(n) && n > 0 ? n : null; };
 const inr = (n: number) => { const s = String(Math.round(n)); return s.length <= 3 ? `₹${s}` : `₹${s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",")},${s.slice(-3)}`; };
@@ -447,7 +447,8 @@ export function Store1(props: Props) {
   else if (route.entry.role === "about") body = <About s={s} entry={route.entry} />;
   else if (route.entry.role === "contact") body = <Contact s={s} entry={route.entry} />;
   return (
-    <div className={studio ? "s1 s1-studio" : "s1"}>
+    <div className={`${studio ? "s1 s1-studio" : "s1"}${props.corners === "sharp" ? " s1-sharp" : props.corners === "pill" ? " s1-round" : ""}`}
+      style={props.tint ? { "--m": `oklch(.36 ${Math.min(props.tint.c, .13)} ${props.tint.h})`, "--m2": `oklch(.45 ${Math.min(props.tint.c, .15)} ${props.tint.h})`, ...(studio ? {} : { "--bl": `oklch(.94 ${Math.min(props.tint.c, .035)} ${props.tint.h})` }) } as React.CSSProperties : undefined}>
       {studio ? <StudioHeader s={s} lang={props.lang} /> : <Header s={s} logo={props.logo} lang={props.lang} />}
       <main id="adv-main" tabIndex={-1} key={route.kind === "item" ? route.item.slug : route.kind === "page" ? route.entry.slug : "home"}>{body}</main>
       {studio ? <StudioFooter s={s} /> : <Footer s={s} />}
@@ -620,6 +621,9 @@ export const STORE1_CSS = `
 /* ---- Design 2: the studio (ivory, sage, quiet serif). It was a black page; the owner, 18 Nov 2026: "completely black si dikh rahi hai" -
    so the page is ivory paper now, the sage kept; only the photograph's veil and the footer are deep green. --on is the text on a sage
    button, --bl the outline of a line button; the hero, the page hero and the footer re-set the inks for their dark ground. ---- */
+.s1-sharp :is(.s1-btn,.s1-arch,.s1-jh,.s1-band,.s1-budc,.s1-revc,.s1-about .s1-pic,.s1-contact .s1-pic,.s1-chips button,.s1-facts div,.s1-steps div,.s1-clist a,.s1-pc-wa,.s1-coll-bar select,.s2-btn,.s2-form input,.s2-form select,.s2-form textarea){border-radius:0!important}
+.s1-round :is(.s1-btn,.s1-pc-wa,.s2-btn,.s1-coll-bar select,.s2-form input,.s2-form select){border-radius:999px!important}
+.s1-round :is(.s1-band,.s1-budc,.s1-revc,.s1-facts div,.s1-steps div,.s1-clist a,.s1-about .s1-pic,.s1-contact .s1-pic,.s2-form textarea){border-radius:28px!important}
 .s1-studio{--bg:#f8f6f0;--bg2:#efece2;--ink:#1f2a22;--mu:#5b655d;--ln:rgba(31,42,34,.14);--m:#4a6e54;--m2:#3c5c45;--g:rgba(74,110,84,.4);--rd:#b4483c;--gr:#2f8a52;--on:#fff;--bl:rgba(31,42,34,.45);background:var(--bg);color:var(--ink);font-weight:300}
 .s1-studio .s1-pic{background:linear-gradient(135deg,#e8e5da,#dedbd0)}
 .s1-studio .s1-noimg{color:#a9ad9f}

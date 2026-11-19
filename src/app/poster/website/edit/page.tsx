@@ -235,6 +235,7 @@ export default function WebsiteEditPage() {
   // A Premium design carries its own colours (site.advanced.palette): the colour row changes THOSE when it is the design on show
   // (owner, 23 Oct 2026: tapping a colour did nothing on a Premium site), and the basic site's colour along with it.
   const adv = (site as { advancedOn?: boolean }).advancedOn !== false && site.advanced ? site.advanced as { palette?: { key?: string; color?: string } } & Record<string, unknown> : null;
+  const storeDesign = !!adv && typeof adv.seed === "string" && /\|fix:bridal-(couture-house|lookbook)/.test(adv.seed);
   const paletteKey = adv ? (adv.palette?.key && (adv.palette.key === "brand" || SITE_PALETTES.some((p) => p.key === adv.palette?.key)) ? adv.palette.key : "brand")
     : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
   /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
@@ -248,7 +249,7 @@ export default function WebsiteEditPage() {
   const pickColour = (key: string, color?: string) => {
     focus({ top: true });
     const nextStyle = { ...style, palette: key, ...(color !== undefined ? { color } : {}) };
-    if (adv) set({ style: nextStyle, advanced: { ...adv, palette: { ...(adv.palette ?? {}), key, ...(key === "brand" ? { color: color ?? style.color ?? card?.themeColor } : {}) } } as NonNullable<Card["site"]>["advanced"] });
+    if (adv) set({ style: nextStyle, advanced: { ...adv, palette: { ...(adv.palette ?? {}), own: true, key, ...(key === "brand" ? { color: color ?? style.color ?? card?.themeColor } : {}) } } as NonNullable<Card["site"]>["advanced"] });
     else set({ style: nextStyle });
   };
 
@@ -301,8 +302,8 @@ export default function WebsiteEditPage() {
         hidden: site.hidden ?? [],
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
-        ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}) } } : {}),
-        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone } } : {}),
+        ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}), ...((adv.palette as { own?: boolean }).own ? { own: true } : {}) } } : {}),
+        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}) } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1);
@@ -485,7 +486,7 @@ export default function WebsiteEditPage() {
           <div className="flex items-center justify-between gap-2 px-1">
             <p className="flex items-center gap-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Pick a colour"}</p>
             {/* Background light / dark, right next to the colours (owner, 25 Oct 2026): a small two-part switch. Premium designs only. */}
-            {adv && (() => {
+            {adv && !storeDesign && (() => {
               const pal = (adv.palette ?? {}) as { key?: string; tone?: string; luxe?: boolean };
               const cur = pal.tone === "dark" ? "dark" : "light";
               const noDark = pal.key === "ivory" || pal.key === "pearl";
@@ -577,16 +578,17 @@ export default function WebsiteEditPage() {
                 {HEADING_FONTS.map((f) => <button key={f} type="button" onClick={() => setAdv({ fonts: { ...((adv.fonts as { heading?: string; body?: string }) ?? {}), heading: f } })} className={chip((adv.fonts as { heading?: string } | undefined)?.heading === f)} style={{ fontFamily: `"${f}", Inter, sans-serif` }}>{f}</button>)}
               </div>
             </div>
-            <div>
+            {/* The two whole-store designs have one top of their own: the list changed nothing there (owner, 19 Nov 2026), so it is not offered. */}
+            {storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
               <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {HERO_IDS.map((h) => <button key={h} type="button" onClick={() => setAdv({ hero: h })} className={chip(adv.hero === h)}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}</button>)}
               </div>
-            </div>
+            </div>}
             <div>
               <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setAdv({ shape: sh })} className={chip(adv.shape === sh)}>{sh === "sharp" ? (hi ? "शार्प" : "Sharp") : sh === "soft" ? (hi ? "सॉफ्ट" : "Soft") : (hi ? "राउंड" : "Round")}</button>)}
+                {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setAdv({ shape: sh, palette: { ...(adv.palette ?? {}), corners: true } })} className={chip(adv.shape === sh)}>{sh === "sharp" ? (hi ? "शार्प" : "Sharp") : sh === "soft" ? (hi ? "सॉफ्ट" : "Soft") : (hi ? "राउंड" : "Round")}</button>)}
               </div>
             </div>
           </>) : (<>

@@ -386,9 +386,9 @@ export type SitePatch = {
   float?: "whatsapp" | "call" | "none";
   /** The Premium website's colour (owner, 23 Oct 2026: the colour row did nothing on a Premium site): a SITE_PALETTES key or "brand"
    *  with a #rrggbb colour. Applied to site.advanced.palette when the card has a Premium design. */
-  advancedPalette?: { key: string; color?: string };
+  advancedPalette?: { key: string; color?: string; /** Picked by the owner (see AdvancedSpec.palette.own). */ own?: boolean };
   /** The Premium design's own letters, top and corners (website editor, 25 Oct 2026). Checked against the lists in lib/site-advanced.ts. */
-  advancedLook?: { heading?: string; hero?: string; shape?: string; tone?: "light" | "dark" };
+  advancedLook?: { heading?: string; hero?: string; shape?: string; tone?: "light" | "dark"; corners?: boolean };
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -425,6 +425,7 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
   if (patch.advancedPalette && adv && typeof adv === "object") {
     const pal = { ...(adv.palette ?? {}), key: patch.advancedPalette.key } as Record<string, unknown>;
     if (patch.advancedPalette.key === "brand" && patch.advancedPalette.color) pal.color = patch.advancedPalette.color; else delete pal.color;
+    if (patch.advancedPalette.own) pal.own = true;
     (site as Record<string, unknown>).advanced = { ...adv, palette: pal };
   }
   const adv2 = (site as { advanced?: Record<string, unknown> }).advanced;
@@ -444,6 +445,8 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
       pal.tone = tone; if (tone === "dark") delete pal.luxe;
       (site as Record<string, unknown>).advanced = { ...a3, palette: pal };
     }
+    const a4 = (site as { advanced: { palette?: Record<string, unknown> } & Record<string, unknown> }).advanced;
+    if (L.corners && a4.palette) (site as Record<string, unknown>).advanced = { ...a4, palette: { ...a4.palette, corners: true } };
   }
   const data = { ...row.data, site };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data }) });

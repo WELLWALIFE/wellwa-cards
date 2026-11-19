@@ -240,6 +240,7 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
         <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-adv="" data-motion={spec.motion} data-shape={spec.shape} data-density={spec.density} data-page={route.kind === "page" ? route.entry.role : route.kind}>
           <NoticeBar card={card} hi={hi} />
           <Store1 card={card} c={c} x={x} items={items} route={route} open={open} logo={logo} lang={lang} look={isStore2(spec) ? "studio" : "store"}
+            tint={spec.palette.own ? { h: advancedPalette(card, spec).h, c: advancedPalette(card, spec).c } : null} corners={spec.palette.corners ? spec.shape : undefined}
             fallback={route.kind === "home" ? null : <AdvPageBody route={route} {...bodyProps} />} />
           {linkBase !== undefined && !free && premiumOn(card) && <InstallSiteApp name={t(c.name)} hi={hi} accent="#7a1f2e" onTrack={(k) => track(k)} />}
           {zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}

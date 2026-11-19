@@ -241,6 +241,10 @@ export type AdvancedPalette = {
   /** The dark bands (call-back strip, number band, dark cards) in the design's own deep colour, not near-black: set for the trades that are
    *  never dark (cleaning, clinics, schools - owner, 18 Nov 2026: "black jaisa"). */
   deep?: boolean;
+  /** The owner picked this colour / these corners in Edit → Letters & look. The two whole-store designs (store1.tsx) carry their own fixed
+   *  colours and corners and wear the spec's only when these say so, so a store made before keeps its look (19 Nov 2026: a tap changed nothing). */
+  own?: boolean;
+  corners?: boolean;
 };
 
 export type AdvancedSpec = {
@@ -318,7 +322,7 @@ export function validateSpec(input: unknown, fallbackSeed = "adv"): AdvancedSpec
     v: 1,
     seed: clean(o.seed, 80) || fallbackSeed,
     archetype: clean(o.archetype, 40) || SAFE_SPEC.archetype,
-    palette: { key, ...(key === "brand" && hex6(pal.color) ? { color: hex6(pal.color) } : {}), tone: pal.tone === "dark" ? "dark" : "light", ...(pal.luxe === true ? { luxe: true } : {}), ...(pal.deep === true ? { deep: true } : {}) },
+    palette: { key, ...(key === "brand" && hex6(pal.color) ? { color: hex6(pal.color) } : {}), tone: pal.tone === "dark" ? "dark" : "light", ...(pal.luxe === true ? { luxe: true } : {}), ...(pal.deep === true ? { deep: true } : {}), ...(pal.own === true ? { own: true } : {}), ...(pal.corners === true ? { corners: true } : {}) },
     fonts: {
       heading: has(HEADING_FONTS, fonts.heading) ? fonts.heading as string : SAFE_SPEC.fonts.heading,
       body: has(BODY_FONTS, fonts.body) ? fonts.body as string : SAFE_SPEC.fonts.body,
