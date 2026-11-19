@@ -129,7 +129,7 @@ function PreviewInner() {
       if (e.data === `preview:${key}`) { setCard(readCard()); return; }
       // The editor asks to show the part just changed (owner, 24 Oct 2026: "jo change hua wo hi portion apne aap window me dikhe"):
       // after the new paint, find it (the top, or a heading / line with that text), tell the editor where it is and mark it for a moment.
-      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean; part?: string; quiet?: boolean; /** A Premium section by its key (about, services…): the row tapped in "Order of your home page". */ sec?: string } | null;
+      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean; part?: string; quiet?: boolean; /** A Premium section by its key (about, services…): the row tapped in "Order of your home page". */ sec?: string; /** Other words to look for when the heading is not on the page. */ alt?: string[] } | null;
       if (!d || d.type !== "preview-focus" || d.key !== key) return;
       setTimeout(() => {
         let el: HTMLElement | null = null;
@@ -142,6 +142,14 @@ function PreviewInner() {
             // The line that holds it (an address shown with its city): the shortest element whose text contains it.
             ?? all.filter((x) => (x.textContent ?? "").toLowerCase().includes(want)).sort((a, b) => (a.textContent ?? "").length - (b.textContent ?? "").length)[0] ?? null;
           el = (el?.closest("section") as HTMLElement | null) ?? el;
+        }
+        if (!el && !d.top && Array.isArray(d.alt)) {
+          const all = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,b,strong,dt,dd,p,span,summary,button"));
+          for (const raw of d.alt) {
+            const w = String(raw ?? "").trim().toLowerCase(); if (w.length < 3) continue;
+            const hit = all.filter((x) => (x.textContent ?? "").toLowerCase().includes(w)).sort((a, b) => (a.textContent ?? "").length - (b.textContent ?? "").length)[0];
+            if (hit) { el = (hit.closest("section") as HTMLElement | null) ?? hit; break; }
+          }
         }
         // A part of the editor opened, or its words were not found (owner, 26 Oct 2026: "niche edit karne par screen me wahi space dikhe"): the section it changes.
         if (!el && d.part) {

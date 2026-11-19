@@ -7,7 +7,7 @@ import type { Card } from "@/lib/types";
 export type EmbedLive = { card: Card; page?: string; focus?: { top?: boolean; text?: string } };
 
 export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onError, saveTick = 0, onSync }: {
-  /** The section the owner has scrolled to in the screen (its [data-sync-text]), so the window above can follow. */ onSync?: (at: { text: string; page?: string }) => void;
+  /** The section the owner has scrolled to in the screen (its [data-sync-text]), so the window above can follow. */ onSync?: (at: { text: string; page?: string; alt?: string[] }) => void;
   src: string; title: string; onLive: (v: EmbedLive) => void; onDone: (saved: boolean) => void;
   /** The screen has changes not saved yet (the full editor): the page's own Save bar saves them (bumps `saveTick`). */
   onDirty?: (dirty: boolean) => void; onSaved?: () => void; onError?: (text: string) => void; saveTick?: number;
@@ -53,7 +53,7 @@ export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onErro
       const m = e.data as { type?: string; h?: number; saved?: boolean } & Partial<EmbedLive>;
       if (m?.type === "embed-height" && typeof m.h === "number") { setH(Math.max(320, Math.min(m.h, 20000))); setReadyFor(keyRef.current); }
       else if (m?.type === "embed-live" && m.card) cb.current.onLive({ card: m.card, page: m.page, focus: m.focus });
-      else if (m?.type === "embed-sync") cb.current.onSync?.({ text: String((m as { text?: string }).text ?? ""), page: (m as { page?: string }).page });
+      else if (m?.type === "embed-sync") cb.current.onSync?.({ text: String((m as { text?: string }).text ?? ""), page: (m as { page?: string }).page, alt: Array.isArray((m as { alt?: unknown }).alt) ? ((m as { alt: unknown[] }).alt.filter((x) => typeof x === "string") as string[]) : undefined });
       else if (m?.type === "embed-dirty") cb.current.onDirty?.(!!(m as { dirty?: boolean }).dirty);
       else if (m?.type === "embed-saved") cb.current.onSaved?.();
       else if (m?.type === "embed-error") cb.current.onError?.(String((m as { text?: string }).text ?? ""));

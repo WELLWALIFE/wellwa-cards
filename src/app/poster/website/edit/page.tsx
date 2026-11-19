@@ -90,7 +90,7 @@ export default function WebsiteEditPage() {
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
   /** The section the owner has scrolled to inside Text & pages: the window follows it (and opens its page). */
-  const [sync, setSync] = useState<{ text: string; page?: string } | null>(null);
+  const [sync, setSync] = useState<{ text: string; page?: string; alt?: string[]; sec?: string } | null>(null);
   // Opened from the Card editor's switch with a part open (?part=): that part opens here too.
   const partDone = useRef(false);
   useEffect(() => {
@@ -157,6 +157,8 @@ export default function WebsiteEditPage() {
   // What the window shows: this page's working copy, or a tab screen's unsaved copy with this page's own unsaved changes on it.
   /** The last place asked of the window: asked again when the window loads afresh (another page of the website). */
   const lastFocus = useRef<Record<string, unknown> | null>(null);
+  const syncRef = useRef(sync);
+  useEffect(() => { syncRef.current = sync; });
   const previewPage = sync && open ? (sync.page && sync.page !== "home" ? sync.page : "") : embedView?.page ?? "";
   useEffect(() => {
     const shown = embedView && card ? keepTouched(embedView.card, card, touched.current) : card;
@@ -164,14 +166,15 @@ export default function WebsiteEditPage() {
     try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(shown)); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
     // A part's screen that only says "the top" (most do) leaves the window on the section that part changes.
-    const ef = open ? { ...(sync ? (sync.text ? { text: sync.text, quiet: true } : { top: true }) : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
+    const ef = open ? { ...(sync ? (sync.text || sync.alt?.length || sync.sec ? { text: sync.text, alt: sync.alt, sec: sync.sec, quiet: true } : { top: true }) : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
     const f = focusAsk.current ?? ef ?? null; focusAsk.current = null;
     if (f) { lastFocus.current = f; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }
   }, [card, embedView, open, tab, sync]);
 
   // A part opened: the window goes to the section it changes (back to the top on the list).
   useEffect(() => {
-    const t = setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? { part: tab } : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
+    // With the place the part's content sits at (partPlace → sync): the part's name alone sent the window to whatever heading matched a word.
+    const t = setTimeout(() => { const sy = syncRef.current; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? (sy ? (sy.text || sy.alt?.length || sy.sec ? { text: sy.text, alt: sy.alt, sec: sy.sec, part: tab } : { top: true }) : { part: tab }) : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
     return () => clearTimeout(t);
   }, [open, tab]);
 
@@ -279,13 +282,17 @@ export default function WebsiteEditPage() {
         {advRows.map((r, i) => {
           const prev = advRows[i - 1], next = advRows[i + 1];
           return (
-            <li key={r.key} draggable={!r.fixed}
+            <li key={r.key} data-advk={r.key} draggable={!r.fixed}
               onDragStart={(e) => { setAdvDrag(r.key); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", r.key); } catch { /* ignore */ } }}
               onDragOver={(e) => { if (advDrag && !r.fixed && advDrag !== r.key) { e.preventDefault(); setAdvOver(r.key); } }}
               onDragEnd={() => { setAdvDrag(""); setAdvOver(""); }}
               onDrop={(e) => { e.preventDefault(); const f = advDrag as SectionKey; setAdvDrag(""); setAdvOver(""); if (f && !r.fixed) moveAdv(f, r.key); }}
               className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 ${r.fixed ? "border-border bg-surface2 text-muted" : "cursor-grab border-border bg-surface active:cursor-grabbing"} ${advDrag === r.key ? "opacity-40" : ""} ${advOver === r.key ? "ring-2 ring-brand/40" : ""}`}>
-              <span className="w-5 shrink-0 text-center text-[11px] font-bold text-muted">{i + 1}</span>
+              {/* A finger on the number moves the row on a phone (there is no mouse drag there): the row under the finger is where it lands. */}
+              <span className={`min-w-6 shrink-0 select-none rounded text-center text-[11px] font-bold text-muted ${r.fixed ? "" : "bg-surface2 px-0.5 py-1"}`} style={r.fixed ? undefined : { touchAction: "none" }}
+                onTouchStart={() => { if (!r.fixed) setAdvDrag(r.key); }}
+                onTouchMove={(e) => { const t = e.touches[0]; if (!t || !advDrag) return; const row = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-advk]"); const k = row?.dataset.advk ?? ""; if (k && k !== "hero" && k !== "footer") setAdvOver(k); }}
+                onTouchEnd={() => { const f = advDrag as SectionKey, to = advOver as SectionKey; setAdvDrag(""); setAdvOver(""); if (f && to) moveAdv(f, to); }}>{r.fixed ? i + 1 : `⇅ ${i + 1}`}</span>
               <button type="button" onClick={() => showAdv(r.key)} title={hi ? "Website पर यह हिस्सा दिखाएँ" : "Show this part on the website"} className="min-w-0 flex-1 truncate text-left text-sm font-medium hover:text-brand-ink">{r.name}</button>
               {r.fixed ? <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[10px] font-semibold text-muted">{hi ? "🔒 यहीं रहता है" : "🔒 stays here"}</span> : (<>
                 <button type="button" onClick={() => prev && !prev.fixed && moveAdv(r.key, prev.key)} disabled={!prev || prev.fixed} className="rounded p-1 text-muted disabled:opacity-30" aria-label="Up"><ChevronUp className="h-4 w-4" /></button>
@@ -521,7 +528,35 @@ export default function WebsiteEditPage() {
     if (!g) return;
     if (embedDirty && key !== tab && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
     setEmbedDirty(false); setAtBlock(""); setGroup(g.key); pick(key as Tab); setOpen(true); window.scrollTo({ top: 0 });
+    // The window goes to what this part changes, on whichever page it lives (owner, 19 Nov 2026: Products opened and the window showed
+    // another section): the first section of that kind on the card — its page, its heading, else its first line.
+    const at = partPlace(key);
+    if (at) setSync(at);
   };
+  /** Where a part's content sits on the website: { page, text (the section's heading), alt (its first lines) }; null = leave it to the part's own rule. */
+  function partPlace(key: string): { text: string; page?: string; alt?: string[]; sec?: string } | null {
+    if (!card) return null;
+    const KINDS: Record<string, string[][]> = {
+      products: [["product"], ["table"], ["services"]], reviews: [["testimonials"]], about: [["about"]], details: [["services"], ["highlights"]],
+      where: [["hours", "location"]], photos: [["gallery", "image", "carousel"]],
+    };
+    if (["you", "trade", "look", "hero", "offer", "website"].includes(key)) return { text: "", page: "home" };
+    const tries = KINDS[key];
+    if (!tries) return null;
+    // A Premium home page has its own section for each of these (data-sec): the surest place when the page shown is Home.
+    const SEC: Record<string, string> = { products: "services", details: "services", reviews: "proof", about: "about", where: "visit", photos: "gallery" };
+    const pages = card.pages.filter((p) => !p.hidden && !(card.site?.hidden ?? []).includes(p.slug));
+    for (const kinds of tries) for (const pg of pages) for (const b of pg.blocks) {
+      if (!kinds.includes(b.kind) || isEmptyBlock(b)) continue;
+      const alt: string[] = [];
+      const first = "items" in b && Array.isArray(b.items) ? (b.items[0] as unknown) : null;
+      if (typeof first === "string") alt.push(first);
+      else if (first && typeof first === "object") { const o = first as { name?: string; q?: string; title?: string; text?: string }; for (const v of [o.name, o.q, o.title, o.text]) if (v && v.trim()) alt.push(v.trim()); }
+      if (b.kind === "about" && (b.body ?? "").trim()) alt.push((b.body ?? "").trim().split(/[.\n]/)[0].slice(0, 60));
+      return { ...(pg.slug === "home" || !pg.slug ? { sec: SEC[key] } : {}), text: ("title" in b ? b.title ?? "" : "").trim(), page: pg.slug, alt: alt.map((x) => x.replace(/^[^\p{L}\p{N}]+/u, "").slice(0, 60)).filter(Boolean).slice(0, 3) };
+    }
+    return null;
+  }
   const toList = () => {
     if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;
     setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });

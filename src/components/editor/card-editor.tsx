@@ -147,6 +147,8 @@ type Tab = "content" | "design" | "links" | "settings";
 function useDragReorder<T>(items: T[], commit: (next: T[]) => void) {
   const from = useRef<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
+  const overRef = useRef<number | null>(null);
+  useEffect(() => { overRef.current = over; }, [over]);
   return {
     over,
     handle: (i: number) => ({
@@ -156,8 +158,24 @@ function useDragReorder<T>(items: T[], commit: (next: T[]) => void) {
         e.dataTransfer.effectAllowed = "move";
       },
       onDragEnd: () => { from.current = null; setOver(null); },
+      // A finger on the grip (a phone has no mouse drag): the row under the finger is the target; lifting the finger drops it there.
+      style: { touchAction: "none" as const },
+      onTouchStart: () => { from.current = i; },
+      onTouchMove: (e: React.TouchEvent) => {
+        const t = e.touches[0]; if (!t) return;
+        const row = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-dnd]");
+        const j = row ? Number(row.dataset.dnd) : NaN;
+        if (Number.isFinite(j)) setOver(j);
+      },
+      onTouchEnd: () => {
+        const f = from.current, j = overRef.current;
+        from.current = null; setOver(null);
+        if (f === null || j === null || f === j) return;
+        const next = items.slice(); const [moved] = next.splice(f, 1); next.splice(j, 0, moved); commit(next);
+      },
     }),
     drop: (i: number) => ({
+      "data-dnd": i,
       onDragOver: (e: React.DragEvent) => { e.preventDefault(); setOver(i); },
       onDragLeave: () => setOver((o) => (o === i ? null : o)),
       onDrop: (e: React.DragEvent) => {
@@ -408,7 +426,15 @@ export function CardEditor({ id }: { id: string }) {
   const showInWindow = (pageId: string, blockId?: string) => {
     const pg = card.pages.find((x) => x.id === pageId); if (!pg) return;
     const b = blockId ? pg.blocks.find((x) => x.id === blockId) : undefined;
-    try { if (window.parent !== window) window.parent.postMessage({ type: "embed-sync", page: pg.slug, text: b && "title" in b ? (b.title ?? "").trim() : "" }, window.location.origin); } catch { /* ignore */ }
+    // A Premium page often does not print a section's heading: its first line (a service's name, a question) finds it then.
+    const alt: string[] = [];
+    if (b) {
+      const first = "items" in b && Array.isArray(b.items) ? (b.items[0] as unknown) : null;
+      if (typeof first === "string") alt.push(first);
+      else if (first && typeof first === "object") { const o = first as { name?: string; q?: string; title?: string; text?: string }; for (const v of [o.name, o.q, o.title, o.text]) if (v && v.trim()) alt.push(v.trim()); }
+      if (b.kind === "about" && (b.body ?? "").trim()) alt.push((b.body ?? "").trim().split(/[.\n]/)[0].slice(0, 60));
+    }
+    try { if (window.parent !== window) window.parent.postMessage({ type: "embed-sync", page: pg.slug, text: b && "title" in b ? (b.title ?? "").trim() : "", alt: alt.map((x) => x.replace(/^[^\p{L}\p{N}]+/u, "").slice(0, 60)).filter(Boolean).slice(0, 3) }, window.location.origin); } catch { /* ignore */ }
   };
   const [dragPage, setDragPage] = useState("");
   const [overPage, setOverPage] = useState("");
