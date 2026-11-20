@@ -583,6 +583,19 @@ export default function BuildCard() {
       // A mark left by an earlier visit that this visit cannot honour (the website is gone, or is being made again) is taken off, so
       // Card & Website does not keep sending the owner here.
       if (who?.data.user?.user_metadata?.finish_pos && !isLiveSite(live)) void getBrowserSupabase()?.auth.updateUser({ data: { finish_pos: null } }).catch(() => undefined);
+      // Website cleared by Super Admin (owner, 20 Nov 2026: "jab bhi clear karein, website first page se start ho, taaki user saara data
+      // recheck kar sake"): the first visit after a clear walks the whole set-up from its first screen (About you → … → Make), every answer
+      // already filled in. Stamped when the walk starts (site_walk_at), so it happens once per clear and never loops.
+      {
+        const md = who?.data.user?.user_metadata as { site_cleared_at?: unknown; site_walk_at?: unknown } | undefined;
+        const clearedAt = typeof md?.site_cleared_at === "string" ? md.site_cleared_at : "";
+        const walkedAt = typeof md?.site_walk_at === "string" ? md.site_walk_at : "";
+        if (!live && !again && clearedAt && clearedAt > walkedAt) {
+          await getBrowserSupabase()?.auth.updateUser({ data: { site_walk_at: new Date().toISOString(), setup_pos: null } }).catch(() => undefined);
+          router.replace(`/poster/onboard?step=you&next=${encodeURIComponent("/poster/card/build?make=1")}`);
+          return;
+        }
+      }
       if (makeNow) { setState("make"); return; }
       // No card yet (owner, 16 Nov 2026: "pehle design ban gaya, baad me payment mang raha hai"): a bare /poster/card/build — the
       // Card & Website button's details walk ends here — opens the Make screen (choose the website, pay), never a free build first.

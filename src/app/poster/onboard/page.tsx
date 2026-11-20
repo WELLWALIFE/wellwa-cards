@@ -788,7 +788,9 @@ function Onboard() {
         const r = await publishCard(card, { freshSite: true });
         // Replace: the Shubhora card now exists — Back must not land on this question to be answered (and published) again. It lands on
         // Card & Website with a "ready" note (owner, 19 Oct 2026: straight into the editor felt like nothing had been made), not the raw editor.
-        if (r.ok) { router.replace("/poster/site?made=shubhora"); return; }
+        // Then the designs to choose from (owner, 20 Nov 2026: "Shubhora ki bhi 12 websites bana ke le, usme se ek select kare"): the same
+        // choose screen as every website — the Shubhora pages worn in each design, one tap to put it live.
+        if (r.ok) { router.replace("/poster/site/choose"); return; }
         setErr(hi ? "Card publish नहीं हो पाया — editor खोलकर Publish दबाएँ।" : (r.error || "Could not publish the card — open the editor and press Publish."));
       }
       // no username yet (or publish failed): the editor with the template, publish by hand

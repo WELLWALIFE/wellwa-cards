@@ -136,6 +136,8 @@ export function isShubhoraSellerCard(card: { company?: string; name?: string; jo
 export function sellerDrawsPremium(site: unknown): boolean {
   const adv = site && typeof site === "object" ? (site as { advanced?: { notes?: unknown; archetype?: unknown } }).advanced : null;
   if (!adv || typeof adv !== "object") return false;
+  // A design the partner picked on the choose screen (designChosenAt, api/card/advanced) was picked FOR this card: drawn (20 Nov 2026).
+  if ((site as { designChosenAt?: unknown }).designChosenAt) return true;
   return /shubhora|v-?card|visiting card|digital (card|tools?|solutions?)|\btech\b|software|saas|\bai\b/i.test(`${String(adv.notes ?? "")} ${String(adv.archetype ?? "")}`);
 }
 
