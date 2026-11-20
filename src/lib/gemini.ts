@@ -26,7 +26,10 @@ export async function geminiComplete(opts: {
 }): Promise<{ text: string; blocked: boolean }> {
   const body: Record<string, unknown> = {
     contents: opts.contents,
-    generationConfig: { maxOutputTokens: opts.maxOutputTokens ?? 800, ...(opts.temperature != null ? { temperature: opts.temperature } : {}), ...(opts.json ? { responseMimeType: "application/json" } : {}) },
+    // The model thinks before it answers and the thinking is charged against this cap: at 500 a website-chat answer often came back EMPTY
+    // (finishReason MAX_TOKENS) and the visitor got the canned "will reply personally" (live check, 20 Nov 2026). The length of the answer
+    // is set by the prompt, not by this cap; only the tokens used are billed.
+    generationConfig: { maxOutputTokens: Math.max(opts.maxOutputTokens ?? 800, 4096), ...(opts.temperature != null ? { temperature: opts.temperature } : {}), ...(opts.json ? { responseMimeType: "application/json" } : {}) },
   };
   if (opts.system) body.systemInstruction = { parts: [{ text: opts.system }] };
   if (opts.webSearch) body.tools = [{ google_search: {} }];

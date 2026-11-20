@@ -98,7 +98,8 @@ async function geminiComplete({ system, messages, maxTokens, temperature }) {
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const body = { contents, generationConfig: { maxOutputTokens: maxTokens ?? 800, ...(temperature != null ? { temperature } : {}) } };
+  // Room for the model's thinking (it counts against the cap): at 300–600 the reply could come back empty (see src/lib/gemini.ts).
+  const body = { contents, generationConfig: { maxOutputTokens: Math.max(maxTokens ?? 800, 4096), ...(temperature != null ? { temperature } : {}) } };
   if (system) body.systemInstruction = { parts: [{ text: system }] };
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
     method: "POST",
