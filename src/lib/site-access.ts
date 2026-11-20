@@ -10,7 +10,7 @@ import { restAsUser, posterQuota } from "@/lib/poster-server";
 import { myCard } from "@/lib/site-server";
 
 /** What a free account is told when it asks for a website. `plan: true` is the flag the screens read to open the upgrade sheet. */
-export const WEBSITE_PLAN_MESSAGE = "A website is part of the Standard plan (₹2,999 a month) or Premium. Your free plan is the digital card, and it stays free.";
+export const WEBSITE_PLAN_MESSAGE = "A website is part of the Standard plan (₹2,999 a month) or Premium. Your digital card stays as it is.";
 
 type Row = Record<string, unknown>;
 const first = (d: unknown): Row | null => (Array.isArray(d) ? (d[0] as Row | undefined) ?? null : (d as Row | null)) ?? null;

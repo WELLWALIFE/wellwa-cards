@@ -129,7 +129,7 @@ export default function SettingsPage() {
           {(expired || current === "free") && associate
             ? <>You are on the <b className="text-ink">free plan</b>. Choose a plan below and pay with Razorpay to unlock everything.</>
             : expired || current === "free"
-            ? <>You are on the <b className="text-ink">free plan</b> — your digital V-Card is free for its first year. Subscribe for the website, daily posters, WhatsApp AI and auto-posting.</>
+            ? <>You are on the <b className="text-ink">free plan</b> Subscribe for the website, daily posters, WhatsApp AI and auto-posting.</>
             : isTrial
               ? <>You&apos;re on the <b className="text-ink">free trial</b> — {daysLeft} day{daysLeft === 1 ? "" : "s"} left, everything unlocked.</>
               : tier?.active && tier.until

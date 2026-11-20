@@ -197,6 +197,8 @@ const FREE_SAY: [RegExp, string][] = [
   [/,? on your phone, free\./g, ", on your phone."],
   [/ · tap to make yours, free/g, " · tap to make yours"],
   [/ before you decide — free\./g, " before you decide."],
+  [/makes your own card in that design, free — /g, "starts your own website in that design — "],
+  [/ — free on every plan\./g, " — on every plan."],
 ];
 const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
 

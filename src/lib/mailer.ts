@@ -61,9 +61,9 @@ export function welcomeMail(name: string, credits: number) {
   const steps = ["Add your details and your business", "Add your products or services", "Make your digital card and website — free", "Get a new poster with your name every day"];
   return {
     subject: `Welcome to ${BRAND} — your account is ready`,
-    html: layout("Your account is ready", `<p>${hi}</p><p>Thank you for joining ${esc(BRAND)}. Your digital V-Card is free for its first year.${credits > 0 ? ` We have added <b>${credits} free AI credits</b> so you can try the AI tools.` : ""}</p><p><b>Next steps (about 10 minutes):</b></p>${list(steps)}<p>Want the daily poster and status video, the website, WhatsApp AI and auto-posting? Upgrade any time from the app.</p>`,
+    html: layout("Your account is ready", `<p>${hi}</p><p>Thank you for joining ${esc(BRAND)}.${credits > 0 ? ` We have added <b>${credits} free AI credits</b> so you can try the AI tools.` : ""}</p><p><b>Next steps (about 10 minutes):</b></p>${list(steps)}<p>Want the daily poster and status video, the website, WhatsApp AI and auto-posting? Upgrade any time from the app.</p>`,
       { label: "Open my account", url: `${SITE_URL}/poster/setup` }),
-    text: `${hi}\n\nThank you for joining ${BRAND}. Your digital V-Card is free for its first year.${credits > 0 ? ` We have added ${credits} free AI credits.` : ""}\n\nNext steps:\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\nOpen your account: ${SITE_URL}/poster/setup\n\nHelp: ${SUPPORT_PHONE} · ${SUPPORT_EMAIL}`,
+    text: `${hi}\n\nThank you for joining ${BRAND}.${credits > 0 ? ` We have added ${credits} free AI credits.` : ""}\n\nNext steps:\n${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\nOpen your account: ${SITE_URL}/poster/setup\n\nHelp: ${SUPPORT_PHONE} · ${SUPPORT_EMAIL}`,
   };
 }
 

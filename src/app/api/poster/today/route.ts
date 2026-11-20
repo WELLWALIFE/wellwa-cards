@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const allowed = first.length ? first.map((r) => r.for_date) : [istDate(), istDate(1), istDate(2)];
     if (!allowed.includes(date)) return NextResponse.json({ error: "plan", quota, message: "The free plan shows the first three posts of your plan. The Standard plan shows every day." }, { status: 402 });
   }
-  if (quota.plan === "free" && !sample) return NextResponse.json({ error: "plan", quota, message: "Daily posters are part of the Standard plan. Your free plan includes the digital V-Card — upgrade to get a fresh poster and status video every day." }, { status: 402 });
+  if (quota.plan === "free" && !sample) return NextResponse.json({ error: "plan", quota, message: "Daily posters are part of the Standard plan. Your digital V-Card stays as it is — upgrade to get a fresh poster and status video every day." }, { status: 402 });
   // The owner's V-Card: its link goes on the poster and with every share; on Sundays the poster IS the card.
   const link = await cardLinkFor(me.id, (profile as unknown as { card_facts?: { primaryCardId?: string } | null }).card_facts?.primaryCardId);
   const card_url = link?.url ?? "";

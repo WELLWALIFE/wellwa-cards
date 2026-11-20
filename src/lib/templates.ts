@@ -1106,7 +1106,7 @@ const vcardReseller: CardTemplateDef = {
         // profession banners (the same ones the AI uses as covers), the 12 looks, and a door to the live gallery.
         id: "p6", slug: "templates", label: "Templates",
         blocks: [
-          { id: uid("t", 1), kind: "about", title: "A ready design for your line of work", body: "Pick the template made for your trade — we fill in your name, photos, products and prices, and the card is ready in minutes. Every template has its own banner, pages and sections written for that business; change any of it later. Tap a tile: the six most-used trades open a full live preview; every other tile makes your own card in that design, free — your introducer is already set." },
+          { id: uid("t", 1), kind: "about", title: "A ready design for your line of work", body: "Pick the template made for your trade — we fill in your name, photos, products and prices, and the card is ready in minutes. Every template has its own banner, pages and sections written for that business; change any of it later. Tap a tile: the six most-used trades open a full live preview; every other tile starts your own website in that design — your introducer is already set." },
           { id: uid("t", 2), kind: "showcase", title: "Templates by profession", items: [
             { imageUrl: "/api/stock/banners/doctor.jpg", label: "Doctor / Clinic", sub: "Specialities, timings, booking, fees", url: "https://shubhora.com/templates/doctor-clinic" },
             { imageUrl: "/api/stock/banners/realestate.jpg", label: "Real estate", sub: "Listings, site-visit booking, loan help", url: "https://shubhora.com/templates/real-estate" },

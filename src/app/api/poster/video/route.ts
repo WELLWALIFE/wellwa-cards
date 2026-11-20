@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   const quota = await posterQuota(me.token, me.id);
   // Free: the status video itself (stock clip + music) is free; the AI voice is part of the plan.
   const free = quota.plan === "free";
-  if (free) return NextResponse.json({ error: "plan", message: "Status videos are part of the Standard plan. Your free plan includes the digital V-Card — upgrade to get the daily poster and video." }, { status: 402 });
+  if (free) return NextResponse.json({ error: "plan", message: "Status videos are part of the Standard plan. Your digital V-Card stays as it is — upgrade to get the daily poster and video." }, { status: 402 });
   const music = typeof b.music === "string" ? b.music : (poster.music || "soft");
   const von = !free && !!b.voice?.on && typeof b.voice?.text === "string" && b.voice.text.trim().length > 2;
   if (free && b.voice?.on) return NextResponse.json({ error: "plan", message: "The AI voice-over is part of the Standard plan. Your status video without voice is free — switch the voice off." }, { status: 402 });

@@ -13,8 +13,8 @@ export default function RefundPage() {
       <p className="mt-2 text-sm text-faint">Last updated 27 September 2026</p>
       <p className="mt-6 text-sm leading-relaxed text-muted">{BRAND} is a monthly software subscription operated by {LEGAL_NAME}. There is nothing to ship; access is given immediately after payment.</p>
 
-      <S h="Try before you pay">
-        <p>Every account starts on the free plan: your digital business card (V-Card), free for its first year. We ask you to use it to decide before you pay, because that is a fairer test than a refund after the fact.</p>
+      <S h="The V-Card">
+        <p>The free V-Card offer has ended: a new account starts with a website plan, which includes the V-Card. A card made free before this keeps its free first year.</p>
         <p className="text-xs">After the first year the V-Card is ₹1,499 a year (included in Standard). If it is not renewed, the card keeps working for 7 more days and then pauses; nothing is deleted, and renewing brings it back at once.</p>
       </S>
       <S h="Cancelling">
