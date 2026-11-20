@@ -20,6 +20,7 @@ import { cardHomeShown } from "@/lib/site-url";
 import { applyLook, styleFitsTrade, threeLooks, type Look } from "@/lib/site-looks";
 import { wearAdvanced, type AdvPreview } from "@/lib/adv-preview";
 import type { Card } from "@/lib/types";
+import { withQuality } from "@/lib/site-quality";
 import { isShubhoraSellerCard, withoutFreeCard } from "@/lib/shubhora-page";
 import type { OrderState } from "@/lib/site-order";
 import { SITE_PALETTES, fontSetFor } from "@/lib/site-style";
@@ -70,7 +71,7 @@ export default function ChooseDesignPage() {
     }
     setPending(false);
     // A Shubhora website is shown as it is drawn live (its story sections, three banners, no free-card lines), so the preview matches.
-    setCard(isShubhoraSellerCard(c) ? withoutFreeCard(c, true) : c);
+    setCard(withQuality(isShubhoraSellerCard(c) ? withoutFreeCard(c, true) : c));
     // The Premium designs kept for this card, filled up to six from the library (any paid website; none when the server says no).
     const r = await api<{ designs?: Design[] }>("/api/card/advanced", { method: "POST", json: { cardId: c.id, more: true } }).catch(() => null);
     // A trade with finished templates (bridal wear, 16 Nov 2026): its twelve are the whole choice — marked by their seed ("|fix:").

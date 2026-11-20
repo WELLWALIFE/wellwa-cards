@@ -448,7 +448,7 @@ export const MORE_CSS = `
 .st-bento b{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:1.35rem;line-height:1.15}
 .st-bento p{margin:.4rem 0 0;color:var(--muted);font-size:var(--t-meta);line-height:1.5;max-width:46ch}
 .st-flow{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s4);margin:0;padding:0;list-style:none;position:relative}
-@media (min-width:860px){.st-flow{grid-template-columns:repeat(var(--n,5),minmax(0,1fr))}.st-flow::before{content:"";position:absolute;left:4%;right:4%;top:22px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-soft))}}
+@media (min-width:860px){.st-flow{grid-template-columns:repeat(var(--n,5),minmax(0,1fr))}.st-flow::before{content:"";position:absolute;left:22px;right:calc((100% - (var(--n,5) - 1) * var(--s4,1.5rem)) / var(--n,5) - 22px);top:22px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-soft))}}
 .st-flow li{position:relative;display:flex;flex-direction:column;gap:.5rem;padding:0 0 var(--s3)}
 .st-flow .st-num{position:relative;z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-weight:700;box-shadow:0 0 0 6px var(--paper)}
 .st-flow img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--r-tile);margin-top:.4rem}

@@ -27,6 +27,7 @@ import { publicCard, sitePending } from "@/lib/site-ready";
 import { restAsService } from "@/lib/poster-server";
 import { addonOn } from "@/lib/addons-server";
 import { packageOf, premiumTier } from "@/lib/site-tier";
+import { withQuality } from "@/lib/site-quality";
 import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutFreeCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // The list each block kind is drawn from: an old or half-saved block without it would throw on `.map` in the renderers.
@@ -176,7 +177,8 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // whole business IS Shubhora is left as it is.
   const withPage: Card = shPage ? { ...stored, pages: [...stored.pages, shPage] } : stored;
   const seller = isShubhoraSellerCard(stored);
-  const card: Card = withoutFreeCard(seller ? withPage : withoutShubhoraLeaks(withPage), seller);
+  // The website check's safe fixes (lib/site-quality.ts): e.g. no map for an "All India" address. Drawing only, nothing saved changes.
+  const card: Card = withQuality(withoutFreeCard(seller ? withPage : withoutShubhoraLeaks(withPage), seller));
   // The V-Card's year ended more than 7 days ago with no renewal and no paid plan: "Card renew karein" instead of the
   // card, on every page and view of it (owner's call, 27 Sep 2026). Renewing brings everything back at once.
   // Everything the page needs from the database is asked at once (it used to be asked one after another — about 4 seconds a visit).

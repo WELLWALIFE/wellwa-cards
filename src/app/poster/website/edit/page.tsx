@@ -3,6 +3,7 @@
 // sections (order, show/hide, trust facts) and the pages shown — with a live desktop preview above the controls.
 // Everything here changes card.site.* only; the phone card, the pages and their text are untouched (those are
 // edited in the full editor). One Save writes it all through PATCH /api/site/status.
+import { SiteCheck } from "@/components/site-check";
 import { SiteLink } from "@/components/poster/card-sheet";
 import { Children, Fragment, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -602,6 +603,7 @@ export default function WebsiteEditPage() {
       </div>
 
       <div className="space-y-3 lg:col-start-2 lg:min-w-0">
+      {!open && card && <SiteCheck card={card} hi={hi} />}
       {!open
         ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["more"]} state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}

@@ -10,6 +10,7 @@ import { PlanProvider, usePlan } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
 import { isShubhoraSellerCard, sellerDrawsPremium, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { withQuality } from "@/lib/site-quality";
 import { activeAdvanced, advancedItemStubs, withAdvancedPages } from "@/lib/site-advanced";
 
 const KEY = "vcard-preview";
@@ -57,7 +58,7 @@ function readCard(): Card | null {
   try {
     const raw = localStorage.getItem(storageKey());
     const c = raw ? (JSON.parse(raw) as Card) : null;
-    return c && Array.isArray(c.pages) && Array.isArray(c.links) ? withoutSampleBadge(withoutBlockedStock(c)) : null;
+    return c && Array.isArray(c.pages) && Array.isArray(c.links) ? withQuality(withoutSampleBadge(withoutBlockedStock(c))) : null;
   } catch {
     return null;
   }

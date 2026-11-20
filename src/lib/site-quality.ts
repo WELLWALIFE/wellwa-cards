@@ -1,0 +1,81 @@
+import type { Card, CardBlock, CardPage } from "@/lib/types";
+
+/**
+ * The website check (plan Phase 2, 21 Nov 2026): rules every generated site is held to before a visitor sees it.
+ * `withQuality` makes the safe fixes at render time (nothing saved is changed); `checkSite` lists what is left for
+ * the owner, shown on the website edit screen. Same rules for every user and every trade.
+ */
+
+/** An address that is no place at all: "All India", "Pan India", "Online". A map of it is a pin in the middle of the country. */
+export function vagueAddress(a?: string | null): boolean {
+  return /\b(all|pan)[\s-]*india\b|\bnation\s*wide\b|\bonline\b|\bacross india\b|पूरे भारत|ऑनलाइन/i.test((a ?? "").trim());
+}
+
+/** Only a town or a state, no street: the map works but finds the town, not the shop. Noted for the owner, never hidden. */
+export function townOnly(a?: string | null): boolean {
+  const s = (a ?? "").trim();
+  return !!s && !vagueAddress(s) && !/\d/.test(s) && s.split(/[\s,]+/).filter(Boolean).length <= 2;
+}
+
+const isLoc = (b: CardBlock): b is Extract<CardBlock, { kind: "location" }> => b.kind === "location";
+
+function pageWithQuality(p: CardPage): CardPage {
+  // A map of "All India" (a pin in the middle of the country) with "Get directions" read as unfinished: the section goes.
+  if (!p.blocks.some((b) => isLoc(b) && !b.mapUrl && vagueAddress(b.address))) return p;
+  return { ...p, blocks: p.blocks.filter((b) => !(isLoc(b) && !b.mapUrl && vagueAddress(b.address))) };
+}
+
+/** The safe fixes, for the page as drawn. The saved card is never changed. */
+export function withQuality(card: Card): Card {
+  const pages = card.pages.map(pageWithQuality);
+  return pages.every((p, i) => p === card.pages[i]) ? card : { ...card, pages };
+}
+
+export interface QualityNote {
+  /** "fixed": the site already handles it; "todo": something only the owner can give. */
+  level: "fixed" | "todo";
+  page: string;
+  en: string;
+  hi: string;
+}
+
+const words = (s?: string) => (s ?? "").trim().split(/\s+/).filter(Boolean).length;
+
+/** Does the section show a picture of its own? */
+function hasPicture(b: CardBlock): boolean {
+  switch (b.kind) {
+    case "about": return !!b.imageUrl;
+    case "services": return b.items.some((it) => it.imageUrl);
+    case "story": return b.items.some((it) => it.imageUrl) || b.style === "stats";
+    case "product": return true;
+    case "showcase": return b.items.some((it) => it.imageUrl);
+    case "gallery": case "image": case "carousel": return b.images.length > 0;
+    case "video": case "pdf": return true;
+    // Sections that are a tool, not a read: a form, the map, the hours, a button.
+    case "contact": case "form": case "location": case "hours": case "appointment": case "cta": case "offer": return true;
+    default: return false;
+  }
+}
+
+const title = (b: CardBlock) => ("title" in b ? (b.title ?? "").trim() : "");
+
+export function checkSite(card: Card): QualityNote[] {
+  const out: QualityNote[] = [];
+  for (const p of card.pages) {
+    const name = p.label || p.slug;
+    const blocks = p.blocks;
+    if (p.slug === "home" && blocks.length > 11) out.push({ level: "todo", page: name, en: `Home has ${blocks.length} sections. 9 to 11 read best; hide the ones that repeat.`, hi: `Home पर ${blocks.length} हिस्से हैं। 9 से 11 सबसे अच्छे लगते हैं; जो दोहराते हैं उन्हें छुपाएँ।` });
+    blocks.forEach((b, i) => {
+      const tt = title(b);
+      if (tt && words(tt) > 8) out.push({ level: "todo", page: name, en: `"${tt}" is a long heading. Keep it to 8 words or fewer.`, hi: `"${tt}" लंबी heading है। 8 शब्द या कम रखें।` });
+      if (b.kind === "faq" && p.slug === "home" && b.items.length > 6) out.push({ level: "todo", page: name, en: `${b.items.length} questions on Home. Keep the top 6; put the rest on a page of their own.`, hi: `Home पर ${b.items.length} सवाल हैं। सबसे ज़रूरी 6 रखें, बाक़ी अलग पेज पर।` });
+      if (isLoc(b) && !b.mapUrl && vagueAddress(b.address)) out.push({ level: "fixed", page: name, en: `The address "${b.address.trim()}" is not a place on a map, so the map is hidden. Add your full address to show it.`, hi: `पता "${b.address.trim()}" नक्शे पर कोई जगह नहीं है, इसलिए नक्शा छुपा दिया। पूरा पता डालें तो दिखेगा।` });
+      if (isLoc(b) && !b.mapUrl && townOnly(b.address)) out.push({ level: "todo", page: name, en: `The address "${b.address.trim()}" has no street, so the map finds the town, not you. Add the full address or a Google Maps link.`, hi: `पते "${b.address.trim()}" में गली/दुकान नहीं है, नक्शा सिर्फ़ शहर दिखाएगा। पूरा पता या Google Maps link डालें।` });
+      const prev = blocks[i - 1];
+      if (prev && !hasPicture(prev) && !hasPicture(b)) out.push({ level: "todo", page: name, en: `"${title(prev) || prev.kind}" and "${tt || b.kind}" come one after another with no picture. Add a photo to one of them.`, hi: `"${title(prev) || prev.kind}" और "${tt || b.kind}" लगातार बिना फ़ोटो के हैं। किसी एक में फ़ोटो डालें।` });
+      if (tt && blocks.slice(0, i).some((x) => title(x).toLowerCase() === tt.toLowerCase())) out.push({ level: "todo", page: name, en: `Two sections are called "${tt}". Rename or join them.`, hi: `दो हिस्सों का नाम "${tt}" है। एक का नाम बदलें या दोनों को जोड़ें।` });
+    });
+  }
+  // One note per thing: the same pair can come up only once, but a long page could still list a lot; the first 8 are enough to act on.
+  return out.slice(0, 8);
+}
