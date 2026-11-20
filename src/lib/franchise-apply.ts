@@ -20,7 +20,7 @@ export const FRANCHISE_OFFER = [
   { title: "Your own territory", text: "A city or district is yours: every business you bring signs up on your link and stays your customer." },
   { title: "Commission on every payment", text: "A percent of each payment your customers ever make — the first one and every renewal — on the amount without GST." },
   { title: "Your franchise panel", text: "Your users, their plans, your earnings and payouts, live. Payment links for any amount, so you never chase money by hand." },
-  { title: "A product that sells itself", text: "V-Card free for a year, a website in minutes, posters, WhatsApp AI and business modules — a demo on the customer's own phone closes the deal." },
+  { title: "A product that sells itself", text: "A website with a digital V-Card, ready in 24 to 48 hours, posters, WhatsApp AI and business modules — a demo on the customer's own phone closes the deal." },
   { title: "Zero stock, zero office", text: "Nothing to buy or store. A phone, your contacts and the demo link are the whole kit." },
   { title: "Training and support", text: "Onboarding call, sales material, and the Shubhora team behind you on WhatsApp for every customer question." },
 ];

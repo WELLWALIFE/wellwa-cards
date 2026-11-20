@@ -7,7 +7,7 @@ import { LoaderCircle, Check, ChevronLeft, Sparkles, AlertTriangle } from "lucid
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
-import { NO_LOCK_IN, SAAS_PLANS, PREMIUM, PREMIUM_ITEMS, PREMIUM_FIRST_PAISE, PREMIUM_EXTRA_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, CARD_RENEWAL, PRO_CUSTOM, type SaasTier } from "@/lib/billing";
+import { NO_LOCK_IN, SAAS_PLANS, PREMIUM, PREMIUM_ITEMS, PREMIUM_FIRST_PAISE, PREMIUM_EXTRA_PAISE, GST_PCT, rupees, CARD_RENEWAL, PRO_CUSTOM, type SaasTier } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { packsFor } from "@/lib/media/ad-pricing";
 import { SubscribeButton } from "@/components/subscribe-button";
@@ -141,14 +141,7 @@ function MyPlan() {
       </div>
       {welcome && (
         <div className="space-y-2">
-          <p className="text-sm text-muted">Your account is ready. Start free. You can take a paid plan later.</p>
-          <div className="rounded-2xl border border-border p-4">
-            <div className="flex items-baseline justify-between gap-2"><p className="font-bold">1. Free</p><p className="text-sm"><span className="mr-1.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span><b className="text-lg text-good">FREE</b></p></div>
-            <p className="mt-1 text-xs text-muted">Your digital business card on one link, made by AI in 5 minutes · share on WhatsApp or with a QR code · people can contact you from the card · free for 1 year. The website, daily posters, Meta Ads and the WhatsApp AI assistant come with Standard.</p>
-            <p className="mt-1 text-[11px] font-semibold text-good">{FREE_PLAN_TRUST}</p>
-            <p className="mt-0.5 text-[10px] text-faint">{FREE_PLAN_TERM}</p>
-            <Link href="/poster/onboard" className="mt-3 inline-flex w-full items-center justify-center rounded-xl border-2 border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink">Start free</Link>
-          </div>
+          <p className="text-sm text-muted">Your account is ready. Choose a plan for your website and digital card.</p>
         </div>
       )}
       {banner && <p className={`rounded-xl border p-3 text-sm ${banner.cls}`}>{r.state === "expired" || r.state === "grace" ? <AlertTriangle className="mr-1.5 inline h-4 w-4" /> : null}{banner.text}</p>}

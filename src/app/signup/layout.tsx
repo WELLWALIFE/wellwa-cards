@@ -19,8 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
     const logo = brand.logoUrl ? [{ url: brand.logoUrl }] : [];
     return { title, openGraph: { title, siteName: brand.name, type: "website", images: logo }, twitter: { card: "summary", title, images: logo.map((l) => l.url) } };
   }
-  const share = "Create your free Digital V-Card";
-  const description = "Your business on one link — products, gallery, WhatsApp button, QR and save-contact. Free for 1 year · no card details needed.";
+  const share = "Create your website and Digital V-Card";
+  const description = "Your business on one link — products, gallery, WhatsApp button, QR and save-contact. Ready in 24 to 48 hours.";
   return {
     title: `Create your account — ${BRAND}`,
     description,

@@ -45,7 +45,7 @@ function shareCaption(today: TodayResp | null, profile: Profile | null): string 
   // (owner's call, 29 Sep 2026: "mera card" + "make your free card" on every status).
   out = out.replace(/(^|\s)#[\p{L}\p{M}\p{N}_]+/gu, "$1").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   const join = today?.join_url ?? "";
-  if (join && !out.includes("/signup?by=")) out += `${/(^|\n)(📞|👉)[^\n]*$/.test(out) ? "\n" : "\n\n"}✨ ${pen ? "Make your free digital card" : profile?.lang === "hinglish" ? "Apna free digital card banayein" : "अपना free digital card बनाएँ"}: ${join}`;
+  if (join && !out.includes("/signup?by=")) out += `${/(^|\n)(📞|👉)[^\n]*$/.test(out) ? "\n" : "\n\n"}✨ ${pen ? "Make your own website + digital card" : profile?.lang === "hinglish" ? "Apni website + digital card banwayein" : "अपनी website + digital card बनवाएँ"}: ${join}`;
   return out;
 }
 

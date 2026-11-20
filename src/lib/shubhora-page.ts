@@ -181,3 +181,46 @@ export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): 
   });
   return { ...card, pages };
 }
+
+/** The free V-Card is over (owner, 20 Nov 2026: "free wala option band kar diya hai — jahan bhi free aata tha, hata dijiye"). Cards
+ *  built from the Shubhora template before that still carry the offer in their stored text — the "Free V-Card" offer, the free plan,
+ *  "Is the V-Card really free?", the Free column, the "Make free card" popup. Taken out here at render time, on Shubhora's own
+ *  material only (a seller's card, or the Shubhora page of any card): an ordinary business's own "free" offers are never touched. */
+const FREE_CARD = /free (digital )?(v-?card|card|visiting card|business card)|free for (you for )?(1|one|a full) year|worth ₹?\s?1,?499|make (my|your|yours|mine) (own )?free|no card details|free card|फ्री (कार्ड|v-?card)|मुफ़्त (digital )?card/i;
+const FREE_SAY: [RegExp, string][] = [
+  [/the free digital V-Card/gi, "the digital V-Card"],
+  [/free digital V-Card/gi, "digital V-Card"],
+  [/Your digital card and the leads it brings are free for your first year\.\s*/g, "Your digital card and the leads it brings come with every website plan. "],
+  [/,? and make theirs free on the spot/g, " and set theirs up on the spot"],
+  [/,? on your phone, free\./g, ", on your phone."],
+  [/ · tap to make yours, free/g, " · tap to make yours"],
+  [/ before you decide — free\./g, " before you decide."],
+];
+const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
+
+function pageWithoutFreeCard(p: CardPage): CardPage {
+  const hit = (...xs: unknown[]) => FREE_CARD.test(xs.map((x) => String(x ?? "")).join(" | "));
+  const blocks = p.blocks.flatMap((b0): CardBlock[] => {
+    const b = JSON.parse(sayNoFree(JSON.stringify(b0))) as CardBlock;
+    switch (b.kind) {
+      case "offer": return hit(b.title, b.text) ? [] : [b];
+      case "compare": return /^free$/i.test(b.rightLabel.trim()) || /^free$/i.test(b.leftLabel.trim()) ? [] : [b];
+      case "product": { const items = b.items.filter((i) => !/^\s*free\b/i.test(i.price ?? "") && !hit(i.name, i.desc, i.price, i.badge)); return items.length ? [{ ...b, items }] : []; }
+      case "services": { const items = b.items.filter((i) => !hit(i.name, i.desc)); return items.length ? [{ ...b, items }] : []; }
+      case "faq": { const items = b.items.filter((i) => !hit(i.q, i.a)); return items.length ? [{ ...b, items }] : []; }
+      case "highlights": { const items = b.items.filter((i) => !hit(i)); return items.length ? [{ ...b, items }] : []; }
+      default: return [b];
+    }
+  });
+  return { ...p, blocks };
+}
+
+export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["popup"] }>(card: T, seller: boolean): T {
+  const pages = card.pages.map((p) => (seller || p.slug === SHUBHORA_PAGE_SLUG ? pageWithoutFreeCard(p) : p));
+  const pp = card.popup;
+  const old = !!pp && (/^(make free card|see your own card, free)$/i.test(pp.title.trim()) || (seller && FREE_CARD.test(`${pp.title} | ${pp.subtitle ?? ""} | ${pp.ctaLabel} | ${pp.terms ?? ""}`)));
+  const popup = pp && old
+    ? { ...pp, title: "Get your website", subtitle: "Leave your number and I will help you get your own website and digital card.", ctaLabel: "Call me back", terms: "" }
+    : pp;
+  return { ...card, pages, popup };
+}

@@ -15,7 +15,7 @@ import { SERVICES } from "@/lib/services";
 import { ALL_TEMPLATES } from "@/lib/template-catalog";
 import { NOT_PUBLIC_TEMPLATES } from "@/lib/templates";
 import { countBy, toLite } from "@/lib/template-lite";
-import { GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
+import { GST_PCT, PRO_CUSTOM } from "@/lib/billing";
 
 const SOLUTION_ICONS: Record<string, typeof Bot> = {
   "ai-software": Bot,
@@ -129,7 +129,7 @@ export default function Home() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3.5 text-sm font-semibold text-white shadow-glow hover:-translate-y-0.5 transition-transform">
-                Start free <ArrowRight className="h-4 w-4" />
+                Get started <ArrowRight className="h-4 w-4" />
               </Link>
               <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-border-strong bg-surface px-5 py-3.5 text-sm font-semibold text-ink hover:bg-surface2 transition-colors">
                 Discuss custom software
@@ -146,8 +146,8 @@ export default function Home() {
               </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
-              <span className="inline-flex items-center gap-1.5"><MessageCircle className="h-4 w-4 text-brand" /> Send Hi on WhatsApp, website in 10 minutes</span>
-              <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 text-brand" /> 1 year free, no card details needed</span>
+              <span className="inline-flex items-center gap-1.5"><MessageCircle className="h-4 w-4 text-brand" /> Website + digital card, ready in 24–48 hours</span>
+              <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 text-brand" /> From ₹2,999 a year, GST included</span>
               <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-brand" /> Your data stays yours</span>
               <span className="inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-brand" /> 12 Indian languages</span>
             </div>
@@ -333,21 +333,13 @@ export default function Home() {
           <div>
             <p className="text-sm font-semibold text-brand-ink">Simple pricing</p>
             <h2 className="mt-3 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Costs less than one part&#8209;time hire.</h2>
-            <p className="mt-4 text-lg text-muted leading-relaxed">Start free with your digital card. Pick Website Standard or Premium for a year, then add the Growth Plan for daily posters, WhatsApp AI and CRM.</p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">Your digital card comes with every website plan. Pick Website Standard or Premium for a year, then add the Growth Plan for daily posters, WhatsApp AI and CRM.</p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white shadow-glow">Start free <ArrowRight className="h-4 w-4" /></Link>
+              <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white shadow-glow">Get started <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/pricing" className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-semibold hover:bg-surface2">Compare plans</Link>
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-border bg-surface p-6">
-              <h3 className="font-semibold text-lg">Free</h3>
-              <p className="mt-1 text-sm text-muted">Digital business card, free for 1 year</p>
-              <p className="mt-4"><span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span></p>
-              <p className="mt-2"><span className="text-4xl font-semibold tracking-tight text-good">FREE</span></p>
-              <p className="mt-1 text-xs text-faint">{FREE_PLAN_TRUST}</p>
-              <p className="mt-0.5 text-[11px] text-faint">{FREE_PLAN_TERM}</p>
-            </div>
             <div className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-semibold text-lg">Website Standard</h3>
               <p className="mt-1 text-sm text-muted">Dynamic website, up to 5 pages</p>
@@ -360,7 +352,7 @@ export default function Home() {
               <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">₹5,999</span><span className="text-sm text-muted"> / year</span></p>
               <p className="mt-1 text-xs text-faint">Incl. {GST_PCT}% GST · Growth Plan ₹2,999 / month, 1st month free</p>
             </div>
-            <div className="rounded-2xl border border-border bg-surface p-6">
+            <div className="rounded-2xl border border-border bg-surface p-6 sm:col-span-2">
               <h3 className="font-semibold text-lg">{PRO_CUSTOM.label}</h3>
               <p className="mt-1 text-sm text-muted">Every kind of software and automation, built around your business: CRM, apps, websites, WhatsApp and billing automation, AI assistants and chat bots</p>
               <p className="mt-5"><span className="text-4xl font-semibold tracking-tight">{PRO_CUSTOM.price}</span></p>
@@ -419,9 +411,9 @@ export default function Home() {
         <div className="relative max-w-4xl mx-auto px-5 py-20 md:py-24 text-center">
           <div className="flex justify-center gap-1 text-[#ffb35c]">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-5 w-5" fill="currentColor" />)}</div>
           <h2 className="mt-5 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Tomorrow morning, your first poster could already be out.</h2>
-          <p className="mt-4 text-muted text-lg">Five minutes to set up: your digital card goes live the same day. Free for 1 year, no card details needed.</p>
+          <p className="mt-4 text-muted text-lg">Pick a plan and share your details: your website and digital card are ready in 24 to 48 hours.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white shadow-glow">Start free <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white shadow-glow">Get started <ArrowRight className="h-4 w-4" /></Link>
             <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3.5 text-sm font-semibold text-ink hover:bg-surface">Talk to us</Link>
           </div>
         </div>

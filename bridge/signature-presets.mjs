@@ -172,7 +172,7 @@ export const CTA = {
   Health:    { hi: ["Appointment WhatsApp पर", "Appointment लें ↗", "Appointment लें · WhatsApp"], en: ["Appointment on WhatsApp", "Book now ↗", "Book appointment · WhatsApp"] },
   Services:  { hi: ["बात करें WhatsApp पर", "अभी संपर्क करें ↗", "संपर्क करें · WhatsApp"], en: ["Talk to us on WhatsApp", "Contact now ↗", "Contact · WhatsApp"] },
   Education: { hi: ["Admission / जानकारी WhatsApp पर", "जानकारी लें ↗", "जानकारी लें · WhatsApp"], en: ["Admissions on WhatsApp", "Enquire now ↗", "Enquire · WhatsApp"] },
-  Sales:     { hi: ["बात करें WhatsApp पर", "Free Card बनाएँ ↗", "जुड़ें · WhatsApp"], en: ["Chat with us on WhatsApp", "Make free card ↗", "Join · WhatsApp"] },
+  Sales:     { hi: ["बात करें WhatsApp पर", "अपना Card बनाएँ ↗", "जुड़ें · WhatsApp"], en: ["Chat with us on WhatsApp", "Make your card ↗", "Join · WhatsApp"] },
   Industry:  { hi: ["ऑर्डर / रेट WhatsApp पर", "रेट पूछें ↗", "रेट पूछें · WhatsApp"], en: ["Orders / rates on WhatsApp", "Ask for rates ↗", "Ask rates · WhatsApp"] },
   Community: { hi: ["जुड़ें WhatsApp पर", "जुड़ें ↗", "जुड़ें · WhatsApp"], en: ["Join us on WhatsApp", "Join ↗", "Join · WhatsApp"] },
   Personal:  { hi: ["बात करें WhatsApp पर", "Message करें ↗", "Message · WhatsApp"], en: ["Message me on WhatsApp", "Message ↗", "Message · WhatsApp"] },

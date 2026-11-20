@@ -419,7 +419,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
                   {/* The offer sits at the very top, beside the logo when the card has one and above where the photo overlaps the banner
                       (jaidevrajwal.com, 12 Nov 2026: the logo and the photo covered the words). Two short lines, nothing under them. */}
                   <div className={`absolute top-3 z-[5] text-left text-white ${logoChip ? "left-[84px] max-w-[52%]" : "left-4 max-w-[62%] sm:left-5"}`}>
-                    <p className="text-[17px] font-extrabold leading-[1.15] sm:text-[20px]">{lang === "hi" ? <><span className="text-[#ffd54a]">मुफ़्त</span> Digital Card<br />+ Website</> : <><span className="text-[#ffd54a]">Free</span> Digital Card<br />+ Website</>}</p>
+                    <p className="text-[17px] font-extrabold leading-[1.15] sm:text-[20px]">{lang === "hi" ? <><span className="text-[#ffd54a]">आपकी</span> Website<br />+ Digital Card</> : <><span className="text-[#ffd54a]">Your</span> Website<br />+ Digital Card</>}</p>
                   </div>
                 </>
               )}
@@ -1816,7 +1816,7 @@ export function WelcomePopup({ card, theme, active }: { card: Card; theme: strin
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-full text-white" style={{ background: theme }}>
               <BadgePercent className="h-6 w-6" />
             </span>
-            <h3 className="text-lg font-bold leading-snug">{cfg.title === "See your own card, free" ? "Make free card" : cfg.title}</h3>
+            <h3 className="text-lg font-bold leading-snug">{cfg.title}</h3>
             {cfg.subtitle && <p className="text-sm text-muted">{cfg.subtitle}</p>}
             <input required placeholder="First name" className="wp-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
             <input required placeholder="Mobile number" className="wp-input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />

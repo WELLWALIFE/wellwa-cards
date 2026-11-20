@@ -34,7 +34,7 @@ export default async function CitiesPage() {
           ))}
         </ul>
       )}
-      <p className="mt-10 text-sm text-muted">Run a business? <Link href="/signup" className="font-semibold text-brand-ink">Get your free digital card</Link> and be listed in your city.</p>
+      <p className="mt-10 text-sm text-muted">Run a business? <Link href="/signup" className="font-semibold text-brand-ink">Get your website and digital card</Link> and be listed in your city.</p>
     </main>
   );
 }

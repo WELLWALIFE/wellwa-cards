@@ -1314,7 +1314,7 @@ async function followupMessage(entry, jid) {
   // Wellwa sells water ionizers; every other business is told about from its own card (19 Nov 2026: the ionizer words went to every card).
   const wellwa = !shubhora && isWellwaCard();
   const biz = String(card?.company || card?.name || config.businessName || "the business").trim();
-  const offer = shubhora ? "the Shubhora digital V-Card, website and WhatsApp AI assistant (free to start)" : wellwa ? "smart water ionizers" : `what ${biz} offers (see the business knowledge)`;
+  const offer = shubhora ? "the Shubhora website + digital V-Card and WhatsApp AI assistant" : wellwa ? "smart water ionizers" : `what ${biz} offers (see the business knowledge)`;
   const invite = shubhora ? "a free demo card made with their own name, or a quick call" : wellwa ? "a FREE live demo on a video call (or the demo video)" : "ask any question, see the products / services, or call or visit"; // never a home demo (owner, 23 Oct 2026)
   const tip = shubhora ? "getting more customers online (WhatsApp, Google reviews, a daily poster, replying fast)" : wellwa ? "water / hydration / wellness" : `something genuinely useful for a customer of ${biz}`;
 

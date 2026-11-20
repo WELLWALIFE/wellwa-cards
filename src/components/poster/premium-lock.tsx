@@ -39,7 +39,7 @@ export function PremiumSheet({ feature, onClose }: { feature?: string; onClose: 
         <div className="mt-4">
           <SubscribeButton tier="growth" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60" onDone={() => { void refresh(); onClose(); }}>{hi ? "Standard लें — UPI / card से" : "Get Standard — pay by UPI / card"}</SubscribeButton>
         </div>
-        <p className="mt-2 text-center text-[11px] text-muted">{hi ? "आपका free card वैसे ही चलता रहेगा।" : "Your free card keeps running as it is."} · <Link href="/poster/plan" className="font-semibold text-brand-ink underline">{hi ? "सभी plans" : "All plans"}</Link></p>
+        <p className="mt-2 text-center text-[11px] text-muted">{hi ? "आपका card वैसे ही चलता रहेगा।" : "Your card keeps running as it is."} · <Link href="/poster/plan" className="font-semibold text-brand-ink underline">{hi ? "सभी plans" : "All plans"}</Link></p>
       </div>
     </div>
   );

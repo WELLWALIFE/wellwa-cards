@@ -56,7 +56,7 @@ export default function AppPage() {
             </div>
             <div className="mt-6 flex flex-wrap gap-2 text-sm">
               <Link href="/poster" className="rounded-lg border border-border px-3.5 py-2 font-medium hover:bg-surface2">Use it in the browser instead</Link>
-              <Link href="/signup" className="rounded-lg bg-brand-soft px-3.5 py-2 font-medium text-brand-ink">New here? Start free</Link>
+              <Link href="/signup" className="rounded-lg bg-brand-soft px-3.5 py-2 font-medium text-brand-ink">New here? Get started</Link>
             </div>
           </div>
         </div>

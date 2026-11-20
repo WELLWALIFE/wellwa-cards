@@ -14,7 +14,7 @@ export default function CardNotFound() {
         </p>
         <div className="mt-6 space-y-2">
           <Link href="/signup" className="block w-full rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white">
-            Make your own free digital card
+            Make your own website and digital card
           </Link>
           <Link href="/" className="block w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold">
             Go to the home page

@@ -27,7 +27,7 @@ import { publicCard, sitePending } from "@/lib/site-ready";
 import { restAsService } from "@/lib/poster-server";
 import { addonOn } from "@/lib/addons-server";
 import { packageOf, premiumTier } from "@/lib/site-tier";
-import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutFreeCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // The list each block kind is drawn from: an old or half-saved block without it would throw on `.map` in the renderers.
 const BLOCK_LISTS: Partial<Record<CardBlock["kind"], string>> = {
@@ -176,7 +176,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // whole business IS Shubhora is left as it is.
   const withPage: Card = shPage ? { ...stored, pages: [...stored.pages, shPage] } : stored;
   const seller = isShubhoraSellerCard(stored);
-  const card: Card = seller ? withPage : withoutShubhoraLeaks(withPage);
+  const card: Card = withoutFreeCard(seller ? withPage : withoutShubhoraLeaks(withPage), seller);
   // The V-Card's year ended more than 7 days ago with no renewal and no paid plan: "Card renew karein" instead of the
   // card, on every page and view of it (owner's call, 27 Sep 2026). Renewing brings everything back at once.
   // Everything the page needs from the database is asked at once (it used to be asked one after another — about 4 seconds a visit).
@@ -274,8 +274,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
         {tracking && <CardPixels {...tracking} />}
         {freeSite && (
           <a href={joinHandle ? `/signup?by=${encodeURIComponent(joinHandle)}` : "/signup"} className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-[#12144a] px-4 py-1.5 text-center text-[12px] text-white">
-            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">FREE</span>
-            <span>Website + digital card by <b>Shubhora</b> · make yours free →</span>
+            <span>Website + digital card by <b>Shubhora</b> · make yours →</span>
           </a>
         )}
         {freeSite && story && <style>{`.site{--site-top:30px}`}</style>}

@@ -57,7 +57,7 @@ export function SiteNav() {
             Log in
           </Link>
           <Link href="/signup" className="whitespace-nowrap rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white hover:opacity-90">
-            Start free
+            Get started
           </Link>
         </div>
 
@@ -87,7 +87,7 @@ export function SiteNav() {
               Log in
             </Link>
             <Link href="/signup" onClick={() => setOpen(false)} className="flex-1 text-center rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white">
-              Start free
+              Get started
             </Link>
           </div>
         </div>

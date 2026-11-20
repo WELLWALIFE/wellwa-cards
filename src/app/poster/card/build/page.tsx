@@ -1537,8 +1537,8 @@ export default function BuildCard() {
       {/* Free = the digital card only (owner, 16 Oct 2026): the website on the Website tab is what Standard gives, and this says so plainly. */}
       {cardOnly && (
         <div className="space-y-2 rounded-xl border border-brand/40 bg-brand-soft/40 p-3">
-          <p className="text-sm font-semibold">{T("Your free plan publishes your digital card", "आपका free plan आपका digital card publish करता है")}</p>
-          <p className="text-xs text-muted">{T("The website on the Website tab is part of Website Standard (₹2,999 a year) or Premium (₹5,999 a year). Your card stays free.", "Website tab वाली website Website Standard (₹2,999 / साल) या Premium (₹5,999 / साल) में मिलती है। आपका card free ही रहेगा।")}</p>
+          <p className="text-sm font-semibold">{T("Your digital card is published", "आपका digital card publish होता है")}</p>
+          <p className="text-xs text-muted">{T("The website on the Website tab is part of Website Standard (₹2,999 a year) or Premium (₹5,999 a year). Your card stays as it is.", "Website tab वाली website Website Standard (₹2,999 / साल) या Premium (₹5,999 / साल) में मिलती है। आपका card वैसा ही रहेगा।")}</p>
           <button type="button" onClick={() => setSitePlan(true)} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> {T("Choose a plan for the website", "Website के लिए plan चुनें")}</button>
         </div>
       )}
@@ -1977,20 +1977,7 @@ export default function BuildCard() {
             {/* No free card (owner, 13 Nov 2026): the card comes with the website plan. */}
           </section>
         )}
-        {/* Free: one button, no wall (owner's call, 3 Oct 2026). A Premium owner's build is Premium whatever button is tapped: only that one. */}
-        {!access.subscribed && !freeMake && (
-          <section className="space-y-3 rounded-3xl border-2 border-brand/40 bg-brand-soft/30 p-4 shadow-card">
-            <div className="flex items-center justify-between"><p className="text-base font-bold">{T("Free", "Free")}</p><span className="rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-bold text-good">₹0</span></div>
-            <ul className="space-y-1">
-              {freeMake ? <>{li(T("Digital card on one link", "एक link पर digital card"))}{li(T("Share on WhatsApp / QR", "WhatsApp / QR से share"))}</>
-                : <>{li(T("Website + digital card", "Website + digital card"))}{li(T("Daily poster, leads in CRM", "रोज़ poster, leads CRM में"))}</>}
-            </ul>
-            <button type="button" onClick={() => { setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5" /> {freeMake ? T("Make my free card", "मेरा free card बनाओ") : T("Make my free website", "मेरी free website बनाओ")}
-            </button>
-            {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-          </section>
-        )}
+        {/* No free build (owner, 20 Nov 2026: the free V-Card is over): an account without a plan orders its website above. */}
         {!freeMake && <section className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between"><p className="text-base font-bold">Standard</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("In your plan", "आपके plan में") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
           <ul className="space-y-1">

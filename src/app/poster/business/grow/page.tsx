@@ -12,7 +12,7 @@ export default function GrowPage() {
   const { lang } = useT();
   const en = lang === "en";
   const { data, error, loading, reload } = useBiz<Res>("grow");
-  const text = en ? "Get your own Shubhora — digital card, website, daily posters and WhatsApp AI. Free to start:" : "अपना Shubhora लें — digital card, website, रोज़ के poster और WhatsApp AI. Free में शुरू करें:";
+  const text = en ? "Get your own Shubhora — digital card, website, daily posters and WhatsApp AI. Start here:" : "अपना Shubhora लें — digital card, website, रोज़ के poster और WhatsApp AI. यहाँ से शुरू करें:";
 
   return (
     <BizShell title={en ? "Grow my team" : "अपनी team बढ़ाएँ"}>

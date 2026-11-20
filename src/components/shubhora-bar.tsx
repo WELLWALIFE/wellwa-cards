@@ -11,16 +11,16 @@ import { trackClick } from "@/lib/track";
 
 const LOGO = "/art/brand/shubhora-logo.png";
 const LINES = {
-  en: ["This card is made on Shubhora", "Make your own digital card — FREE", "Daily poster · WhatsApp AI replies"],
-  hi: ["ये card Shubhora पर बना है", "अपना digital card बनाएँ — FREE", "रोज़ का poster · WhatsApp पर AI जवाब"],
+  en: ["This card is made on Shubhora", "Get your own website + digital card", "Daily poster · WhatsApp AI replies"],
+  hi: ["ये card Shubhora पर बना है", "अपनी website + digital card बनवाएँ", "रोज़ का poster · WhatsApp पर AI जवाब"],
 };
 const SHEET = {
-  en: { title: "This website and visiting card are made on Shubhora", body: "You can make yours too — in 5 minutes, free for 1 year.", points: ["Digital card + website on your own link", "A new poster with your name every morning", "AI answers your customers on WhatsApp, every chat saved as a lead"], more: "Know more", make: "Make mine free — now", close: "Close" },
-  hi: { title: "ये website और visiting card Shubhora पर बने हैं", body: "आप भी अपना बना सकते हैं — 5 मिनट में, 1 साल free।", points: ["अपने link पर digital card + website", "रोज़ सुबह आपके नाम का नया poster", "WhatsApp पर AI customers को जवाब देता है, हर chat lead में save"], more: "और जानें", make: "अभी free बनाएँ", close: "बंद करें" },
+  en: { title: "This website and visiting card are made on Shubhora", body: "You can get yours too — ready in 24 to 48 hours.", points: ["Digital card + website on your own link", "A new poster with your name every morning", "AI answers your customers on WhatsApp, every chat saved as a lead"], more: "Know more", make: "Make mine", close: "Close" },
+  hi: { title: "ये website और visiting card Shubhora पर बने हैं", body: "आप भी अपनी बनवा सकते हैं — 24 से 48 घंटे में तैयार।", points: ["अपने link पर digital card + website", "रोज़ सुबह आपके नाम का नया poster", "WhatsApp पर AI customers को जवाब देता है, हर chat lead में save"], more: "और जानें", make: "अभी free बनाएँ", close: "बंद करें" },
 };
 
-export function ShubhoraBar({ username, joinHref, moreHref, lang, aboveBar = false, free = true }: {
-  /** A free card wears the FREE badge; a paid "Both" card carries the strip without it. */
+export function ShubhoraBar({ username, joinHref, moreHref, lang, aboveBar = false }: {
+  /** Kept for the callers; the FREE badge is gone (the free V-Card is over, 20 Nov 2026). */
   free?: boolean;
   /** The card's username (click counts). */
   username: string;
@@ -63,7 +63,6 @@ export function ShubhoraBar({ username, joinHref, moreHref, lang, aboveBar = fal
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={LOGO} alt="" className="h-5 w-5 rounded-md bg-white object-contain p-0.5" />
             <span key={i} className="truncate" style={{ animation: "shubhora-fade .4s ease" }}>{L[i]}</span>
-            {free && <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px]"><span className="text-[#ffd54a]">FREE</span></span>}
             <ChevronRight className="h-4 w-4 opacity-80" />
           </button>
           {open && (

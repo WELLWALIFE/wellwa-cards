@@ -7,7 +7,7 @@ import { FranchiseApplyForm } from "@/components/franchise-apply-form";
 
 export const metadata: Metadata = pageMeta("/franchise", {
   title: `Become a ${BRAND} franchise — your city, your customers, commission for life`,
-  description: "Bring local businesses online with Shubhora: a free V-Card, a website in minutes, posters and WhatsApp AI. Earn commission on every payment your customers ever make. Apply in two minutes.",
+  description: "Bring local businesses online with Shubhora: a website with a digital V-Card, posters and WhatsApp AI. Earn commission on every payment your customers ever make. Apply in two minutes.",
 });
 
 const ICONS = [MapPinned, BadgeIndianRupee, LayoutDashboard, Sparkles, Package, Users];
@@ -22,7 +22,7 @@ export default function FranchisePage() {
             <span className="text-xs mono uppercase tracking-wide text-faint">Franchise programme</span>
             <h1 className="mt-3 text-4xl md:text-5xl font-semibold tracking-tight text-balance">Every shop in your city needs to be online. Be the one who takes them there.</h1>
             <p className="mt-5 text-lg text-muted leading-relaxed">
-              A {BRAND} franchise brings local businesses a free digital card, a website in minutes, daily posters and a WhatsApp assistant —
+              A {BRAND} franchise brings local businesses a website with a digital card, daily posters and a WhatsApp assistant —
               and earns a commission on every payment those customers make, for as long as they stay.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">

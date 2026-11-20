@@ -215,7 +215,7 @@ const EX: Record<string, Pair[]> = {
   /** A Shubhora partner's own website (template vcard-reseller): what a partner changes there. */
   shubhora: [
     ["write my city in the about", "about mein mera sheher likho"],
-    ["add a line that I set up the card for you free, at your shop", "likho ki main aapki dukaan par aakar free card bana deta hoon"],
+    ["add a line that I set up the card for you at your shop", "likho ki main aapki dukaan par aakar card bana deta hoon"],
     ["put the plans right after the top", "plans ko sabse upar ke baad rakho"],
     ["say I am available on WhatsApp 9 am – 9 pm", "likho WhatsApp par 9 am – 9 pm milta hoon"],
   ],

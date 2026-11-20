@@ -24,7 +24,7 @@ function StartPlan() {
       <SubscribeButton tier="growth" premium={premium} onDone={() => router.replace("/poster/onboard")} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
         {premium ? "Pay and start Premium" : "Pay and start Standard"}
       </SubscribeButton>
-      <Link href="/poster/welcome" className="block text-xs text-muted underline">Not now — make my free card</Link>
+      <Link href="/poster/welcome" className="block text-xs text-muted underline">Not now</Link>
     </div>
   );
 }

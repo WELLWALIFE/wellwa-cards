@@ -6,7 +6,7 @@ import { BRAND, LEGAL_NAME, REGISTERED_OFFICE, SUPPORT_EMAIL, SUPPORT_PHONE, SUP
 const cols = [
   {
     title: "Business Suite",
-    links: [["What you get", "/features"], ["Pricing", "/pricing"], ["Website templates", "/templates"], ["Start free", "/signup"], ["Log in", "/login"]],
+    links: [["What you get", "/features"], ["Pricing", "/pricing"], ["Website templates", "/templates"], ["Get started", "/signup"], ["Log in", "/login"]],
   },
   {
     title: "Solutions",

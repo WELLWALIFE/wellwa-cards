@@ -100,7 +100,7 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
   const items: Item[] = [];
   if (res?.link && showsPartnerUi(kind)) {   // the Left / Right join links are the partner side: a consumer has none
     const join = (leg: "L" | "R") => withLeg(res.link as string, leg);
-    const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${u}`;
+    const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Start here: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. यहाँ से शुरू करें: ${u}`;
     items.push({ key: "L", emoji: "⬅️", title: en ? "Join link — LEFT team" : "Join link — LEFT team", sub: en ? "Whoever joins with this goes to your left side" : "इस link से जो जुड़ेगा वो आपकी left side में जाएगा", url: join("L"), text: msg(join("L")) });
   }
   // The card opens as the card everywhere, a computer too (owner, 23 Oct 2026).
@@ -121,7 +121,7 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
   }
   if (res?.link && showsPartnerUi(kind)) {   // the Right join link is partner-only too (owner, 19 Oct 2026: a website sign-up was seeing it)
     const join = (leg: "L" | "R") => withLeg(res.link as string, leg);
-    const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${u}`;
+    const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Start here: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. यहाँ से शुरू करें: ${u}`;
     items.push({ key: "R", emoji: "➡️", title: en ? "Join link — RIGHT team" : "Join link — RIGHT team", sub: en ? "Whoever joins with this goes to your right side" : "इस link से जो जुड़ेगा वो आपकी right side में जाएगा", url: join("R"), text: msg(join("R")) });
   }
   if (res === null) return (

@@ -17,7 +17,7 @@ export const priceText = (p) => { const s = String(p ?? "").trim(); return /^\d/
 const cardLine = (link, lang) => `👉 ${lang === "en" ? "My digital card" : lang === "hinglish" ? "Mera digital card" : "मेरा digital card"}: ${link}`;
 /** The owner's joining link — whoever taps it gets their own free card, joined under this owner (owner's call,
  *  29 Sep 2026: every status carries "my card" and "make your free card"). */
-const joinLine = (join, lang) => `✨ ${lang === "en" ? "Make your free digital card" : lang === "hinglish" ? "Apna free digital card banayein" : "अपना free digital card बनाएँ"}: ${join}`;
+const joinLine = (join, lang) => `✨ ${lang === "en" ? "Make your own website + digital card" : lang === "hinglish" ? "Apni website + digital card banwayein" : "अपनी website + digital card बनवाएँ"}: ${join}`;
 
 /** The fixed part under the words: number, card link and the joining link, in the caption's language. */
 export function captionFooter({ phone = "", link = "", join = "", lang = "hi" } = {}) {

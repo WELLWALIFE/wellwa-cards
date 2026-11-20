@@ -36,8 +36,8 @@ function busy(): boolean {
 }
 
 const TEXT = {
-  hi: { title: "आपको ये V-Card कैसा लगा? 😊", body: "आप यहाँ अपने बिज़नेस का फ्री कार्ड बना सकते हैं — सिर्फ 5 मिनट में, 1 साल फ्री।", close: "बंद करें" },
-  en: { title: "How do you like this V-Card? 😊", body: "You can make a free card for your business here — in just 5 minutes, free for 1 year.", close: "Close" },
+  hi: { title: "आपको ये V-Card कैसा लगा? 😊", body: "आप भी अपने बिज़नेस की ऐसी website और digital card बनवा सकते हैं — 24 से 48 घंटे में तैयार।", close: "बंद करें" },
+  en: { title: "How do you like this V-Card? 😊", body: "You can get a website and digital card like this for your business too — ready in 24 to 48 hours.", close: "Close" },
 };
 
 export function JoinNudge({ username, href, lang, page }: {

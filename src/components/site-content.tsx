@@ -106,7 +106,7 @@ export function PlansGrid() {
             className={`mt-6 inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold ${
               p.hot ? "bg-brand text-white hover:opacity-90" : "border border-border hover:bg-surface2"
             }`}>
-            {p.price.startsWith("₹") ? "Start free" : "Contact for pricing"}
+            {p.price.startsWith("₹") ? "Get started" : "Contact for pricing"}
           </Link>
         </div>
       ))}

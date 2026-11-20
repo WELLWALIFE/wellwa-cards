@@ -53,7 +53,7 @@ function BusinessInner() {
   async function share() {
     if (!res?.link) return;
     setCopyErr(false);
-    const text = en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${res.link}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${res.link}`;
+    const text = en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Start here: ${res.link}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. यहाँ से शुरू करें: ${res.link}`;
     try { if (navigator.share) { await navigator.share({ text, url: res.link }); return; } } catch { /* cancelled */ }
     copy();
   }
