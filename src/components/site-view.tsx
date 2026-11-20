@@ -244,14 +244,15 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
   const pageHeadPic = ((): string | undefined => {
     if (!page || page.slug === "home") return undefined;
     const skip = (u?: string) => !u || /\/(shubhora-)?plan-[\w-]+\.(jpe?g|png|webp)/i.test(u);
-    for (const b of page.blocks) {
+    // Photos only: an "image" block is usually an infographic or a poster, cut badly by a 4:3 frame and repeated just below.
+    for (const b of page.blocks.filter((x) => ["about", "story", "services", "showcase", "gallery", "carousel", "product"].includes(x.kind))) {
       const o = b as { imageUrl?: string; posterUrl?: string; images?: { url?: string }[]; items?: { imageUrl?: string; image?: string }[] };
       const found = [o.imageUrl, o.posterUrl, ...(o.images ?? []).map((g) => g.url), ...(o.items ?? []).map((it) => it.imageUrl ?? it.image)].find((u) => !skip(u));
       if (found) return found;
     }
     return slides[0]?.imageUrl || (slides.length ? undefined : heroImg);
   })();
-  const pageHeadHint = page && page.slug !== "home" ? pageMeta(page, card.language).hint : "";
+  const pageHeadHint = page && page.slug !== "home" && page.slug !== "contact" ? pageMeta(page, card.language).hint : "";
   const trade = tradeLabel(card, hiNow);
   // The owner's logo in the nav; without one the name stands as a wordmark (the monogram never reaches the website).
   const logo = hm.logo;
@@ -516,7 +517,7 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
                 {pageHeadHint && <p className="lede mt-3">{t(hm.name)} · {pageHeadHint}</p>}
                 {wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-page-whatsapp")} className={`${BTN} ${FOCUS} mt-6`}><Icon name="whatsapp" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
               </div>
-              {pageHeadPic && <div className="pg-pic hidden md:block"><Img src={pageHeadPic} alt="" className="h-full w-full object-cover" sizes="420px" /></div>}
+              {pageHeadPic && <div className="pg-pic hidden md:block"><Img src={pageHeadPic} alt="" eager className="h-full w-full object-cover" sizes="420px" /></div>}
             </div>
           </section>
         )}
@@ -878,6 +879,7 @@ const VIEW_CSS = `
 .site .sst-flow{position:relative;display:grid;gap:var(--s4,1.5rem);margin:0;padding:0;list-style:none}
 @media (min-width:1024px){.site .sst-flow{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))}.site .sst-flow::before{content:"";position:absolute;left:22px;right:calc((100% - (var(--n,4) - 1) * var(--s4,1.5rem)) / var(--n,4) - 22px);top:22px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-soft))}}
 .site .sst-flow li{position:relative;display:flex;flex-direction:column;gap:.45rem}
+@media (max-width:1023.98px){.site .sst-flow::before{content:"";position:absolute;left:21px;top:22px;bottom:22px;width:2px;background:linear-gradient(180deg,var(--accent),var(--accent-soft))}.site .sst-flow li{padding-left:62px;min-height:44px;justify-content:center}.site .sst-flow .sst-num{position:absolute;left:0;top:0}}
 .site .sst-num{position:relative;z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;color:#fff;font-weight:700;box-shadow:0 0 0 6px var(--paper)}
 .site section[data-m2="1"] .sst-num{box-shadow:0 0 0 6px var(--paper-2)}
 .site .sst-flow .sst-pic{margin:.4rem 0 0}
