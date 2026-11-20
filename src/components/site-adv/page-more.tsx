@@ -2,7 +2,7 @@
 // The advanced site's other pages: About, Gallery, Contact, Updates, and any other page of the card (FAQ, admissions, a custom
 // page) drawn block by block. About and Contact are composed from the SAME section variants the home page uses (the spec's
 // choices) plus the few sections only a page of their own needs, so a business's pages keep one character from top to bottom.
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Mail } from "lucide-react";
 import type { CardBlock, CardPage } from "@/lib/types";
 import type { AdvancedSpec, SectionKey } from "@/lib/site-advanced";
@@ -299,6 +299,48 @@ export function UpdatesPage({ c, x, chrome, entry, updates }: Pick<Props, "c" | 
 
 /* ================= any other page of the card, block by block ================= */
 
+/** A designed story section (lib/types.ts "story"): a fact strip, picture tiles of different sizes, connected steps, or problem → answer.
+ *  Every part rises in turn as it comes into view (the design's own motion dial; nothing moves for reduced motion). */
+function Story({ b, x, i, tone }: { b: Extract<CardBlock, { kind: "story" }>; x: AdvCtxPlus; i: number; tone: "alt" | "paper" }): ReactNode {
+  const items = b.items.filter((it) => (it.title ?? "").trim());
+  if (!items.length) return null;
+  const t = (s?: string) => ((s ?? "").trim() ? x.t(s!.trim()) : "");
+  const delay = (k: number) => ({ transitionDelay: `${Math.min(k, 8) * 90}ms` });
+  const head = b.title.trim() ? <Head title={t(b.title)} lede={t(b.lede)} /> : null;
+  if (b.style === "stats") return (
+    <Sec k={`b${i}`} tone="ink" label={t(b.title) || "Facts"} className="st-stats-sec">
+      <ul className="st-stats">{items.map((it, k) => <li key={k} data-reveal style={delay(k)}><b>{t(it.tag) || t(it.title)}</b><span>{it.tag ? t(it.title) : t(it.text)}</span></li>)}</ul>
+    </Sec>
+  );
+  if (b.style === "split") {
+    const [before, ...after] = items;
+    return (
+      <Sec k={`b${i}`} tone={tone} label={t(b.title)}>{head}
+        <div className="st-split">
+          <div className="st-before" data-reveal><span className="st-tag">{t(before.tag) || x.ui("Today", "आज")}</span><b>{t(before.title)}</b>{before.text && <ul>{before.text.split(/\n+/).filter(Boolean).map((l, k) => <li key={k}>{x.t(l)}</li>)}</ul>}</div>
+          <div className="st-arrow" aria-hidden>→</div>
+          <div className="st-after" data-reveal style={delay(1)}>{after.map((it, k) => <div key={k}><span className="st-tag">{t(it.tag) || x.ui("With us", "हमारे साथ")}</span><b>{t(it.title)}</b>{it.text && <ul>{it.text.split(/\n+/).filter(Boolean).map((l, j) => <li key={j}>{x.t(l)}</li>)}</ul>}</div>)}</div>
+        </div>
+      </Sec>
+    );
+  }
+  if (b.style === "flow") return (
+    <Sec k={`b${i}`} tone={tone} label={t(b.title)}>{head}
+      <ol className="st-flow" style={{ ["--n" as string]: Math.min(items.length, 5) } as CSSProperties}>{items.map((it, k) => <li key={k} data-reveal style={delay(k)}><span className="st-num">{k + 1}</span>{it.imageUrl && <Pic src={it.imageUrl} alt="" sizes="(min-width: 860px) 20vw, 100vw" />}<b>{t(it.title)}</b>{it.text && <p>{t(it.text)}</p>}</li>)}</ol>
+    </Sec>
+  );
+  return (
+    <Sec k={`b${i}`} tone={tone} wide label={t(b.title)}>{head}
+      <ul className="st-bento" data-n={items.length}>{items.map((it, k) => (
+        <li key={k} data-reveal style={delay(k)} className={it.imageUrl ? "has-pic" : ""}>
+          {it.imageUrl && <Pic src={it.imageUrl} alt="" sizes="(min-width: 860px) 60vw, 100vw" />}
+          <div className="st-copy">{it.tag && <span className="st-tag">{t(it.tag)}</span>}<b>{t(it.title)}</b>{it.text && <p>{t(it.text)}</p>}</div>
+        </li>
+      ))}</ul>
+    </Sec>
+  );
+}
+
 export function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteContent; i: number }): ReactNode {
   const tone = i % 2 ? "alt" : "paper";
   const title = (s?: string) => (s ?? "").trim() ? x.t(s!.trim()) : "";
@@ -330,6 +372,7 @@ export function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteCont
     case "hours": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><table className="ct-hours gb-hours"><tbody>{b.rows.filter((r) => r.day && r.time).map((r, k) => <tr key={k}><th scope="row">{x.t(r.day)}</th><td>{x.t(r.time)}</td></tr>)}</tbody></table></Sec>;
     case "location": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} />{b.address && <address className="gb-addr">{x.t(b.address)}</address>}{(b.mapUrl || b.address) && <Btn kind="ghost" href={b.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}`} external><Icon name="directions" /> {x.ui("Get directions", "रास्ता देखें")}</Btn>}</Sec>;
     case "compare": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><div className="gb-table"><table><thead><tr><th scope="col" /><th scope="col">{x.t(b.leftLabel)}</th><th scope="col">{x.t(b.rightLabel)}</th></tr></thead><tbody>{b.rows.map((r, k) => <tr key={k}><th scope="row">{x.t(r.feature)}</th><td>{x.t(r.left)}</td><td>{x.t(r.right)}</td></tr>)}</tbody></table></div></Sec>;
+    case "story": return <Story b={b} x={x} i={i} tone={tone} />;
     case "showcase": return <Sec k={`b${i}`} tone={tone} wide label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-show">{b.items.filter((s) => s.imageUrl).map((s, k) => <li key={k}><div><Photo src={s.imageUrl} alt={s.label} sizes="(min-width:900px) 30vw, 90vw" /></div><b>{x.t(s.label)}</b>{s.sub && <span>{x.t(s.sub)}</span>}</li>)}</ul></Sec>;
     // The parts a page of the owner's may hold anywhere now (19 Nov 2026: every page draws its own sections, in the owner's order).
     case "video": {
@@ -379,6 +422,45 @@ export function GenericPage({ c, x, chrome, slot, has, entry, page }: Props & { 
 }
 
 export const MORE_CSS = `
+/* Story sections (lib/types.ts "story") */
+.st-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4);margin:0;padding:0;list-style:none}
+@media (min-width:760px){.st-stats{grid-template-columns:repeat(4,1fr)}}
+.st-stats li{display:flex;flex-direction:column;gap:.35rem;padding:var(--s3) 0;border-top:1px solid var(--hero-line,rgba(255,255,255,.18))}
+.st-stats b{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.9rem,4vw,3rem);line-height:1;letter-spacing:var(--display-tr);color:var(--hero-text,#fff)}
+.st-stats span{font-size:var(--t-meta);color:var(--hero-muted,rgba(255,255,255,.72))}
+.st-tag{display:inline-block;align-self:flex-start;margin-bottom:.55rem;padding:.25rem .65rem;border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.st-bento{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s4);margin:0;padding:0;list-style:none}
+@media (min-width:860px){.st-bento{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:minmax(150px,auto)}
+ .st-bento li:nth-child(1){grid-column:span 4;grid-row:span 2}.st-bento li:nth-child(2){grid-column:span 2;grid-row:span 2}
+ .st-bento li:nth-child(3){grid-column:span 2;grid-row:span 2}.st-bento li:nth-child(4){grid-column:span 4;grid-row:span 2}
+ .st-bento li:nth-child(n+5){grid-column:span 3;grid-row:span 2}}
+.st-bento li{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:240px;overflow:hidden;border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper-2,var(--paper));transition:transform .2s ease,box-shadow .2s ease}
+.st-bento li:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(15,23,42,.12)}
+.st-bento li img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .7s ease}
+.st-bento li:hover img{transform:scale(1.04)}
+.st-bento li.has-pic::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.72) 100%)}
+.st-bento .st-copy{position:relative;z-index:1;padding:var(--s5)}
+.st-bento li.has-pic .st-copy b,.st-bento li.has-pic .st-copy p{color:#fff}
+.st-bento li.has-pic .st-tag{background:rgba(255,255,255,.18);color:#fff;backdrop-filter:blur(6px)}
+.st-bento b{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:1.35rem;line-height:1.15}
+.st-bento p{margin:.4rem 0 0;color:var(--muted);font-size:var(--t-meta);line-height:1.5;max-width:46ch}
+.st-flow{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s4);margin:0;padding:0;list-style:none;position:relative}
+@media (min-width:860px){.st-flow{grid-template-columns:repeat(var(--n,5),minmax(0,1fr))}.st-flow::before{content:"";position:absolute;left:4%;right:4%;top:22px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-soft))}}
+.st-flow li{position:relative;display:flex;flex-direction:column;gap:.5rem;padding:0 0 var(--s3)}
+.st-flow .st-num{position:relative;z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-weight:700;box-shadow:0 0 0 6px var(--paper)}
+.st-flow img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--r-tile);margin-top:.4rem}
+.st-flow b{font-family:var(--font-display);font-weight:var(--display-w);font-size:1.1rem;line-height:1.2}
+.st-flow p{margin:0;color:var(--muted);font-size:var(--t-meta);line-height:1.5}
+.st-split{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s4);align-items:stretch}
+@media (min-width:860px){.st-split{grid-template-columns:1fr auto 1.2fr}}
+.st-split>div:not(.st-arrow),.st-after>div{display:flex;flex-direction:column;padding:var(--s5);border-radius:var(--r-card);border:1px solid var(--line)}
+.st-before{background:var(--paper)}.st-before b{color:var(--muted)}
+.st-after{display:grid;gap:var(--s3);padding:0!important;border:0!important}
+.st-after>div{background:var(--accent-soft);border-color:transparent}
+.st-split b{font-family:var(--font-display);font-weight:var(--display-w);font-size:1.3rem;line-height:1.2}
+.st-split ul{margin:.6rem 0 0;padding-left:1.1rem;color:var(--muted);font-size:var(--t-meta);line-height:1.7}
+.st-arrow{display:none}
+@media (min-width:860px){.st-arrow{display:grid;place-items:center;font-size:2rem;color:var(--accent)}}
 /* ---- about ---- */
 .ab-why{display:grid;gap:0;margin:0;padding:0;list-style:none;border-top:1px solid var(--line)}
 @media (min-width:760px){.ab-why{grid-template-columns:repeat(2,1fr);column-gap:clamp(2rem,6vw,6rem)}}

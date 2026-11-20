@@ -9,7 +9,7 @@ import {
 
 export const metadata: Metadata = pageMeta("/features", {
   title: "Features — Shubhora Business Suite",
-  description: "An AI salesman that takes orders and bookings on your website and WhatsApp, a website and digital card built in minutes, bookings with reminders, follow-ups, daily posters, social posting, a lead CRM and an AI phone receptionist.",
+  description: "An AI salesman that takes orders and bookings on your website and WhatsApp, a website and digital card ready in 24 to 48 hours, bookings with reminders, follow-ups, daily posters, social posting, a lead CRM and an AI phone receptionist.",
 });
 
 const groups = [
@@ -21,7 +21,7 @@ const groups = [
   ]},
   { title: "Your website and card, built by AI", items: [
     { icon: LayoutTemplate, title: "One link, two shapes", body: "On a computer it opens as your website, on a phone as your digital card — Home, About, Products, Gallery, Reviews, FAQ and Contact from one set of details." },
-    { icon: Upload, title: "Five minutes to set up", body: "Answer a few simple questions; the AI writes the pages, lays out your products and picks real photos of your trade. Give it a website you like and it learns from that too." },
+    { icon: Upload, title: "Ready in 24 to 48 hours", body: "Answer a few simple questions; the AI writes the pages, lays out your products and picks real photos of your trade. Give it a website you like and it learns from that too." },
     { icon: Palette, title: "Three designs, one tap", body: "Bento, Cinematic and Poster — the same words and photos in three looks. Switch any time, nothing is spent. Premium paints an AI banner in your look." },
     { icon: Search, title: "Edit by saying it", body: "“Remove the offer section”, “write that we are CBSE affiliated” — type or speak, see the change, go live. Every edit shows on both the card and the website." },
   ]},

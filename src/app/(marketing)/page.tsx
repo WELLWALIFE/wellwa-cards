@@ -4,7 +4,7 @@ import { pageMeta } from "@/lib/site-brand";
 
 export const metadata: Metadata = pageMeta("/", {
   title: "Shubhora — Software that runs your business online",
-  description: "An AI salesman for small businesses: website and digital card built in minutes, orders and bookings taken on WhatsApp and the website, follow-ups, daily posters, social posting and a lead CRM in one login. Start by sending Hi on WhatsApp.",
+  description: "An AI salesman for small businesses: website and digital card ready in 24 to 48 hours, orders and bookings taken on WhatsApp and the website, follow-ups, daily posters, social posting and a lead CRM in one login. Start by sending Hi on WhatsApp.",
 });
 import {
   ArrowRight, BadgeCheck, Bot, CalendarDays, Check, CheckCheck, Clapperboard, Globe,
@@ -34,7 +34,7 @@ const day = [
 ];
 
 const modules = [
-  { icon: Globe, title: "Website & digital card", body: "One link: your website on computers, your digital card on phones. The AI builds both from your details in five minutes — three designs, your trade's own look, products, gallery, reviews and booking.", tint: "brand" },
+  { icon: Globe, title: "Website & digital card", body: "One link: your website on computers, your digital card on phones. Our team and the AI build both from your details within 24 to 48 hours — three designs, your trade's own look, products, gallery, reviews and booking.", tint: "brand" },
   { icon: ImageIcon, title: "Daily posters & status videos", body: "A fresh, on-brand poster every morning for festivals, offers and good-morning wishes, in your language — and a status video with a voice, shared on WhatsApp in one tap.", tint: "amber" },
   { icon: CalendarDays, title: "Social media on autopilot", body: "Daily Story, 4 posts and 3 reels a week on Facebook and Instagram, planned and published for you.", tint: "ai" },
   { icon: Bot, title: "AI salesman — WhatsApp, website, phone", body: "Answers customers 24/7 in their language, suggests the right item with its price, takes the order or booking and sends the UPI link. On Pro it answers your missed calls too.", tint: "good" },
@@ -54,7 +54,7 @@ const languages = ["English", "हिन्दी", "मराठी", "ગુ�
 const industries = ["Retail shops", "Clinics & doctors", "Salons & spas", "Gyms & fitness", "Restaurants & cafés", "Real estate", "Coaching & education", "Consultants & agents"];
 
 const faqs = [
-  { q: "Do I need to know design or social media?", a: "No. Answer a few simple questions once — about five minutes — and the AI builds your website and card and picks three designs for you. Posters, posts and replies are prepared and published for you every day; to change anything, just say it to the AI in your own words." },
+  { q: "Do I need to know design or social media?", a: "No. Answer a few simple questions once and your website and card are ready within 24 to 48 hours, with 12 designs to pick from. Posters, posts and replies are prepared and published for you every day; to change anything, just say it to the AI in your own words." },
   { q: "How do I start?", a: "Send Hi to Shubhora's WhatsApp number. The AI asks a few things — your shop, trade, city — takes two or three photos of your shop or rate list, and your website with a digital card is live in about ten minutes. Changes are one message away: “timing 10 se 8 karo”." },
   { q: "Will the WhatsApp assistant work on my existing number?", a: "Yes. Connect your own number on Meta's official API with one button (or link the app with a QR), and the same AI salesman answers there: it replies in the customer's language, takes the order or booking and hands you the conversations that need a person." },
   { q: "Can the AI actually take orders and bookings?", a: "Yes. On your website chat and on WhatsApp it suggests the right item with its price, collects name, number and what exactly, confirms it, and gives the customer buttons to send the order on WhatsApp, pay by UPI or call. You get a hot lead and an alert; a booking goes on your calendar with reminders for both of you." },
@@ -123,7 +123,7 @@ export default function Home() {
               You think it. <span className="grad-text">We build it.</span>
             </h1>
             <p className="mt-6 text-lg md:text-xl leading-relaxed text-muted max-w-xl">
-              Shubhora gives your business an AI salesman: a website and digital card built in minutes, an assistant that
+              Shubhora gives your business an AI salesman: a website and digital card ready in 24 to 48 hours, an assistant that
               answers on WhatsApp and the website, takes the order or booking, sends the UPI link and follows up — plus daily
               posters, social posting and a CRM in one login. Need custom software? We build that too.
             </p>
@@ -180,7 +180,7 @@ export default function Home() {
           <div className="max-w-2xl">
             <p className="text-sm font-semibold text-brand-ink">Ready-made websites</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-semibold tracking-tight text-balance">See a website made for your kind of business.</h2>
-            <p className="mt-3 text-muted">{tplAll.length}+ designs for {tplCats.length} lines of work. Pick yours, look at it as a real website, and make it yours in minutes.</p>
+            <p className="mt-3 text-muted">{tplAll.length}+ designs for {tplCats.length} lines of work. Pick yours, look at it as a real website, and get yours in 24 to 48 hours.</p>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             {tplCats.slice(0, 16).map((c) => <Link key={c.name} href={`/templates?c=${encodeURIComponent(c.name)}`} className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-muted hover:text-ink hover:shadow-card">{c.name}</Link>)}

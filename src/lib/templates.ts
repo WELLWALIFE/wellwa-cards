@@ -934,9 +934,9 @@ const consultant: CardTemplateDef = {
 const VC = "#2f5bf5"; // Shubhora blue (the logo)
 /** The Shubhora website's three banners (also put on older Shubhora cards when the page is drawn: lib/shubhora-page.ts). */
 export const SHUBHORA_SLIDES = [
-  { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", imageUrl: "/art/shubhora/ai/hero-1.jpg", focus: "78% 50%" },
-  { headline: "A website that brings customers", sub: "12 designs, your own products and prices, found on Google — ready in 24 to 48 hours.", imageUrl: "/art/shubhora/ai/hero-2.jpg", focus: "78% 50%" },
-  { headline: "An AI that answers at midnight too", sub: "It replies on your WhatsApp, saves every lead and posts a new poster for you every morning.", imageUrl: "/art/shubhora/ai/hero-3.jpg", focus: "78% 50%" },
+  { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", imageUrl: "/art/shubhora/ai/hero-1.jpg", focus: "78% 50%", chips: [{ icon: "✅", title: "New enquiry saved", sub: "from your website · just now" }, { icon: "💬", title: "AI replied in 3 seconds", sub: "in the customer's language" }] },
+  { headline: "A website that brings customers", sub: "12 designs, your own products and prices, found on Google — ready in 24 to 48 hours.", imageUrl: "/art/shubhora/ai/hero-2.jpg", focus: "78% 50%", chips: [{ icon: "🔎", title: "Found on Google", sub: "your own link, ready in 24–48 h" }, { icon: "🎨", title: "12 designs", sub: "pick yours, change any time" }] },
+  { headline: "An AI that answers at midnight too", sub: "It replies on your WhatsApp, saves every lead and posts a new poster for you every morning.", imageUrl: "/art/shubhora/ai/hero-3.jpg", focus: "78% 50%", chips: [{ icon: "🌙", title: "Answered at 11:42 pm", sub: "while the shop was closed" }, { icon: "📋", title: "Lead saved in CRM", sub: "follow-up tomorrow, 10 am" }] },
 ];
 /** The picture of each "What you get" item, by its name (older Shubhora cards get them when the page is drawn). */
 export const SHUBHORA_SERVICE_PICS: Record<string, string> = {"Your own link and QR": "/art/shubhora/ai/get-link.jpg", "Save contact, Call, WhatsApp, UPI, Map": "/art/shubhora/ai/get-contact.jpg", "Products with real prices": "/art/shubhora/ai/get-products.jpg", "Leads that don't get lost": "/art/shubhora/ai/get-leads.jpg", "A website on the same link (Website plan)": "/art/shubhora/ai/get-website.jpg", "AI assistant, 24×7 (Growth Plan)": "/art/shubhora/ai/get-ai.jpg", "A poster every morning (Growth Plan)": "/art/shubhora/ai/get-poster.jpg", "AI Ad Studio and Reel Maker (Website plan)": "/art/shubhora/ai/get-ads.jpg"};
@@ -1005,20 +1005,30 @@ const vcardReseller: CardTemplateDef = {
       {
         id: "p1", slug: "home", label: "Home",
         blocks: [
-          { id: uid("vh", 1), kind: "video", title: "Shubhora in 3½ minutes", url: SH_VIDEO, caption: "Watch this first (in Hindi): the digital V-Card, the website, the AI assistant, daily posters and the plans — everything on one link." },
-          { id: uid("vh", 2), kind: "highlights", title: "One link. Your whole business.", items: [
-            "📇 Digital V-Card with every website plan",
-            "📥 Every enquiry saved as a lead",
-            "🌐 Website on the same link (Website plan)",
-            "🤖 AI assistant, 24×7 (Growth Plan)",
-            "🖼️ A new poster every morning (Growth Plan)",
-            "🗣️ Card in 10 languages (Website plan)",
+          { id: uid("vh", 20), kind: "story", style: "stats", title: "", items: [
+            { tag: "12", title: "website designs to choose from" },
+            { tag: "24–48 h", title: "your website is ready" },
+            { tag: "12", title: "Indian languages" },
+            { tag: "₹2,999", title: "a year — website + digital card" },
           ] },
-          { id: uid("vh", 3), kind: "image", title: "Five tools, one link", images: [
-            { url: "/art/shubhora/plan-overview.jpg", caption: "Your website and digital card come with every website plan, and every enquiry is saved as a lead. The Growth Plan adds the daily poster, the WhatsApp AI, the CRM and Google reviews." },
+          { id: uid("vh", 21), kind: "story", style: "split", title: "Stop losing customers you never saw", lede: "Most small businesses lose enquiries every day — not because of price, but because nobody answered in time.", items: [
+            { tag: "Today", title: "Scattered and slow", text: "Customers search on Google and find nothing\nWhatsApp messages wait for hours\nEnquiries are forgotten in a notebook\nNo time to post on social media" },
+            { tag: "With Shubhora", title: "One link that works for you", text: "A website and card that show up on Google\nThe AI answers on WhatsApp in seconds, even at night\nEvery enquiry saved, with a follow-up reminder\nA new poster every morning, posted for you" },
           ] },
-          { id: uid("vh", 4), kind: "cta", title: "This website IS the product", body: "Everything you are scrolling now is what your own website and card will look like — with your name, your products and your number. Ours is ready for you in 24 to 48 hours.", joinUrl: "#plans", joinLabel: "See plans and prices", referralCode: "" },
-          { id: uid("vh", 5), kind: "services", title: "What you get", items: [
+          { id: uid("vh", 22), kind: "story", style: "bento", title: "Four tools. One link.", lede: "Everything a small business needs to be found, answer fast and sell more.", items: [
+            { tag: "Website", title: "A website that brings customers", text: "12 designs, your products and prices, found on Google.", imageUrl: "/art/shubhora/ai/hero-2.jpg" },
+            { tag: "Digital card", title: "Your card on every phone", text: "Call, WhatsApp, save contact, UPI and map — one tap each.", imageUrl: "/art/shubhora/ai/get-link.jpg" },
+            { tag: "WhatsApp AI", title: "Answers at midnight too", text: "Replies in the customer's language and never invents a price.", imageUrl: "/art/shubhora/ai/get-ai.jpg" },
+            { tag: "CRM", title: "No enquiry is lost", text: "Every lead in one list, with reminders to follow up.", imageUrl: "/art/shubhora/ai/get-leads.jpg" },
+          ] },
+          { id: uid("vh", 23), kind: "story", style: "flow", title: "How it works together", lede: "From the first visit to a paying customer — without you chasing anyone.", items: [
+            { title: "A customer finds you", text: "On Google, your QR or a shared link." },
+            { title: "They message on WhatsApp", text: "One tap from your website or card." },
+            { title: "The AI answers at once", text: "Prices, timings, the right product — in their language." },
+            { title: "The lead is saved", text: "Name, number and what they asked, in your CRM." },
+            { title: "You close the sale", text: "A reminder to follow up, and a review request after." },
+          ] },
+          { id: uid("vh", 5), kind: "services", title: "Everything in one link", items: [
             { name: "Your own link and QR", imageUrl: "/art/shubhora/ai/get-link.jpg", desc: "shubhora.com/c/your-name — opens on any phone. Nothing for your customer to download or install." },
             { name: "Save contact, Call, WhatsApp, UPI, Map", imageUrl: "/art/shubhora/ai/get-contact.jpg", desc: "Every button a customer needs, one tap each — and your number goes straight into their phone." },
             { name: "Products with real prices", imageUrl: "/art/shubhora/ai/get-products.jpg", desc: "Photos, MRP and offer price, features and an Order on WhatsApp button. Change a price once and it changes everywhere." },
@@ -1027,6 +1037,20 @@ const vcardReseller: CardTemplateDef = {
             { name: "AI assistant, 24×7 (Growth Plan)", imageUrl: "/art/shubhora/ai/get-ai.jpg", desc: "Trained on your business. Replies on your card and on your own WhatsApp in the customer's language — and never invents a price." },
             { name: "A poster every morning (Growth Plan)", imageUrl: "/art/shubhora/ai/get-poster.jpg", desc: "A festival, greeting or offer poster with your name, logo and number, plus a short status video — posted for you." },
             { name: "AI Ad Studio and Reel Maker (Website plan)", imageUrl: "/art/shubhora/ai/get-ads.jpg", desc: "Product photoshoots, 10–60 second video ads, reels and explainer videos from your own text — with credits, only when you need them." },
+          ] },
+          { id: uid("vh", 24), kind: "showcase", title: "Made for your kind of business", items: [
+            { imageUrl: "/api/stock/banners/kirana.jpg", label: "Shops and stores", sub: "Products, prices, home delivery", url: "https://shubhora.com/templates" },
+            { imageUrl: "/api/stock/banners/doctor.jpg", label: "Doctors and clinics", sub: "Timings, appointments, services", url: "https://shubhora.com/templates" },
+            { imageUrl: "/api/stock/banners/salon.jpg", label: "Salons and spas", sub: "Service menu, packages, booking", url: "https://shubhora.com/templates" },
+            { imageUrl: "/api/stock/banners/coaching.jpg", label: "Coaching and tuition", sub: "Courses, batches, admissions", url: "https://shubhora.com/templates" },
+            { imageUrl: "/api/stock/banners/realestate.jpg", label: "Property and agents", sub: "Listings, site visits, enquiries", url: "https://shubhora.com/templates" },
+            { imageUrl: "/api/stock/banners/restaurant.jpg", label: "Restaurants and cafés", sub: "Menu, table booking, delivery", url: "https://shubhora.com/templates" },
+          ] },
+          { id: uid("vh", 1), kind: "video", title: "Shubhora in 3½ minutes", url: SH_VIDEO, caption: "Watch this first (in Hindi): the digital V-Card, the website, the AI assistant, daily posters and the plans — everything on one link." },
+          { id: uid("vh", 25), kind: "story", style: "flow", title: "Start in three steps", items: [
+            { title: "Pick a plan", text: "Website Standard or Premium — the digital card comes with it." },
+            { title: "Share your details", text: "Your business, products and photos, from your phone." },
+            { title: "Go live in 24–48 hours", text: "Pick your design from 12 and share your link." },
           ] },
           { id: uid("vh", 6), kind: "testimonials", title: "What card owners say", items: [] },
           { id: uid("vh", 8), kind: "contact", title: "Ask me anything", note: "Tell me what work you do — I will make a demo card with your name and send you the link." },

@@ -70,7 +70,7 @@ const kindLabel: Record<CardBlock["kind"], string> = {
   contact: "Contact form",
   cta: "Button (link)",
   compare: "Us vs them (comparison)",
-  showcase: "Picture tiles",
+  story: "Story section", showcase: "Picture tiles",
 };
 
 export function BlockEditor({
@@ -470,6 +470,31 @@ export function BlockEditor({
               <p className="text-xs text-muted">Visitors see a &quot;{block.joinLabel || "Open"}&quot; button that opens {block.joinUrl?.startsWith("#") ? <>the <b>{block.joinUrl.slice(1)}</b> page of your card</> : "the address above"}.</p>
             )}
           </>
+        )}
+
+        {block.kind === "story" && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1.5">
+              {([["stats", "Facts strip"], ["bento", "Picture tiles"], ["flow", "Steps"], ["split", "Problem → answer"]] as const).map(([k, l]) => (
+                <button key={k} type="button" onClick={() => onChange({ ...block, style: k })} className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${block.style === k ? "border-brand bg-brand-soft text-brand-ink" : "border-border text-muted"}`}>{l}</button>
+              ))}
+            </div>
+            {block.items.map((it, i) => {
+              const setI = (patch: Partial<typeof it>) => { const items = block.items.slice(); items[i] = { ...it, ...patch }; onChange({ ...block, items }); };
+              return (
+                <div key={i} className="space-y-1.5 rounded-xl border border-border p-2">
+                  <div className="flex gap-1.5">
+                    <input value={it.title} onChange={(e) => setI({ title: e.target.value })} placeholder="Heading" className="min-w-0 flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm" />
+                    <input value={it.tag ?? ""} onChange={(e) => setI({ tag: e.target.value })} placeholder={block.style === "stats" ? "Big figure" : "Label"} className="w-28 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm" />
+                    <button type="button" onClick={() => onChange({ ...block, items: block.items.filter((_, j) => j !== i) })} className="px-1 text-muted" aria-label="Remove">×</button>
+                  </div>
+                  <textarea value={it.text ?? ""} onChange={(e) => setI({ text: e.target.value })} rows={2} placeholder="One or two lines" className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm" />
+                  <input value={it.imageUrl ?? ""} onChange={(e) => setI({ imageUrl: e.target.value })} placeholder="Picture link (optional)" className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs" />
+                </div>
+              );
+            })}
+            {block.items.length < 8 && <button type="button" onClick={() => onChange({ ...block, items: [...block.items, { title: "" }] })} className="text-xs font-semibold text-brand-ink">+ Add one</button>}
+          </div>
         )}
 
         {block.kind === "showcase" && (

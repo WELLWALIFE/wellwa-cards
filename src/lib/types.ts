@@ -121,8 +121,20 @@ export type CardBlock =
   | { id: string; kind: "showcase"; title: string; items: ShowcaseItem[] }
   /** A price list / fee structure / tariff: columns and rows of text; `highlight` = the column shown bold (the price). */
   | { id: string; kind: "table"; title: string; columns: string[]; rows: string[][]; note?: string; highlight?: number }
+  /** A designed story section (owner, 20 Nov 2026: "professional SaaS website"): "stats" = a strip of short facts, "bento" = picture
+   *  tiles of different sizes, "flow" = connected steps one after another, "split" = the problem on one side and the answer on the other
+   *  (the first item is the "before", the rest the "after"). Drawn by components/site-adv/page-more.tsx (Story). */
+  | { id: string; kind: "story"; title: string; style: "stats" | "bento" | "flow" | "split"; lede?: string; items: StoryItem[] }
   /** An enquiry / admission / booking form of the owner's own fields; a submission is a lead. */
   | { id: string; kind: "form"; title: string; fields: FormField[]; button?: string; note?: string };
+
+export interface StoryItem {
+  title: string;
+  text?: string;
+  imageUrl?: string;
+  /** A short label on the tile ("Website", "24×7") or, in "stats", the big figure. */
+  tag?: string;
+}
 
 export interface FormField {
   key: string;
@@ -359,7 +371,7 @@ export interface Card {
 }
 
 /** One banner of the Premium website's sliding top (site.hero.slides). */
-export type HeroSlide = { headline: string; sub?: string; imageUrl?: string; /** Which part of the picture stays in view when it is cropped ("78% 50%"); unset = the middle. */ focus?: string };
+export type HeroSlide = { headline: string; sub?: string; imageUrl?: string; /** Small cards that float over the picture, as the app would show them ("New lead saved"). */ chips?: { icon: string; title: string; sub?: string }[]; /** Which part of the picture stays in view when it is cropped ("78% 50%"); unset = the middle. */ focus?: string };
 
 export interface CardNotice {
   text: string;        // one or two lines

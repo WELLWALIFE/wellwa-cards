@@ -211,6 +211,28 @@ const FREE_SAY: [RegExp, string][] = [
 ];
 const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
 
+/** The Shubhora home page as it was before the story sections (20 Nov 2026): its "One link" ticks, the "Five tools" poster and the "This
+ *  page IS the product" box are swapped for the template's facts strip, problem → answer, four-tools tiles and how-it-works steps; the
+ *  "Made for your kind of business" tiles and "Start in three steps" are added once. Everything else on the page stays as it is. */
+function homeWithStory(p: CardPage): CardPage {
+  if (p.slug !== "home" || p.blocks.some((b) => b.kind === "story")) return p;
+  const tpl = getTemplate("vcard-reseller")?.data.pages.find((x) => x.slug === "home")?.blocks ?? [];
+  const story = tpl.filter((b) => b.kind === "story");
+  if (!story.length) return p;
+  const [stats, split, bento, flow, ...afterVideo] = story;
+  const kinds = tpl.find((b) => b.kind === "showcase" && /kind of business/i.test(b.title));
+  const old = (b: CardBlock) => (b.kind === "highlights" && /one link/i.test(b.title)) || (b.kind === "image" && /five tools/i.test(b.title)) || (b.kind === "cta" && /is the product/i.test(b.title));
+  const out: CardBlock[] = [stats, split, bento, flow].filter(Boolean) as CardBlock[];
+  for (const b of p.blocks) {
+    if (old(b)) continue;
+    if (b.kind === "services" && /what you get/i.test(b.title)) { out.push({ ...b, title: "Everything in one link" }); if (kinds) out.push(kinds); continue; }
+    out.push(b);
+    if (b.kind === "video") out.push(...afterVideo);
+  }
+  if (!p.blocks.some((b) => b.kind === "video")) out.push(...afterVideo);
+  return { ...p, blocks: out.map((b, k) => ({ ...b, id: b.id || `sh-story-${k}` })) };
+}
+
 function pageWithoutFreeCard(p: CardPage): CardPage {
   const hit = (...xs: unknown[]) => FREE_CARD.test(xs.map((x) => String(x ?? "")).join(" | "));
   const blocks = p.blocks.flatMap((b0): CardBlock[] => {
@@ -230,7 +252,7 @@ function pageWithoutFreeCard(p: CardPage): CardPage {
 }
 
 export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["popup"] }>(card: T, seller: boolean): T {
-  const pages = card.pages.map((p) => (seller || p.slug === SHUBHORA_PAGE_SLUG ? pageWithoutFreeCard(p) : p));
+  const pages = card.pages.map((p) => (seller ? homeWithStory(pageWithoutFreeCard(p)) : p.slug === SHUBHORA_PAGE_SLUG ? pageWithoutFreeCard(p) : p));
   const pp = card.popup;
   const old = !!pp && (/^(make free card|see your own card, free)$/i.test(pp.title.trim()) || (seller && FREE_CARD.test(`${pp.title} | ${pp.subtitle ?? ""} | ${pp.ctaLabel} | ${pp.terms ?? ""}`)));
   const popup = pp && old

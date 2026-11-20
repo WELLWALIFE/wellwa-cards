@@ -39,6 +39,17 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
         <div key={i} aria-hidden={i !== at} inert={i !== at}
           style={{ gridArea: "1 / 1", minWidth: 0, opacity: i === at ? 1 : 0, transition: "opacity .8s ease", pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
           {createElement(Hero, { ...p, c: contentFor(p.c, s) })}
+          {!!s.chips?.length && (
+            // The app as the customer would see it, floating over the picture (owner, 20 Nov 2026: the big SaaS sites show the product
+            // over a real photo). Laptop and up; a phone keeps the photo clear.
+            <div className="adv-chips" aria-hidden>
+              {s.chips.slice(0, 2).map((ch, k) => (
+                <div key={k} className={`adv-chip adv-chip-${k}${i === at ? " is-on" : ""}`}>
+                  <span className="adv-chip-ic">{ch.icon}</span><span><b>{ch.title}</b>{ch.sub && <small>{ch.sub}</small>}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ))}
       {n > 1 && (
@@ -49,6 +60,18 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
           ))}
         </div>
       )}
+      <style>{CHIP_CSS}</style>
     </div>
   );
 }
+
+const CHIP_CSS = `
+.adv-chips{display:none}
+@media (min-width:900px){.adv-chips{display:block;position:absolute;inset:0;pointer-events:none;z-index:2}}
+.adv-chip{position:absolute;display:flex;align-items:center;gap:.7rem;padding:.75rem 1rem;border-radius:16px;background:rgba(255,255,255,.94);color:#0f172a;box-shadow:0 18px 44px rgba(2,6,23,.28);font:500 13px/1.25 system-ui,sans-serif;max-width:250px;opacity:0;transform:translateY(14px);transition:opacity .6s ease .35s,transform .6s ease .35s}
+.adv-chip b{display:block;font-weight:700;font-size:13.5px}.adv-chip small{display:block;color:#64748b;font-size:12px;margin-top:2px}
+.adv-chip-ic{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:50%;background:#ecfdf5;font-size:17px}
+.adv-chip-0{right:5%;top:22%}.adv-chip-1{right:24%;bottom:16%;transition-delay:.6s}
+.adv-chip.is-on{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.adv-chip{transition:none}}
+`;

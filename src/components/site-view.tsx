@@ -2040,6 +2040,24 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         </Section>
       );
     }
+    case "story": {
+      const items = block.items.filter((it) => (it.title ?? "").trim());
+      if (!items.length) return null;
+      return (
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+          <div className={block.style === "stats" ? "grid grid-cols-2 gap-4 md:grid-cols-4" : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"}>
+            {items.map((it, i) => block.style === "stats" ? (
+              <div key={i} className="rounded-2xl border border-border p-4"><p className="text-3xl font-bold leading-none">{t(it.tag || it.title)}</p><p className="mt-2 text-sm text-muted">{it.tag ? t(it.title) : t(it.text ?? "")}</p></div>
+            ) : (
+              <div key={i} className="overflow-hidden rounded-2xl border border-border bg-surface">
+                {it.imageUrl && <div className="aspect-[16/10] w-full overflow-hidden bg-surface2"><Img src={it.imageUrl} alt="" className="h-full w-full object-cover" sizes="(min-width: 1024px) 33vw, 100vw" /></div>}
+                <div className="p-4">{block.style === "flow" && <span className="mb-2 inline-grid h-7 w-7 place-items-center rounded-full text-xs font-bold text-white" style={{ background: theme }}>{i + 1}</span>}<p className="font-semibold leading-tight">{t(it.title)}</p>{it.text && <p className="mt-1 whitespace-pre-line text-sm text-muted">{t(it.text)}</p>}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      );
+    }
     case "showcase":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>

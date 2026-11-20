@@ -20,6 +20,7 @@ import { cardHomeShown } from "@/lib/site-url";
 import { applyLook, styleFitsTrade, threeLooks, type Look } from "@/lib/site-looks";
 import { wearAdvanced, type AdvPreview } from "@/lib/adv-preview";
 import type { Card } from "@/lib/types";
+import { isShubhoraSellerCard, withoutFreeCard } from "@/lib/shubhora-page";
 import type { OrderState } from "@/lib/site-order";
 import { SITE_PALETTES, fontSetFor } from "@/lib/site-style";
 
@@ -68,7 +69,8 @@ export default function ChooseDesignPage() {
       if (o?.ok && o.data.premiumPending) { setPending(true); setTimeout(() => setTick((n) => n + 1), 15_000); return; }
     }
     setPending(false);
-    setCard(c);
+    // A Shubhora website is shown as it is drawn live (its story sections, three banners, no free-card lines), so the preview matches.
+    setCard(isShubhoraSellerCard(c) ? withoutFreeCard(c, true) : c);
     // The Premium designs kept for this card, filled up to six from the library (any paid website; none when the server says no).
     const r = await api<{ designs?: Design[] }>("/api/card/advanced", { method: "POST", json: { cardId: c.id, more: true } }).catch(() => null);
     // A trade with finished templates (bridal wear, 16 Nov 2026): its twelve are the whole choice — marked by their seed ("|fix:").
@@ -119,7 +121,7 @@ export default function ChooseDesignPage() {
     window.open(`/preview/site?k=${key}`, "_blank", "noopener");
   }
 
-  async function useDesign() {
+  async function applyDesign() {
     if (!card || !chosen || (chosen.on && confirmed)) return;
     setBusy(true); setErr(""); setMsg("");
     try {
@@ -214,8 +216,16 @@ export default function ChooseDesignPage() {
         {head(1, T(`Select any one from ${options.length}`, `${options.length} में से कोई एक चुनें`), confirmed ? T("Tap a design to see it below. Your website has the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website पर ✓ वाला design है।") : T("Tap a design to see it below, then make one final. Until then this page opens every time.", "Design दबाएँ, नीचे दिखेगा, फिर एक को final करें। तब तक हर बार यही page खुलेगा।"))}
         {options.length ? (
           <>
+            {/* Two rows with their names (owner, 20 Nov 2026: "pehle 6 premium, 2nd row me 6 standard"): the Premium designs move and are
+                laid out for the business; the Standard ones are the plain, quick website. */}
+            {([["p", T("Premium designs · with motion", "Premium designs · motion के साथ")], ["s", T("Standard designs", "Standard designs")]] as const).map(([row, label]) => {
+              const rowOpts = options.map((o, i) => ({ o, i })).filter(({ o }) => (row === "p") === o.id.startsWith("p"));
+              if (!rowOpts.length) return null;
+              return (
+            <div key={row} className="space-y-1.5">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">{label}</p>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {options.map((o, i) => {
+              {rowOpts.map(({ o, i }) => {
                 const sel = chosen?.id === o.id;
                 return (
                   <div key={o.id} className={`relative overflow-visible rounded-2xl border-2 text-center ${sel ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
@@ -239,8 +249,11 @@ export default function ChooseDesignPage() {
                 );
               })}
             </div>
+            </div>
+              );
+            })}
             {/* Right under the tiles: tapping a design only shows it; this button puts it on the website (owner, 14 Nov 2026: "click kar raha hu, select nahi ho raha" — the button was below the preview, out of sight). */}
-            <button type="button" onClick={() => void useDesign()} disabled={busy || !chosen || (chosen.on && confirmed)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => void applyDesign()} disabled={busy || !chosen || (chosen.on && confirmed)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
               {chosen?.on ? (confirmed ? T("This design is on your website", "यही design आपकी website पर है") : T(`Keep ${chosen.name} — final`, `${chosen.name} ही रखें — final`)) : T(`Use ${chosen?.name ?? "this design"}`, `${chosen?.name ?? "यह design"} लगाएँ`)}
             </button>

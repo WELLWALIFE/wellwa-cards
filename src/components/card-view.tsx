@@ -933,6 +933,26 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
     case "gallery":
       return <CardGallery block={block} t={t} />;
 
+    case "story": {
+      const items = block.items.filter((it) => (it.title ?? "").trim());
+      if (!items.length) return null;
+      return (
+        <section>
+          {block.title.trim() && <BlockTitle>{t(block.title)}</BlockTitle>}
+          <div className={block.style === "stats" ? "grid grid-cols-2 gap-2" : "space-y-2"}>
+            {items.map((it, i) => block.style === "stats" ? (
+              <div key={i} className="rounded-xl bg-surface2 px-3 py-2.5"><p className="text-lg font-bold leading-none">{t(it.tag || it.title)}</p><p className="mt-1 text-[11px] text-muted">{it.tag ? t(it.title) : t(it.text ?? "")}</p></div>
+            ) : (
+              <div key={i} className="flex gap-3 overflow-hidden rounded-xl border border-border bg-surface p-2">
+                {it.imageUrl ? <Pic src={it.imageUrl} alt="" sizes="96px" className="h-16 w-20 shrink-0 rounded-lg object-cover" /> : block.style === "flow" ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-bold text-brand-ink">{i + 1}</span> : null}
+                <div className="min-w-0"><p className="text-[13px] font-semibold leading-tight">{t(it.title)}</p>{it.text && <p className="mt-0.5 whitespace-pre-line text-[11.5px] leading-snug text-muted">{t(it.text)}</p>}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
     case "showcase":
       return (
         <section>

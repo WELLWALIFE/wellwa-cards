@@ -219,7 +219,7 @@ export function sectionLabel(s: HomeSection, lang?: string): string {
       about: ["About", "परिचय"], highlights: ["Highlights", "खासियत"], services: ["Services", "सेवाएँ"], product: ["Products", "प्रोडक्ट"], gallery: ["Photos", "फ़ोटो"],
       image: ["Picture", "चित्र"], carousel: ["Pictures", "चित्र"], video: ["Video", "वीडियो"], pdf: ["PDF", "PDF"], testimonials: ["Reviews", "रिव्यू"], faq: ["FAQ", "सवाल-जवाब"],
       hours: ["Timings", "समय"], appointment: ["Appointment", "अपॉइंटमेंट"], location: ["Location", "पता"], offer: ["Offer", "ऑफ़र"], contact: ["Contact", "संपर्क"], cta: ["Call to action", "बटन"],
-      compare: ["Comparison", "तुलना"], showcase: ["Showcase", "शोकेस"], table: ["Price list", "दाम की सूची"], form: ["Form", "फ़ॉर्म"],
+      compare: ["Comparison", "तुलना"], showcase: ["Showcase", "शोकेस"], story: ["Story section", "कहानी section"], table: ["Price list", "दाम की सूची"], form: ["Form", "फ़ॉर्म"],
     };
     const k = kind[b.kind]?.[h ? 1 : 0] ?? b.kind;
     return title && title.toLowerCase() !== k.toLowerCase() ? `${title} · ${k}` : k || title;

@@ -87,6 +87,7 @@ const blockKinds: { kind: CardBlock["kind"]; label: string; icon: typeof Type }[
   { kind: "cta", label: "Join now / referral link", icon: UserPlus },
   { kind: "compare", label: "Us vs them (comparison)", icon: ListChecks },
   { kind: "showcase", label: "Picture tiles (with links)", icon: LayoutGrid },
+  { kind: "story", label: "Story section (facts / tiles / steps)", icon: LayoutGrid },
   { kind: "table", label: "Price list / fee table", icon: ListChecks },
   { kind: "form", label: "Form (enquiry / admission / booking)", icon: MessageSquare },
 ];
@@ -122,6 +123,7 @@ function newBlock(kind: CardBlock["kind"]): CardBlock {
     case "cta": return { id, kind, title: "Join now", body: "", joinUrl: "", joinLabel: "Join Now", referralCode: "" };
     case "compare": return { id, kind, title: "How we compare", leftLabel: "Us", rightLabel: "Other brand", rows: [{ feature: "", left: "", right: "" }] };
     case "showcase": return { id, kind, title: "Our work", items: [{ imageUrl: "", label: "", sub: "", url: "" }] };
+    case "story": return { id, kind, title: "How it works", style: "flow", items: [{ title: "" }] };
     case "table": return { id, kind, title: "Price list", columns: ["Item", "Price"], rows: [["", ""]], highlight: 1 };
     case "form": return { id, kind, title: "Enquiry", fields: [{ key: "name", label: "Your name", type: "text", required: true }, { key: "phone", label: "Mobile / WhatsApp", type: "phone", required: true }, { key: "message", label: "Your message", type: "textarea" }], button: "Send" };
   }
