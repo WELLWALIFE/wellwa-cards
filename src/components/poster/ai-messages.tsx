@@ -79,7 +79,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
     setBusy(`t${i}`);
     const r = await api<{ message?: string | null; sent?: boolean; connected?: boolean; error?: string }>("/api/wa/followups/test", { method: "POST", json: { step: i, toMe: true, text: own, imageUrl: i >= 0 ? plan.steps[i].imageUrl ?? "" : "", name: hi ? "राहुल" : "Rahul" } }).catch(() => null);
     setBusy("");
-    if (!r || !r.ok) { setTests((t) => ({ ...t, [i]: { at: Date.now(), text: T("WhatsApp is not linked — link it first (below).", "WhatsApp जुड़ा नहीं है — पहले नीचे से जोड़ें।"), bad: true } })); return; }
+    if (!r || !r.ok) { setTests((t) => ({ ...t, [i]: { at: Date.now(), text: T("WhatsApp is not linked — link it first (section 2, above).", "WhatsApp जुड़ा नहीं है — पहले ऊपर section 2 से जोड़ें।"), bad: true } })); return; }
     const msg = (r.data.message ?? "").trim();
     setTests((t) => ({ ...t, [i]: !msg
       ? { at: Date.now(), text: T("The AI could not write it right now — try again in a minute.", "AI अभी नहीं लिख पाया — एक मिनट बाद दोबारा try करें।"), bad: true }
@@ -114,7 +114,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
         <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs ${wa.linked && wa.ai ? "bg-good/10" : "bg-amber/10"}`}>
           <MessageCircle className={`mt-0.5 h-4 w-4 shrink-0 ${wa.linked && wa.ai ? "text-good" : "text-amber"}`} />
           <span>{!wa.linked
-            ? T("WhatsApp is not linked yet: these messages start once you link it (section 2 below).", "WhatsApp अभी जुड़ा नहीं है: जोड़ते ही ये messages शुरू हो जाएँगे (नीचे section 2)।")
+            ? T("WhatsApp is not linked yet: these messages start once you link it (section 2, above).", "WhatsApp अभी जुड़ा नहीं है: जोड़ते ही ये messages शुरू हो जाएँगे (ऊपर section 2)।")
             : !wa.ai ? T("WhatsApp is linked, but AI replies need a paid plan.", "WhatsApp जुड़ा है, पर AI जवाब के लिए paid plan चाहिए।")
             : T(`On ✓ — ${wa.active} customer${wa.active === 1 ? " is" : "s are"} in the line right now.`, `चालू ✓ — अभी ${wa.active} customer इस line में हैं।`)}</span>
         </div>
