@@ -989,19 +989,16 @@ function PaySheet({ ctx, lead, onClose, onUse }: { ctx: Ctx; lead: Lead; onClose
 type FOpt = { label: string; action: "menu" | "text" | "ai" | "human"; target?: string; reply?: string };
 type FNode = { id: string; title: string; text: string; options: FOpt[] };
 type FlowData = { greetNew: boolean; triggers: string[]; nodes: FNode[] };
+// The ready-made menu, for any business (19 Nov 2026: it spoke of a "free demo", which only one trade has).
 const DEFAULT_FLOW = (): FlowData => ({
   greetNew: true, triggers: [],
   nodes: [
-    { id: "main", title: "Main menu", text: "Namaste 🙏 {business} me aapka swagat hai. Main kaise madad karun?", options: [
-      { label: "Products & prices", action: "menu", target: "products" },
-      { label: "Book a free demo", action: "human", reply: "Zaroor! Hamari team aapko jald call karegi. Aap apna area aur suvidha ka samay likh dein 🙂" },
-      { label: "Ask a question", action: "ai" },
-      { label: "Talk to a person", action: "human" },
-    ] },
-    { id: "products", title: "Products", text: "Hamare products:", options: [
-      { label: "Price list", action: "text", reply: "Poori price list aur offers yahan dekhein: {card}" },
-      { label: "Ask about a product", action: "ai" },
-      { label: "Talk to a person", action: "human" },
+    { id: "main", title: "Main menu", text: "Namaste 🙏 {business} me aapka swagat hai. Aapko kya chahiye?", options: [
+      { label: "Products dekhne hain", action: "text", reply: "Hamare saare products, photo aur daam ke saath, yahan dekhiye: {card}" },
+      { label: "Services ke baare mein", action: "ai", reply: "Zaroor! Aapko kis service ke baare mein jaanna hai?" },
+      { label: "Daam aur offer", action: "ai", reply: "Ji, kis cheez ka daam jaanna hai? Naam likh dijiye." },
+      { label: "Pata aur samay", action: "ai", reply: "Pata aur samay abhi bhejta hoon. Aap kis shehar se hain?" },
+      { label: "Aapse baat karni hai", action: "human" },
     ] },
   ],
 });
@@ -1028,7 +1025,7 @@ export function FlowSheet({ onClose }: { onClose: () => void }) {
       <div className="space-y-3 text-sm">
         <p className="text-xs text-muted">A numbered menu customers see when they say <b>hi / menu</b> or message for the first time. Each option can open another menu, send a fixed text, hand over to the AI assistant, or hand over to you (bot pauses, you get pinged). Anything typed that isn&apos;t a menu number goes to the AI as usual.</p>
         {!data ? (
-          <button type="button" onClick={() => setData(DEFAULT_FLOW())} className="w-full rounded-xl border border-dashed border-brand/50 bg-brand-soft/40 p-3 text-brand-ink">✨ Start with a ready-made menu (Products, Demo, Ask, Talk to a person)</button>
+          <button type="button" onClick={() => setData(DEFAULT_FLOW())} className="w-full rounded-xl border border-dashed border-brand/50 bg-brand-soft/40 p-3 text-brand-ink">✨ Start with a ready-made menu (Products, Services, Prices, Address, Talk to me)</button>
         ) : (
           <>
             <div className="flex items-center gap-2 rounded-xl border border-border p-2.5">

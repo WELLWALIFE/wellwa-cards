@@ -60,7 +60,10 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
       ...(plan.start !== 9 || plan.end !== 20 ? { start: plan.start, end: plan.end } : {}),
     };
     const plain = !clean.welcome && clean.weekly !== false && clean.start === undefined && clean.steps!.every((s, i) => s.on && s.mode === "ai" && s.after === DEFAULT_AFTER[i] && !s.imageUrl);
-    const next: Card = { ...card, botFollow: plain ? undefined : clean };
+    // The other switches of the plan (only new numbers, shop closed) are set in their own box: kept as they are.
+    const rest: BotFollow = { ...(card.botFollow?.onlyNew ? { onlyNew: true } : {}), ...(card.botFollow?.away ? { away: card.botFollow.away } : {}) };
+    const merged: BotFollow = plain ? rest : { ...clean, ...rest };
+    const next: Card = { ...card, botFollow: Object.keys(merged).length ? merged : undefined };
     const r = await publishCard(next).catch(() => ({ ok: false, error: "" } as { ok: false; error?: string }));
     setBusy("");
     if (!r.ok) { setNote({ text: (r as { error?: string }).error || T("Could not save — please try again.", "Save नहीं हुआ — दोबारा try करें।"), bad: true }); return; }

@@ -31,6 +31,7 @@ export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = fals
   const { lang } = useT();
   const hi = lang === "hi";
   const T = (h: string, e: string) => (hi ? h : e);
+  const [qa, setQa] = useState({ q: "", a: "" });
   const [url, setUrl] = useState(strip(card.botSite ?? ""));
   const [busy, setBusy] = useState<"" | "read" | "clear">("");
   // Website (Set / Read again / Remove) messages sit under the website row; file messages sit under the file buttons.
@@ -180,6 +181,13 @@ export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = fals
         <p className="text-sm font-semibold leading-tight">{T("AI को खुद सिखाएँ", "Teach the AI yourself")}</p>
         <p className="mt-0.5 text-xs text-muted">{T("Price, हर product की जानकारी (size, रंग, material…), offer, आम सवाल-जवाब — जो यहाँ लिखेंगे, AI सबसे पहले यही मानेगा।", "Prices, each product's details (size, colour, material…), offers, common questions — the AI trusts what you write here first.")}</p>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={8} maxLength={20000} placeholder={T("जैसे: Banarasi silk saree — ₹2,499 (MRP ₹2,999), 6.3 मीटर, blouse piece साथ में। Delivery पूरे भारत में 4–6 दिन। रविवार बंद।", "e.g. Banarasi silk saree — ₹2,499 (MRP ₹2,999), 6.3 m, blouse piece included. Delivery all over India in 4–6 days. Closed on Sunday.")} className="mt-2 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand" />
+        {/* One question, one answer (19 Nov 2026): typed in two boxes and put into the notes above in the shape the AI reads best. */}
+        <div className="mt-2 rounded-xl border border-dashed border-border p-2.5">
+          <p className="text-xs font-semibold">{T("सवाल-जवाब जोड़ें", "Add a question and its answer")}</p>
+          <input value={qa.q} onChange={(e) => setQa({ ...qa, q: e.target.value })} maxLength={200} placeholder={T("सवाल — जैसे: Delivery कितने दिन में?", "Question — e.g. How many days for delivery?")} className="mt-1.5 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" />
+          <input value={qa.a} onChange={(e) => setQa({ ...qa, a: e.target.value })} maxLength={500} placeholder={T("जवाब — जैसे: पूरे भारत में 4–6 दिन, ₹999 से ऊपर free।", "Answer — e.g. 4–6 days all over India, free above ₹999.")} className="mt-1.5 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" />
+          <button type="button" disabled={!qa.q.trim() || !qa.a.trim()} onClick={() => { setNotes((n) => `${n.trim()}${n.trim() ? "\n\n" : ""}Q: ${qa.q.trim()}\nA: ${qa.a.trim()}`.slice(0, 20000)); setQa({ q: "", a: "" }); }} className="mt-1.5 rounded-lg border border-brand/50 px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50">+ {T("ऊपर जोड़ें, फिर Save दबाएँ", "Add it above, then press Save")}</button>
+        </div>
         <div className="mt-1.5 flex items-center gap-2">
           <button type="button" onClick={() => void saveNotes()} disabled={nBusy || notes.trim() === ownNotes(card.botKnowledge)} className="rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{nBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : T("सेव करें", "Save")}</button>
           <span className="text-[11px] text-muted">{notes.length.toLocaleString("en-IN")} / 20,000</span>

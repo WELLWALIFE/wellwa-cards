@@ -397,4 +397,8 @@ export type BotFollow = {
   weekly?: boolean;
   /** Hours (IST, 0–24) messages may go out. */
   start?: number; end?: number;
+  /** The AI answers only numbers with no chat from before WhatsApp was linked (family, friends and old customers stay the owner's). */
+  onlyNew?: boolean;
+  /** Shop closed / on leave: this line goes once in 12 hours, the enquiry is saved, the AI waits. `until` = last day (YYYY-MM-DD). */
+  away?: { on: boolean; text: string; until?: string };
 };

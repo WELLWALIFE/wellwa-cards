@@ -12,6 +12,8 @@ import { fetchMyCardsStrict } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
 import { BotSiteBox } from "@/components/poster/bot-site-box";
 import { AiMessages } from "@/components/poster/ai-messages";
+import { AiAway, AiReport, AiWho } from "@/components/poster/ai-guard";
+import { FlowSheet } from "@/components/crm/crm";
 import { CardChat } from "@/components/card-chat";
 import { publishCard } from "@/lib/cloud";
 import type { Card } from "@/lib/types";
@@ -25,6 +27,7 @@ export default function AiTrainingPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const [err, setErr] = useState("");
+  const [menu, setMenu] = useState(false);
 
   const load = useCallback(async () => {
     setErr("");
@@ -77,17 +80,43 @@ export default function AiTrainingPage() {
           </section>
 
           <section>
-            {sec(3, T("AI's messages, one after another", "AI के messages — एक के बाद एक"), T("The first message, then the next ones on the days you choose. All optional.", "पहला message, फिर अगले messages आपके चुने दिनों पर। सब ज़रूरी नहीं।"))}
+            {sec(3, T("Who the AI answers", "AI किसे जवाब दे"), T("Keep family and friends away from the AI on a personal number.", "Personal number पर परिवार और दोस्तों को AI से दूर रखें।"))}
+            <AiWho card={card} onSaved={setCard} hi={hi} />
+          </section>
+
+          <section>
+            {sec(4, T("Numbered menu (1, 2, 3…)", "Number वाला menu (1, 2, 3…)"), T("A new customer gets a menu: 1 Products, 2 Services, 3 Prices… and replies with a number.", "नए customer को menu जाता है: 1 Products, 2 Services, 3 दाम… और वह number लिखकर जवाब देता है।"))}
+            <button type="button" onClick={() => setMenu(true)} className={row}>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-lg font-bold text-brand">1·2</span>
+              <span className="min-w-0 flex-1"><b className="block text-sm">{T("Make or change my menu", "मेरा menu बनाएँ या बदलें")}</b><span className="block text-xs text-muted">{T("A ready-made one is there to start from. Anything not on the menu, the AI answers.", "शुरू करने के लिए तैयार menu मौजूद है। Menu से बाहर की हर बात का जवाब AI देता है।")}</span></span>
+              <ChevronRight className="h-5 w-5 text-muted" />
+            </button>
+            <p className="mt-1.5 text-[11px] text-muted">{T("When the menu is on, it is the first message a new customer gets (your own first message below is then not sent).", "Menu चालू हो, तो नए customer को सबसे पहले वही जाता है (तब नीचे का आपका पहला message नहीं जाता)।")}</p>
+            {menu && <FlowSheet onClose={() => setMenu(false)} />}
+          </section>
+
+          <section>
+            {sec(5, T("AI's messages, one after another", "AI के messages — एक के बाद एक"), T("The first message, then the next ones on the days you choose. All optional.", "पहला message, फिर अगले messages आपके चुने दिनों पर। सब ज़रूरी नहीं।"))}
             <AiMessages card={card} onSaved={setCard} />
           </section>
 
           <section>
-            {sec(4, T("How your AI talks", "आपका AI कैसे बात करे"), T("Language and manner. Leave empty and it talks like a polite shop assistant.", "भाषा और अंदाज़। खाली छोड़ें तो AI एक विनम्र दुकान वाले की तरह बात करता है।"))}
+            {sec(6, T("How your AI talks", "आपका AI कैसे बात करे"), T("Language and manner. Leave empty and it talks like a polite shop assistant.", "भाषा और अंदाज़। खाली छोड़ें तो AI एक विनम्र दुकान वाले की तरह बात करता है।"))}
             <AiTone card={card} onSaved={setCard} hi={hi} />
           </section>
 
           <section>
-            {sec(5, T("Talk to your AI", "अपने AI से बात करके देखें"), T("Ask it something as a customer would — the chat button at the bottom right.", "Customer की तरह कुछ पूछिए — नीचे दाएँ कोने का chat button दबाइए।"))}
+            {sec(7, T("Shop closed or on leave", "दुकान बंद या छुट्टी"), T("One line of yours while you are away.", "जब आप न हों, तब आपकी एक line।"))}
+            <AiAway card={card} onSaved={setCard} hi={hi} />
+          </section>
+
+          <section>
+            {sec(8, T("Report", "Report"), T("What the AI did this week, and where it needed you.", "इस हफ़्ते AI ने क्या किया, और कहाँ उसे आपकी ज़रूरत पड़ी।"))}
+            <AiReport card={card} onSaved={setCard} hi={hi} />
+          </section>
+
+          <section>
+            {sec(9, T("Talk to your AI", "अपने AI से बात करके देखें"), T("Ask it something as a customer would — the chat button at the bottom right.", "Customer की तरह कुछ पूछिए — नीचे दाएँ कोने का chat button दबाइए।"))}
             {status.url && <a href={`${status.url}?view=site`} target="_blank" rel="noreferrer" className={row}>
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><Bot className="h-5 w-5" /></span>
               <span className="min-w-0 flex-1"><b className="block text-sm">{T("Open my website and chat with the AI", "मेरी website खोलकर AI से बात करें")}</b><span className="block text-xs text-muted">{T("The same AI answers on WhatsApp.", "WhatsApp पर भी यही AI जवाब देता है।")}</span></span>

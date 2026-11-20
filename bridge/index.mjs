@@ -487,6 +487,34 @@ function ownText(text, name) {
 /** Wellwa's own number (smart water ionizers): the only card whose follow-ups talk about water and carry its artwork. */
 const isWellwaCard = () => /wellwa/i.test(String(cardContext?.data?.company || cardContext?.data?.name || config.businessName || ""));
 
+/* ---------------- AI Training's report and "the AI called you" list ----------------
+ * stats.json: per IST day { in, replies, followups, alerts } (30 days kept). asks.json: the last 40 times the AI asked for the owner
+ * (the customer's message + why), so the owner can write the answer into the AI's knowledge. */
+const STATS_PATH = path.join(DATA_DIR, "stats.json");
+const ASKS_PATH = path.join(DATA_DIR, "asks.json");
+let stats = {}; try { stats = JSON.parse(readFileSync(STATS_PATH, "utf8")) || {}; } catch { stats = {}; }
+let asks = []; try { const a = JSON.parse(readFileSync(ASKS_PATH, "utf8")); asks = Array.isArray(a) ? a : []; } catch { asks = []; }
+const istDay = (ts = Date.now()) => new Date(ts + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+let statsTimer = null;
+function bump(key) {
+  const d = istDay();
+  stats[d] = { ...(stats[d] || {}), [key]: ((stats[d] || {})[key] || 0) + 1 };
+  if (statsTimer) return;
+  statsTimer = setTimeout(() => {
+    statsTimer = null;
+    const keep = Object.keys(stats).sort().slice(-30);
+    stats = Object.fromEntries(keep.map((k) => [k, stats[k]]));
+    try { writeFileSync(STATS_PATH, JSON.stringify(stats)); } catch {}
+  }, 15000);
+}
+function noteAsk(name, why, text) {
+  const q = String(text || "").trim();
+  if (!q) return;
+  asks = [{ at: Date.now(), name: String(name || "").slice(0, 40), why: String(why || "").slice(0, 160), text: q.slice(0, 300) }, ...asks.filter((a) => a.text !== q.slice(0, 300))].slice(0, 40);
+  try { writeFileSync(ASKS_PATH, JSON.stringify(asks)); } catch {}
+}
+const awaySaidAt = new Map(); // jid → when the "we are closed" line last went
+
 const stepGap = (step) => {
   const d = Number(planStep(step)?.after);
   return (Number.isFinite(d) && d >= 1 && d <= 60 ? d : ([1, 2, 3][step] ?? 7)) * DAY;
@@ -1372,7 +1400,7 @@ async function runFollowups() {
           saveAgentState();
         }
         console.log(`[followup] → ${jid} step=${e.step} img=${art ? art.url.split("-").pop() : "none"} : ${msg.slice(0, 50)}…`);
-        sent++;
+        sent++; bump("followups");
       } catch (err) { console.error("[followup] send", err?.message ?? err); continue; }
     }
     // Advance: step 0→1→2→3(weekly, stays), schedule the next send.
@@ -1914,6 +1942,7 @@ async function startWhatsApp() {
 
         const name = m.pushName ?? "";
         console.log(`[wa] ${name} (${jid}): ${text.slice(0, 80)}`);
+        bump("in");
 
         // loop / spam guard — stop bot-vs-bot ping-pong. A muted chat still
         // records the lead; a cooldown just waits a few seconds.
@@ -1926,6 +1955,19 @@ async function startWhatsApp() {
         if (humanMuted(jid)) {
           console.log(`[wa] skip (human active) ${jid}`);
           if (!personalContact) saveLead(jid, name, text);
+          continue;
+        }
+
+        // AI Training → "Sirf naye number": a chat from before WhatsApp was linked (family, friends, old customers) is the owner's own to
+        // answer — no AI, no lead. Someone who came from an ad is always a customer.
+        const fromAdNow = isFromAd(m.message) || AD_OPENER_RE.test(text);
+        const pjOld = phoneJidOf(jid);
+        if (ownPlan().onlyNew === true && !fromAdNow && Boolean(people.hist[jid] || (pjOld && people.hist[pjOld]))) { console.log(`[wa] skip (old contact, only-new is on) ${jid}`); continue; }
+        // AI Training → "Dukaan band / chhutti": the owner's own line once in 12 hours, the enquiry saved, nothing else until they are back.
+        const away = ownPlan().away;
+        if (away && away.on === true && String(away.text || "").trim() && !(away.until && String(away.until) < istDay()) && !personalContact) {
+          saveLead(jid, name, text);
+          if (replyOk && Date.now() - (awaySaidAt.get(jid) ?? 0) > 12 * 60 * 60 * 1000) { awaySaidAt.set(jid, Date.now()); await sendReply(jid, ownText(away.text, name)); noteReply(jid); bump("replies"); }
           continue;
         }
 
@@ -2164,6 +2206,7 @@ function onceSiteLink(jid, reply) {
 }
 
 async function deliver(jid, reply) {
+  bump("replies");
   reply = onceSiteLink(jid, preferOwnSite(completeFileSets(String(reply ?? ""))));
   const link = cardLink();
   if (config.cardUsername && reply.includes(link) && !cardImageSentAt.has(jid)) {
@@ -2234,6 +2277,7 @@ function splitAlert(raw, inbound) {
 }
 
 async function alertOwner(jid, name, alert, inbound) {
+  noteAsk(name, alert, inbound); bump("alerts");
   if (!me?.id || state !== "connected") return;
   const last = alertedAt.get(jid) ?? 0;
   if (Date.now() - last < 30 * 60 * 1000) return;
@@ -2373,6 +2417,19 @@ const server = createServer(async (req, res) => {
       const { phone } = await readBody(req);
       const jid = String(phone).replace(/[^0-9]/g, "") + "@s.whatsapp.net";
       if (followups[jid]) { followups[jid].active = false; saveFollowups(); }
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === "GET" && url.pathname === "/stats") {
+      // The last 7 days (IST), oldest first, and their totals.
+      const days = Array.from({ length: 7 }, (_, i) => istDay(Date.now() - (6 - i) * DAY)).map((d) => ({ day: d, in: 0, replies: 0, followups: 0, alerts: 0, ...(stats[d] || {}) }));
+      const total = days.reduce((t, d) => ({ in: t.in + d.in, replies: t.replies + d.replies, followups: t.followups + d.followups, alerts: t.alerts + d.alerts }), { in: 0, replies: 0, followups: 0, alerts: 0 });
+      return json(res, 200, { days, total, today: days[6] });
+    }
+    if (req.method === "GET" && url.pathname === "/asks") return json(res, 200, { asks });
+    if (req.method === "POST" && url.pathname === "/asks/done") {
+      const { at } = await readBody(req);
+      asks = at === "all" ? [] : asks.filter((a) => a.at !== Number(at));
+      try { writeFileSync(ASKS_PATH, JSON.stringify(asks)); } catch {}
       return json(res, 200, { ok: true });
     }
     if (req.method === "GET" && url.pathname === "/followups") {
