@@ -138,7 +138,7 @@ export async function POST(request: Request) {
   if (typeof b.toggle === "boolean") {
     if (b.toggle) {
       const access = await isAdvancedAllowed(me.id);
-      if (!access.allowed && !(await packageRunning(me.id))) return closed(access.reason);
+      if (!access.allowed && data.site?.enabled !== true && !(await packageRunning(me.id))) return closed(access.reason);
     }
     if (!data.site?.advanced) return NextResponse.json({ error: "There is no advanced website yet. Make it first." }, { status: 400 });
     const next = setAdvancedOn(data, b.toggle);
@@ -152,7 +152,9 @@ export async function POST(request: Request) {
   const access = await isAdvancedAllowed(me.id);
   // Every design for every paid website (owner, 15 Nov 2026: "koi Standard nahi, koi Premium nahi"): with a running package (Standard or
   // Premium) the six library designs can be seen and put live. A new AI-made design (below) stays with the Premium payment.
-  const designsOnly = !access.allowed && (b.more === true || typeof b.accept === "string" || typeof b.acceptSeed === "string") && (await packageRunning(me.id));
+  // …and for every website that is already live, whatever plan pays for it (owner, 20 Nov 2026: "humne sab ke liye 12 kar diye the" — a
+  // Shubhora partner on the Growth Plan saw only the six basic looks). The library designs cost no AI; only a NEW AI design needs Premium.
+  const designsOnly = !access.allowed && (b.more === true || typeof b.accept === "string" || typeof b.acceptSeed === "string") && (data.site?.enabled === true || (await packageRunning(me.id)));
   if (!access.allowed && !designsOnly) return closed(access.reason);
 
   // { more: true }: the six to choose from, filled up from the library (no AI, no try spent). Answers the designs.

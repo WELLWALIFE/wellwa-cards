@@ -120,7 +120,9 @@ export function buildContent(card: Card, lang: string): SiteContent {
     ...(about?.image ? [about.image] : []),
     ...(offerings?.items ?? []).map((o) => o.images[0] ?? ""),
     ...gallery.map((g) => g.url),
-  ].filter(Boolean))];
+  // Shubhora's plan pictures carry their own words and prices ("Dynamic website ₹2,999 a year"): fine on a plan's own tile, but drawn
+  // big behind a heading they read as a jumble (live check, 20 Nov 2026: the partner's website in "The Story Scroll").
+  ].filter((u) => !!u && !/\/(shubhora-)?plan-[\w-]+\.(jpe?g|png|webp)/i.test(u)))];
 
   return {
     hm, name: hm.name, trade: tradeLabel(card, hi), city: (card.seo?.city ?? "").trim(),

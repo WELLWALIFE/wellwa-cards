@@ -98,7 +98,18 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
           <button type="button" onClick={onClose} aria-label={T("Close", "बंद करें")} className="rounded-full border border-border p-1.5 text-muted"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        {/* What the customer sees — fixed at the top (owner, 20 Nov 2026: "ye view window top me dikhao, jo bhi change karein wo live isme
+            dikhe; window move nahi honi chahiye, neeche ka change karne wala move kar sakte hain"). Only the part below scrolls. */}
+        {flow && main && (
+          <div className="shrink-0 border-b border-border bg-surface px-4 pb-3 pt-2">
+            <p className="text-xs font-bold text-muted">{T("What the customer sees", "Customer को ऐसा दिखेगा")}</p>
+            <div className="mt-1.5 max-h-[34vh] overflow-y-auto rounded-2xl bg-[#e5ddd5] p-3 dark:bg-[#1f2c34]">
+              <pre className="max-w-[90%] whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-white px-3 py-2 font-sans text-[13px] leading-relaxed text-[#111] shadow-sm dark:bg-[#005c4b] dark:text-white">{preview.replace(/\{business\}/g, T("your business", "आपका business"))}</pre>
+            </div>
+          </div>
+        )}
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
           {!loaded ? <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-muted" /> : !flow || !main ? (
             <div className="space-y-2">
               <p className="text-sm font-semibold">{T("Start from a ready menu", "तैयार menu से शुरू करें")}</p>
@@ -158,13 +169,6 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
                 <p className="text-[11px] text-muted">{T("Anything the customer types that is not a number, the AI answers. Typing 0 shows the menu again.", "Number के अलावा customer जो भी लिखे, उसका जवाब AI देता है। 0 लिखने पर menu फिर से आता है।")}</p>
               </div>
 
-              {/* 4 — what the customer sees */}
-              <div>
-                <p className="text-sm font-bold">{T("What the customer sees", "Customer को ऐसा दिखेगा")}</p>
-                <div className="mt-1.5 rounded-2xl bg-[#e5ddd5] p-3 dark:bg-[#1f2c34]">
-                  <pre className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-white px-3 py-2 font-sans text-[13px] leading-relaxed text-[#111] shadow-sm dark:bg-[#005c4b] dark:text-white">{preview.replace(/\{business\}/g, T("your business", "आपका business"))}</pre>
-                </div>
-              </div>
               {reset ? (
                 <span className="flex flex-wrap items-center gap-2 text-xs"><span className="text-muted">{T("Your changes here will be dropped.", "यहाँ के बदलाव हट जाएँगे।")}</span><button type="button" onClick={() => { setFlow(null); setReset(false); }} className="rounded-full border border-danger px-2.5 py-1 font-semibold text-danger">{T("Yes, start again", "हाँ, फिर शुरू करें")}</button><button type="button" onClick={() => setReset(false)} className="font-semibold text-muted underline">{T("No", "नहीं")}</button></span>
               ) : <button type="button" onClick={() => setReset(true)} className="text-xs font-semibold text-muted underline">{T("Start again from a ready menu", "तैयार menu से फिर शुरू करें")}</button>}
