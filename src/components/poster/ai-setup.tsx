@@ -73,7 +73,13 @@ export function AiQuickSetup(props: P) {
   const [swBusy, setSwBusy] = useState(false);
   useEffect(() => {
     let live = true;
-    void api<{ enabled?: boolean }>("/api/wa/config").then((x) => { if (live) setOn(x.ok ? x.data.enabled !== false : null); }).catch(() => { if (live) setOn(null); });
+    // Only a linked number has an AI to switch: an unlinked one says "link first" (20 Nov 2026 live check: it read "On" with nothing linked).
+    void (async () => {
+      const st = await api<{ state?: string }>("/api/wa/status").catch(() => null);
+      const linked = !!st?.ok && st.data.state === "connected";
+      const x = linked ? await api<{ enabled?: boolean }>("/api/wa/config").catch(() => null) : null;
+      if (live) setOn(linked && x?.ok ? x.data.enabled !== false : null);
+    })();
     return () => { live = false; };
   }, []);
   async function master() {

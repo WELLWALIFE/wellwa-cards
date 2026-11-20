@@ -11,7 +11,7 @@ import type { BotFollow, BotFollowStep, Card } from "@/lib/types";
 import { publishCard } from "@/lib/cloud";
 import { api, uploadImage } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
-import { FlowSheet } from "@/components/crm/crm";
+import { AiMenuSheet } from "@/components/poster/ai-menu";
 
 const DEFAULT_AFTER = [1, 2, 3];
 const DAY_CHOICES = [1, 2, 3, 5, 7];
@@ -151,7 +151,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
               <span className="mt-1 flex gap-3"><button type="button" onClick={() => setMenuOpen(true)} className="font-semibold text-brand-ink underline">{T("Change the menu", "Menu बदलें")}</button><button type="button" onClick={() => void menuOff()} className="font-semibold text-muted underline">{T("Turn the menu off", "Menu बंद करें")}</button></span>
             </div>
           )}
-          {menuOpen && <FlowSheet onClose={() => { setMenuOpen(false); void loadMenu(); }} />}
+          {menuOpen && <AiMenuSheet onClose={() => { setMenuOpen(false); void loadMenu(); }} />}
           {menuOn ? null : plan.welcome.mode === "own" ? (
             <div className="mt-2 space-y-2">
               <textarea value={plan.welcome.text} onChange={(e) => setPlan((x) => ({ ...x, welcome: { ...x.welcome, text: e.target.value } }))} rows={3} maxLength={700}

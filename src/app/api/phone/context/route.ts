@@ -1,6 +1,8 @@
 // Server-to-server (x-internal-key): the phone worker asks, as a call comes in on a line, how to answer it.
 //   GET ?to=<line digits>&from=<caller digits> → { ownerId, business, greeting, system, voice, lang }
 import { NextResponse } from "next/server";
+import { rulesBlock } from "../../../../../bridge/ai-rules.mjs";
+import { isShubhoraCard } from "../../../../../bridge/shubhora-kb.mjs";
 import { restAsService } from "@/lib/poster-server";
 import { buildSystem, getBrandTraining } from "@/lib/wa-ai";
 import { getPlatformKnowledge } from "@/lib/platform";
@@ -26,7 +28,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ownerId: line.owner_id, business, lang: hindi ? "hi" : "en",
     greeting: hindi ? `नमस्ते, ${business} में आपका स्वागत है। मैं ${first} जी की सहायक बोल रही हूँ। बताइए, मैं आपकी क्या मदद कर सकती हूँ?` : `Hello, welcome to ${business}. This is ${first}'s assistant. How can I help you today?`,
-    system: buildSystem(card, wa, platform, brand, "phone"),
+    // The owner's own rules (AI Training; bridge/ai-rules.mjs) on the phone too, except on a Shubhora partner's card.
+    system: buildSystem(card, wa, platform, brand, "phone") + (isShubhoraCard(card) ? "" : rulesBlock(card, first || business)),
     voice: process.env.GEMINI_LIVE_VOICE || "Aoede",
   });
 }

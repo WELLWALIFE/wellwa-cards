@@ -6,6 +6,7 @@
 // bridge/shubhora-agent.mjs — the same one WhatsApp uses: a menu for a hello, everyday Hindi, the PDF, the joining link.
 
 import { cardHome } from "@/lib/site-url";
+import { ownLanguage, rulesBlock } from "../../../../../bridge/ai-rules.mjs";
 import { notify, whatsappAllowed } from "@/lib/notify";
 import { geminiComplete } from "@/lib/gemini";
 import { fetchCloudCard, fetchCardExpired, getPublicSupabase } from "@/lib/supabase/public";
@@ -154,7 +155,11 @@ export async function POST(
             ? { onlyPage: card.pages.find((pg) => pg.slug === SHUBHORA_PAGE_SLUG) }
             : {}),
         })
-          + languageLock(safeMessages[safeMessages.length - 1]?.content ?? "", safeMessages.slice(0, -1).filter((m) => m.role === "user").map((m) => m.content)),
+          // The owner's own rules and language (AI Training; bridge/ai-rules.mjs — the same file the WhatsApp assistant reads), not on
+          // the Shubhora side (its own playbook). Missed here at first (20 Nov 2026 live check: the website chat ignored them).
+          + (shubhoraSide || isShubhoraCard(card) ? "" : rulesBlock(card, card.name.split(" ")[0] || card.company || ""))
+          + languageLock(safeMessages[safeMessages.length - 1]?.content ?? "", safeMessages.slice(0, -1).filter((m) => m.role === "user").map((m) => m.content),
+            shubhoraSide || isShubhoraCard(card) ? undefined : (d, a) => ownLanguage(card, d, a)),
         contents: safeMessages.map((m) => ({
           role: m.role === "assistant" ? "model" as const : "user" as const,
           parts: [{ text: m.content }],
