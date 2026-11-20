@@ -131,6 +131,11 @@ function Onboard() {
   const hookAssociate = useAssociate();
   const [partnerMeta, setPartnerMeta] = useState(false);
   const associate = hookAssociate || (partnerMeta ? "partner" : null);
+  // What this login is to Shubhora (api/me/shubhora-role): the company's own account, a franchise owner, or a partner. The first two get
+  // the "Who is it for?" choice too, and their Shubhora website introduces itself as the company / the franchise.
+  const [shRole, setShRole] = useState<{ role: "official" | "franchise" | "partner"; franchise?: { name: string; city: string; area: string } }>({ role: "partner" });
+  useEffect(() => { void api<{ role?: "official" | "franchise" | "partner"; franchise?: { name: string; city: string; area: string } }>("/api/me/shubhora-role").then((r) => { if (r.ok && r.data.role) setShRole({ role: r.data.role, franchise: r.data.franchise }); }).catch(() => undefined); }, []);
+  const canPromote = !!associate || shRole.role !== "partner";
   /** Is this account a partner? "yes": it carries a partner ID. "no": the server itself says it has no partner panel to register one in.
    *  "unknown": anything else (not looked at yet, the panel was down). A partner ID can be written WHILE this screen is open (a Google
    *  sign-up claims its username here, and the server registers the ID): the account is read again after that, and a screen that decides
@@ -770,9 +775,10 @@ function Onboard() {
       const own = await loadOwnDetails();
       const mine = await fetchMyCardsStrict().catch(() => []);
       const existingCard = mine[0] ?? null;
-      const handle = existingCard?.username || (await suggestUsername(you.name.trim()).catch(() => null)) || username || "";
+      const handle = existingCard?.username || (await suggestUsername(shRole.role === "official" ? "Shubhora" : you.name.trim()).catch(() => null)) || username || "";
       if (tpl && handle) {
-        const data = personalize(tpl.data, own ? { ...own, name: you.name.trim(), photo: you.photo || own.photo, phone: digits || own.phone } : null, { keepSamples: true, identityOnly: true });
+        const data0 = personalize(tpl.data, own ? { ...own, name: you.name.trim(), photo: you.photo || own.photo, phone: digits || own.phone } : null, { keepSamples: true, identityOnly: true });
+        const data = asShubhoraRole(data0, shRole, (biz.city ?? "").trim());
         // The old card's Google title / description / keywords described the OLD business — they must not survive
         // the switch (bug: the Shubhora card kept "Sharma Sweets" in its search title). Only the site-verification
         // code is the owner's own setting and stays.
@@ -860,7 +866,8 @@ function Onboard() {
   /** After the answer is saved the website part runs on the NEXT render, with the business the save may have reset. */
   const [siteGo, setSiteGo] = useState<{ n: number; how: "next" | "without" }>({ n: 0, how: "next" });
   async function nextFromSiteScreen(how: "next" | "without") {
-    if (associate) {
+    // A partner answers all three; the company's own account and a franchise owner (not partners) only have "Shubhora" to act on here.
+    if (associate || (canPromote && promote === "shubhora")) {
       if (promote === "shubhora") {
         // Already a Shubhora card: nothing to build again — straight to Card & Website.
         if (promoteSaved.current === "shubhora") { router.replace("/poster/site"); return; }
@@ -1868,16 +1875,16 @@ function Onboard() {
           <div><h1 className="text-xl font-bold tracking-tight">{associate ? T("Your website", "आपकी Website") : T("Where is your business online?", "आपका business online कहाँ है?")}<Help k="site" className="translate-y-0" /></h1>
             <p className="text-xs text-muted">{T("Paste your website, Google Maps, Instagram or store link — we fill your details from it. Nothing online? Pick the last one.", "अपनी website, Google Maps, Instagram या store का link डालें — उसी से आपकी जानकारी भर देंगे। Online कुछ नहीं? आख़िरी वाला चुनें।")}</p></div>
 
-          {associate && (
+          {canPromote && (
             <div className="rounded-3xl border border-border bg-surface p-3.5 shadow-card">
               <p className="mb-2 text-xs font-semibold text-muted">{T("Who is it for?", "Website किसके लिए?")}<Help k="promote" /></p>
-              <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-surface2 p-1">
+              <div className={`grid ${associate ? "grid-cols-3" : "grid-cols-2"} gap-1.5 rounded-2xl bg-surface2 p-1`}>
                 {([
                   { k: "own" as const, icon: <Store className="h-4 w-4" />, t: T("My business", "मेरा business") },
                   // eslint-disable-next-line @next/next/no-img-element
-                  { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-4 w-4 object-contain" />, t: "Shubhora" },
+                  { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-4 w-4 object-contain" />, t: shRole.role === "official" ? T("Shubhora (Official)", "Shubhora (Official)") : shRole.role === "franchise" ? T("Shubhora Franchise", "Shubhora Franchise") : "Shubhora" },
                   { k: "both" as const, icon: <Layers className="h-4 w-4" />, t: T("Both", "दोनों") },
-                ]).map((c) => {
+                ]).filter((c) => !!associate || c.k !== "both").map((c) => {
                   const on = promote === c.k;
                   return (
                     <button key={c.k} type="button" onClick={() => { setPromote(c.k); setErr(""); }} disabled={!!busy} aria-pressed={on}
@@ -2381,4 +2388,23 @@ const freshBiz = { kind: "business" as const, role: "business" as const, name: "
 
 export default function OnboardPage() {
   return <Suspense><Onboard /></Suspense>;
+}
+
+/** The Shubhora website as the company's own, or a franchise's (owner, 20 Nov 2026): the same pages and pictures, another introduction.
+ *  A partner's stays as the template says ("Shubhora Partner"). */
+function asShubhoraRole<T extends { name: string; jobTitle?: string; company?: string; lead?: string; avatarUrl?: string; pages: { blocks: { kind: string; title?: string; body?: string }[] }[]; site?: { hero?: Record<string, unknown> } & Record<string, unknown> }>(
+  data: T, r: { role: "official" | "franchise" | "partner"; franchise?: { name: string; city: string; area: string } }, city: string): T {
+  if (r.role === "partner") return data;
+  const place = r.franchise?.city || r.franchise?.area || city;
+  const about = r.role === "official"
+    ? "Shubhora is an Indian software company. One account gives a business its website and digital V-Card on one link, a WhatsApp AI assistant that answers customers 24×7, a new poster every morning and a CRM where every enquiry is saved. Shubhora is a product of Wellwa Life India Pvt. Ltd., Gurugram."
+    : `We are the Shubhora franchise${place ? ` for ${place}` : ""}. We set up websites, digital V-Cards, the WhatsApp AI assistant and daily posters for shops, clinics, agents and professionals${place ? ` in ${place}` : ""} — and we stay close by for training and support.`;
+  const pages = data.pages.map((p) => ({ ...p, blocks: p.blocks.map((b) => (b.kind === "about" && b.title === "About me" ? { ...b, title: r.role === "official" ? "About Shubhora" : "About us", body: about } : b)) }));
+  const kicker = r.role === "official" ? "AI SOFTWARE COMPANY · MADE IN INDIA" : `SHUBHORA FRANCHISE${place ? ` · ${place.toUpperCase()}` : ""}`;
+  return {
+    ...data, pages,
+    ...(r.role === "official" ? { name: "Shubhora", jobTitle: "AI software company", company: "Shubhora", lead: "business", avatarUrl: "/art/brand/shubhora-logo.png" }
+      : { jobTitle: `Shubhora Franchise${place ? ` · ${place}` : ""}`, company: r.franchise?.name ? `${r.franchise.name} · Shubhora` : data.company }),
+    ...(data.site ? { site: { ...data.site, hero: { ...(data.site.hero ?? {}), kicker } } } : {}),
+  } as T;
 }

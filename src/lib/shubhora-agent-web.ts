@@ -38,7 +38,7 @@ function ctaJoinLink(card: Card): string | null {
 export async function agentContext(card: Card, platform: PlatformKnowledge) {
   const [owner, templates] = await Promise.all([fetchCardOwnerUsername(card.username), savedTemplates()]);
   return {
-    seller: firstName(card.name),
+    seller: /^shubhora$/i.test(String(card.name ?? "").trim()) ? "" : firstName(card.name),   // the company's own card: "हमारा", not "Shubhora जी का"
     card,
     links: agentLinks({ site: SITE, cardUrl: `${SITE}/c/${card.username}`, ownerUsername: owner, joinFallback: ctaJoinLink(card), extraTemplates: templates }),
     override: platform.shubhora ?? {},

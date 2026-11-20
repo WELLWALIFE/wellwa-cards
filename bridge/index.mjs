@@ -782,7 +782,7 @@ function ctaJoinLink() {
 function agentCtx() {
   const card = cardContext?.data || {};
   return {
-    seller: firstName(card.name || config.businessName || ""),
+    seller: /^shubhora$/i.test(String(card.name || "").trim()) ? "" : firstName(card.name || config.businessName || ""),   // the company's own card
     card,
     links: agentLinks({ site: PUBLIC_URL, cardUrl: cardLink(), ownerUsername: ownerHandle, joinFallback: ctaJoinLink(), extraTemplates: savedTemplates }),
     override: shubhoraOverride,

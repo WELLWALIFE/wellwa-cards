@@ -204,11 +204,11 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
-    id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number; demo?: boolean; mobile?: string;
+    id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number; demo?: boolean; mobile?: string; official?: boolean;
     /** The package (migration 0087): "" | site_standard | site_premium | custom, for packageMonths (12 by default), with a note. */
     package?: string; packageMonths?: number; packageNote?: string;
   };
-  const { id, email, password, plan, months, suspend, cardYears, demo, mobile } = body;
+  const { id, email, password, plan, months, suspend, cardYears, demo, mobile, official } = body;
   const pkg = typeof body.package === "string" ? body.package : undefined;
   // Which right the change needs (Admin v2): the plan / card years → users.plan; block → users.block; the rest → users.edit.
   // A franchise with "May activate plans for its users" (Super Admin → Franchise → Profile) may give a plan by hand — for a payment it
@@ -274,6 +274,14 @@ export async function PATCH(request: Request) {
     const r = await fetch(`${SUPA_URL}/rest/v1/rpc/admin_extend_card`, { method: "POST", headers: h, body: JSON.stringify({ p_user: id, p_years: years }) });
     if (!r.ok) return Response.json({ error: `Could not extend the V-Card: ${await r.text()}` }, { status: 400 });
     return Response.json({ ok: true, cardUntil: await r.json() });
+  }
+  // Shubhora's own account (owner, 20 Nov 2026): its Shubhora website introduces itself as the company, not as a partner
+  // (api/me/shubhora-role). In app_metadata — a login cannot write that for itself. The admin PUT merges top-level keys.
+  if (typeof official === "boolean") {
+    if (g.me.franchise) return Response.json({ error: "Only Shubhora can mark the official account." }, { status: 403 });
+    const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { method: "PUT", headers: h, body: JSON.stringify({ app_metadata: { shubhora_official: official } }) });
+    if (!r.ok) return Response.json({ error: "could not set the official mark" }, { status: 400 });
+    return Response.json({ ok: true, official });
   }
   // Demo account (owner's call, 2 Oct 2026): the "Reset demo" pill appears in the app for this login, and it may wipe
   // itself back to fresh after every demo. The flag sits in user_metadata next to the name and mobile.

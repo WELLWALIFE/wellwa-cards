@@ -11,7 +11,7 @@ import { adminHeaders } from "@/lib/admin-client";
 
 type Row = Record<string, unknown>;
 type Data = {
-  auth: { id: string; email: string; phone: string; providers: string[]; created_at?: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; phone_confirmed_at?: string | null; banned_until?: string | null; is_demo?: boolean; contact_email?: string; name: string; avatar: string; identities: { provider: string; email?: string; phone?: string; last_sign_in_at?: string }[] };
+  auth: { id: string; email: string; phone: string; providers: string[]; created_at?: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; phone_confirmed_at?: string | null; banned_until?: string | null; is_demo?: boolean; is_official?: boolean; contact_email?: string; name: string; avatar: string; identities: { provider: string; email?: string; phone?: string; last_sign_in_at?: string }[] };
   profile: Row; cards: Row[]; leads: Row[]; posterProfiles: Row[]; payments: Row[]; subscriptions: Row[]; credits: number; ledger: Row[]; devices: Row[];
   google: Row | null; cloud: Row | null; social: Row[]; agents: Row[]; jobs: Row[]; whatsapp: Row | null;
   timeline?: { at: string; kind: string; text: string; by?: string }[];
@@ -118,6 +118,16 @@ export default function AdminUserProfile() {
     setNote(on ? "Demo account: the Reset demo button is now in the app for this login." : "Demo mark removed.");
     void load();
   }
+  /** Shubhora's own account on / off: its Shubhora website says "Shubhora", not "Shubhora Partner". */
+  async function toggleOfficial() {
+    const on = !data?.auth.is_official;
+    setBusy("official");
+    const r = await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ id, official: on }) });
+    const j = await r.json().catch(() => ({})); setBusy("");
+    if (!r.ok) { alert(j.error || "Failed"); return; }
+    setNote(on ? "Shubhora Official: this login's Shubhora website is now the company's own (make or re-make the website from the set-up)." : "Official mark removed.");
+    void load();
+  }
   /** One more V-Card year by hand (a ₹1,499 renewal paid in cash / offline) — from the later of today and the current end. */
   async function addCardYear() {
     if (!confirm("Add 1 year to this user's V-Card? (Use this when the ₹1,499 renewal was paid outside the app.)")) return;
@@ -150,6 +160,7 @@ export default function AdminUserProfile() {
         <button onClick={() => setEditProfile(true)} className="rounded-lg bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink">Edit profile</button>
         <button onClick={() => setEdit(true)} className="rounded-lg border border-border px-3 py-2 text-sm">Edit login / plan</button>
         <button onClick={() => suspend(!suspended)} disabled={busy === "susp" || !cards.length} className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40">{suspended ? "Reinstate" : "Suspend"}</button>
+        <button onClick={toggleOfficial} disabled={busy === "official"} className={`rounded-lg border px-3 py-2 text-sm disabled:opacity-40 ${data.auth.is_official ? "border-brand bg-brand-soft text-brand-ink" : "border-border"}`} title="Shubhora's own company account: its Shubhora website introduces itself as Shubhora, not as a partner.">{data.auth.is_official ? "✓ Shubhora Official" : "Mark Shubhora Official"}</button>
         <button onClick={toggleDemo} disabled={busy === "demo"} className={`rounded-lg border px-3 py-2 text-sm disabled:opacity-40 ${data.auth.is_demo ? "border-danger/40 bg-danger/10 text-danger" : "border-border"}`} title="A demo account gets a Reset button in the app that wipes it back to fresh">{busy === "demo" ? "…" : data.auth.is_demo ? "🧹 Demo account: ON" : "Mark as demo"}</button>
         <button onClick={clearData} disabled={busy === "clear"} className="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger disabled:opacity-40" title="Delete only the website — the user's filled data stays">{busy === "clear" ? "Clearing…" : "Clear website"}</button>
         <button onClick={loginAs} disabled={busy === "login"} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"><KeyRound className="h-4 w-4" />{busy === "login" ? "…" : "Login as this user"}</button>
