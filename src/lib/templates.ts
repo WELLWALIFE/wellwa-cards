@@ -934,7 +934,7 @@ const consultant: CardTemplateDef = {
 const VC = "#2f5bf5"; // Shubhora blue (the logo)
 /** The Shubhora website's three banners (also put on older Shubhora cards when the page is drawn: lib/shubhora-page.ts). */
 export const SHUBHORA_SLIDES = [
-  { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", imageUrl: "/art/shubhora/ai/hero-1.jpg", focus: "78% 50%", chips: [{ icon: "✅", title: "New enquiry saved", sub: "from your website · just now" }, { icon: "💬", title: "AI replied in 3 seconds", sub: "in the customer's language" }] },
+  { headline: "Your entire business. One smart platform.", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", imageUrl: "/art/shubhora/ai/hero-1.jpg", focus: "78% 50%", chips: [{ icon: "✅", title: "New enquiry saved", sub: "from your website · just now" }, { icon: "💬", title: "AI replied in 3 seconds", sub: "in the customer's language" }] },
   { headline: "A website that brings customers", sub: "12 designs, your own products and prices, found on Google — ready in 24 to 48 hours.", imageUrl: "/art/shubhora/ai/hero-2.jpg", focus: "78% 50%", chips: [{ icon: "🔎", title: "Found on Google", sub: "your own link, ready in 24–48 h" }, { icon: "🎨", title: "12 designs", sub: "pick yours, change any time" }] },
   { headline: "An AI that answers at midnight too", sub: "It replies on your WhatsApp, saves every lead and posts a new poster for you every morning.", imageUrl: "/art/shubhora/ai/hero-3.jpg", focus: "78% 50%", chips: [{ icon: "🌙", title: "Answered at 11:42 pm", sub: "while the shop was closed" }, { icon: "📋", title: "Lead saved in CRM", sub: "follow-up tomorrow, 10 am" }] },
 ];
@@ -978,7 +978,7 @@ const vcardReseller: CardTemplateDef = {
       // The website's header carries the Shubhora logo, not the partner's name (owner, 31 Oct 2026); the same file the app's own
       // Shubhora strip shows (components/shubhora-bar.tsx). The partner's name stays on the card and in the hero's kicker.
       logoUrl: "/art/brand/shubhora-logo.png",
-      hero: { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", textSide: "left", focus: "15% 50%",
+      hero: { headline: "Your entire business. One smart platform.", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", textSide: "left", focus: "15% 50%",
         // Three banners, each drawn for its line with the left side left empty for the words (owner, 20 Nov 2026: "ek hi banner laga hai — 3
         // banner lagao, website ke according"). scripts/shubhora-art-v2.mjs draws them.
         slides: SHUBHORA_SLIDES },

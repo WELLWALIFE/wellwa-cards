@@ -276,7 +276,8 @@ const SELLER_HEADS: Record<string, string> = {
   "good to know": "Before you get started",
 };
 const SELLER_HEADLINE_OLD = "your whole business on one link";
-const SELLER_HEADLINE = "Everything your business needs to grow online";
+// Six words at most: the hero drops a longer line for its own default (lib/site-hero.ts aiHeadline).
+const SELLER_HEADLINE = "Your entire business. One smart platform.";
 
 function sellerRank(b: CardBlock, seen: { flow: number }): number | null {
   switch (b.kind) {
@@ -313,6 +314,15 @@ function sellerHomePage(p: CardPage): CardPage {
   return { ...p, blocks };
 }
 
+/** The home's order as section keys: its own blocks, and the sections the website pulls in from other pages (the plans from the Plans
+ *  page come in as "featured") placed by the same ranks, so a pulled section cannot jump to the top. */
+function sellerOrder(home: CardPage): string[] {
+  const seen = { flow: 0 };
+  const own = home.blocks.map((b, i) => ({ k: b.id, r: sellerRank(b, seen) ?? 66, i }));
+  const pulled = [["gallery", 62], ["featured", 70], ["reviews", 75], ["faq", 80], ["visit", 85]].map(([k, r], j) => ({ k: k as string, r: r as number, i: 1000 + j }));
+  return [...own, ...pulled].sort((x, y) => x.r - y.r || x.i - y.i).map((x) => x.k);
+}
+
 function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
   if (!seller) return card;
   const c = card as T & { site?: Card["site"]; company?: string };
@@ -320,17 +330,19 @@ function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolea
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;
-  const fresh = (h?: string) => ((h ?? "").trim().toLowerCase() === SELLER_HEADLINE_OLD ? SELLER_HEADLINE : h);
+  const fresh = (h?: string) => ((h ?? "").replace(/\s+/g, " ").trim().replace(/[.!]$/, "").toLowerCase() === SELLER_HEADLINE_OLD ? SELLER_HEADLINE : h);
   const slides = hero?.slides?.map((sl, i) => (i === 0 ? { ...sl, headline: fresh(sl.headline) ?? sl.headline } : sl));
   const nextSite = site ? {
     ...site,
     hero: hero ? { ...hero, headline: fresh(hero.headline) ?? hero.headline, ...(slides ? { slides } : {}) } : hero,
     // This order wins over the partner's saved one and the trade's own (which put the plans first): the company's page.
-    home: { ...(site.home ?? {}), order: home ? home.blocks.map((b) => b.id) : site.home?.order, hidden: [...new Set([...(site.home?.hidden ?? []), "updates", "ask-review"])] },
+    home: { ...(site.home ?? {}), order: home ? sellerOrder(home) : site.home?.order, hidden: [...new Set([...(site.home?.hidden ?? []), "updates", "ask-review"])] },
   } as Card["site"] : site;
   // "Shubhora Digital V-Card" was the first product name; the company sells a website first now.
   const company = c.company && /digital\s*v-?card/i.test(c.company) ? "Shubhora · Website, Digital Card & AI" : c.company;
-  return { ...card, pages, site: nextSite, ...(c.company !== undefined ? { company } : {}) } as T;
+  const seoT = (c as { seoTitle?: string }).seoTitle;
+  const seoTitle = seoT && /digital\s*v-?card/i.test(seoT) ? seoT.replace(/(shubhora\s*)?digital\s*v-?card/i, "Shubhora · Website, Digital Card & AI") : seoT;
+  return { ...card, pages, site: nextSite, ...(c.company !== undefined ? { company } : {}), ...(seoT !== undefined ? { seoTitle } : {}) } as T;
 }
 
 /** A Shubhora card made before the three banners gets them when it is drawn: its own first banner (the partner's picture and line stay),

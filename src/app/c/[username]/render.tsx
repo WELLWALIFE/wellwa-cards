@@ -91,7 +91,9 @@ async function addresses(card: Card) {
 const urlFor = (home: string, card: Card, page: CardPage | null) => (page && page.slug !== homeSlugOf(card) ? `${home}/${page.slug}` : home);
 
 export async function cardMetadata(username: string, slug?: string | null): Promise<Metadata> {
-  const card = await loadCard(username);
+  const card0 = await loadCard(username);
+  // A Shubhora partner's title and description are the company's current words ("Website, Digital Card & AI"), as drawn on the page.
+  const card = card0 && isShubhoraSellerCard(card0) ? withoutFreeCard(card0, true) : card0;
   if (!card) {
     // A guessed link opens the one card it clearly means (also for the WhatsApp preview, which follows the redirect).
     const alt = await findCardByLooseLink(username);
