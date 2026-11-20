@@ -43,8 +43,24 @@ const seenItems = (uid: string, cardId: string) => advDesigns(uid, cardId);
 const tradeItems = async (uid: string, row: { id: string; data: Card }) => {
   const list = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
   const tinted = tradeTint(list.map((r) => ({ r, palette: (r.spec as AdvancedSpec).palette })), row.data);
-  return list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } }));
+  return sixDistinct(list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } })));
 };
+
+/** Six Premium designs that look like six (owner, 20 Nov 2026: "sab ke sab different and perfect hone chahiye"): every one opens with a
+ *  different top, in this order — cinematic photo, floating glass card, split product, asymmetric editorial, floating collage, slanted
+ *  split — and every one moves (rich motion). Two designs of one card had opened with the same tall pinned story. A finished trade
+ *  template ("|fix:" seed) is left exactly as it was written. Applied as the designs are read, so the choose screen and the design put
+ *  live always agree. */
+const PREMIUM_TOPS = ["full-bleed", "glass-card", "split-frame", "editorial-marquee", "parallax-collage", "diagonal"] as const;
+function sixDistinct<T extends { spec?: unknown }>(items: T[]): T[] {
+  let k = 0;
+  return items.map((r) => {
+    const sp = r.spec as AdvancedSpec | undefined;
+    if (!sp || String(sp.seed ?? "").includes("|fix:")) return r;
+    const hero = PREMIUM_TOPS[k++ % PREMIUM_TOPS.length];
+    return { ...r, spec: { ...sp, hero, motion: "rich" } };
+  });
+}
 const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> => (await seenItems(uid, cardId)).map((r) => r.spec as AdvancedSpec).filter(Boolean);
 
 /** Six designs to choose from (owner, 14 Nov 2026), the same number as a Standard website's looks: the ones already made, filled up from
