@@ -111,6 +111,8 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-indexnow || printf '%s\n' 'PATH=/us
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-crm-daily || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/crm-daily.sh morning >> /var/log/shubhora-crm-daily.log 2>&1' '30 14 * * * root bash $APP/scripts/crm-daily.sh evening >> /var/log/shubhora-crm-daily.log 2>&1' > /etc/cron.d/shubhora-crm-daily && chmod 644 /etc/cron.d/shubhora-crm-daily"
 # Festival wishes to every owner's customers, 9:00 IST daily (sends only on a festival day). One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-festival-wishes || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/festival-wishes.sh >> /var/log/shubhora-festival-wishes.log 2>&1' > /etc/cron.d/shubhora-festival-wishes"
+# CRM → Lead sources: new IndiaMART enquiries every 15 minutes for the owners who saved a key. One cron file, written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-lead-pull || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '*/15 * * * * root bash $APP/scripts/lead-pull.sh >> /var/log/shubhora-lead-pull.log 2>&1' > /etc/cron.d/shubhora-lead-pull && chmod 644 /etc/cron.d/shubhora-lead-pull"
 echo "→ health check…"
 curl --fail --silent --show-error -o /dev/null -w "   homepage %{http_code}\n" \
   --resolve $SITE_HOST:443:148.72.247.91 $SITE_URL/ --max-time 30

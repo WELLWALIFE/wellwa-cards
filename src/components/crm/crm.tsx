@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { api, authHeaders } from "@/lib/poster-client";
 import { waNum, waClick, openWhatsAppChat } from "@/lib/wa-open";
+import { LeadSourcesSheet } from "@/components/crm/lead-sources";
 
 /* ---------------- types ---------------- */
 export type Lead = {
@@ -73,7 +74,7 @@ export function CrmInbox() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
-  const [sheet, setSheet] = useState<"" | "analytics" | "team" | "import" | "flow" | "integrations">("");
+  const [sheet, setSheet] = useState<"" | "analytics" | "team" | "import" | "flow" | "integrations" | "sources">("");
   const [menu, setMenu] = useState(false);
   const [ws, setWs] = useState<string | null>(() => { try { return localStorage.getItem(WS_KEY); } catch { return null; } });
   const [teams, setTeams] = useState<Team[]>([]);
@@ -171,6 +172,7 @@ export function CrmInbox() {
                 { l: "Quick replies", i: <Zap className="h-4 w-4" />, f: () => setTplOpen(true) },
                 ...(ctx.role === "owner" ? [
                   { l: "Team inbox", i: <Users className="h-4 w-4" />, f: () => setSheet("team") },
+                  { l: "Lead sources", i: <Link2 className="h-4 w-4" />, f: () => setSheet("sources") },
                   { l: "Menu bot", i: <GitBranch className="h-4 w-4" />, f: () => setSheet("flow") },
                   { l: "Integrations", i: <Plug className="h-4 w-4" />, f: () => setSheet("integrations") },
                 ] : []),
@@ -213,6 +215,7 @@ export function CrmInbox() {
       {sheet === "import" && <ImportSheet ctx={ctx} onClose={() => setSheet("")} onDone={() => { setSheet(""); load(); }} />}
       {sheet === "flow" && <FlowSheet onClose={() => setSheet("")} />}
       {sheet === "integrations" && <IntegrationsSheet onClose={() => setSheet("")} />}
+      {sheet === "sources" && <LeadSourcesSheet onClose={() => setSheet("")} onImport={() => setSheet("import")} />}
     </div>
   );
 }

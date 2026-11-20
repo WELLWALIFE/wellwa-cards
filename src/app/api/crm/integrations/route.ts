@@ -20,7 +20,18 @@ export async function GET(request: Request) {
   if (!row) return NextResponse.json({ error: "Integrations table missing — run migration 0037." }, { status: 502 });
   const recent = await restAsUser<{ id: number; event: string; created_at: string; delivered_at: string | null; attempts: number; last_error: string }[]>(me.token, "crm_outbox?select=id,event,created_at,delivered_at,attempts,last_error&order=created_at.desc&limit=15");
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com";
-  return NextResponse.json({ ...row, inbound_url: `${site}/api/crm/hook/${row.inbound_token}`, events: EVENTS, recent: Array.isArray(recent.data) ? recent.data : [] });
+  // CRM → Lead sources: IndiaMART (key shown only as its last 4 letters) and how many leads each source brought in the last 30 days.
+  const im = await restAsUser<{ indiamart_key: string; indiamart_at: string | null; indiamart_note: string }[]>(me.token, "crm_integrations?select=indiamart_key,indiamart_at,indiamart_note&limit=1");
+  const imRow = im.ok && Array.isArray(im.data) ? im.data[0] : null;
+  const since = new Date(Date.now() - 30 * 86400_000).toISOString();
+  const ls = await restAsUser<{ source: string | null }[]>(me.token, `leads?select=source&created_at=gte.${since}&limit=5000`);
+  const counts: Record<string, number> = {};
+  for (const l of Array.isArray(ls.data) ? ls.data : []) { const k = (l.source || "other").toLowerCase(); counts[k] = (counts[k] ?? 0) + 1; }
+  return NextResponse.json({
+    ...row, inbound_url: `${site}/api/crm/hook/${row.inbound_token}`, events: EVENTS, recent: Array.isArray(recent.data) ? recent.data : [],
+    indiamart: imRow ? { on: !!imRow.indiamart_key, last4: imRow.indiamart_key ? imRow.indiamart_key.slice(-4) : "", at: imRow.indiamart_at, note: imRow.indiamart_note } : null,
+    counts,
+  });
 }
 export async function PUT(request: Request) {
   const me = await userFromRequest(request);
@@ -33,6 +44,12 @@ export async function PUT(request: Request) {
   if (Array.isArray(b.outbound_events)) patch.outbound_events = b.outbound_events.filter((e: unknown) => typeof e === "string" && EVENTS.includes(e));
   if (typeof b.active === "boolean") patch.active = b.active;
   if (b.regenerate === true) patch.inbound_token = token();
+  // IndiaMART's Pull API key ("" switches it off). A new key starts clean: the enquiries already taken stay remembered.
+  if (typeof b.indiamart_key === "string") {
+    const k = b.indiamart_key.trim();
+    if (k && !/^[A-Za-z0-9+/=_.-]{12,200}$/.test(k)) return NextResponse.json({ error: "That does not look like an IndiaMART key. Copy it again from IndiaMART → Lead Manager → Pull API." }, { status: 400 });
+    patch.indiamart_key = k; patch.indiamart_note = k ? "saved · first leads within 15 minutes" : ""; if (!k) patch.indiamart_at = null;
+  }
   const r = await restAsUser(me.token, `crm_integrations?owner_id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
   if (!r.ok) return NextResponse.json({ error: r.text.slice(0, 200) || "Could not save." }, { status: 502 });
   return NextResponse.json({ ok: true });
