@@ -61,7 +61,7 @@ function TestBot() {
       <div ref={scroller} className="mt-3 h-72 overflow-y-auto rounded-xl border border-border bg-bg p-3 space-y-2.5">
         {messages.length === 0 && (
           <p className="text-sm text-faint text-center py-8">
-            Type a card link name above, then ask anything — price, demo, warranty, business plan, even tricky questions.
+            Type a card link name above, then ask anything a customer would — price, timings, delivery, even tricky questions.
           </p>
         )}
         {messages.map((m, i) => (

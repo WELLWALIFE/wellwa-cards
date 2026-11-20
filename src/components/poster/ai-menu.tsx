@@ -56,6 +56,7 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
   const [base, setBase] = useState("");
+  const [reset, setReset] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -164,7 +165,9 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
                   <pre className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-white px-3 py-2 font-sans text-[13px] leading-relaxed text-[#111] shadow-sm dark:bg-[#005c4b] dark:text-white">{preview.replace(/\{business\}/g, T("your business", "आपका business"))}</pre>
                 </div>
               </div>
-              <button type="button" onClick={() => { if (window.confirm(T("Start again from a ready menu? Your changes here are dropped.", "तैयार menu से फिर शुरू करें? यहाँ के बदलाव हट जाएँगे।"))) setFlow(null); }} className="text-xs font-semibold text-muted underline">{T("Start again from a ready menu", "तैयार menu से फिर शुरू करें")}</button>
+              {reset ? (
+                <span className="flex flex-wrap items-center gap-2 text-xs"><span className="text-muted">{T("Your changes here will be dropped.", "यहाँ के बदलाव हट जाएँगे।")}</span><button type="button" onClick={() => { setFlow(null); setReset(false); }} className="rounded-full border border-danger px-2.5 py-1 font-semibold text-danger">{T("Yes, start again", "हाँ, फिर शुरू करें")}</button><button type="button" onClick={() => setReset(false)} className="font-semibold text-muted underline">{T("No", "नहीं")}</button></span>
+              ) : <button type="button" onClick={() => setReset(true)} className="text-xs font-semibold text-muted underline">{T("Start again from a ready menu", "तैयार menu से फिर शुरू करें")}</button>}
             </>
           )}
         </div>
