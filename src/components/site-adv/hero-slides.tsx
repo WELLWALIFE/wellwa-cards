@@ -9,6 +9,9 @@ import type { SiteContent } from "@/components/site-adv/content";
 import type { VariantProps } from "@/components/site-adv/shared";
 
 const EVERY_MS = 5500;
+/** The tops whose picture sits on the right or fills the screen: the app cards float over the picture there. Others (big type, a collage,
+ *  a pinned story) have no clear photo to float over, and the cards landed on empty paper or on other photos (20 Nov 2026). */
+const CHIP_TOPS = new Set(["full-bleed", "glass-card", "split-frame", "diagonal", "storefront"]);
 
 /** The content one banner shows: its words, and its picture when it has one (else the hero's own). */
 function contentFor(c: SiteContent, s: HeroSlide): SiteContent {
@@ -39,7 +42,7 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
         <div key={i} aria-hidden={i !== at} inert={i !== at}
           style={{ gridArea: "1 / 1", minWidth: 0, opacity: i === at ? 1 : 0, transition: "opacity .8s ease", pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
           {createElement(Hero, { ...p, c: contentFor(p.c, s) })}
-          {!!s.chips?.length && (
+          {!!s.chips?.length && CHIP_TOPS.has(p.spec.hero) && (
             // The app as the customer would see it, floating over the picture (owner, 20 Nov 2026: the big SaaS sites show the product
             // over a real photo). Laptop and up; a phone keeps the photo clear.
             <div className="adv-chips" aria-hidden>

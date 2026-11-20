@@ -116,7 +116,9 @@ export function buildContent(card: Card, lang: string): SiteContent {
   }
 
   const photos = [...new Set([
-    ...(card.coverUrl ? [card.coverUrl] : []),
+    // With banners of their own (site.hero.slides) the cover is not a site photo: a Shubhora partner's own picture kept showing up as the
+    // inset and in the collage of every design (20 Nov 2026).
+    ...(card.coverUrl && (card.site?.hero?.slides ?? []).length < 2 ? [card.coverUrl] : []),
     ...(about?.image ? [about.image] : []),
     ...(offerings?.items ?? []).map((o) => o.images[0] ?? ""),
     ...gallery.map((g) => g.url),
