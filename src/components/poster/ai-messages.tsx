@@ -10,6 +10,7 @@ import type { BotFollow, BotFollowStep, Card } from "@/lib/types";
 import { publishCard } from "@/lib/cloud";
 import { api, uploadImage } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
+import { FlowSheet } from "@/components/crm/crm";
 
 const DEFAULT_AFTER = [1, 2, 3];
 const DAY_CHOICES = [1, 2, 3, 5, 7];
@@ -46,6 +47,17 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
     return () => { live = false; };
   }, []);
 
+  // The numbered menu (CRM → Menu bot, /api/crm/flow) is the third kind of first message.
+  const [menuOn, setMenuOn] = useState<boolean | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const loadMenu = async () => { const r = await api<{ enabled?: boolean }>("/api/crm/flow").catch(() => null); setMenuOn(r?.ok ? !!r.data.enabled : null); };
+  useEffect(() => { void loadMenu(); }, []);
+  async function menuOff() {
+    const r = await api<{ enabled?: boolean; data?: unknown }>("/api/crm/flow").catch(() => null);
+    if (!r?.ok || !r.data.data) return;
+    await api("/api/crm/flow", { method: "PUT", json: { enabled: false, data: r.data.data } }).catch(() => null);
+    void loadMenu();
+  }
   const setStep = (i: number, p: Partial<BotFollowStep>) => setPlan((x) => ({ ...x, steps: x.steps.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
   // Day of the customer's first message on which each step goes (for the line "customer के पहले message के 3 दिन बाद").
   const dayOf = (i: number) => plan.steps.slice(0, i + 1).reduce((n, s) => n + (Number(s.after) || 0), 0);
@@ -79,7 +91,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
     setBusy(`t${i}`);
     const r = await api<{ message?: string | null; sent?: boolean; connected?: boolean; error?: string }>("/api/wa/followups/test", { method: "POST", json: { step: i, toMe: true, text: own, imageUrl: i >= 0 ? plan.steps[i].imageUrl ?? "" : "", name: hi ? "राहुल" : "Rahul" } }).catch(() => null);
     setBusy("");
-    if (!r || !r.ok) { setTests((t) => ({ ...t, [i]: { at: Date.now(), text: T("WhatsApp is not linked — link it first (section 2, above).", "WhatsApp जुड़ा नहीं है — पहले ऊपर section 2 से जोड़ें।"), bad: true } })); return; }
+    if (!r || !r.ok) { setTests((t) => ({ ...t, [i]: { at: Date.now(), text: T("WhatsApp is not linked — link it first (section 3, above).", "WhatsApp जुड़ा नहीं है — पहले ऊपर section 3 से जोड़ें।"), bad: true } })); return; }
     const msg = (r.data.message ?? "").trim();
     setTests((t) => ({ ...t, [i]: !msg
       ? { at: Date.now(), text: T("The AI could not write it right now — try again in a minute.", "AI अभी नहीं लिख पाया — एक मिनट बाद दोबारा try करें।"), bad: true }
@@ -114,7 +126,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
         <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs ${wa.linked && wa.ai ? "bg-good/10" : "bg-amber/10"}`}>
           <MessageCircle className={`mt-0.5 h-4 w-4 shrink-0 ${wa.linked && wa.ai ? "text-good" : "text-amber"}`} />
           <span>{!wa.linked
-            ? T("WhatsApp is not linked yet: these messages start once you link it (section 2, above).", "WhatsApp अभी जुड़ा नहीं है: जोड़ते ही ये messages शुरू हो जाएँगे (ऊपर section 2)।")
+            ? T("WhatsApp is not linked yet: these messages start once you link it (section 3, above).", "WhatsApp अभी जुड़ा नहीं है: जोड़ते ही ये messages शुरू हो जाएँगे (ऊपर section 3)।")
             : !wa.ai ? T("WhatsApp is linked, but AI replies need a paid plan.", "WhatsApp जुड़ा है, पर AI जवाब के लिए paid plan चाहिए।")
             : T(`On ✓ — ${wa.active} customer${wa.active === 1 ? " is" : "s are"} in the line right now.`, `चालू ✓ — अभी ${wa.active} customer इस line में हैं।`)}</span>
         </div>
@@ -129,9 +141,17 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
           <p className="text-[11px] text-muted">{T("When a new customer writes to you for the first time.", "जब कोई नया customer पहली बार लिखे।")}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => setPlan((x) => ({ ...x, welcome: { ...x.welcome, mode: "ai" } }))} className={chip(plan.welcome.mode === "ai")}>{T("AI writes it", "AI खुद लिखे")}</button>
-            <button type="button" onClick={() => setPlan((x) => ({ ...x, welcome: { ...x.welcome, mode: "own" } }))} className={chip(plan.welcome.mode === "own")}>{T("My own message", "मेरा message")}</button>
+            <button type="button" onClick={() => setPlan((x) => ({ ...x, welcome: { ...x.welcome, mode: "own" } }))} className={chip(plan.welcome.mode === "own" && !menuOn)}>{T("My own message", "मेरा message")}</button>
+            <button type="button" onClick={() => setMenuOpen(true)} className={chip(!!menuOn)}>{T("Numbered menu (1, 2, 3…)", "Number वाला menu (1, 2, 3…)")}</button>
           </div>
-          {plan.welcome.mode === "own" ? (
+          {menuOn && (
+            <div className="mt-2 rounded-xl bg-brand-soft/50 px-3 py-2 text-xs">
+              {T("The menu is ON: every new customer gets it first and replies with a number. Anything not on the menu, the AI answers.", "Menu चालू है: हर नए customer को सबसे पहले यही जाता है, वह number लिखकर जवाब देता है। Menu से बाहर की बात का जवाब AI देता है।")}
+              <span className="mt-1 flex gap-3"><button type="button" onClick={() => setMenuOpen(true)} className="font-semibold text-brand-ink underline">{T("Change the menu", "Menu बदलें")}</button><button type="button" onClick={() => void menuOff()} className="font-semibold text-muted underline">{T("Turn the menu off", "Menu बंद करें")}</button></span>
+            </div>
+          )}
+          {menuOpen && <FlowSheet onClose={() => { setMenuOpen(false); void loadMenu(); }} />}
+          {menuOn ? null : plan.welcome.mode === "own" ? (
             <div className="mt-2 space-y-2">
               <textarea value={plan.welcome.text} onChange={(e) => setPlan((x) => ({ ...x, welcome: { ...x.welcome, text: e.target.value } }))} rows={3} maxLength={700}
                 placeholder={T("e.g. Namaste {naam} 🙏 Welcome to Sharma Sarees! Tell us what you are looking for.", "जैसे: नमस्ते {naam} 🙏 Sharma Sarees में आपका स्वागत है! बताइए आपको क्या चाहिए।")} className="w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand" />

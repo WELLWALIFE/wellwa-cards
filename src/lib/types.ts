@@ -261,6 +261,8 @@ export interface Card {
   /** The owner's message plan (AI Training → "AI ke messages", 19 Nov 2026), read by the WhatsApp bridge. Every part optional:
    *  unset = the AI writes each message on the old days (1 → 3 → 6, then weekly). */
   botFollow?: BotFollow;
+  /** The owner's rules for the AI (AI Training → Jaldi setup / Aur settings, 20 Nov 2026), read by both assistants (bridge/ai-rules.mjs). */
+  botRules?: BotRules;
   /** The owner's OWN website (owner's call, 10 Oct 2026: "bot meri website suggest kare, card nahi"): the assistant
    *  sends customers this link instead of the card's, and its knowledge is read from it (Train AI bot → Read website). */
   botSite?: string;
@@ -401,4 +403,20 @@ export type BotFollow = {
   onlyNew?: boolean;
   /** Shop closed / on leave: this line goes once in 12 hours, the enquiry is saved, the AI waits. `until` = last day (YYYY-MM-DD). */
   away?: { on: boolean; text: string; until?: string };
+};
+
+/** See bridge/ai-rules.mjs. Every field optional; unset = the assistant's own default. */
+export type BotRules = {
+  lang?: "hi" | "mirror" | "en" | "hinglish";
+  tasks?: { order?: boolean; booking?: boolean; callback?: boolean };
+  price?: "tell" | "call";
+  name?: string;
+  ask?: ("name" | "city" | "budget" | "when")[];
+  askOwn?: string;
+  alertOn?: ("big" | "every")[];
+  discount?: number;
+  pay?: ("upi" | "cod" | "shop" | "card")[];
+  never?: string;
+  /** Outside the message hours: answer with this one line instead of the AI (WhatsApp). */
+  night?: { on: boolean; text: string };
 };

@@ -13,7 +13,7 @@ import { useT } from "@/lib/poster-i18n";
 import { BotSiteBox } from "@/components/poster/bot-site-box";
 import { AiMessages } from "@/components/poster/ai-messages";
 import { AiAway, AiReport, AiWho } from "@/components/poster/ai-guard";
-import { FlowSheet } from "@/components/crm/crm";
+import { AiMoreSettings, AiQuickSetup } from "@/components/poster/ai-setup";
 import { CardChat } from "@/components/card-chat";
 import { publishCard } from "@/lib/cloud";
 import type { Card } from "@/lib/types";
@@ -27,7 +27,6 @@ export default function AiTrainingPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const [err, setErr] = useState("");
-  const [menu, setMenu] = useState(false);
 
   const load = useCallback(async () => {
     setErr("");
@@ -66,12 +65,17 @@ export default function AiTrainingPage() {
       ) : (
         <>
           <section>
-            {sec(1, T("What your AI knows and sends", "आपका AI क्या जानता और भेजता है"), T("Prices, details, common questions, brochures, a demo video.", "दाम, जानकारी, आम सवाल-जवाब, brochure, demo video।"))}
+            {sec(1, T("Quick setup", "जल्दी setup"), T("Five taps. Skip it and the AI still answers from your card.", "पाँच tap। छोड़ दें तो भी AI आपके card से जवाब देता है।"))}
+            <AiQuickSetup card={card} onSaved={setCard} hi={hi} />
+          </section>
+
+          <section>
+            {sec(2, T("What your AI knows and sends", "आपका AI क्या जानता और भेजता है"), T("Prices, details, common questions, brochures, a demo video.", "दाम, जानकारी, आम सवाल-जवाब, brochure, demo video।"))}
             <BotSiteBox card={card} trainOnly onChanged={(c) => { setCard(c); void load(); }} />
           </section>
 
           <section>
-            {sec(2, T("Link WhatsApp", "WhatsApp जोड़ें"), T("Link your number once; the AI answers your customers there.", "अपना number एक बार जोड़िए; AI वहीं ग्राहकों को जवाब देगा।"))}
+            {sec(3, T("Link WhatsApp", "WhatsApp जोड़ें"), T("Link your number once; the AI answers your customers there.", "अपना number एक बार जोड़िए; AI वहीं ग्राहकों को जवाब देगा।"))}
             <Link href="/poster/connect" className={row}>
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><MessageCircle className="h-5 w-5" /></span>
               <span className="min-w-0 flex-1"><b className="block text-sm">{T("Link WhatsApp and turn on AI replies", "WhatsApp जोड़ें और AI जवाब चालू करें")}</b><span className="block text-xs text-muted">{T("Also Facebook, Instagram and Google live in Connections.", "Facebook, Instagram और Google भी Connections में हैं।")}</span></span>
@@ -80,19 +84,8 @@ export default function AiTrainingPage() {
           </section>
 
           <section>
-            {sec(3, T("Who the AI answers", "AI किसे जवाब दे"), T("Keep family and friends away from the AI on a personal number.", "Personal number पर परिवार और दोस्तों को AI से दूर रखें।"))}
+            {sec(4, T("Who the AI answers", "AI किसे जवाब दे"), T("Keep family and friends away from the AI on a personal number.", "Personal number पर परिवार और दोस्तों को AI से दूर रखें।"))}
             <AiWho card={card} onSaved={setCard} hi={hi} />
-          </section>
-
-          <section>
-            {sec(4, T("Numbered menu (1, 2, 3…)", "Number वाला menu (1, 2, 3…)"), T("A new customer gets a menu: 1 Products, 2 Services, 3 Prices… and replies with a number.", "नए customer को menu जाता है: 1 Products, 2 Services, 3 दाम… और वह number लिखकर जवाब देता है।"))}
-            <button type="button" onClick={() => setMenu(true)} className={row}>
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-lg font-bold text-brand">1·2</span>
-              <span className="min-w-0 flex-1"><b className="block text-sm">{T("Make or change my menu", "मेरा menu बनाएँ या बदलें")}</b><span className="block text-xs text-muted">{T("A ready-made one is there to start from. Anything not on the menu, the AI answers.", "शुरू करने के लिए तैयार menu मौजूद है। Menu से बाहर की हर बात का जवाब AI देता है।")}</span></span>
-              <ChevronRight className="h-5 w-5 text-muted" />
-            </button>
-            <p className="mt-1.5 text-[11px] text-muted">{T("When the menu is on, it is the first message a new customer gets (your own first message below is then not sent).", "Menu चालू हो, तो नए customer को सबसे पहले वही जाता है (तब नीचे का आपका पहला message नहीं जाता)।")}</p>
-            {menu && <FlowSheet onClose={() => setMenu(false)} />}
           </section>
 
           <section>
@@ -103,6 +96,7 @@ export default function AiTrainingPage() {
           <section>
             {sec(6, T("How your AI talks", "आपका AI कैसे बात करे"), T("Language and manner. Leave empty and it talks like a polite shop assistant.", "भाषा और अंदाज़। खाली छोड़ें तो AI एक विनम्र दुकान वाले की तरह बात करता है।"))}
             <AiTone card={card} onSaved={setCard} hi={hi} />
+            <div className="mt-3"><AiMoreSettings card={card} onSaved={setCard} hi={hi} /></div>
           </section>
 
           <section>

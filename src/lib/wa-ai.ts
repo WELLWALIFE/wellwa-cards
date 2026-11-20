@@ -2,6 +2,7 @@
 // Same system prompt layers as the on-card chat route: platform persona +
 // brand training + this card's own knowledge, language-locked to the customer.
 import { cardHome } from "@/lib/site-url";
+import { alertBlock, ownLanguage, rulesBlock } from "../../bridge/ai-rules.mjs";
 import { geminiComplete } from "@/lib/gemini";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { buildTrainingBlock, guessTrade, languageLock, type AiLayers } from "@/lib/ai-training";
@@ -146,9 +147,9 @@ DEMO VIDEO (owner's call): whenever the customer asks for a demo, wants to see i
 
 CLOSING THE LOOP
 - Anything you can't confirm (exact stock, delivery date, a custom discount): say ${card.name.split(" ")[0]} will confirm${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.
-- Specifications (size, dimensions, plates, wattage, capacity…): give the figure EXACTLY as the facts state it for the model asked about. Not in the facts → say ${card.name.split(" ")[0]} will confirm it; never say the company does not share it, never answer around the question.
-- Where it fits naturally, steer toward the demo/visit/booking button on the card.${channel === "whatsapp" ? `
-- If the customer clearly wants to buy now, book a demo/visit, or complains, end your reply with a separate last line: [[ALERT: one-line summary for the seller]]` : ""}${shubhora || channel === "phone" ? "" : `
+- Figures (size, measurement, quantity, weight, capacity, duration…): give the figure EXACTLY as the facts state it for the item asked about. Not in the facts → say ${card.name.split(" ")[0]} will confirm it; never say the company does not share it, never answer around the question.
+- Where it fits naturally, steer toward the next step on the card (order, booking, visit or a call).${channel === "whatsapp" ? `
+- If the customer clearly wants to buy now, book, or complains, end your reply with a separate last line: [[ALERT: one-line summary for the seller]]` : ""}${shubhora || channel === "phone" ? "" : `
 
 SELLING — you are ${card.name.split(" ")[0]}'s salesperson, not an FAQ (owner's call, 8 Oct 2026)
 - Lead to a decision: when they ask about something, name the best-fitting item with its price (from the card) and one reason it suits them, then offer the next step — order, book, visit or a call back.
@@ -205,7 +206,11 @@ export async function aiReply(card: Card, history: ChatMsg[], channel: "card" | 
     const [platform, brand] = await Promise.all([getPlatformKnowledge(), getBrandTraining(card.username)]);
     const { text, blocked } = await geminiComplete({
       apiKey: key, maxOutputTokens: 500,
-      system: buildSystem(card, wa, platform, brand, channel) + languageLock(safe[safe.length - 1]?.content ?? "", safe.slice(0, -1).filter((m) => m.role === "user").map((m) => m.content)),
+      // The owner's own rules and language (AI Training; bridge/ai-rules.mjs, the same file the WhatsApp assistant reads). Not on a
+      // Shubhora partner's card: its assistant follows the Shubhora playbook.
+      system: buildSystem(card, wa, platform, brand, channel)
+        + (isShubhoraCard(card) ? "" : rulesBlock(card, card.name.split(" ")[0] || card.company || "") + (channel === "whatsapp" ? alertBlock(card) : ""))
+        + languageLock(safe[safe.length - 1]?.content ?? "", safe.slice(0, -1).filter((m) => m.role === "user").map((m) => m.content), isShubhoraCard(card) ? undefined : (d, a) => ownLanguage(card, d, a)),
       contents: safe.map((m) => ({ role: m.role === "assistant" ? "model" as const : "user" as const, parts: [{ text: m.content }] })),
     });
     return blocked ? "" : text.trim();

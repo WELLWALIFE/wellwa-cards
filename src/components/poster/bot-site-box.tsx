@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Check, FileText, ImagePlus, Link2, LoaderCircle, PlaySquare, Trash2 } from "lucide-react";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { uploadImage, uploadPdf } from "@/lib/poster-client";
+import { readyQuestions } from "@/components/poster/ai-setup";
 import { useT } from "@/lib/poster-i18n";
 import type { Card } from "@/lib/types";
 
@@ -184,6 +185,10 @@ export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = fals
         {/* One question, one answer (19 Nov 2026): typed in two boxes and put into the notes above in the shape the AI reads best. */}
         <div className="mt-2 rounded-xl border border-dashed border-border p-2.5">
           <p className="text-xs font-semibold">{T("सवाल-जवाब जोड़ें", "Add a question and its answer")}</p>
+          {/* Ready questions for this kind of business (20 Nov 2026): one tap, then only the answer to write. */}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {readyQuestions(card, hi).filter((q) => !notes.includes(q)).map((q) => <button key={q} type="button" onClick={() => setQa({ q, a: "" })} className="rounded-full border border-border bg-bg px-2.5 py-1 text-[11px] font-medium text-ink">+ {q}</button>)}
+          </div>
           <input value={qa.q} onChange={(e) => setQa({ ...qa, q: e.target.value })} maxLength={200} placeholder={T("सवाल — जैसे: Delivery कितने दिन में?", "Question — e.g. How many days for delivery?")} className="mt-1.5 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" />
           <input value={qa.a} onChange={(e) => setQa({ ...qa, a: e.target.value })} maxLength={500} placeholder={T("जवाब — जैसे: पूरे भारत में 4–6 दिन, ₹999 से ऊपर free।", "Answer — e.g. 4–6 days all over India, free above ₹999.")} className="mt-1.5 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" />
           <button type="button" disabled={!qa.q.trim() || !qa.a.trim()} onClick={() => { setNotes((n) => `${n.trim()}${n.trim() ? "\n\n" : ""}Q: ${qa.q.trim()}\nA: ${qa.a.trim()}`.slice(0, 20000)); setQa({ q: "", a: "" }); }} className="mt-1.5 rounded-lg border border-brand/50 px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50">+ {T("ऊपर जोड़ें, फिर Save दबाएँ", "Add it above, then press Save")}</button>
