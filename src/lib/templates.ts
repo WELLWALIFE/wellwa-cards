@@ -932,6 +932,12 @@ const consultant: CardTemplateDef = {
 //   1b. The V-Card is free for 1 year (worth ₹1,499); a personal domain goes with the website and the customer buys it.
 //   2. Nothing is claimed that Shubhora does not do today, and every Growth-only feature says so.
 const VC = "#2f5bf5"; // Shubhora blue (the logo)
+/** The Shubhora website's three banners (also put on older Shubhora cards when the page is drawn: lib/shubhora-page.ts). */
+export const SHUBHORA_SLIDES = [
+  { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", imageUrl: "/art/shubhora/hero.jpg" },
+  { headline: "A website that brings customers", sub: "12 designs, your own products and prices, found on Google — ready in 24 to 48 hours.", imageUrl: "/art/shubhora/hero-website.jpg", focus: "78% 50%" },
+  { headline: "An AI that answers at midnight too", sub: "It replies on your WhatsApp, saves every lead and posts a new poster for you every morning.", imageUrl: "/art/shubhora/hero-ai.jpg", focus: "78% 50%" },
+];
 const SH_VIDEO = "https://youtu.be/kQuN3OVBNl0";      // "Free Digital Visiting Card + Website + AI Assistant | Shubhora (Hindi)"
 const SH_PLAN_VIDEO = "https://youtu.be/RwVVwCRWxCQ"; // "Shubhora Partner Plan Explained | Free Registration, Double Binary, Weekly Payout (Hindi)"
 const vcardReseller: CardTemplateDef = {
@@ -970,7 +976,10 @@ const vcardReseller: CardTemplateDef = {
       // The website's header carries the Shubhora logo, not the partner's name (owner, 31 Oct 2026); the same file the app's own
       // Shubhora strip shows (components/shubhora-bar.tsx). The partner's name stays on the card and in the hero's kicker.
       logoUrl: "/art/brand/shubhora-logo.png",
-      hero: { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", textSide: "left", focus: "15% 50%" },
+      hero: { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", textSide: "left", focus: "15% 50%",
+        // Three banners, each drawn for its line with the left side left empty for the words (owner, 20 Nov 2026: "ek hi banner laga hai — 3
+        // banner lagao, website ke according"). scripts/shubhora-art-v2.mjs draws them.
+        slides: SHUBHORA_SLIDES },
       // The big-photo top: the drawn banner fills it, words on the left (the picture's empty side).
       style: { hero: "photo" },
     },
@@ -1004,9 +1013,9 @@ const vcardReseller: CardTemplateDef = {
             "🗣️ Card in 10 languages (Website plan)",
           ] },
           { id: uid("vh", 3), kind: "image", title: "Five tools, one link", images: [
-            { url: "/art/shubhora/one-link-v2.jpg", caption: "Your website and digital card come with every website plan, and every enquiry is saved as a lead. The Growth Plan adds the daily poster, the WhatsApp AI, the CRM and Google reviews." },
+            { url: "/art/shubhora/plan-overview.jpg", caption: "Your website and digital card come with every website plan, and every enquiry is saved as a lead. The Growth Plan adds the daily poster, the WhatsApp AI, the CRM and Google reviews." },
           ] },
-          { id: uid("vh", 4), kind: "cta", title: "This page IS the product", body: "Everything you are scrolling now is what your own card will look like — with your name, your products and your number. Most people have theirs live in about 10 minutes.", joinUrl: "#plans", joinLabel: "See plans and prices", referralCode: "" },
+          { id: uid("vh", 4), kind: "cta", title: "This website IS the product", body: "Everything you are scrolling now is what your own website and card will look like — with your name, your products and your number. Ours is ready for you in 24 to 48 hours.", joinUrl: "#plans", joinLabel: "See plans and prices", referralCode: "" },
           { id: uid("vh", 5), kind: "services", title: "What you get", items: [
             { name: "Your own link and QR", desc: "shubhora.com/c/your-name — opens on any phone. Nothing for your customer to download or install." },
             { name: "Save contact, Call, WhatsApp, UPI, Map", desc: "Every button a customer needs, one tap each — and your number goes straight into their phone." },
@@ -1053,7 +1062,7 @@ const vcardReseller: CardTemplateDef = {
             { feature: "WhatsApp at night", left: "AI replies 24×7 (Growth Plan)", right: "The customer waits till morning" },
             { feature: "Enquiries", left: "All in one list", right: "Scattered across chats and diaries" },
             { feature: "Logins and bills", left: "One account", right: "A different app for each" },
-            { feature: "Time to set up", left: "About 10 minutes, on a phone", right: "Days or weeks" },
+            { feature: "Time to set up", left: "Ready in 24 to 48 hours", right: "Days or weeks" },
           ] },
           { id: uid("vy", 6), kind: "services", title: "What makes Shubhora different", items: [
             { name: "Made for Indian businesses", desc: "Ready templates for 78 professions, prices in ₹, UPI and WhatsApp built in." },
@@ -1106,7 +1115,7 @@ const vcardReseller: CardTemplateDef = {
         // profession banners (the same ones the AI uses as covers), the 12 looks, and a door to the live gallery.
         id: "p6", slug: "templates", label: "Templates",
         blocks: [
-          { id: uid("t", 1), kind: "about", title: "A ready design for your line of work", body: "Pick the template made for your trade — we fill in your name, photos, products and prices, and the card is ready in minutes. Every template has its own banner, pages and sections written for that business; change any of it later. Tap a tile: the six most-used trades open a full live preview; every other tile starts your own website in that design — your introducer is already set." },
+          { id: uid("t", 1), kind: "about", title: "A ready design for your line of work", body: "Pick the template made for your trade — we fill in your name, photos, products and prices, and your website and card are ready in 24 to 48 hours. Every template has its own banner, pages and sections written for that business; change any of it later. Tap a tile: the six most-used trades open a full live preview; every other tile starts your own website in that design — your introducer is already set." },
           { id: uid("t", 2), kind: "showcase", title: "Templates by profession", items: [
             { imageUrl: "/api/stock/banners/doctor.jpg", label: "Doctor / Clinic", sub: "Specialities, timings, booking, fees", url: "https://shubhora.com/templates/doctor-clinic" },
             { imageUrl: "/api/stock/banners/realestate.jpg", label: "Real estate", sub: "Listings, site-visit booking, loan help", url: "https://shubhora.com/templates/real-estate" },
@@ -1156,7 +1165,7 @@ const vcardReseller: CardTemplateDef = {
             items: [
               {
                 name: "Website Standard",
-                images: ["/art/shubhora/plan-website-standard.jpg"],
+                images: ["/art/shubhora/plan-website-standard-v2.jpg"],
                 price: "₹2,999 / year",
                 badge: "Recommended",
                 desc: "A dynamic website and digital vCard for your business, ready in 24 to 48 hours — basic SEO, Google posts & review replies, your product catalogue and WhatsApp ordering. ₹2,999 a year, GST included; it renews at the same price.",
@@ -1177,7 +1186,7 @@ const vcardReseller: CardTemplateDef = {
               },
               {
                 name: "Website Premium",
-                images: ["/art/shubhora/plan-website-premium.jpg"],
+                images: ["/art/shubhora/plan-website-premium-v2.jpg"],
                 price: "₹5,999 / year",
                 badge: "Most popular",
                 desc: "A dynamic and progressive website: everything in Standard, plus complete SEO, ChatGPT & Gemini search, AI chat, and it installs on the phone like an app. ₹5,999 a year, GST included; it renews at the same price. The Growth Plan's first month comes free with it.",
@@ -1199,7 +1208,7 @@ const vcardReseller: CardTemplateDef = {
               },
               {
                 name: "Growth Plan",
-                images: ["/art/shubhora/plan-growth.jpg"],
+                images: ["/art/shubhora/plan-growth-v2.jpg"],
                 price: "₹2,999 / month",
                 badge: "1st month free with Premium",
                 desc: "Grow every month: daily posters, auto-posting on Facebook and Instagram, the WhatsApp AI chatbot, the CRM and your Google profile — done for you. ₹2,999 a month, GST included. It needs a website plan, and its first month is free with every Website Premium purchase and renewal. No lock-in: stop any month and your card and website stay live.",
@@ -1223,7 +1232,7 @@ const vcardReseller: CardTemplateDef = {
               },
               {
                 name: "Custom Solutions",
-                images: ["/art/shubhora/plan-custom.jpg"],
+                images: ["/art/shubhora/plan-custom-v2.jpg"],
                 price: "On request",
                 badge: "Any software",
                 desc: "Need something built around the way your business works? Shubhora designs, builds and runs it for you: every kind of software and automation, priced on request, with a dedicated manager. Tell us what you need and we send you a clear quote.",
@@ -1278,7 +1287,7 @@ const vcardReseller: CardTemplateDef = {
           { id: uid("vb", 2), kind: "about", title: "Why this business", body: "Every business around you — the shop you buy from, the clinic you visit, the agent you know — needs to be found and reached on the phone, and most still hand out paper cards. Shubhora partners show them this card and set theirs up on the spot.\n\nThere is no stock to buy, nothing to deliver and nothing to store: the product is a link. Registration is free. Income comes from real paid subscriptions and their renewals — every pair pays ₹500, and every renewal pays again. That is what makes it a lasting business." },
           { id: uid("vb", 3), kind: "services", title: "Why partners choose Shubhora", items: [
             { name: "Every business needs it", desc: "India has 7.8 crore registered small businesses (Udyam, February 2026). Every one of them needs customers to find it and reach it." },
-            { name: "Easy to deliver", desc: "The product is a link. A customer's card is set up on their own phone in about 10 minutes — no stock, no courier, no installation." },
+            { name: "Easy to deliver", desc: "The product is a link. A customer's website and card are ready in 24 to 48 hours — no stock, no courier, no installation." },
             { name: "Easy to show", desc: "Your own card is the demo. Hand over your phone, let them tap around, and set theirs up on the spot." },
             { name: "Free to start", desc: "Registration is free — nobody has to buy anything to join. Your ID turns Green when your own plan is active." },
             { name: "Renewals count again", desc: "When a customer renews their plan, its BV enters your renewal binary again — one sale keeps counting for as long as the customer stays subscribed and your own plan is active." },

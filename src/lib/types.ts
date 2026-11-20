@@ -357,7 +357,7 @@ export interface Card {
 }
 
 /** One banner of the Premium website's sliding top (site.hero.slides). */
-export type HeroSlide = { headline: string; sub?: string; imageUrl?: string };
+export type HeroSlide = { headline: string; sub?: string; imageUrl?: string; /** Which part of the picture stays in view when it is cropped ("78% 50%"); unset = the middle. */ focus?: string };
 
 export interface CardNotice {
   text: string;        // one or two lines

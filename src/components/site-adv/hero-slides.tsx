@@ -13,7 +13,7 @@ const EVERY_MS = 5500;
 /** The content one banner shows: its words, and its picture when it has one (else the hero's own). */
 function contentFor(c: SiteContent, s: HeroSlide): SiteContent {
   const photo = s.imageUrl
-    ? { src: s.imageUrl, focus: "50% 50%", bright: false, dark: true, ...(c.hm.photo && c.hm.photo.src === s.imageUrl ? { focus: c.hm.photo.focus, lqip: c.hm.photo.lqip, bright: c.hm.photo.bright, dark: c.hm.photo.dark } : {}) }
+    ? { src: s.imageUrl, focus: s.focus || "50% 50%", bright: false, dark: true, ...(c.hm.photo && c.hm.photo.src === s.imageUrl ? { focus: c.hm.photo.focus, lqip: c.hm.photo.lqip, bright: c.hm.photo.bright, dark: c.hm.photo.dark } : {}) }
     : c.hm.photo;
   return { ...c, hm: { ...c.hm, headline: s.headline || c.hm.headline, sub: s.sub ?? c.hm.sub, ...(photo ? { photo } : {}), ...(s.imageUrl ? { clip: undefined } : {}) } };
 }

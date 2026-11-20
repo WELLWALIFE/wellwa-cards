@@ -11,7 +11,7 @@
 // for sweets or a check-up never sees Shubhora, and the owner shares the second link only with people
 // they are actually talking to about Shubhora.
 
-import { getTemplate } from "@/lib/templates";
+import { getTemplate, SHUBHORA_SLIDES } from "@/lib/templates";
 import type { Card, CardBlock, CardPage } from "@/lib/types";
 import { ownNotes, ownPersona } from "../../bridge/shubhora-kb.mjs";
 
@@ -200,7 +200,14 @@ const FREE_SAY: [RegExp, string][] = [
   [/makes your own card in that design, free — /g, "starts your own website in that design — "],
   [/ — free on every plan\./g, " — on every plan."],
   // The "one link" picture said FREE on the V-Card and "Start free — worth ₹1,499": redrawn without it under a new name (old copies cached).
-  [/\/art\/shubhora\/one-link\.jpg/g, "/art/shubhora/one-link-v2.jpg"],
+  [/\/art\/shubhora\/one-link(-v2)?\.jpg/g, "/art/shubhora/plan-overview.jpg"],
+  // The plan pictures were drawn left-aligned and lost their first letters in a narrow tile: redrawn with everything in the middle.
+  [/\/art\/shubhora\/plan-(website-standard|website-premium|growth|custom)\.jpg/g, "/art/shubhora/plan-$1-v2.jpg"],
+  // Nothing is "live in 10 minutes" any more: the team makes the website within 24 to 48 hours.
+  [/This page IS the product/g, "This website IS the product"],
+  [/Most people have theirs live in about 10 minutes\./g, "Ours is ready for you in 24 to 48 hours."],
+  [/About 10 minutes, on a phone/g, "Ready in 24 to 48 hours"],
+  [/is set up on their own phone in about 10 minutes/g, "is ready in 24 to 48 hours"],
 ];
 const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
 
@@ -228,5 +235,14 @@ export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["pop
   const popup = pp && old
     ? { ...pp, title: "Get your website", subtitle: "Leave your number and I will help you get your own website and digital card.", ctaLabel: "Call me back", terms: "" }
     : pp;
-  return { ...card, pages, popup };
+  return withSellerSlides({ ...card, pages, popup } as T, seller);
+}
+
+/** A Shubhora card made before the three banners gets them when it is drawn: its own first banner (the partner's picture and line stay),
+ *  then the website and the AI banners. A card that already has banners of its own is left alone. */
+function withSellerSlides<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
+  const c = card as T & { site?: Card["site"]; coverUrl?: string };
+  if (!seller || !c.site || (c.site.hero?.slides ?? []).length >= 2) return card;
+  const first = { headline: c.site.hero?.headline || SHUBHORA_SLIDES[0].headline, sub: c.site.hero?.sub || SHUBHORA_SLIDES[0].sub, imageUrl: c.coverUrl || SHUBHORA_SLIDES[0].imageUrl };
+  return { ...card, site: { ...c.site, hero: { ...(c.site.hero ?? {}), slides: [first, SHUBHORA_SLIDES[1], SHUBHORA_SLIDES[2]] } } };
 }
