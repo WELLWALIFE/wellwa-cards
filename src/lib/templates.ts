@@ -1004,7 +1004,7 @@ const vcardReseller: CardTemplateDef = {
             "🗣️ Card in 10 languages (Website plan)",
           ] },
           { id: uid("vh", 3), kind: "image", title: "Five tools, one link", images: [
-            { url: "/art/shubhora/one-link.jpg", caption: "Your website and digital card come with every website plan, and every enquiry is saved as a lead. The Growth Plan adds the daily poster, the WhatsApp AI, the CRM and Google reviews." },
+            { url: "/art/shubhora/one-link-v2.jpg", caption: "Your website and digital card come with every website plan, and every enquiry is saved as a lead. The Growth Plan adds the daily poster, the WhatsApp AI, the CRM and Google reviews." },
           ] },
           { id: uid("vh", 4), kind: "cta", title: "This page IS the product", body: "Everything you are scrolling now is what your own card will look like — with your name, your products and your number. Most people have theirs live in about 10 minutes.", joinUrl: "#plans", joinLabel: "See plans and prices", referralCode: "" },
           { id: uid("vh", 5), kind: "services", title: "What you get", items: [

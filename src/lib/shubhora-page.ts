@@ -199,6 +199,8 @@ const FREE_SAY: [RegExp, string][] = [
   [/ before you decide — free\./g, " before you decide."],
   [/makes your own card in that design, free — /g, "starts your own website in that design — "],
   [/ — free on every plan\./g, " — on every plan."],
+  // The "one link" picture said FREE on the V-Card and "Start free — worth ₹1,499": redrawn without it under a new name (old copies cached).
+  [/\/art\/shubhora\/one-link\.jpg/g, "/art/shubhora/one-link-v2.jpg"],
 ];
 const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
 

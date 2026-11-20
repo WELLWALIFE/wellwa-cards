@@ -694,7 +694,7 @@ export default function WebsiteEditPage() {
         <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <FoldGroups prefix="look" is={foldIs} tap={foldTap}>
           {/* A Premium website's own design lives on the Premium page (owner, 25 Oct 2026: "premium hai to premium design par jaana chahiye"). */}
-          <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href={adv ? "/poster/site/advanced" : "/poster/card/build?improve=1"} className="font-semibold text-brand-ink">{adv ? (hi ? "Premium design" : "Premium design") : (hi ? "Website का design" : "Website design")}</Link>.</p>
+          <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href="/poster/site/choose" className="font-semibold text-brand-ink">{hi ? "Website का design (12 में से चुनें)" : "Website design (choose from 12)"}</Link>.</p>
           {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
               site's choices below never reached it, so a tap changed nothing (owner, 25 Oct 2026). */}
           {adv ? (<>

@@ -16,9 +16,9 @@ export function SiteBuilderOptions(_props: { cardId: string; templateKey?: strin
     <section className="rounded-xl border border-brand/40 bg-brand-soft/30 p-3 space-y-3">
       <p className="text-sm font-semibold">{hi ? "Website और बेहतर करें" : "Improve your website"}</p>
       <div className="grid grid-cols-2 gap-2">
-        <Link href="/poster/card/build?improve=1" className="rounded-xl border-2 border-border bg-surface p-3 text-left hover:border-brand">
+        <Link href="/poster/site/choose" className="rounded-xl border-2 border-border bg-surface p-3 text-left hover:border-brand">
           <span className="flex items-center gap-1.5 text-sm font-semibold"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "Look बदलें" : "Change the look"}</span>
-          <span className="mt-0.5 block text-[11px] text-good font-semibold">{hi ? "Free · 5 looks, तुरंत live" : "Free · 5 looks, live at a tap"}</span>
+          <span className="mt-0.5 block text-[11px] text-good font-semibold">{hi ? "12 designs, तुरंत live" : "12 designs, live at a tap"}</span>
         </Link>
         <Link href="/poster/card/build?improve=1&ask=1" className="rounded-xl border-2 border-border bg-surface p-3 text-left hover:border-brand">
           <span className="flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="h-4 w-4 text-brand" /> {hi ? "AI से बेहतर करें" : "Improve with AI"}</span>
