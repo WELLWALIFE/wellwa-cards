@@ -240,6 +240,18 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
     return { ...card, coverUrl: img, site: { ...card.site, hero: { ...h, headline: slide.headline, sub: slide.sub ?? h.sub, ...(img ? { imageUrl: img } : {}), ...(same ? {} : { focus: undefined, textSide: undefined, lqip: undefined }) } } };
   })() : card;
   const hm = heroModel(heroCard, L.lang);
+  // The inner page header's picture: the page's own first photo (no plan/price artwork), else the first banner.
+  const pageHeadPic = ((): string | undefined => {
+    if (!page || page.slug === "home") return undefined;
+    const skip = (u?: string) => !u || /\/(shubhora-)?plan-[\w-]+\.(jpe?g|png|webp)/i.test(u);
+    for (const b of page.blocks) {
+      const o = b as { imageUrl?: string; posterUrl?: string; images?: { url?: string }[]; items?: { imageUrl?: string; image?: string }[] };
+      const found = [o.imageUrl, o.posterUrl, ...(o.images ?? []).map((g) => g.url), ...(o.items ?? []).map((it) => it.imageUrl ?? it.image)].find((u) => !skip(u));
+      if (found) return found;
+    }
+    return slides[0]?.imageUrl || (slides.length ? undefined : heroImg);
+  })();
+  const pageHeadHint = page && page.slug !== "home" ? pageMeta(page, card.language).hint : "";
   const trade = tradeLabel(card, hiNow);
   // The owner's logo in the nav; without one the name stands as a wordmark (the monogram never reaches the website).
   const logo = hm.logo;
@@ -490,12 +502,21 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
         ) : (
           /* ---- page header: the page's name, the business as its kicker, one button ---- */
           <section style={{ background: "var(--paper-2)" }}>
-            <div className="mx-auto max-w-6xl px-5 md:px-6 pt-12 pb-10 md:pt-16 md:pb-14 flex flex-wrap items-end justify-between gap-6">
-              <div>
-                <Kicker lang={L.lang}>{t(hm.name)}</Kicker>
+            {/* An inner page opens on its name, a way back home, one button and a picture of what the page holds (plan
+                Phase 1): a lone giant word over an empty band read as unfinished. The picture is the page's own first
+                image, else the site's first banner. */}
+            <div className={`mx-auto max-w-6xl px-5 md:px-6 pt-10 pb-10 md:pt-14 md:pb-12 grid gap-8 items-center ${pageHeadPic ? "md:grid-cols-[minmax(0,1fr)_minmax(0,420px)]" : ""}`}>
+              <div className="min-w-0">
+                <nav aria-label={hiNow ? "आप यहाँ हैं" : "Breadcrumb"} className="pg-crumb">
+                  <a href={hrefFor(first)} onClick={(e) => { e.preventDefault(); go(first); }}>{hiLang ? "होम" : t("Home")}</a>
+                  <span aria-hidden>/</span>
+                  <span aria-current="page">{t(page?.label ?? "")}</span>
+                </nav>
                 <Display as="h1" className="mt-3" lang={L.lang}>{t(page?.label ?? "")}</Display>
+                {pageHeadHint && <p className="lede mt-3">{t(hm.name)} · {pageHeadHint}</p>}
+                {wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-page-whatsapp")} className={`${BTN} ${FOCUS} mt-6`}><Icon name="whatsapp" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
               </div>
-              {wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-page-whatsapp")} className={`${BTN} ${FOCUS}`}><Icon name="whatsapp" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
+              {pageHeadPic && <div className="pg-pic hidden md:block"><Img src={pageHeadPic} alt="" className="h-full w-full object-cover" sizes="420px" /></div>}
             </div>
           </section>
         )}
@@ -824,6 +845,9 @@ const VIEW_CSS = `
 .site .gtk li{display:inline-flex;align-items:center;gap:.45em}.site .gtk svg{color:var(--accent);flex:none}
 .site .stat{font-family:var(--font-display,var(--look-head));font-size:clamp(20px,5.6vw,var(--t-stat));white-space:nowrap;line-height:1;letter-spacing:-.01em;font-weight:var(--display-w,var(--head-w,600));font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
 .site .sec-pad{padding-block:var(--section-pad)}
+.site .pg-crumb{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font-size:13px;font-weight:600;color:var(--muted)}
+.site .pg-crumb a{color:var(--accent);text-decoration:none}.site .pg-crumb a:hover{text-decoration:underline}
+.site .pg-pic{aspect-ratio:4/3;overflow:hidden;border-radius:24px;box-shadow:0 24px 60px -24px rgba(15,23,42,.35)}
 /* Card grids that never leave one card alone on a row (plan Phase 1): 3 across on desktop, a 2-card tail shares
    the row, a single tail card sits in the middle, 4 cards make a 2x2. data-n carries the count. */
 .site .fitg{display:grid;gap:var(--fg,1.25rem);grid-template-columns:minmax(0,1fr)}
@@ -852,7 +876,7 @@ const VIEW_CSS = `
 .site .sst-arrow{display:none}
 @media (min-width:1024px){.site .sst-arrow{display:grid;place-items:center;font-size:2rem;color:var(--accent)}}
 .site .sst-flow{position:relative;display:grid;gap:var(--s4,1.5rem);margin:0;padding:0;list-style:none}
-@media (min-width:1024px){.site .sst-flow{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))}.site .sst-flow::before{content:"";position:absolute;left:22px;right:4%;top:22px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-soft))}}
+@media (min-width:1024px){.site .sst-flow{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))}.site .sst-flow::before{content:"";position:absolute;left:22px;right:calc((100% - (var(--n,4) - 1) * var(--s4,1.5rem)) / var(--n,4) - 22px);top:22px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-soft))}}
 .site .sst-flow li{position:relative;display:flex;flex-direction:column;gap:.45rem}
 .site .sst-num{position:relative;z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;color:#fff;font-weight:700;box-shadow:0 0 0 6px var(--paper)}
 .site section[data-m2="1"] .sst-num{box-shadow:0 0 0 6px var(--paper-2)}
@@ -1310,7 +1334,7 @@ function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme
       </ul>
     );
   }
-  const cols = list.length % 3 === 0 || list.length === 5 ? "lg:grid-cols-3" : "lg:grid-cols-4";
+  const cols = list.length <= 2 ? "lg:grid-cols-2" : list.length % 3 === 0 || list.length === 5 ? "lg:grid-cols-3" : "lg:grid-cols-4";
   return (
     <div className={`grid sm:grid-cols-2 ${cols} gap-5`}>
       {list.map((it, i) => { const { text } = glyphText(it, t); return (
