@@ -572,7 +572,7 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
           <section className="mx-auto max-w-6xl px-5 md:px-6 py-14" data-reveal>
             <p className={cls.kicker}>{hiLang ? "और देखें" : t("Explore")}</p>
             <h2 className="sec-h2 mt-3 mb-6">{hiLang ? "पूरी वेबसाइट" : t("More on this website")}</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="fitg" data-n={explorePages.length}>
               {explorePages.map((p) => { const { Icon: PageIcon, hint } = pageMeta(p, card.language); return (
                 <a key={p.id} href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`group flex items-center gap-4 ${cls.card} p-5 ${CARD_HOVER} ${FOCUS}`}>
                   <span className={cls.iconBox}><PageIcon className="h-5 w-5" /></span>
@@ -824,6 +824,60 @@ const VIEW_CSS = `
 .site .gtk li{display:inline-flex;align-items:center;gap:.45em}.site .gtk svg{color:var(--accent);flex:none}
 .site .stat{font-family:var(--font-display,var(--look-head));font-size:clamp(20px,5.6vw,var(--t-stat));white-space:nowrap;line-height:1;letter-spacing:-.01em;font-weight:var(--display-w,var(--head-w,600));font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
 .site .sec-pad{padding-block:var(--section-pad)}
+/* Card grids that never leave one card alone on a row (plan Phase 1): 3 across on desktop, a 2-card tail shares
+   the row, a single tail card sits in the middle, 4 cards make a 2x2. data-n carries the count. */
+.site .fitg{display:grid;gap:var(--fg,1.25rem);grid-template-columns:minmax(0,1fr)}
+@media (min-width:640px) and (max-width:1023.98px){.site .fitg{grid-template-columns:repeat(2,minmax(0,1fr))}.site .fitg>:last-child:nth-child(odd){grid-column:1/-1;justify-self:center;width:calc((100% - var(--fg,1.25rem))/2)}}
+@media (min-width:1024px){.site .fitg{grid-template-columns:repeat(6,minmax(0,1fr))}.site .fitg>*{grid-column:span 2}
+ .site .fitg>:last-child:nth-child(3n+1){grid-column:3/span 2}
+ .site .fitg>:nth-last-child(2):nth-child(3n+1),.site .fitg>:last-child:nth-child(3n+2){grid-column:span 3}
+ .site .fitg[data-n="4"]>:nth-child(n){grid-column:span 3}
+ .site .fitg[data-n="1"]>:nth-child(n){grid-column:2/span 4}}
+/* Story sections, one composition per style */
+.site .sst-tag{display:inline-block;align-self:flex-start;margin-bottom:.55rem;padding:.25rem .65rem;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.site .sst-pic{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:14px;margin-bottom:var(--s3,1rem)}
+.site .sst-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4,1.5rem);margin:0;padding:0;list-style:none}
+@media (min-width:768px){.site .sst-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.site .sst-stats li{display:flex;flex-direction:column;gap:.4rem;padding-top:var(--s3,1rem);border-top:1px solid var(--hero-line,rgba(255,255,255,.2))}
+.site .sst-stats b{font-family:var(--font-display,var(--look-head,inherit));font-size:clamp(1.9rem,4vw,3rem);line-height:1;font-weight:700;color:var(--hero-text,#fff)}
+.site .sst-stats span{font-size:var(--t-meta,14px);color:var(--hero-muted,rgba(255,255,255,.75))}
+.site .sst-split{display:grid;gap:var(--s4,1.5rem);align-items:stretch}
+@media (min-width:1024px){.site .sst-split{grid-template-columns:1fr auto 1.2fr}}
+.site .sst-before,.site .sst-after>div{display:flex;flex-direction:column;padding:clamp(1.25rem,2.4vw,2rem);border-radius:20px;border:1px solid var(--line)}
+.site .sst-before{background:var(--paper)}.site .sst-before b{color:var(--muted)}
+.site .sst-after{display:grid;gap:var(--s3,1rem)}
+.site .sst-after>div{background:var(--accent-soft);border-color:transparent}
+.site .sst-split b{font-family:var(--font-display,var(--look-head,inherit));font-size:1.35rem;line-height:1.2;font-weight:700}
+.site .sst-split ul{margin:.7rem 0 0;padding-left:1.1rem;list-style:disc;color:var(--muted);font-size:15px;line-height:1.75}
+.site .sst-arrow{display:none}
+@media (min-width:1024px){.site .sst-arrow{display:grid;place-items:center;font-size:2rem;color:var(--accent)}}
+.site .sst-flow{position:relative;display:grid;gap:var(--s4,1.5rem);margin:0;padding:0;list-style:none}
+@media (min-width:1024px){.site .sst-flow{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))}.site .sst-flow::before{content:"";position:absolute;left:22px;right:4%;top:22px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-soft))}}
+.site .sst-flow li{position:relative;display:flex;flex-direction:column;gap:.45rem}
+.site .sst-num{position:relative;z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;color:#fff;font-weight:700;box-shadow:0 0 0 6px var(--paper)}
+.site section[data-m2="1"] .sst-num{box-shadow:0 0 0 6px var(--paper-2)}
+.site .sst-flow .sst-pic{margin:.4rem 0 0}
+.site .sst-flow b{font-family:var(--font-display,var(--look-head,inherit));font-size:1.12rem;line-height:1.25;font-weight:700}
+.site .sst-flow p{margin:0;color:var(--muted);font-size:15px;line-height:1.55;max-width:34ch}
+.site .sst-bento{display:grid;gap:var(--s4,1.25rem);margin:0;padding:0;list-style:none}
+@media (min-width:1024px){.site .sst-bento{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:minmax(150px,auto)}
+ .site .sst-bento>li{grid-column:span 3;grid-row:span 2}
+ .site .sst-bento>li:nth-child(4n+1),.site .sst-bento>li:nth-child(4n+4){grid-column:span 4}
+ .site .sst-bento>li:nth-child(4n+2),.site .sst-bento>li:nth-child(4n+3){grid-column:span 2}
+ .site .sst-bento>li:last-child:nth-child(4n+1),.site .sst-bento>li:last-child:nth-child(4n+3){grid-column:1/-1}
+ .site .sst-bento>li:last-child:nth-child(4n+2){grid-column:span 2}
+ .site .sst-bento>li:nth-last-child(2):nth-child(4n+1){grid-column:span 4}}
+.site .sst-bento>li{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:250px;overflow:hidden;border:1px solid var(--line);border-radius:20px;background:var(--paper-2);transition:transform .2s ease,box-shadow .2s ease}
+.site .sst-bento>li:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(15,23,42,.12)}
+.site .sst-bento .sst-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .7s ease}
+.site .sst-bento>li:hover .sst-bg{transform:scale(1.04)}
+.site .sst-bento>li.has-pic::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.74) 100%)}
+.site .sst-copy{position:relative;z-index:1;padding:clamp(1.25rem,2.4vw,1.75rem)}
+.site .sst-bento>li.has-pic b,.site .sst-bento>li.has-pic p{color:#fff}
+.site .sst-bento>li.has-pic .sst-tag{background:rgba(255,255,255,.18);color:#fff}
+.site .sst-bento b{display:block;font-family:var(--font-display,var(--look-head,inherit));font-size:1.35rem;line-height:1.15;font-weight:700}
+.site .sst-bento p{margin:.4rem 0 0;color:var(--muted);font-size:15px;line-height:1.5;max-width:46ch}
+@media (prefers-reduced-motion:reduce){.site .sst-bento>li,.site .sst-bento .sst-bg{transition:none}}
 /* The header is a near-solid bar: at 70% the headings scrolling under it showed through and overlapped the menu (owner, 14 Oct 2026). */
 .site header.site-head.glass{background:color-mix(in srgb,var(--paper) 99%,transparent)}
 .site .site-ann{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px;padding:9px 16px;background:var(--accent);color:var(--on-accent);font-size:13px;line-height:1.35;text-align:center}
@@ -873,7 +927,7 @@ function UpdatesGrid({ items, waHref, hasWa, username, hi }: { items: SiteUpdate
   const clean = (c?: string | null) => (c ?? "").replace(/#[\w\u0900-\u097F]+/g, "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
   return (
     <>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="fitg" data-n={items.length}>
         {items.map((u, i) => {
           const text = clean(u.caption);
           const d = new Date(`${u.date}T00:00:00+05:30`);
@@ -1196,7 +1250,7 @@ function ServicesGrid({ items, askHref }: { items: { name: string; desc: string 
     );
   }
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div className="fitg" data-n={list.length}>
       {list.map((s, i) => (
         <div key={i} className={`${cls.card} p-7 ${CARD_HOVER}`}>
           <span className="num text-[12px] font-semibold tracking-[.12em]" style={{ color: "var(--accent)" }}>{String(i + 1).padStart(2, "0")}</span>
@@ -1917,7 +1971,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const imgs = block.images.filter((g) => g.url);
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="fitg" data-n={imgs.length} style={{ ["--fg" as string]: "1.5rem" } as React.CSSProperties}>
             {imgs.map((g, i) => (
               <figure key={i} className={`${cls.card} overflow-hidden ${CARD_HOVER}`}>
                 <div className="p-img"><button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`absolute inset-0 p-4 cursor-zoom-in ${FOCUS}`}><FitImg src={g.url} alt={g.caption ?? ""} className="h-full w-full object-contain" eager={i < 3} sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" /></button></div>
@@ -2043,25 +2097,49 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "story": {
       const items = block.items.filter((it) => (it.title ?? "").trim());
       if (!items.length) return null;
+      const lines = (x?: string) => (x ?? "").split(/\n+/).map((l) => l.trim()).filter(Boolean);
+      const ui = (en: string, hiW: string) => (uiHi ? hiW : t(en));
+      // Each story style has its own composition (plan Phase 1): a dark strip of figures, a before/after split,
+      // a connected timeline, an asymmetric bento. A row of identical cards is what made a page read as a template.
+      if (block.style === "stats") return (
+        <Section wide index={index} theme={theme} tone="band" tight eyebrow={eyebrow} title={t(block.title)}>
+          <ul className="sst-stats">{items.map((it, i) => <li key={i}><b>{t(it.tag || it.title)}</b><span>{it.tag ? t(it.title) : t(it.text ?? "")}</span></li>)}</ul>
+        </Section>
+      );
+      if (block.style === "split" && items.length >= 2) {
+        const [before, ...after] = items;
+        return (
+          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={block.lede ? t(block.lede) : undefined}>
+            <div className="sst-split">
+              <div className="sst-before">{before.imageUrl && <Img src={before.imageUrl} alt="" className="sst-pic" sizes="(min-width: 1024px) 40vw, 100vw" />}<span className="sst-tag">{(before.tag ? t(before.tag) : "") || ui("Today", "आज")}</span><b>{t(before.title)}</b>{lines(before.text).length > 0 && <ul>{lines(before.text).map((l, j) => <li key={j}>{t(l)}</li>)}</ul>}</div>
+              <div className="sst-arrow" aria-hidden>→</div>
+              <div className="sst-after">{after.map((it, k) => <div key={k}>{it.imageUrl && <Img src={it.imageUrl} alt="" className="sst-pic" sizes="(min-width: 1024px) 45vw, 100vw" />}<span className="sst-tag">{(it.tag ? t(it.tag) : "") || ui("With us", "हमारे साथ")}</span><b>{t(it.title)}</b>{lines(it.text).length > 0 && <ul>{lines(it.text).map((l, j) => <li key={j}>{t(l)}</li>)}</ul>}</div>)}</div>
+            </div>
+          </Section>
+        );
+      }
+      if (block.style === "flow") return (
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={block.lede ? t(block.lede) : undefined}>
+          <ol className="sst-flow" style={{ ["--n" as string]: Math.min(items.length, 5) } as React.CSSProperties}>{items.map((it, i) => (
+            <li key={i}><span className="sst-num" style={{ background: theme }}>{i + 1}</span>{it.imageUrl && <Img src={it.imageUrl} alt="" className="sst-pic" sizes="(min-width: 1024px) 20vw, 100vw" />}<b>{t(it.title)}</b>{it.text && <p>{t(it.text)}</p>}</li>
+          ))}</ol>
+        </Section>
+      );
       return (
-        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className={block.style === "stats" ? "grid grid-cols-2 gap-4 md:grid-cols-4" : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"}>
-            {items.map((it, i) => block.style === "stats" ? (
-              <div key={i} className="rounded-2xl border border-border p-4"><p className="text-3xl font-bold leading-none">{t(it.tag || it.title)}</p><p className="mt-2 text-sm text-muted">{it.tag ? t(it.title) : t(it.text ?? "")}</p></div>
-            ) : (
-              <div key={i} className="overflow-hidden rounded-2xl border border-border bg-surface">
-                {it.imageUrl && <div className="aspect-[16/10] w-full overflow-hidden bg-surface2"><Img src={it.imageUrl} alt="" className="h-full w-full object-cover" sizes="(min-width: 1024px) 33vw, 100vw" /></div>}
-                <div className="p-4">{block.style === "flow" && <span className="mb-2 inline-grid h-7 w-7 place-items-center rounded-full text-xs font-bold text-white" style={{ background: theme }}>{i + 1}</span>}<p className="font-semibold leading-tight">{t(it.title)}</p>{it.text && <p className="mt-1 whitespace-pre-line text-sm text-muted">{t(it.text)}</p>}</div>
-              </div>
-            ))}
-          </div>
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={block.lede ? t(block.lede) : undefined}>
+          <ul className="sst-bento" data-n={items.length}>{items.map((it, i) => (
+            <li key={i} className={it.imageUrl ? "has-pic" : ""}>
+              {it.imageUrl && <Img src={it.imageUrl} alt="" className="sst-bg" sizes="(min-width: 1024px) 60vw, 100vw" />}
+              <div className="sst-copy">{it.tag && <span className="sst-tag">{t(it.tag)}</span>}<b>{t(it.title)}</b>{it.text && <p>{t(it.text)}</p>}</div>
+            </li>
+          ))}</ul>
         </Section>
       );
     }
     case "showcase":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="fitg" data-n={block.items.filter((it) => it.imageUrl || it.label).length}>
             {block.items.filter((it) => it.imageUrl || it.label).map((it, i) => {
               const inner = (
                 <>

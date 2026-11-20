@@ -433,7 +433,10 @@ export const MORE_CSS = `
 @media (min-width:860px){.st-bento{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:minmax(150px,auto)}
  .st-bento li:nth-child(1){grid-column:span 4;grid-row:span 2}.st-bento li:nth-child(2){grid-column:span 2;grid-row:span 2}
  .st-bento li:nth-child(3){grid-column:span 2;grid-row:span 2}.st-bento li:nth-child(4){grid-column:span 4;grid-row:span 2}
- .st-bento li:nth-child(n+5){grid-column:span 3;grid-row:span 2}}
+ .st-bento li:nth-child(n+5){grid-column:span 3;grid-row:span 2}
+ .st-bento li:last-child:nth-child(odd){grid-column:1/-1}
+ .st-bento[data-n="2"] li:nth-child(n){grid-column:span 3}
+ .st-bento[data-n="4"] li:nth-child(4){grid-column:span 4}}
 .st-bento li{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:240px;overflow:hidden;border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper-2,var(--paper));transition:transform .2s ease,box-shadow .2s ease}
 .st-bento li:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(15,23,42,.12)}
 .st-bento li img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .7s ease}
