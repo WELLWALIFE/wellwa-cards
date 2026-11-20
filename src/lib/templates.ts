@@ -934,10 +934,12 @@ const consultant: CardTemplateDef = {
 const VC = "#2f5bf5"; // Shubhora blue (the logo)
 /** The Shubhora website's three banners (also put on older Shubhora cards when the page is drawn: lib/shubhora-page.ts). */
 export const SHUBHORA_SLIDES = [
-  { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", imageUrl: "/art/shubhora/hero.jpg" },
-  { headline: "A website that brings customers", sub: "12 designs, your own products and prices, found on Google — ready in 24 to 48 hours.", imageUrl: "/art/shubhora/hero-website.jpg", focus: "78% 50%" },
-  { headline: "An AI that answers at midnight too", sub: "It replies on your WhatsApp, saves every lead and posts a new poster for you every morning.", imageUrl: "/art/shubhora/hero-ai.jpg", focus: "78% 50%" },
+  { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", imageUrl: "/art/shubhora/ai/hero-1.jpg", focus: "78% 50%" },
+  { headline: "A website that brings customers", sub: "12 designs, your own products and prices, found on Google — ready in 24 to 48 hours.", imageUrl: "/art/shubhora/ai/hero-2.jpg", focus: "78% 50%" },
+  { headline: "An AI that answers at midnight too", sub: "It replies on your WhatsApp, saves every lead and posts a new poster for you every morning.", imageUrl: "/art/shubhora/ai/hero-3.jpg", focus: "78% 50%" },
 ];
+/** The picture of each "What you get" item, by its name (older Shubhora cards get them when the page is drawn). */
+export const SHUBHORA_SERVICE_PICS: Record<string, string> = {"Your own link and QR": "/art/shubhora/ai/get-link.jpg", "Save contact, Call, WhatsApp, UPI, Map": "/art/shubhora/ai/get-contact.jpg", "Products with real prices": "/art/shubhora/ai/get-products.jpg", "Leads that don't get lost": "/art/shubhora/ai/get-leads.jpg", "A website on the same link (Website plan)": "/art/shubhora/ai/get-website.jpg", "AI assistant, 24×7 (Growth Plan)": "/art/shubhora/ai/get-ai.jpg", "A poster every morning (Growth Plan)": "/art/shubhora/ai/get-poster.jpg", "AI Ad Studio and Reel Maker (Website plan)": "/art/shubhora/ai/get-ads.jpg"};
 const SH_VIDEO = "https://youtu.be/kQuN3OVBNl0";      // "Free Digital Visiting Card + Website + AI Assistant | Shubhora (Hindi)"
 const SH_PLAN_VIDEO = "https://youtu.be/RwVVwCRWxCQ"; // "Shubhora Partner Plan Explained | Free Registration, Double Binary, Weekly Payout (Hindi)"
 const vcardReseller: CardTemplateDef = {
@@ -1017,14 +1019,14 @@ const vcardReseller: CardTemplateDef = {
           ] },
           { id: uid("vh", 4), kind: "cta", title: "This website IS the product", body: "Everything you are scrolling now is what your own website and card will look like — with your name, your products and your number. Ours is ready for you in 24 to 48 hours.", joinUrl: "#plans", joinLabel: "See plans and prices", referralCode: "" },
           { id: uid("vh", 5), kind: "services", title: "What you get", items: [
-            { name: "Your own link and QR", desc: "shubhora.com/c/your-name — opens on any phone. Nothing for your customer to download or install." },
-            { name: "Save contact, Call, WhatsApp, UPI, Map", desc: "Every button a customer needs, one tap each — and your number goes straight into their phone." },
-            { name: "Products with real prices", desc: "Photos, MRP and offer price, features and an Order on WhatsApp button. Change a price once and it changes everywhere." },
-            { name: "Leads that don't get lost", desc: "Every call tap, WhatsApp tap and form is saved with the customer's name and what they asked about — on every plan." },
-            { name: "A website on the same link (Website plan)", desc: "On a computer the same link opens as a full website. No designer, no yearly hosting bill." },
-            { name: "AI assistant, 24×7 (Growth Plan)", desc: "Trained on your business. Replies on your card and on your own WhatsApp in the customer's language — and never invents a price." },
-            { name: "A poster every morning (Growth Plan)", desc: "A festival, greeting or offer poster with your name, logo and number, plus a short status video — posted for you." },
-            { name: "AI Ad Studio and Reel Maker (Website plan)", desc: "Product photoshoots, 10–60 second video ads, reels and explainer videos from your own text — with credits, only when you need them." },
+            { name: "Your own link and QR", imageUrl: "/art/shubhora/ai/get-link.jpg", desc: "shubhora.com/c/your-name — opens on any phone. Nothing for your customer to download or install." },
+            { name: "Save contact, Call, WhatsApp, UPI, Map", imageUrl: "/art/shubhora/ai/get-contact.jpg", desc: "Every button a customer needs, one tap each — and your number goes straight into their phone." },
+            { name: "Products with real prices", imageUrl: "/art/shubhora/ai/get-products.jpg", desc: "Photos, MRP and offer price, features and an Order on WhatsApp button. Change a price once and it changes everywhere." },
+            { name: "Leads that don't get lost", imageUrl: "/art/shubhora/ai/get-leads.jpg", desc: "Every call tap, WhatsApp tap and form is saved with the customer's name and what they asked about — on every plan." },
+            { name: "A website on the same link (Website plan)", imageUrl: "/art/shubhora/ai/get-website.jpg", desc: "On a computer the same link opens as a full website. No designer, no yearly hosting bill." },
+            { name: "AI assistant, 24×7 (Growth Plan)", imageUrl: "/art/shubhora/ai/get-ai.jpg", desc: "Trained on your business. Replies on your card and on your own WhatsApp in the customer's language — and never invents a price." },
+            { name: "A poster every morning (Growth Plan)", imageUrl: "/art/shubhora/ai/get-poster.jpg", desc: "A festival, greeting or offer poster with your name, logo and number, plus a short status video — posted for you." },
+            { name: "AI Ad Studio and Reel Maker (Website plan)", imageUrl: "/art/shubhora/ai/get-ads.jpg", desc: "Product photoshoots, 10–60 second video ads, reels and explainer videos from your own text — with credits, only when you need them." },
           ] },
           { id: uid("vh", 6), kind: "testimonials", title: "What card owners say", items: [] },
           { id: uid("vh", 8), kind: "contact", title: "Ask me anything", note: "Tell me what work you do — I will make a demo card with your name and send you the link." },
@@ -1284,7 +1286,8 @@ const vcardReseller: CardTemplateDef = {
         id: "p3", slug: "business", label: "Business",
         blocks: [
           { id: uid("vb", 1), kind: "video", title: "The partner plan, explained", url: SH_PLAN_VIDEO, caption: "In Hindi: free registration, Red and Green ID, the double binary, the daily cap, ranks and weekly payout — the whole plan, with its rules." },
-          { id: uid("vb", 2), kind: "about", title: "Why this business", body: "Every business around you — the shop you buy from, the clinic you visit, the agent you know — needs to be found and reached on the phone, and most still hand out paper cards. Shubhora partners show them this card and set theirs up on the spot.\n\nThere is no stock to buy, nothing to deliver and nothing to store: the product is a link. Registration is free. Income comes from real paid subscriptions and their renewals — every pair pays ₹500, and every renewal pays again. That is what makes it a lasting business." },
+          { id: uid("vb", 2), kind: "about", title: "Why this business", imageUrl: "/art/shubhora/ai/biz-demo.jpg", body: "Every business around you — the shop you buy from, the clinic you visit, the agent you know — needs to be found and reached on the phone, and most still hand out paper cards. Shubhora partners show them this card and set theirs up on the spot.\n\nThere is no stock to buy, nothing to deliver and nothing to store: the product is a link. Registration is free. Income comes from real paid subscriptions and their renewals — every pair pays ₹500, and every renewal pays again. That is what makes it a lasting business." },
+          { id: uid("vb", 30), kind: "image", title: "A team that grows together", images: [{ url: "/art/shubhora/ai/biz-team.jpg", caption: "You are never alone: your sponsor and your team work with you." }] },
           { id: uid("vb", 3), kind: "services", title: "Why partners choose Shubhora", items: [
             { name: "Every business needs it", desc: "India has 7.8 crore registered small businesses (Udyam, February 2026). Every one of them needs customers to find it and reach it." },
             { name: "Easy to deliver", desc: "The product is a link. A customer's website and card are ready in 24 to 48 hours — no stock, no courier, no installation." },

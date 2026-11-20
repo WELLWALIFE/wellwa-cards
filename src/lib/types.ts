@@ -51,6 +51,8 @@ export interface CardImage {
 export interface ServiceItem {
   name: string;
   desc: string;
+  /** A picture for this service (the Premium designs draw it on the service's tile); unset = none. */
+  imageUrl?: string;
 }
 
 export interface TestimonialItem {

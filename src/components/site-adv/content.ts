@@ -71,7 +71,7 @@ export function buildContent(card: Card, lang: string): SiteContent {
   const offerings: SiteContent["offerings"] = products.length
     ? { kind: "products", title: prodBlocks[0]?.title?.trim() || (hi ? "हमारे प्रोडक्ट" : "Our products"), items: products.slice(0, 9).map(toOffering), total: products.length }
     : services.length
-      ? { kind: "services", title: serviceBlocks.find((b) => !isSteps(b))?.title?.trim() || (hi ? "हमारी सेवाएँ" : "What we do"), items: services.slice(0, 9).map((s) => ({ name: s.name.trim(), desc: (s.desc ?? "").trim() || undefined, images: [] })), total: services.length }
+      ? { kind: "services", title: serviceBlocks.find((b) => !isSteps(b))?.title?.trim() || (hi ? "हमारी सेवाएँ" : "What we do"), items: services.slice(0, 9).map((s) => ({ name: s.name.trim(), desc: (s.desc ?? "").trim() || undefined, images: s.imageUrl ? [s.imageUrl] : [] })), total: services.length }
       : undefined;
 
   /* ---- about ---- */
