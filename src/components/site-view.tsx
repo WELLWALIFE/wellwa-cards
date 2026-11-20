@@ -607,7 +607,7 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
         )}
 
         {/* A new business has no reviews to show, and no way to collect the first ones: its visitors are asked. */}
-        {page?.slug === first && reviewCount < 3 && (
+        {page?.slug === first && reviewCount < 3 && !(card.site?.home?.hidden ?? []).includes("ask-review") && (
           <section className="mx-auto max-w-6xl px-5 md:px-6 pb-4 pt-10" data-reveal>
             <ReviewInvite username={card.username} business={hm.name} hi={hiLang} />
           </section>

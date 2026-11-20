@@ -952,7 +952,7 @@ const vcardReseller: CardTemplateDef = {
   data: {
     name: "Your Name",
     jobTitle: "Shubhora Partner",
-    company: "Shubhora Digital V-Card",
+    company: "Shubhora · Website, Digital Card & AI",
     tagline: "Your whole business on one link — card, website and an AI assistant that never sleeps.",
     about: "I help shop owners, doctors, agents and freelancers move from a paper visiting card to a digital V-Card: one link that carries your products, photos, prices and contact details, and an AI assistant that answers customers for you.",
     avatarColor: VC,

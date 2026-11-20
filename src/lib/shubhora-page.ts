@@ -258,7 +258,79 @@ export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["pop
   const popup = pp && old
     ? { ...pp, title: "Get your website", subtitle: "Leave your number and I will help you get your own website and digital card.", ctaLabel: "Call me back", terms: "" }
     : pp;
-  return withSellerSlides({ ...card, pages, popup } as T, seller);
+  return withSellerHome(withSellerSlides({ ...card, pages, popup } as T, seller), seller);
+}
+
+/* ---------- the partner's home page, in the order a buyer reads it (plan Phase 6, 21 Nov 2026) ----------
+   ChatGPT's review of a live partner site: the plans came right under the banner, five sections said the same thing, and a map
+   of "All India" and festival posters sat on a product page. The home now runs: trust figures -> the problem and the answer ->
+   the four tools -> how it works -> the film -> designs for each trade -> plans -> six questions -> the form. Only drawn this
+   way; nothing stored changes, and the partner's other pages are left as they are. */
+
+/** Old headings -> the agency's (the old ones were taken word for word from the first template). */
+const SELLER_HEADS: Record<string, string> = {
+  "stop losing customers you never saw": "Turn every enquiry into a customer",
+  "four tools. one link.": "Everything your business needs, working together",
+  "how it works together": "From first click to customer",
+  "made for your kind of business": "A professional website for every business",
+  "good to know": "Before you get started",
+};
+const SELLER_HEADLINE_OLD = "your whole business on one link";
+const SELLER_HEADLINE = "Everything your business needs to grow online";
+
+function sellerRank(b: CardBlock, seen: { flow: number }): number | null {
+  switch (b.kind) {
+    case "story":
+      if (b.style === "stats") return 10;
+      if (b.style === "split") return 20;
+      if (b.style === "bento") return 30;
+      // The first run of steps is how the product works; a second one ("Start in three steps") said the same again.
+      return seen.flow++ === 0 ? 40 : null;
+    case "video": return 50;
+    case "showcase": return 60;
+    // "Everything in one link" repeated the four tools as a list: the Features page keeps the full list.
+    case "services": return /everything in one link|what you get/i.test(b.title) ? null : 65;
+    case "product": case "table": case "compare": return 70;
+    case "testimonials": return 75;
+    case "faq": return 80;
+    case "location": case "hours": return 85;
+    case "contact": case "form": case "appointment": return 90;
+    default: return 66;
+  }
+}
+
+function sellerHomePage(p: CardPage): CardPage {
+  if (p.slug !== "home") return p;
+  const seen = { flow: 0 };
+  const ranked = p.blocks.map((b, i) => ({ b, i, r: sellerRank(b, seen) })).filter((x) => x.r !== null) as { b: CardBlock; i: number; r: number }[];
+  ranked.sort((x, y) => x.r - y.r || x.i - y.i);
+  const blocks = ranked.map(({ b }) => {
+    const t = "title" in b ? SELLER_HEADS[(b.title ?? "").trim().toLowerCase()] : undefined;
+    const out = (t ? { ...b, title: t } : b) as CardBlock;
+    // Six questions on the home page; the rest stay on the page that has them.
+    return out.kind === "faq" && out.items.length > 6 ? { ...out, items: out.items.slice(0, 6) } : out;
+  });
+  return { ...p, blocks };
+}
+
+function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
+  if (!seller) return card;
+  const c = card as T & { site?: Card["site"]; company?: string };
+  const pages = card.pages.map(sellerHomePage);
+  const home = pages.find((p) => p.slug === "home");
+  const site = c.site;
+  const hero = site?.hero;
+  const fresh = (h?: string) => ((h ?? "").trim().toLowerCase() === SELLER_HEADLINE_OLD ? SELLER_HEADLINE : h);
+  const slides = hero?.slides?.map((sl, i) => (i === 0 ? { ...sl, headline: fresh(sl.headline) ?? sl.headline } : sl));
+  const nextSite = site ? {
+    ...site,
+    hero: hero ? { ...hero, headline: fresh(hero.headline) ?? hero.headline, ...(slides ? { slides } : {}) } : hero,
+    // This order wins over the partner's saved one and the trade's own (which put the plans first): the company's page.
+    home: { ...(site.home ?? {}), order: home ? home.blocks.map((b) => b.id) : site.home?.order, hidden: [...new Set([...(site.home?.hidden ?? []), "updates", "ask-review"])] },
+  } as Card["site"] : site;
+  // "Shubhora Digital V-Card" was the first product name; the company sells a website first now.
+  const company = c.company && /digital\s*v-?card/i.test(c.company) ? "Shubhora · Website, Digital Card & AI" : c.company;
+  return { ...card, pages, site: nextSite, ...(c.company !== undefined ? { company } : {}) } as T;
 }
 
 /** A Shubhora card made before the three banners gets them when it is drawn: its own first banner (the partner's picture and line stay),
