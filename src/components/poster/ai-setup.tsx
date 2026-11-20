@@ -3,6 +3,7 @@
 // taps; nothing set = the AI already answers from the card). Saved as card.botRules (bridge/ai-rules.mjs), read by the WhatsApp
 // assistant and by the website chat / official WhatsApp API / phone assistant alike.
 import { useEffect, useState } from "react";
+import { Help } from "@/components/poster/field-help";
 import { ChevronDown } from "lucide-react";
 import type { BotRules, Card } from "@/lib/types";
 import { publishCard } from "@/lib/cloud";
@@ -92,20 +93,20 @@ export function AiQuickSetup(props: P) {
     <div className="space-y-3 rounded-2xl border border-border bg-surface p-3.5">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">{T("AI replies on WhatsApp", "WhatsApp पर AI जवाब")}</p>
+          <p className="text-sm font-bold">{T("AI replies on WhatsApp", "WhatsApp पर AI जवाब")}<Help k="aiOnOff" /></p>
           <p className="text-[11px] text-muted">{on === null ? T("Link WhatsApp first (section 3).", "पहले WhatsApp जोड़ें (section 3)।") : on ? T("On — the AI answers your customers.", "चालू — AI आपके customers को जवाब दे रहा है।") : T("Off — nothing is sent; messages are still saved as enquiries.", "बंद — कुछ नहीं जाता; messages enquiry में save होते रहते हैं।")}</p>
         </div>
         <button type="button" role="switch" aria-checked={!!on} disabled={on === null || swBusy} onClick={() => void master()} className={`${sw(!!on)} disabled:opacity-40`} aria-label={T("On / off", "चालू / बंद")}><span className={knob(!!on)} /></button>
       </div>
 
       <div className="border-t border-border pt-3">
-        <p className="text-sm font-bold">{T("Language", "भाषा")}</p>
+        <p className="text-sm font-bold">{T("Language", "भाषा")}<Help k="aiLang" /></p>
         <div className="mt-1.5 flex flex-wrap gap-2">{LANGS.map(([k, en, h]) => <button key={k} type="button" onClick={() => setR({ ...r, lang: k })} className={chip((r.lang ?? "hi") === k)}>{T(en, h)}</button>)}</div>
         <p className="mt-1 text-[11px] text-muted">{T("If a customer asks for another language, the AI switches for them.", "Customer कोई और भाषा माँगे, तो AI उसी में बात करेगा।")}</p>
       </div>
 
       <div className="border-t border-border pt-3">
-        <p className="text-sm font-bold">{T("What the AI may do", "AI क्या-क्या करे")}</p>
+        <p className="text-sm font-bold">{T("What the AI may do", "AI क्या-क्या करे")}<Help k="aiTasks" /></p>
         <div className="mt-1.5 space-y-2">
           {([["order", "Take orders", "Order ले"], ["booking", "Book appointments", "Appointment / booking ले"], ["callback", "Take call-back requests", "Call-back के लिए number ले"]] as const).map(([k, en, h]) => (
             <div key={k} className="flex items-center gap-3">
@@ -118,7 +119,7 @@ export function AiQuickSetup(props: P) {
       </div>
 
       <div className="border-t border-border pt-3">
-        <p className="text-sm font-bold">{T("Prices", "दाम")}</p>
+        <p className="text-sm font-bold">{T("Prices", "दाम")}<Help k="aiPrice" /></p>
         <div className="mt-1.5 flex flex-wrap gap-2">
           <button type="button" onClick={() => setR({ ...r, price: "tell" })} className={chip(r.price !== "call")}>{T("Tell the prices on my card", "Card पर लिखे दाम बताए")}</button>
           <button type="button" onClick={() => setR({ ...r, price: "call" })} className={chip(r.price === "call")}>{T("Never tell — I will quote", "दाम न बताए — मैं खुद बताऊँगा")}</button>
@@ -140,36 +141,39 @@ export function AiMoreSettings(props: P) {
   const has = (k: "ask" | "alertOn" | "pay", v: string) => ((r[k] ?? []) as string[]).includes(v);
   return (
     <div className="rounded-2xl border border-border bg-surface">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center gap-2 p-3.5 text-left">
+      <div className="flex items-center gap-1 pr-3.5">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2 p-3.5 text-left">
         <ChevronDown className={`h-4 w-4 text-brand transition-transform ${open ? "" : "-rotate-90"}`} />
         <span className="flex-1"><b className="block text-sm">{T("More settings", "और settings")}</b><span className="block text-[11px] text-muted">{T("AI's name, what to ask, when to call you, discount, payment, never say, night", "AI का नाम, क्या पूछे, कब बुलाए, छूट, payment, क्या न कहे, रात")}</span></span>
       </button>
+      <Help k="aiMore" />
+      </div>
       {open && (
         <div className="space-y-3 border-t border-border p-3.5">
           <label className="block"><span className="text-sm font-bold">{T("AI's name (optional)", "AI का नाम (ज़रूरी नहीं)")}</span>
             <input value={r.name ?? ""} onChange={(e) => setR({ ...r, name: e.target.value })} maxLength={30} placeholder={T("e.g. Priya", "जैसे: Priya")} className={`${field} mt-1`} />
             <span className="mt-1 block text-[11px] text-muted">{T("Empty: the AI calls itself your assistant.", "खाली: AI खुद को आपका assistant बताता है।")}</span></label>
 
-          <div><p className="text-sm font-bold">{T("Find out from a new customer", "नए customer से पूछे")}</p>
+          <div><p className="text-sm font-bold">{T("Find out from a new customer", "नए customer से पूछे")}<Help k="aiAsk" /></p>
             <div className="mt-1.5 flex flex-wrap gap-2">{([["name", "Name", "नाम"], ["city", "City / area", "शहर / इलाक़ा"], ["budget", "Budget", "Budget"], ["when", "When they need it", "कब चाहिए"]] as const).map(([k, en, h]) => <button key={k} type="button" onClick={() => toggle("ask", k)} className={chip(has("ask", k))}>{has("ask", k) ? "✓ " : ""}{T(en, h)}</button>)}</div>
             <input value={r.askOwn ?? ""} onChange={(e) => setR({ ...r, askOwn: e.target.value })} maxLength={120} placeholder={T("One more question of yours, e.g. Which size do you need?", "आपका एक और सवाल, जैसे: कौन सा size चाहिए?")} className={`${field} mt-2`} />
             <p className="mt-1 text-[11px] text-muted">{T("The AI asks one at a time, when it fits — never all at once.", "AI एक-एक करके, सही मौक़े पर पूछता है — सब एक साथ नहीं।")}</p></div>
 
-          <div><p className="text-sm font-bold">{T("When to call you", "AI आपको कब बुलाए")}</p>
+          <div><p className="text-sm font-bold">{T("When to call you", "AI आपको कब बुलाए")}<Help k="aiAlert" /></p>
             <p className="text-[11px] text-muted">{T("Always: when a customer wants to buy now, books, complains or asks for you.", "हमेशा: जब customer अभी ख़रीदना चाहे, booking करे, शिकायत करे या आपसे बात करना चाहे।")}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">{([["big", "Also for a big order", "बड़े order पर भी"], ["every", "Also for every new enquiry", "हर नई enquiry पर भी"]] as const).map(([k, en, h]) => <button key={k} type="button" onClick={() => toggle("alertOn", k)} className={chip(has("alertOn", k))}>{has("alertOn", k) ? "✓ " : ""}{T(en, h)}</button>)}</div></div>
 
-          <div><p className="text-sm font-bold">{T("Discount when a customer bargains", "मोल-भाव पर छूट")}</p>
+          <div><p className="text-sm font-bold">{T("Discount when a customer bargains", "मोल-भाव पर छूट")}<Help k="aiDiscount" /></p>
             <div className="mt-1.5 flex flex-wrap gap-2">{[0, 5, 10, 15, 20].map((d) => <button key={d} type="button" onClick={() => setR({ ...r, discount: d })} className={chip((r.discount ?? 0) === d)}>{d === 0 ? T("Never", "कभी नहीं") : T(`Up to ${d}%`, `${d}% तक`)}</button>)}</div></div>
 
           <div><p className="text-sm font-bold">{T("How customers can pay", "Customer कैसे pay करे")}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">{([["upi", "UPI", "UPI"], ["cod", "Cash on delivery", "Cash on delivery"], ["shop", "At the shop", "दुकान पर"], ["card", "Card", "Card"]] as const).map(([k, en, h]) => <button key={k} type="button" onClick={() => toggle("pay", k)} className={chip(has("pay", k))}>{has("pay", k) ? "✓ " : ""}{T(en, h)}</button>)}</div></div>
 
-          <label className="block"><span className="text-sm font-bold">{T("The AI must never say", "AI यह कभी न कहे")}</span>
+          <label className="block"><span className="text-sm font-bold">{T("The AI must never say", "AI यह कभी न कहे")}<Help k="aiNever" /></span>
             <textarea value={r.never ?? ""} onChange={(e) => setR({ ...r, never: e.target.value })} rows={2} maxLength={400} placeholder={T("e.g. Never promise same-day delivery. Never talk about other shops.", "जैसे: उसी दिन delivery का वादा न करे। दूसरी दुकानों की बात न करे।")} className={`${field} mt-1`} /></label>
 
           <div><div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1"><p className="text-sm font-bold">{T("At night", "रात को")}</p><p className="text-[11px] text-muted">{T("Off: the AI answers day and night. On: outside your message hours (section 5) customers get this line once, and the AI waits for morning.", "बंद: AI दिन-रात जवाब देता है। चालू: आपके message के समय (section 5) के बाहर customer को यह line एक बार जाती है, और AI सुबह तक रुकता है।")}</p></div>
+              <div className="min-w-0 flex-1"><p className="text-sm font-bold">{T("At night", "रात को")}<Help k="aiNight" /></p><p className="text-[11px] text-muted">{T("Off: the AI answers day and night. On: outside your message hours (section 5) customers get this line once, and the AI waits for morning.", "बंद: AI दिन-रात जवाब देता है। चालू: आपके message के समय (section 5) के बाहर customer को यह line एक बार जाती है, और AI सुबह तक रुकता है।")}</p></div>
               <button type="button" role="switch" aria-checked={!!r.night?.on} onClick={() => setR({ ...r, night: { text: r.night?.text ?? "", on: !r.night?.on } })} className={sw(!!r.night?.on)} aria-label={T("On / off", "चालू / बंद")}><span className={knob(!!r.night?.on)} /></button>
             </div>
             {r.night?.on && <textarea value={r.night.text} onChange={(e) => setR({ ...r, night: { on: true, text: e.target.value } })} rows={2} maxLength={400} placeholder={T("e.g. Thank you {naam} 🙏 We will reply in the morning after 10.", "जैसे: धन्यवाद {naam} 🙏 हम सुबह 10 बजे के बाद जवाब देंगे।")} className={`${field} mt-2`} />}</div>

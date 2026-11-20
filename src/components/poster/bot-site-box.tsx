@@ -3,6 +3,7 @@
 // The owner names their own website; the bot then sends customers THAT link instead of the card page and answers from
 // what the site says (read into the card's knowledge base here, saved to the live card at once).
 import { useEffect, useRef, useState } from "react";
+import { Help } from "@/components/poster/field-help";
 import { Bot, Check, FileText, ImagePlus, Link2, LoaderCircle, PlaySquare, Trash2 } from "lucide-react";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { uploadImage, uploadPdf } from "@/lib/poster-client";
@@ -184,7 +185,7 @@ export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = fals
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={8} maxLength={20000} placeholder={T("जैसे: Banarasi silk saree — ₹2,499 (MRP ₹2,999), 6.3 मीटर, blouse piece साथ में। Delivery पूरे भारत में 4–6 दिन। रविवार बंद।", "e.g. Banarasi silk saree — ₹2,499 (MRP ₹2,999), 6.3 m, blouse piece included. Delivery all over India in 4–6 days. Closed on Sunday.")} className="mt-2 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand" />
         {/* One question, one answer (19 Nov 2026): typed in two boxes and put into the notes above in the shape the AI reads best. */}
         <div className="mt-2 rounded-xl border border-dashed border-border p-2.5">
-          <p className="text-xs font-semibold">{T("सवाल-जवाब जोड़ें", "Add a question and its answer")}</p>
+          <p className="text-xs font-semibold">{T("सवाल-जवाब जोड़ें", "Add a question and its answer")}<Help k="aiQA" /></p>
           {/* Ready questions for this kind of business (20 Nov 2026): one tap, then only the answer to write. */}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {readyQuestions(card, hi).filter((q) => !notes.includes(q)).map((q) => <button key={q} type="button" onClick={() => setQa({ q, a: "" })} className="rounded-full border border-border bg-bg px-2.5 py-1 text-[11px] font-medium text-ink">+ {q}</button>)}

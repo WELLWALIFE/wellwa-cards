@@ -14,6 +14,7 @@ import { BotSiteBox } from "@/components/poster/bot-site-box";
 import { AiMessages } from "@/components/poster/ai-messages";
 import { AiAway, AiReport, AiWho } from "@/components/poster/ai-guard";
 import { AiMoreSettings, AiQuickSetup } from "@/components/poster/ai-setup";
+import { Help, type HelpKey } from "@/components/poster/field-help";
 import { CardChat } from "@/components/card-chat";
 import { publishCard } from "@/lib/cloud";
 import type { Card } from "@/lib/types";
@@ -41,8 +42,9 @@ export default function AiTrainingPage() {
   // replace, not push: Back from the login screen must not land here and bounce straight back to it.
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace("/login?next=/poster/ai"); return; } void load(); })(); }, [router, load]);
 
+  const HELP_OF: Record<number, HelpKey> = { 1: "aiQuick", 2: "aiKnows", 3: "aiWhatsapp", 4: "aiWho", 5: "aiMessages", 6: "aiTone", 7: "aiAway", 8: "aiReport", 9: "aiChat" };
   const sec = (n: number, title: string, sub: string) => (
-    <div className="mb-2"><h2 className="text-base font-bold">{n}. {title}</h2><p className="text-xs text-muted">{sub}</p></div>
+    <div className="mb-2"><h2 className="text-base font-bold">{n}. {title}{HELP_OF[n] && <Help k={HELP_OF[n]} />}</h2><p className="text-xs text-muted">{sub}</p></div>
   );
   const row = "flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left";
 

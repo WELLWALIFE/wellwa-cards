@@ -2,6 +2,7 @@
 // AI Training: who the AI answers (personal WhatsApp numbers — owner, 20 Nov 2026: "zyadatar log apna personal WhatsApp connect
 // karenge"), the "shop closed" line, the week's report and the customers the AI called the owner for.
 import { useEffect, useState } from "react";
+import { Help } from "@/components/poster/field-help";
 import { Check, LoaderCircle, X } from "lucide-react";
 import type { BotFollow, Card } from "@/lib/types";
 import { publishCard } from "@/lib/cloud";
@@ -58,14 +59,14 @@ export function AiWho({ card, onSaved, hi }: P) {
       <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs text-ink">💡 {T("Best: keep a separate number for the business (a second SIM with the free WhatsApp Business app) and put that number on your card and ads. Then personal and customer chats never mix.", "सबसे अच्छा: business के लिए अलग number रखें (दूसरा SIM, उस पर free WhatsApp Business app) और वही number card और ads पर डालें। तब personal और customer की chat कभी नहीं मिलेगी।")}</p>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">{T("Answer only new numbers", "सिर्फ़ नए number को जवाब दे")}</p>
+          <p className="text-sm font-bold">{T("Answer only new numbers", "सिर्फ़ नए number को जवाब दे")}<Help k="aiOnlyNew" /></p>
           <p className="text-[11px] text-muted">{T("People you already had a WhatsApp chat with when you linked your number (family, friends, old customers) get no AI reply — you answer them yourself. Someone who comes from an ad is always answered.", "जिनसे number जोड़ते समय पहले से WhatsApp chat थी (परिवार, दोस्त, पुराने customer), उन्हें AI जवाब नहीं देगा — आप खुद देंगे। Ad से आया हर व्यक्ति customer माना जाएगा।")}</p>
         </div>
         <button type="button" role="switch" aria-checked={onlyNew} disabled={busy === "new"} onClick={() => void toggle()} className={sw(onlyNew)} aria-label={T("On / off", "चालू / बंद")}><span className={knob(onlyNew)} /></button>
       </div>
       {!onlyNew && <p className="text-[11px] text-muted">{T("Off: the AI reads each message and stays silent when it looks personal (it can guess wrong sometimes).", "बंद: AI हर message पढ़कर personal लगे तो चुप रहता है (कभी-कभी अंदाज़ा ग़लत हो सकता है)।")}</p>}
       <div className="border-t border-border pt-3">
-        <p className="text-sm font-bold">🚫 {T("Personal numbers — the AI never replies", "Personal numbers — AI कभी जवाब नहीं देगा")}</p>
+        <p className="text-sm font-bold">🚫 {T("Personal numbers — the AI never replies", "Personal numbers — AI कभी जवाब नहीं देगा")}<Help k="aiPersonal" /></p>
         <p className="text-[11px] text-muted">{T("Add family and friends once. They are kept out of your customer list too.", "परिवार और दोस्तों के number एक बार जोड़ दें। ये customer list में भी नहीं आएँगे।")}</p>
         <div className="mt-2 flex gap-2">
           <input value={add} onChange={(e) => setAdd(e.target.value)} inputMode="numeric" maxLength={14} placeholder={T("10-digit mobile number", "10 अंकों का mobile number")} className="min-w-0 flex-1 rounded-xl border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" />

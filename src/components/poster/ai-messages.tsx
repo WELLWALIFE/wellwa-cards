@@ -5,6 +5,7 @@
 // off, carries an optional picture and is tried first on the owner's own WhatsApp. Saved on the card (card.botFollow); the WhatsApp
 // bridge reads it within five minutes.
 import { useEffect, useState } from "react";
+import { Help } from "@/components/poster/field-help";
 import { Check, ImagePlus, LoaderCircle, MessageCircle, Send, X } from "lucide-react";
 import type { BotFollow, BotFollowStep, Card } from "@/lib/types";
 import { publishCard } from "@/lib/cloud";
@@ -137,7 +138,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
         {/* 1 — the welcome */}
         <li className="relative rounded-2xl border border-border bg-surface p-3.5">
           <span className="absolute -left-[27px] top-3.5 grid h-5 w-5 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">1</span>
-          <p className="text-sm font-bold">{T("First message", "पहला message")}</p>
+          <p className="text-sm font-bold">{T("First message", "पहला message")}<Help k="aiFirst" /></p>
           <p className="text-[11px] text-muted">{T("When a new customer writes to you for the first time.", "जब कोई नया customer पहली बार लिखे।")}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => setPlan((x) => ({ ...x, welcome: { ...x.welcome, mode: "ai" } }))} className={chip(plan.welcome.mode === "ai")}>{T("AI writes it", "AI खुद लिखे")}</button>
@@ -168,7 +169,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
             <span className={`absolute -left-[27px] top-3.5 grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold text-white ${s.on ? "bg-brand" : "bg-muted"}`}>{i + 2}</span>
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold">{ordinal[i]}</p>
+                <p className="text-sm font-bold">{ordinal[i]}<Help k="aiFollow" /></p>
                 <p className="text-[11px] text-muted">{s.on ? T(`Goes ${dayOf(i)} day${dayOf(i) === 1 ? "" : "s"} after the customer's first message, if they have not replied.`, `Customer के पहले message के ${dayOf(i)} दिन बाद जाएगा, अगर उन्होंने जवाब नहीं दिया।`) : T("Off — it is skipped.", "बंद — यह नहीं जाएगा।")}</p>
               </div>
               <button type="button" role="switch" aria-checked={s.on} onClick={() => setStep(i, { on: !s.on })} className={`relative h-6 w-11 shrink-0 rounded-full transition ${s.on ? "bg-brand" : "bg-border"}`} aria-label={T("On / off", "चालू / बंद")}>
@@ -231,7 +232,7 @@ export function AiMessages({ card, onSaved }: { card: Card; onSaved: (c: Card) =
 
       {/* The rules, plain to see. */}
       <div className="space-y-2 rounded-2xl border border-border bg-surface p-3.5">
-        <p className="text-sm font-bold">{T("Rules", "नियम")}</p>
+        <p className="text-sm font-bold">{T("Rules", "नियम")}<Help k="aiHours" /></p>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="font-semibold text-muted">{T("Messages go between", "Messages इस समय के बीच जाएँ:")}</span>
           <select value={plan.start} onChange={(e) => setPlan((x) => ({ ...x, start: Number(e.target.value) }))} className="rounded-lg border border-border bg-bg px-2 py-1.5">
