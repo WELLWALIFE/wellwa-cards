@@ -269,7 +269,11 @@ export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["pop
 
 /** Old headings -> the agency's (the old ones were taken word for word from the first template). */
 const SELLER_HEADS: Record<string, string> = {
-  "stop losing customers you never saw": "Turn every enquiry into a customer",
+  // ChatGPT's second review (21 Nov 2026): the WhatsApp-enquiry story is the strongest promise, so it is the headline now and
+  // this section, which said the same, tells the before and after instead.
+  "stop losing customers you never saw": "From scattered chats to organised growth",
+  "turn every enquiry into a customer": "From scattered chats to organised growth",
+  "ask me anything": "Get a demo made for your business",
   "four tools. one link.": "Everything your business needs, working together",
   "how it works together": "From first click to customer",
   "made for your kind of business": "A professional website for every business",
@@ -277,7 +281,9 @@ const SELLER_HEADS: Record<string, string> = {
 };
 const SELLER_HEADLINE_OLD = "your whole business on one link";
 // Six words at most: the hero drops a longer line for its own default (lib/site-hero.ts aiHeadline).
-const SELLER_HEADLINE = "Your entire business. One smart platform.";
+const SELLER_HEADLINE = "Turn WhatsApp enquiries into paying customers";
+/** Earlier company lines a partner may still carry: they become the current one. */
+const SELLER_HEADLINES_OLD = new Set([SELLER_HEADLINE_OLD, "your entire business. one smart platform"]);
 
 function sellerRank(b: CardBlock, seen: { flow: number }): number | null {
   switch (b.kind) {
@@ -344,7 +350,8 @@ function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolea
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;
-  const fresh = (h?: string) => ((h ?? "").replace(/\s+/g, " ").trim().replace(/[.!]$/, "").toLowerCase() === SELLER_HEADLINE_OLD ? SELLER_HEADLINE : h);
+  const key = (h?: string) => (h ?? "").replace(/\s+/g, " ").trim().replace(/[.!]$/, "").toLowerCase();
+  const fresh = (h?: string) => (SELLER_HEADLINES_OLD.has(key(h)) ? SELLER_HEADLINE : h);
   const slides = hero?.slides?.map((sl, i) => (i === 0 ? { ...sl, headline: fresh(sl.headline) ?? sl.headline } : sl));
   const nextSite = site ? {
     ...site,

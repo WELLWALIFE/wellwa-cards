@@ -107,7 +107,7 @@ export function heroModel(card: Card, lang: Lang): HeroModel {
   // A partner's own Shubhora card has no trade mood of its own: without this it opened on the generic "Good work, done properly"
   // (owner, 20 Oct 2026, "pehle bhi karaya tha fir change ho gaya"). The owner's own hero line, when written, still wins.
   const seller = card.kb === "shubhora" || /shubhora/i.test(card.company ?? "");
-  const headline = aiHeadline(hero?.headline, [rawName, card.company, card.name], labels) ?? (seller ? (hi ? "आपका पूरा business, एक smart platform पर" : "Your entire business. One smart platform.") : mood.headline[copy]);
+  const headline = aiHeadline(hero?.headline, [rawName, card.company, card.name], labels) ?? (seller ? (hi ? "WhatsApp की हर enquiry को ग्राहक बनाइए" : "Turn WhatsApp enquiries into paying customers") : mood.headline[copy]);
   const sub = aiSub(hero?.sub, labels) ?? (seller ? (hi ? "Digital card, website, रोज़ के posters और WhatsApp AI assistant — सब एक Shubhora link में।" : "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.") : benefitSub(mood.benefit[copy], city, hi));
 
   /* ---- trust ---- */

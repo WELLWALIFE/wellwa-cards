@@ -237,7 +237,7 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
     const h = card.site.hero ?? { headline: "", sub: "" };
     const img = slide.imageUrl || h.imageUrl || card.coverUrl;
     const same = img === (h.imageUrl || card.coverUrl);
-    return { ...card, coverUrl: img, site: { ...card.site, hero: { ...h, headline: slide.headline, sub: slide.sub ?? h.sub, ...(img ? { imageUrl: img } : {}), ...(same ? {} : { focus: undefined, textSide: undefined, lqip: undefined }) } } };
+    return { ...card, coverUrl: img, site: { ...card.site, hero: { ...h, headline: slide.headline, sub: slide.sub ?? h.sub, ...(img ? { imageUrl: img } : {}), ...(same ? {} : { focus: slide.focus, textSide: undefined, lqip: undefined }) } } };
   })() : card;
   const hm = heroModel(heroCard, L.lang);
   // The inner page header's picture: the page's own first photo (no plan/price artwork), else the first banner.
@@ -1604,7 +1604,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
                 {gallery[0]
                   ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-6 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transform-none" eager={i < 3} sizes={wide4 ? "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 50vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 50vw"} /></button>
                   : <span aria-hidden="true" className="p-ph">{initial}</span>}
-                {p.badge && <div className="absolute left-4 top-4 pointer-events-none text-[12px] font-semibold"><span className="kicker" style={{ fontSize: 11 }}>{t(p.badge)}</span></div>}
+                {p.badge && <div className="absolute left-4 right-4 top-4 pointer-events-none text-[12px] font-semibold"><span className="kicker block truncate" style={{ fontSize: 11 }} title={t(p.badge)}>{t(p.badge)}</span></div>}
               </div>
             )}
             {gallery.length > 1 && !linkable && (
