@@ -54,6 +54,20 @@ export function picUrl(src: string, width: number): string {
   return props.srcSet?.split(",")[0]?.trim().split(" ")[0] || props.src;
 }
 
+/** Decode the same responsive resource a mounted picture will request. */
+export function decodePic(src: string, sizes: string): Promise<void> {
+  const image = new Image();
+  if (optimizable(src)) {
+    const { props } = getImageProps({ src, alt: "", fill: true, sizes, quality: 75 });
+    image.sizes = sizes;
+    if (props.srcSet) image.srcset = props.srcSet;
+    image.src = props.src;
+  } else {
+    image.src = src;
+  }
+  return image.decode();
+}
+
 export function Pic({ src, alt, className, style, eager, priority, sizes, w, onClick, draggable, ...rest }: PicProps) {
   const hidden = rest["aria-hidden"];
   const loading = eager || priority ? "eager" : "lazy";

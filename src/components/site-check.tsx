@@ -8,15 +8,15 @@ import { isShubhoraSellerCard, withoutFreeCard } from "@/lib/shubhora-page";
 
 /** The website check on the edit screen (plan Phase 2): what the site already fixed by itself, and what only the owner
  *  can give (a photo, a full address, a shorter heading). Folded to one line until opened. */
-export function SiteCheck({ card, hi }: { card: Card; hi: boolean }) {
+export function SiteCheck({ card, hi, staged = false }: { card: Card; hi: boolean; staged?: boolean }) {
   // A Shubhora partner's home is drawn with the company's own sections: check what the visitor sees, not the stored blocks.
-  const notes = useMemo(() => checkSite(isShubhoraSellerCard(card) ? withoutFreeCard(card, true) : card), [card]);
+  const notes = useMemo(() => checkSite(staged || !isShubhoraSellerCard(card) ? card : withoutFreeCard(card, true)), [card, staged]);
   const [open, setOpen] = useState(false);
   const todo = notes.filter((n) => n.level === "todo").length;
   if (!notes.length) {
     return (
       <p className="flex items-center gap-2 rounded-2xl border border-good/30 bg-good/10 px-3.5 py-2.5 text-sm font-semibold text-good">
-        <ShieldCheck className="h-4 w-4" /> {hi ? "Website check: सब ठीक है" : "Website check: all good"}
+        <ShieldCheck className="h-4 w-4" /> {hi ? "Website check: कोई समस्या नहीं मिली" : "Website check: no issues found"}
       </p>
     );
   }

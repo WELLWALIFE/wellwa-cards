@@ -1,7 +1,7 @@
 "use client";
 // The Premium website's sliding top (owner, 23 Oct 2026: "ek se zyada banner, jo auto slide ho, sab par alag heading"): the hero the
 // design chose, drawn once per banner (site.hero.slides) with that banner's big line, small line and picture, stacked in one place
-// and cross-faded every few seconds. Dots to pick one; it pauses while the visitor's pointer or focus is on it; no auto-play for
+// and switched every few seconds. Dots to pick one; it pauses while the visitor's pointer or focus is on it; no auto-play for
 // visitors who ask for reduced motion. Hidden banners are inert for screen readers and the keyboard.
 import { createElement, useEffect, useState, type ComponentType } from "react";
 import type { HeroSlide } from "@/lib/types";
@@ -13,7 +13,7 @@ const EVERY_MS = 5500;
  *  a pinned story) have no clear photo to float over, and the cards landed on empty paper or on other photos (20 Nov 2026). */
 // Cards only where they sit on the picture's frame (12-design review, 21 Nov 2026: on the cinematic and the slanted tops they
 // competed with the headline).
-const CHIP_TOPS = new Set(["glass-card", "split-frame", "storefront"]);
+const CHIP_TOPS = new Set(["glass-card", "storefront"]);
 
 /** The content one banner shows: its words, and its picture when it has one (else the hero's own). */
 function contentFor(c: SiteContent, s: HeroSlide): SiteContent {
@@ -31,10 +31,10 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
     if (hold || n < 2) return;
     let reduce = false;
     try { reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { /* old browser */ }
-    if (reduce) return;
+    if (reduce || p.spec.motion === "none") return;
     const t = setInterval(() => setAt((i) => (i + 1) % n), EVERY_MS);
     return () => clearInterval(t);
-  }, [hold, n]);
+  }, [hold, n, p.spec.motion]);
   return (
     // One column exactly as wide as the page (minmax(0, 1fr)): an auto column grew to a wide hero's content and pushed its words and
     // picture far off the right edge, so the top looked empty (found on a new design, 25 Oct 2026).
@@ -42,7 +42,7 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
       onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocusCapture={() => setHold(true)} onBlurCapture={() => setHold(false)}>
       {slides.map((s, i) => (
         <div key={i} data-slide="" aria-hidden={i !== at} inert={i !== at}
-          style={{ gridArea: "1 / 1", minWidth: 0, opacity: i === at ? 1 : 0, transition: "opacity .8s ease", pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
+          style={{ gridArea: "1 / 1", minWidth: 0, opacity: i === at ? 1 : 0, pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
           {createElement(Hero, { ...p, c: contentFor(p.c, s) })}
           {!!s.chips?.length && CHIP_TOPS.has(p.spec.hero) && (
             // The app as the customer would see it, floating over the picture (owner, 20 Nov 2026: the big SaaS sites show the product
@@ -71,11 +71,8 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
 }
 
 const CHIP_CSS = `
-/* The pictures cross-fade; the words do not (12-design review, 21 Nov 2026: two headlines showed through each other for most of a
-   second). The old words leave at once, the new ones come in once the picture has turned. */
-[data-slide] :is(h1,h2,p,ul,.hero-ctas,.adv-chips,.kicker,.hero-sub,.trust-row){transition:opacity .45s ease .55s}
-[data-slide][aria-hidden="true"] :is(h1,h2,p,ul,.hero-ctas,.adv-chips,.kicker,.hero-sub,.trust-row){opacity:0;transition:opacity .15s ease}
-@media (prefers-reduced-motion:reduce){[data-slide] :is(h1,h2,p,ul,.hero-ctas,.adv-chips,.kicker,.hero-sub,.trust-row){transition:none}}
+/* Switch complete frames together so the image and headline stay readable during rotation. */
+.adv-slides [data-slide] :is(.ahd-pic,.ahd-band,.hero-ph-in,.hero-ph,.mo-wi,.mo-mask){animation:none}
 .adv-chips{display:none}
 @media (min-width:900px){.adv-chips{display:block;position:absolute;inset:0;pointer-events:none;z-index:2}}
 .adv-chip{position:absolute;display:flex;align-items:center;gap:.7rem;padding:.75rem 1rem;border-radius:16px;background:rgba(255,255,255,.94);color:#0f172a;box-shadow:0 18px 44px rgba(2,6,23,.28);font:500 13px/1.25 system-ui,sans-serif;max-width:250px;opacity:0;transform:translateY(14px);transition:opacity .6s ease .35s,transform .6s ease .35s}

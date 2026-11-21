@@ -37,6 +37,7 @@ export const POSTER_CSS = `
 .site .poster[data-field=ink]{--hero-text:#fff;background:var(--hero-ink);color:var(--hero-text)}
 .site .poster .kicker,.site .poster .trust-row{color:var(--hero-text)}
 .site .poster .display{--t-display:clamp(2.35rem,7vw,4.25rem);max-width:16ch;margin-top:var(--s3)}
+.site .poster .display[data-len="long"]{--t-display:clamp(2rem,4.6vw,3.5rem);max-width:20ch}
 .site .poster .hero-sub{max-width:40ch;margin-top:var(--s4)}
 .site .poster-in{position:relative;z-index:1}
 .site .poster-copy{min-width:0;padding:clamp(1.75rem,5vw,4.75rem) var(--gutter)}

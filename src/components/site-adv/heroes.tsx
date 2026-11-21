@@ -65,7 +65,8 @@ function Cta({ c, x, link = false }: { c: SiteContent; x: AdvCtx; link?: boolean
 }
 /** The headline: words rising out of a mask. `cls` carries the hero's own size. */
 function Head({ c, x, cls, accent = "last", as = "h1", from }: { c: SiteContent; x: AdvCtx; cls: string; accent?: "last" | "none"; as?: "h1" | "p"; from?: number }) {
-  return <SplitHeadline as={as} text={x.t(c.hm.headline)} className={`ah-title ${cls}`} lang={x.lang} accent={accent} from={from} />;
+  const text = x.t(c.hm.headline);
+  return <SplitHeadline as={as} text={text} len={Array.from(text).length >= 40 ? "long" : undefined} className={`ah-title ${cls}`} lang={x.lang} accent={accent} from={from} />;
 }
 /** The live open chip (moving dot, state, until when); nothing when the card has no readable hours. */
 function Live({ c, x }: { c: SiteContent; x: AdvCtx }) {
@@ -730,7 +731,9 @@ export function HeroSpotlight({ c, x, spec }: VariantProps) {
 export const HEROES_MORE_CSS = `
 /* shared by the eight newer heroes: the title scale (Hindi steps down and loosens), the figure pairs, the fill box */
 .ah-title{margin:0;font-family:var(--font-display);font-weight:var(--display-w);font-size:var(--ah-fs,clamp(2.6rem,8vw,6rem));line-height:var(--display-lh);letter-spacing:var(--display-tr);text-wrap:balance;overflow-wrap:break-word}
+.ah-title[data-len="long"]{font-size:calc(var(--ah-fs,clamp(2.6rem,8vw,6rem)) * .76);max-width:18ch}
 .site:lang(hi) .ah-title{font-size:calc(var(--ah-fs,clamp(2.6rem,8vw,6rem))*.86);line-height:1.26;letter-spacing:0;font-weight:var(--display-w-hi)}
+.site:lang(hi) .ah-title[data-len="long"]{font-size:calc(var(--ah-fs,clamp(2.6rem,8vw,6rem)) * .72)}
 .site .ah-fill>.hero-ph-wrap{position:absolute;inset:0}
 .ah-fill{position:relative;overflow:hidden}
 .ah-fill>.adv-photo,.ah-fill>.adv-tile{position:absolute;inset:0}

@@ -3,6 +3,7 @@
 // every detail page (team tree, wallet, income, KYC…) is a screen of the app itself (/poster/business/<page>), with this same login.
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Pic } from "@/components/pic";
 import { useSearchParams } from "next/navigation";
 import {
   Award, BadgeIndianRupee, BookOpen, CalendarClock, Check, Copy, Download, FileCheck2, Handshake, Headphones, LoaderCircle, Network, Share2, UserRound, Wallet,
@@ -121,6 +122,19 @@ function BusinessInner() {
           </p>
         )}
       </section>
+
+      {p && res?.cardLink && (
+        <section className="grid overflow-hidden rounded-2xl border border-border bg-surface sm:grid-cols-[1fr_12rem]">
+          <div className="p-4">
+            <h2 className="font-semibold">{en ? "Preview your partner website" : "अपनी पार्टनर वेबसाइट देखें"}</h2>
+            <p className="mt-1 text-sm text-muted">{en ? "See the page a customer opens from your link." : "आपके लिंक से ग्राहक को जो पेज दिखता है, उसे देखें।"}</p>
+            <a href={res.cardLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white">{en ? "Open website" : "वेबसाइट खोलें"}</a>
+          </div>
+          <div className="relative aspect-[3/1] min-w-0 overflow-hidden bg-surface2 sm:aspect-auto">
+            <Pic src="/art/shubhora/brand-v2/portal.webp" alt="" sizes="(min-width: 640px) 192px, 100vw" className="absolute inset-0 h-full w-full object-cover" />
+          </div>
+        </section>
+      )}
 
       {/* My link */}
       {res?.link && (

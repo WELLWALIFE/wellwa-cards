@@ -90,7 +90,7 @@ export const HERO_VARIANT_BLURBS: Record<HeroVariant, string> = {
   "cover-centre": "one centred block over the photo (hotels, banquets, events)",
   poster: "a bold colour panel for the headline alongside a large photo panel — the default",
   "poster-ink": "the colour block alone, type only (no photo)",
-  mark: "a business masthead and prominent benefit headline, then a photo strip with an action tile — the default wordmark",
+  mark: "a business masthead and prominent benefit headline, with the actions beside it and a photo strip below — the default wordmark",
   "mark-ink": "the huge name on the ink field, type only (no photo)",
   shelf: "a row of round category / product chips, then a promo banner with the photo and the Order button — the default shelf",
   "shelf-ink": "the chip row and a solid colour promo banner (no photo)",

@@ -12,7 +12,7 @@
 //
 // Pure module (no React, no fetch, no DOM, no server-only): the engine, the preview and the tests import it.
 import {
-  ADV_FONTS, BODY_FONTS, DEFAULT_ORDER, DENSITIES, HERO_IDS, hash32, SANS_HEADINGS, SECTION_KEYS, SERIF_HEADINGS, SHAPES, VARIANT_IDS, rng, validateSpec, variantOf,
+  ADV_FONTS, BODY_FONTS, DEFAULT_ORDER, DENSITIES, HERO_IDS, hash32, parseAdvanced, SANS_HEADINGS, SECTION_KEYS, SERIF_HEADINGS, SHAPES, VARIANT_IDS, rng, validateSpec, variantOf,
   type AdvancedSpec, type SectionKey,
 } from "./site-advanced";
 import { PALETTE_KEYS, SITE_PALETTES, hexToOklch } from "./site-style";
@@ -1274,6 +1274,30 @@ export function fixedSpecs(card: Card): AdvancedSpec[] {
 export const isFixedSeed = (seed: unknown): boolean => typeof seed === "string" && seed.includes("|fix:");
 
 const curatedName = (hex: string) => CURATED_PALETTES.find((x) => x.color === hex)?.name ?? "brand";
+/** Keep the trade's own hero when it fits. Use another suitable hero only to repair repeats or missing media. */
+export function distinctTradeHeroes<T extends { spec?: unknown }>(items: T[], card: Card): T[] {
+  const fit = fitOf(card);
+  const allowed = allowedByFit(fit);
+  const specs = items.map((item) => parseAdvanced(item.spec));
+  const reserved = new Set(specs.flatMap((spec) => spec && !isFixedSeed(spec.seed) && allowed("hero", spec.hero) ? [spec.hero] : []));
+  const candidates = [
+    ...[...archetypesFor(card.seo?.categoryKey)].sort((a, b) => fitScore(b, fit) - fitScore(a, fit)).map((item) => item.hero),
+    ...HERO_IDS,
+  ];
+  const fallback = HERO_IDS.filter((hero) => candidates.includes(hero) && allowed("hero", hero))
+    .sort((a, b) => candidates.indexOf(a) - candidates.indexOf(b));
+  const used = new Set<AdvancedSpec["hero"]>();
+  return items.map((item, index) => {
+    const spec = specs[index];
+    if (!spec || isFixedSeed(spec.seed)) return item;
+    const hero = allowed("hero", spec.hero) && !used.has(spec.hero) ? spec.hero
+      : fallback.find((candidate) => !reserved.has(candidate) && !used.has(candidate))
+        ?? fallback.find((candidate) => !used.has(candidate))
+        ?? fallback[0];
+    used.add(hero);
+    return hero === spec.hero ? item : { ...item, spec: { ...spec, hero } };
+  });
+}
 /** A one-line description of an archetype for the designer's prompt. */
 export function describeArchetype(arch: Archetype): string {
   const secs = Object.entries(arch.sections).map(([k, v]) => `${k}=${v}`).join(", ");

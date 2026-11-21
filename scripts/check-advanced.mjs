@@ -156,6 +156,37 @@ console.log(`  30 dentists: ${dentistLayouts.size} distinct layouts, ${new Set(s
 // A card with no cover picture never gets a hero that needs one.
 for (let i = 0; i < 60; i++) { const c = fakeCard(i, pick(catKeys)); c.coverUrl = undefined; const s = lib.specFromSeed(c); ok(!lib.PHOTO_HEROES.has(s.hero), `a card with no cover got the photo hero ${s.hero}`); }
 
+section("Chooser keeps six distinct heroes that fit each trade");
+for (const category of catKeys) {
+  const card = { ...fakeCard(0, category), coverUrl: undefined };
+  const base = lib.specFromSeed(card);
+  const items = Array.from({ length: 6 }, (_, i) => ({ spec: { ...base, seed: `chooser-${i}`, hero: i === 0 ? base.hero : "full-bleed" } }));
+  const out = lib.distinctTradeHeroes(items, card);
+  ok(out[0].spec.hero === base.hero, `${category}: replaced the original compatible hero`);
+  ok(new Set(out.map(({ spec }) => spec.hero)).size === 6, `${category}: repeated chooser heroes`);
+  ok(out.every(({ spec }) => !lib.PHOTO_HEROES.has(spec.hero)), `${category}: chooser requires a missing cover`);
+}
+const fixed = { spec: { ...specs[0], seed: "chooser|fix:fixed" } };
+ok(lib.distinctTradeHeroes([fixed], cards[0])[0] === fixed, "chooser changed a fixed template");
+
+section("Website readiness and Shubhora artwork");
+const { checkSite } = src("lib/site-quality.ts");
+const { withoutFreeCard } = src("lib/shubhora-page.ts");
+const noContact = { ...fakeCard(0, "dentist"), links: [{ type: "whatsapp", value: "123" }] };
+const needsContact = (card) => checkSite(card).some((note) => note.en.includes("so customers can reach you"));
+ok(needsContact(noContact), "missing contact methods were not flagged");
+const appointment = { id: "appointment", kind: "appointment", url: "https://example.test/book" };
+const pagesWithBooking = [{ ...noContact.pages[0], blocks: [appointment] }];
+ok(!needsContact({ ...noContact, pages: pagesWithBooking }), "valid booking link was reported missing");
+ok(needsContact({ ...noContact, pages: pagesWithBooking, site: { ...noContact.site, home: { hidden: ["appointment"] } } }), "hidden booking link counted as reachable");
+const oldCover = "/art/shubhora/ai/hero-1.jpg";
+const ownerCover = "https://example.test/owner-photo.jpg";
+const artworkCard = { ...cards[0], coverUrl: oldCover, site: { enabled: true, hero: { headline: "Example", sub: "", slides: [{ headline: "First", imageUrl: oldCover }, { headline: "Second", imageUrl: ownerCover }] } } };
+const sellerArt = withoutFreeCard(artworkCard, true);
+ok(sellerArt.coverUrl.endsWith("/brand-v2/hero-1.webp"), "seller cover did not get the branded update");
+ok(sellerArt.site.hero.slides[1].imageUrl === ownerCover, "seller's uploaded photo was replaced");
+ok(withoutFreeCard(artworkCard, false).coverUrl === oldCover && artworkCard.coverUrl === oldCover, "artwork changed the input or a non-seller cover");
+
 /* ================= 3. the registry ================= */
 section("3. variant ids exist in the registry");
 let REGISTRY = null;

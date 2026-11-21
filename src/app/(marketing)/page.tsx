@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Pic } from "@/components/pic";
 import { pageMeta } from "@/lib/site-brand";
 
 export const metadata: Metadata = pageMeta("/", {
@@ -55,7 +56,7 @@ const industries = ["Retail shops", "Clinics & doctors", "Salons & spas", "Gyms 
 
 const faqs = [
   { q: "Do I need to know design or social media?", a: "No. Answer a few simple questions once and your website and card are ready within 24 to 48 hours, with 12 designs to pick from. Posters, posts and replies are prepared and published for you every day; to change anything, just say it to the AI in your own words." },
-  { q: "How do I start?", a: "Send Hi to Shubhora's WhatsApp number. The AI asks a few things — your shop, trade, city — takes two or three photos of your shop or rate list, and your website with a digital card is live in about ten minutes. Changes are one message away: “timing 10 se 8 karo”." },
+  { q: "How do I start?", a: "Send Hi to Shubhora's WhatsApp number. The AI asks a few things — your shop, trade, city — lets you share photos of your shop or rate list, and gets your website with a digital card ready in 24 to 48 hours. Changes are one message away: “timing 10 se 8 karo”." },
   { q: "Will the WhatsApp assistant work on my existing number?", a: "Yes. Connect your own number on Meta's official API with one button (or link the app with a QR), and the same AI salesman answers there: it replies in the customer's language, takes the order or booking and hands you the conversations that need a person." },
   { q: "Can the AI actually take orders and bookings?", a: "Yes. On your website chat and on WhatsApp it suggests the right item with its price, collects name, number and what exactly, confirms it, and gives the customer buttons to send the order on WhatsApp, pay by UPI or call. You get a hot lead and an alert; a booking goes on your calendar with reminders for both of you." },
   { q: "Does it answer phone calls?", a: "Yes, as part of Custom Solutions. We set up a number for you; forward your missed calls to it and the AI receptionist answers in Hindi, Hinglish or English with your own knowledge, takes bookings and call-backs, and sends you the summary and the caller's number on WhatsApp." },
@@ -65,42 +66,6 @@ const faqs = [
 ];
 
 /* ---------- product visuals (pure markup, crisp at any size) ---------- */
-
-function PosterPhone() {
-  return (
-    <div className="relative w-[290px] rounded-[2.4rem] border border-white/15 bg-[#05061a] p-2.5 shadow-2xl">
-      <div className="rounded-[2rem] overflow-hidden bg-[#0b0e2e]">
-        <div className="flex items-center justify-between px-5 pt-3 pb-2 text-[10px] text-white/60"><span>6:00</span><span className="h-4 w-16 rounded-full bg-black" /><span>5G</span></div>
-        <div className="relative aspect-[4/5] mx-2 rounded-2xl overflow-hidden" style={{ background: "linear-gradient(160deg,#ffb35c 0%,#ff6a3d 42%,#c42d8f 100%)" }}>
-          <div className="absolute inset-0" style={{ background: "radial-gradient(60% 45% at 50% 38%, rgba(255,240,200,.75), transparent 70%)" }} />
-          <div className="absolute left-1/2 top-[30%] -translate-x-1/2 -translate-y-1/2 h-20 w-20 rounded-full" style={{ background: "radial-gradient(circle,#fff6d8 0%,#ffd27a 55%,transparent 72%)" }} />
-          <div className="absolute inset-x-0 top-[48%] text-center px-4">
-            <p className="text-[9px] tracking-[.25em] uppercase text-white/85">Good morning</p>
-            <p className="mt-1 text-[22px] leading-tight font-bold text-white drop-shadow">शुभ प्रभात</p>
-            <p className="mt-1 text-[10px] text-white/90">Fresh sweets, made every morning</p>
-          </div>
-          <div className="absolute inset-x-2 bottom-2 rounded-xl bg-white/95 px-3 py-2 flex items-center gap-2">
-            <span className="h-7 w-7 rounded-full bg-[#c42d8f] grid place-items-center text-[10px] font-bold text-white">SS</span>
-            <div className="min-w-0"><p className="text-[10px] font-bold text-[#10124f] leading-tight">Sharma Sweets</p><p className="text-[8.5px] text-[#555a80] leading-tight">+91 98XXX XXX10 · Delhi</p></div>
-          </div>
-        </div>
-        <div className="px-4 py-3 flex items-center gap-2">
-          <span className="flex-1 rounded-full bg-[#25D366] py-2 text-center text-[11px] font-semibold text-white">Share to Status</span>
-          <span className="rounded-full bg-white/10 px-3 py-2 text-[11px] text-white/80">Edit</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Toast({ icon: Icon, color, title, sub, className }: { icon: typeof Bot; color: string; title: string; sub: string; className: string }) {
-  return (
-    <div className={`absolute flex items-center gap-3 rounded-2xl border border-border bg-surface/95 backdrop-blur px-3.5 py-2.5 shadow-float ${className}`}>
-      <span className="grid h-8 w-8 place-items-center rounded-xl" style={{ background: color }}><Icon className="h-4 w-4 text-white" /></span>
-      <div><p className="text-[12px] font-semibold text-ink leading-tight">{title}</p><p className="text-[10.5px] text-muted leading-tight mt-0.5">{sub}</p></div>
-    </div>
-  );
-}
 
 export default function Home() {
   // One sample website per line of work, the biggest lines first (the whole list is on /templates).
@@ -120,12 +85,11 @@ export default function Home() {
               <Sparkles className="h-3.5 w-3.5 text-brand" /> AI software company · Made in India
             </span>
             <h1 className="mt-6 text-[2.5rem] md:text-[3.9rem] font-semibold tracking-tight leading-[1.04] text-balance text-ink">
-              You think it. <span className="grad-text">We build it.</span>
+              A website that works <span className="grad-text">for your business.</span>
             </h1>
             <p className="mt-6 text-lg md:text-xl leading-relaxed text-muted max-w-xl">
-              Shubhora gives your business an AI salesman: a website and digital card ready in 24 to 48 hours, an assistant that
-              answers on WhatsApp and the website, takes the order or booking, sends the UPI link and follows up — plus daily
-              posters, social posting and a CRM in one login. Need custom software? We build that too.
+              Launch a website and digital card for your trade. Answer enquiries on WhatsApp, share your products or services,
+              and follow up with customers from one dashboard.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3.5 text-sm font-semibold text-white shadow-glow hover:-translate-y-0.5 transition-transform">
@@ -151,16 +115,11 @@ export default function Home() {
               <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-brand" /> Your data stays yours</span>
               <span className="inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-brand" /> 12 Indian languages</span>
             </div>
-            <div className="lg:hidden mt-12 flex justify-center"><PosterPhone /></div>
           </div>
 
-          <div className="relative hidden lg:flex justify-center h-[560px] animate-rise">
-            <div className="absolute top-10 h-[420px] w-[420px] rounded-full blur-3xl opacity-25 grad-logo" />
-            <div className="relative mt-6 animate-floaty"><PosterPhone /></div>
-            <Toast icon={Send} color="#25D366" title="Posted to WhatsApp Status" sub="and Facebook, Instagram · 7:00 AM" className="left-0 top-16" />
-            <Toast icon={UserRoundPlus} color="#2f5bf5" title="Order taken by AI: Priya M." sub="2 kg kaju katli · ₹2,200 · UPI link sent" className="-right-4 top-[46%]" />
-            <Toast icon={Clapperboard} color="#d52fd6" title="Reel published" sub="Instagram · festive offer reel" className="left-4 bottom-10" />
-          </div>
+          <figure className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-surface shadow-card lg:aspect-[4/5]">
+            <Pic src="/art/shubhora/brand-v2/hero-1.webp" alt="" priority sizes="(min-width: 1024px) 510px, 100vw" className="absolute inset-0 h-full w-full object-cover object-[65%_center]" />
+          </figure>
         </div>
       </section>
 

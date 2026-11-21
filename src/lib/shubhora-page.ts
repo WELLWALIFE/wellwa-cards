@@ -209,6 +209,10 @@ const FREE_SAY: [RegExp, string][] = [
   [/About 10 minutes, on a phone/g, "Ready in 24 to 48 hours"],
   [/is set up on their own phone in about 10 minutes/g, "is ready in 24 to 48 hours"],
 ];
+const brandPhoto = (value: string) => value
+  .replace(/\/art\/shubhora\/ai\/(hero-[123]|get-(?:link|contact|products|leads|website|ai|poster|ads)|biz-(?:demo|team))\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v2/$1.webp")
+  .replace(/\/art\/shubhora\/hero\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v2/hero-1.webp");
+
 const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
 
 /** The Shubhora home page as it was before the story sections (20 Nov 2026): its "One link" ticks, the "Five tools" poster and the "This
@@ -236,13 +240,13 @@ function homeWithStory(p: CardPage): CardPage {
 function pageWithoutFreeCard(p: CardPage): CardPage {
   const hit = (...xs: unknown[]) => FREE_CARD.test(xs.map((x) => String(x ?? "")).join(" | "));
   const blocks = p.blocks.flatMap((b0): CardBlock[] => {
-    const b = JSON.parse(sayNoFree(JSON.stringify(b0))) as CardBlock;
+    const b = JSON.parse(brandPhoto(sayNoFree(JSON.stringify(b0)))) as CardBlock;
     switch (b.kind) {
       case "offer": return hit(b.title, b.text) ? [] : [b];
       case "compare": return /^free$/i.test(b.rightLabel.trim()) || /^free$/i.test(b.leftLabel.trim()) ? [] : [b];
       case "product": { const items = b.items.filter((i) => !/^\s*free\b/i.test(i.price ?? "") && !hit(i.name, i.desc, i.price, i.badge)); return items.length ? [{ ...b, items }] : []; }
       case "services": { const items = b.items.filter((i) => !hit(i.name, i.desc)).map((i) => (!i.imageUrl && SHUBHORA_SERVICE_PICS[i.name.trim()] ? { ...i, imageUrl: SHUBHORA_SERVICE_PICS[i.name.trim()] } : i)); return items.length ? [{ ...b, items }] : []; }
-      case "about": return !b.imageUrl && b.title.trim() === "Why this business" ? [{ ...b, imageUrl: "/art/shubhora/ai/biz-demo.jpg" }] : [b];
+      case "about": return !b.imageUrl && b.title.trim() === "Why this business" ? [{ ...b, imageUrl: "/art/shubhora/brand-v2/biz-demo.webp" }] : [b];
       case "faq": { const items = b.items.filter((i) => !hit(i.q, i.a)); return items.length ? [{ ...b, items }] : []; }
       case "highlights": { const items = b.items.filter((i) => !hit(i)); return items.length ? [{ ...b, items }] : []; }
       default: return [b];
@@ -370,9 +374,20 @@ function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolea
  *  then the website and the AI banners. A card that already has banners of its own is left alone. */
 function withSellerSlides<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
   const c = card as T & { site?: Card["site"]; coverUrl?: string };
-  if (!seller || !c.site || (c.site.hero?.slides ?? []).length >= 2) return card;
+  if (!seller || !c.site) return card;
+  const hero = c.site.hero;
+  const coverUrl = c.coverUrl ? brandPhoto(c.coverUrl) : c.coverUrl;
+  if (hero?.slides && hero.slides.length >= 2) {
+    const slides = hero.slides.map((slide, index) => {
+      if (!slide.imageUrl) return slide;
+      const imageUrl = brandPhoto(slide.imageUrl);
+      const currentBrandSlide = SHUBHORA_SLIDES[index]?.imageUrl === imageUrl;
+      return { ...slide, imageUrl, ...(currentBrandSlide ? { chips: SHUBHORA_SLIDES[index].chips } : {}) };
+    });
+    return { ...card, coverUrl, site: { ...c.site, hero: { ...hero, imageUrl: hero.imageUrl ? brandPhoto(hero.imageUrl) : hero.imageUrl, slides } } };
+  }
   // Shubhora's own three banners (owner, 20 Nov 2026): the partner's picture stays on the card, it is not the website's banner — a
   // headline over a face read badly. The partner's own first line is kept when they wrote one.
   const first = { ...SHUBHORA_SLIDES[0], headline: c.site.hero?.headline || SHUBHORA_SLIDES[0].headline, sub: c.site.hero?.sub || SHUBHORA_SLIDES[0].sub };
-  return { ...card, site: { ...c.site, hero: { ...(c.site.hero ?? {}), slides: [first, SHUBHORA_SLIDES[1], SHUBHORA_SLIDES[2]] } } };
+  return { ...card, coverUrl, site: { ...c.site, hero: { ...(c.site.hero ?? {}), ...(hero?.imageUrl ? { imageUrl: brandPhoto(hero.imageUrl) } : {}), slides: [first, SHUBHORA_SLIDES[1], SHUBHORA_SLIDES[2]] } } };
 }
