@@ -56,7 +56,8 @@ const PREMIUM_TOPS = ["full-bleed", "glass-card", "split-frame", "editorial-marq
 const TOP_FEEL: Record<(typeof PREMIUM_TOPS)[number], (sp: AdvancedSpec) => Partial<AdvancedSpec>> = {
   "full-bleed": () => ({ shape: "soft", density: "airy" }),
   "glass-card": (sp) => ({ shape: "soft", density: "compact", palette: { ...sp.palette, tone: "light" } }),
-  "split-frame": (sp) => ({ shape: "sharp", palette: { ...sp.palette, tone: "light" } }),
+  // Keeps its own tone: rated the strongest of the six as a dark page (ChatGPT review, 21 Nov 2026), and with it two of the six stay dark.
+  "split-frame": () => ({ shape: "sharp" }),
   "editorial-marquee": (sp) => ({ shape: "sharp", density: "airy", palette: { ...sp.palette, tone: "light" } }),
   "parallax-collage": (sp) => ({ shape: "pill", density: "airy", palette: { ...sp.palette, tone: "light" } }),
   "diagonal": (sp) => ({ shape: "sharp", density: "compact", palette: { ...sp.palette, tone: "light" } }),
