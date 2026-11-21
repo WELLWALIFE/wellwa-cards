@@ -131,7 +131,7 @@ function BusinessInner() {
             <a href={res.cardLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white">{en ? "Open website" : "वेबसाइट खोलें"}</a>
           </div>
           <div className="relative aspect-[3/1] min-w-0 overflow-hidden bg-surface2 sm:aspect-auto">
-            <Pic src="/art/shubhora/brand-v2/portal.webp" alt="" sizes="(min-width: 640px) 192px, 100vw" className="absolute inset-0 h-full w-full object-cover" />
+            <Pic src="/art/shubhora/brand-v3/portal.webp" alt="" sizes="(min-width: 640px) 192px, 100vw" className="absolute inset-0 h-full w-full object-cover" />
           </div>
         </section>
       )}

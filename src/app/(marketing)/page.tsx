@@ -118,7 +118,7 @@ export default function Home() {
           </div>
 
           <figure className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-surface shadow-card lg:aspect-[4/5]">
-            <Pic src="/art/shubhora/brand-v2/hero-1.webp" alt="" priority sizes="(min-width: 1024px) 510px, 100vw" className="absolute inset-0 h-full w-full object-cover object-[65%_center]" />
+            <Pic src="/art/shubhora/brand-v3/hero-1.webp" alt="" priority sizes="(min-width: 1024px) 510px, 100vw" className="absolute inset-0 h-full w-full object-cover object-[65%_center]" />
           </figure>
         </div>
       </section>

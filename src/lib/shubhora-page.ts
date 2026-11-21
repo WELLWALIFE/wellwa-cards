@@ -209,9 +209,12 @@ const FREE_SAY: [RegExp, string][] = [
   [/About 10 minutes, on a phone/g, "Ready in 24 to 48 hours"],
   [/is set up on their own phone in about 10 minutes/g, "is ready in 24 to 48 hours"],
 ];
+// brand-v3 is the same artwork as brand-v2 under a new folder: the pictures were redrawn under their old names and the image
+// optimiser kept serving the old copies (21 Nov 2026), so a new address makes every cache fetch them afresh.
 const brandPhoto = (value: string) => value
-  .replace(/\/art\/shubhora\/ai\/(hero-[123]|get-(?:link|contact|products|leads|website|ai|poster|ads)|biz-(?:demo|team))\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v2/$1.webp")
-  .replace(/\/art\/shubhora\/hero\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v2/hero-1.webp");
+  .replace(/\/art\/shubhora\/brand-v2\//g, "/art/shubhora/brand-v3/")
+  .replace(/\/art\/shubhora\/ai\/(hero-[123]|get-(?:link|contact|products|leads|website|ai|poster|ads)|biz-(?:demo|team))\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v3/$1.webp")
+  .replace(/\/art\/shubhora\/hero\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v3/hero-1.webp");
 
 const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
 
@@ -246,7 +249,7 @@ function pageWithoutFreeCard(p: CardPage): CardPage {
       case "compare": return /^free$/i.test(b.rightLabel.trim()) || /^free$/i.test(b.leftLabel.trim()) ? [] : [b];
       case "product": { const items = b.items.filter((i) => !/^\s*free\b/i.test(i.price ?? "") && !hit(i.name, i.desc, i.price, i.badge)); return items.length ? [{ ...b, items }] : []; }
       case "services": { const items = b.items.filter((i) => !hit(i.name, i.desc)).map((i) => (!i.imageUrl && SHUBHORA_SERVICE_PICS[i.name.trim()] ? { ...i, imageUrl: SHUBHORA_SERVICE_PICS[i.name.trim()] } : i)); return items.length ? [{ ...b, items }] : []; }
-      case "about": return !b.imageUrl && b.title.trim() === "Why this business" ? [{ ...b, imageUrl: "/art/shubhora/brand-v2/biz-demo.webp" }] : [b];
+      case "about": return !b.imageUrl && b.title.trim() === "Why this business" ? [{ ...b, imageUrl: "/art/shubhora/brand-v3/biz-demo.webp" }] : [b];
       case "faq": { const items = b.items.filter((i) => !hit(i.q, i.a)); return items.length ? [{ ...b, items }] : []; }
       case "highlights": { const items = b.items.filter((i) => !hit(i)); return items.length ? [{ ...b, items }] : []; }
       default: return [b];

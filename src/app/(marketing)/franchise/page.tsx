@@ -37,7 +37,7 @@ export default function FranchisePage() {
               ))}
             </dl>
             <div className="relative mt-8 aspect-[3/2] max-w-md overflow-hidden rounded-2xl border border-border bg-surface">
-              <Pic src="/art/shubhora/brand-v2/biz-demo.webp" alt="" eager sizes="(min-width: 640px) 448px, 100vw" className="absolute inset-0 h-full w-full object-cover" />
+              <Pic src="/art/shubhora/brand-v3/biz-demo.webp" alt="" eager sizes="(min-width: 640px) 448px, 100vw" className="absolute inset-0 h-full w-full object-cover" />
             </div>
           </div>
           <FranchiseApplyForm />
