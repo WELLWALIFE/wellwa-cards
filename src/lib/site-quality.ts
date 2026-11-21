@@ -17,6 +17,10 @@ export function townOnly(a?: string | null): boolean {
   return !!s && !vagueAddress(s) && !/\d/.test(s) && s.split(/[\s,]+/).filter(Boolean).length <= 2;
 }
 
+/** A price card drawn as a picture ("plan-standard.jpg"): artwork about a plan, not a photo of anything. It never stands in for a
+ *  product photo at the top of a page (the 12-design review, 21 Nov 2026: four price cards opened Tile Board and Order Shop). */
+export const isPlanArt = (u?: string | null): boolean => /\/(shubhora-)?plan-[\w-]+\.(jpe?g|png|webp)/i.test(u ?? "");
+
 const isLoc = (b: CardBlock): b is Extract<CardBlock, { kind: "location" }> => b.kind === "location";
 
 function pageWithQuality(p: CardPage): CardPage {

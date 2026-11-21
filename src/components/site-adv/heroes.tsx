@@ -605,13 +605,14 @@ export function HeroCollage({ c, x, spec }: VariantProps) {
   const badge = badgeOf(c, x);
   const tiles: Tile[] = [];
   if (hm.photo) tiles.push({ kind: "cover" });
-  for (const src of extraPhotos(c, 4)) if (tiles.length < 4) tiles.push({ kind: "photo", src });
+  for (const src of extraPhotos(c, 3)) if (tiles.length < 3) tiles.push({ kind: "photo", src });
   // What the card has fewer pictures of is made up with its own figures, the round badge and plain palette shapes, never a blank.
   const spare: Tile[] = [
     ...c.facts.slice(0, 2).map((f): Tile => ({ kind: "stat", value: f.value, label: f.label })),
-    ...(badge ? [{ kind: "stamp" } as Tile] : []), { kind: "ring" }, { kind: "dot" },
+    ...(badge ? [{ kind: "stamp" } as Tile] : []),
   ];
-  for (const t of spare) if (tiles.length < 5) tiles.push(t);
+  // Four pieces at most (the same review: five floating pieces and the headline all asked for the eye at once).
+  for (const t of spare) if (tiles.length < 4) tiles.push(t);
   // The fifth slot is the badge when there is one and a picture did not take it.
   const slot = (i: number): CSSProperties => ({ "--i": i } as CSSProperties);
   return (
@@ -745,13 +746,15 @@ export const HEROES_MORE_CSS = `
 .ahe{padding-block:clamp(1.25rem,3.5vw,3rem) 0}
 .ahe-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3) var(--s5);padding-bottom:var(--s4);border-bottom:1px solid var(--ink)}
 .ahe-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s4)}
-.ahe-title{--ah-fs:clamp(3rem,11.4vw,10rem);line-height:.9;max-width:13ch;margin-top:clamp(1.25rem,3.5vw,2.75rem)}
+/* 12-design review (21 Nov 2026): the headline was so big the top read as a type experiment and pushed the photo below the fold; the
+   outlined second ticker cut across the page. One thin ticker stays as the separator. */
+.ahe-title{--ah-fs:clamp(2.8rem,9vw,8rem);line-height:.92;max-width:13ch;margin-top:clamp(1.25rem,3.5vw,2.5rem)}
 .ahe-row{display:grid;gap:var(--s5);align-items:end;margin-top:clamp(1.5rem,4vw,3rem)}
 .ahe-row .hero-sub{max-width:40ch}
 @media (min-width:900px){.ahe-row{grid-template-columns:minmax(0,1fr) auto}.ahe-row .hero-ctas{justify-content:flex-end}}
 .ahe-band{margin-top:clamp(2rem,5vw,3.5rem);border-block:1px solid var(--line);padding-block:clamp(.7rem,1.6vw,1.15rem);overflow:hidden}
 .ahe-band .mo-tk[data-look=solid]{margin-bottom:0}
-.ahe-hollow{margin-top:clamp(.5rem,1.5vw,1rem);padding-top:clamp(.5rem,1.5vw,1rem);border-top:1px solid var(--line)}
+.ahe-hollow{display:none}
 .ahe-photo-wrap{position:relative;margin-top:clamp(1.5rem,4vw,3rem)}
 .ahe-photo{aspect-ratio:4/3;background:var(--paper-2)}
 @media (min-width:700px){.ahe-photo{aspect-ratio:21/9}}
@@ -768,9 +771,10 @@ export const HEROES_MORE_CSS = `
 .ahg>.ahg-stage{position:static}
 .ahg-glow{position:absolute;inset:0;background:radial-gradient(60% 75% at 82% 18%,color-mix(in srgb,var(--accent) 42%,transparent),transparent 70%),radial-gradient(50% 60% at 8% 100%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%)}
 .ahg-inner{display:grid;gap:var(--s5);align-items:end}
-.ahg-card{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4);max-width:38rem;padding:clamp(1.25rem,3vw,2.25rem);border:1px solid var(--hero-line);border-radius:var(--r-tile);background:color-mix(in srgb,var(--hero-ink) 66%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
+.ahg-card{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4);max-width:33rem;padding:clamp(1.25rem,3vw,2.25rem);border:1px solid var(--hero-line);border-radius:var(--r-tile);background:color-mix(in srgb,var(--hero-ink) 66%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ahg-card{background:color-mix(in srgb,var(--hero-ink) 90%,transparent)}}
-.ahg-title{--ah-fs:clamp(2.4rem,6.2vw,5rem);line-height:.96}
+/* 12-design review: the glass card covered too much of the picture and its lines were packed tight. */
+.ahg-title{--ah-fs:clamp(2.3rem,5.2vw,4.3rem);line-height:1.02}
 .ahg-card .hero-sub{max-width:36ch}
 .ahg-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s4);width:100%;padding-top:var(--s4);border-top:1px solid var(--hero-line)}
 .ahg-meta .trust-row{color:var(--hero-muted)}
@@ -779,7 +783,7 @@ export const HEROES_MORE_CSS = `
 .ahg-stat{min-width:12rem;padding:var(--s4) var(--s5)}
 .ahg-stat span:last-child{color:var(--hero-muted)}
 .ahg-stamp{--rot:8deg}
-@media (min-width:900px){.ahg{align-items:center}.ahg-inner{grid-template-columns:minmax(0,38rem) 1fr}.ahg-side{display:flex;flex-direction:column;align-items:flex-end;gap:var(--s6);align-self:end;justify-self:end}}
+@media (min-width:900px){.ahg{align-items:center}.ahg-inner{grid-template-columns:minmax(0,33rem) 1fr}.ahg-side{display:flex;flex-direction:column;align-items:flex-end;gap:var(--s6);align-self:end;justify-self:end}}
 
 /* stacked-poster */
 .ahp{position:relative;overflow:hidden;isolation:isolate;padding-top:0;text-align:center}
@@ -881,7 +885,7 @@ export const HEROES_MORE_CSS = `
 .ahd-pic{background:var(--accent-soft);animation:ahd-cut 1.25s cubic-bezier(.7,0,.2,1) backwards}
 .ahd-band{animation:ahd-cut 1.25s cubic-bezier(.7,0,.2,1) .15s backwards}
 @keyframes ahd-cut{from{clip-path:polygon(0 0,0 0,0 calc(100% - 34px),0 100%)}to{clip-path:polygon(0 0,100% 0,100% calc(100% - 34px),0 100%)}}
-@keyframes ahd-cut-d{from{clip-path:polygon(22% 0,22% 0,0 100%,0 100%)}to{clip-path:polygon(22% 0,100% 0,100% 100%,0 100%)}}
+@keyframes ahd-cut-d{from{clip-path:polygon(12% 0,12% 0,0 100%,0 100%)}to{clip-path:polygon(12% 0,100% 0,100% 100%,0 100%)}}
 .ahd-facts{position:absolute;right:var(--gutter);bottom:clamp(2.5rem,6vw,3.5rem);display:flex;gap:var(--s5);color:var(--ink)}
 .ahd-facts li{align-items:flex-end;text-align:right}
 .ahd-facts li>span:last-child{color:var(--muted)}
@@ -893,14 +897,15 @@ export const HEROES_MORE_CSS = `
 @media (min-width:960px){
 .ahd{display:flex;align-items:center;min-height:min(84vh,780px);min-height:min(84svh,780px)}
 .ahd>.adv-wrap{position:relative;z-index:1}
-.ahd-art{position:absolute;top:0;right:0;bottom:0;width:50%;height:auto;margin:0}
-.ahd-band,.ahd-pic{clip-path:polygon(22% 0,100% 0,100% 100%,0 100%)}
+.ahd-art{position:absolute;top:0;right:0;bottom:0;width:46%;height:auto;margin:0}
+/* 12-design review: a softer slant and a wider column for the words (the text side read cramped next to the picture). */
+.ahd-band,.ahd-pic{clip-path:polygon(12% 0,100% 0,100% 100%,0 100%)}
 .ahd-pic{animation-name:ahd-cut-d}.ahd-band{animation-name:ahd-cut-d}
 .ahd-band{transform:translateX(-22px)}
 .ahd-facts{right:clamp(2rem,5vw,4rem);bottom:clamp(2rem,6vw,4.5rem);flex-direction:column;gap:var(--s5)}
 .ahd-facts li:nth-child(n+3){display:flex}
 .ahd-stamp{left:14%;bottom:12%;--st:clamp(100px,9vw,132px)}
-.ahd-words{width:48%;padding-block:clamp(4rem,9vw,7rem)}
+.ahd-words{width:50%;padding-right:clamp(1rem,3vw,2.5rem);padding-block:clamp(4rem,9vw,7rem)}
 }
 
 /* masthead */
@@ -1024,6 +1029,10 @@ export const HEROES_NEW_CSS = `
 @media (min-width:900px){
 .ahl{display:flex;align-items:center;min-height:min(92vh,880px);min-height:min(92svh,880px);padding-block:clamp(5rem,9vw,7rem)}
 .ahl-inner{width:100%}
+/* The words keep to the middle, clear of the floating pictures at both sides (12-design review, 21 Nov 2026: a long headline at
+   8rem ran over the left photo). */
+.ahl-words{max-width:min(62rem,54vw)}
+.ahl-title{--ah-fs:clamp(2.8rem,5.6vw,6rem);max-width:12ch}
 .ahl-stage{position:absolute;inset:0;height:auto;margin:0;overflow:hidden;z-index:1}
 .ahl-t{left:var(--l);top:var(--t);width:var(--w)}
 .ahl-t[data-n="0"]{--l:3%;--t:11%;--w:17%}.ahl-t[data-n="1"]{--l:79%;--t:7%;--w:15%}.ahl-t[data-n="2"]{--l:10%;--t:57%;--w:13.5%}

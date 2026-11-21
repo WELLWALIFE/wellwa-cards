@@ -14,6 +14,7 @@ import { useMemo } from "react";
 import type { Card, CardBlock, ProductItem } from "@/lib/types";
 import { TILE_KEYS, type TileKey } from "@/lib/site-blueprints";
 import { heroModel, type HeroModel } from "@/lib/site-hero";
+import { isPlanArt } from "@/lib/site-quality";
 import { Kicker, Display, Sub, TrustRow, HeroPhoto, useOpenNow } from "@/components/site-smart";
 import { Icon, type IconName } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
@@ -60,6 +61,7 @@ function productThumbs(card: Card): { item: ProductItem; img: string }[] {
   const out: { item: ProductItem; img: string }[] = [];
   for (const p of card.pages.filter((pg) => !pg.hidden).flatMap((pg) => pg.blocks).flatMap((b) => (b.kind === "product" ? b.items : []))) {
     const img = (p.images?.[0] ?? p.imageUrl ?? "").trim();
+    if (isPlanArt(img)) continue;
     // A product that sits in two blocks (home and products page) is one thumbnail, not two.
     if (img && (p.name ?? "").trim() && !out.some((o) => (o.item.name ?? "").trim().toLowerCase() === (p.name ?? "").trim().toLowerCase())) out.push({ item: p, img });
     if (out.length === 4) break;

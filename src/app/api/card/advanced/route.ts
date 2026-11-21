@@ -52,13 +52,24 @@ const tradeItems = async (uid: string, row: { id: string; data: Card }) => {
  *  template ("|fix:" seed) is left exactly as it was written. Applied as the designs are read, so the choose screen and the design put
  *  live always agree. */
 const PREMIUM_TOPS = ["full-bleed", "glass-card", "split-frame", "editorial-marquee", "parallax-collage", "diagonal"] as const;
+/** Each top's own feel beyond its layout (12-design review, 21 Nov 2026: "the same template wearing different colours" — designs 1 and 6
+ *  were both a dark photo with words on it). The editorial, the collage and the slanted catalogue stand on a light page with their own
+ *  corners and rhythm; the cinematic, glass and split tops keep the palette's tone. */
+const TOP_FEEL: Record<(typeof PREMIUM_TOPS)[number], (sp: AdvancedSpec) => Partial<AdvancedSpec>> = {
+  "full-bleed": () => ({ shape: "soft", density: "airy" }),
+  "glass-card": () => ({ shape: "soft" }),
+  "split-frame": () => ({}),
+  "editorial-marquee": (sp) => ({ shape: "sharp", density: "airy", palette: { ...sp.palette, tone: "light" } }),
+  "parallax-collage": (sp) => ({ shape: "pill", density: "airy", palette: { ...sp.palette, tone: "light" } }),
+  "diagonal": (sp) => ({ shape: "sharp", density: "compact", palette: { ...sp.palette, tone: "light" } }),
+};
 function sixDistinct<T extends { spec?: unknown }>(items: T[]): T[] {
   let k = 0;
   return items.map((r) => {
     const sp = r.spec as AdvancedSpec | undefined;
     if (!sp || String(sp.seed ?? "").includes("|fix:")) return r;
     const hero = PREMIUM_TOPS[k++ % PREMIUM_TOPS.length];
-    return { ...r, spec: { ...sp, hero, motion: "rich" } };
+    return { ...r, spec: { ...sp, hero, motion: "rich", ...TOP_FEEL[hero](sp) } };
   });
 }
 const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> => (await seenItems(uid, cardId)).map((r) => r.spec as AdvancedSpec).filter(Boolean);

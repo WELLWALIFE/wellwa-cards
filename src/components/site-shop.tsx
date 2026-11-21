@@ -5,6 +5,7 @@
 // fact strip under it (rating · open now · since · the offer). The products follow as the page's first section.
 // Without a photo the banner is a solid field of the palette's deep-to-mid gradient (`shelf-ink`).
 import { heroModel } from "@/lib/site-hero";
+import { isPlanArt } from "@/lib/site-quality";
 import type { Card, ProductItem } from "@/lib/types";
 import type { bentoFacts } from "@/components/site-bento";
 import { CtaPair, Display, HeroPhoto, Kicker, Sub, TrustRow } from "@/components/site-smart";
@@ -23,6 +24,7 @@ function productChips(card: Card): { item: ProductItem; img: string }[] {
   const seen = new Set<string>();
   for (const p of card.pages.filter((pg) => !pg.hidden).flatMap((pg) => pg.blocks).flatMap((b) => (b.kind === "product" ? b.items : []))) {
     const img = (p.images?.[0] ?? p.imageUrl ?? "").trim();
+    if (isPlanArt(img)) continue;
     const key = (p.name ?? "").trim().toLowerCase();
     if (img && key && !seen.has(key)) { seen.add(key); out.push({ item: p, img }); }
     if (out.length === 8) break;

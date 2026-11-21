@@ -11,7 +11,9 @@ import type { VariantProps } from "@/components/site-adv/shared";
 const EVERY_MS = 5500;
 /** The tops whose picture sits on the right or fills the screen: the app cards float over the picture there. Others (big type, a collage,
  *  a pinned story) have no clear photo to float over, and the cards landed on empty paper or on other photos (20 Nov 2026). */
-const CHIP_TOPS = new Set(["full-bleed", "glass-card", "split-frame", "diagonal", "storefront"]);
+// Cards only where they sit on the picture's frame (12-design review, 21 Nov 2026: on the cinematic and the slanted tops they
+// competed with the headline).
+const CHIP_TOPS = new Set(["glass-card", "split-frame", "storefront"]);
 
 /** The content one banner shows: its words, and its picture when it has one (else the hero's own). */
 function contentFor(c: SiteContent, s: HeroSlide): SiteContent {
@@ -39,7 +41,7 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
     <div className="adv-slides" style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", width: "100%" }}
       onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocusCapture={() => setHold(true)} onBlurCapture={() => setHold(false)}>
       {slides.map((s, i) => (
-        <div key={i} aria-hidden={i !== at} inert={i !== at}
+        <div key={i} data-slide="" aria-hidden={i !== at} inert={i !== at}
           style={{ gridArea: "1 / 1", minWidth: 0, opacity: i === at ? 1 : 0, transition: "opacity .8s ease", pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
           {createElement(Hero, { ...p, c: contentFor(p.c, s) })}
           {!!s.chips?.length && CHIP_TOPS.has(p.spec.hero) && (
@@ -69,6 +71,11 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
 }
 
 const CHIP_CSS = `
+/* The pictures cross-fade; the words do not (12-design review, 21 Nov 2026: two headlines showed through each other for most of a
+   second). The old words leave at once, the new ones come in once the picture has turned. */
+[data-slide] :is(h1,h2,p,ul,.hero-ctas,.adv-chips,.kicker,.hero-sub,.trust-row){transition:opacity .45s ease .55s}
+[data-slide][aria-hidden="true"] :is(h1,h2,p,ul,.hero-ctas,.adv-chips,.kicker,.hero-sub,.trust-row){opacity:0;transition:opacity .15s ease}
+@media (prefers-reduced-motion:reduce){[data-slide] :is(h1,h2,p,ul,.hero-ctas,.adv-chips,.kicker,.hero-sub,.trust-row){transition:none}}
 .adv-chips{display:none}
 @media (min-width:900px){.adv-chips{display:block;position:absolute;inset:0;pointer-events:none;z-index:2}}
 .adv-chip{position:absolute;display:flex;align-items:center;gap:.7rem;padding:.75rem 1rem;border-radius:16px;background:rgba(255,255,255,.94);color:#0f172a;box-shadow:0 18px 44px rgba(2,6,23,.28);font:500 13px/1.25 system-ui,sans-serif;max-width:250px;opacity:0;transform:translateY(14px);transition:opacity .6s ease .35s,transform .6s ease .35s}
