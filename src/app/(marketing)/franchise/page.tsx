@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Pic } from "@/components/pic";
 import { BadgeIndianRupee, Building2, LayoutDashboard, MapPinned, MessageCircle, Package, Phone, Sparkles, Users } from "lucide-react";
 import { BRAND, SUPPORT_PHONE, SUPPORT_WHATSAPP, pageMeta, waLink } from "@/lib/site-brand";
 import { FRANCHISE_FAQ, FRANCHISE_OFFER, FRANCHISE_STEPS } from "@/lib/franchise-apply";
@@ -35,6 +36,9 @@ export default function FranchisePage() {
                 <div key={l} className="rounded-xl border border-border bg-surface p-3"><dt className="text-xl font-semibold">{v}</dt><dd className="text-xs text-muted">{l}</dd></div>
               ))}
             </dl>
+            <div className="relative mt-8 aspect-[3/2] max-w-md overflow-hidden rounded-2xl border border-border bg-surface">
+              <Pic src="/art/shubhora/brand-v2/biz-demo.webp" alt="" eager sizes="(min-width: 640px) 448px, 100vw" className="absolute inset-0 h-full w-full object-cover" />
+            </div>
           </div>
           <FranchiseApplyForm />
         </div>

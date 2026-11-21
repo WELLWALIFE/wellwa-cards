@@ -29,7 +29,7 @@ import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import { DESIGN_CREDITS } from "@/lib/adv-price";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
-import { fixedSpecs, tradeTint } from "@/lib/site-advanced-archetypes";
+import { distinctTradeHeroes, fixedSpecs, tradeTint } from "@/lib/site-advanced-archetypes";
 import { isDemoAccount, readyIn, sitePending } from "@/lib/site-ready-server";
 import { packageRunning } from "@/lib/site-tier";
 
@@ -43,33 +43,9 @@ const seenItems = (uid: string, cardId: string) => advDesigns(uid, cardId);
 const tradeItems = async (uid: string, row: { id: string; data: Card }) => {
   const list = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
   const tinted = tradeTint(list.map((r) => ({ r, palette: (r.spec as AdvancedSpec).palette })), row.data);
-  return sixDistinct(list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } })));
+  return distinctTradeHeroes(list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } })), row.data);
 };
 
-/** Six Premium designs that look like six (owner, 20 Nov 2026: "sab ke sab different and perfect hone chahiye"): every one opens with a
- *  different top, in this order — cinematic photo, framed landscape with floating card, split product, asymmetric editorial, floating collage, slanted
- *  split — and every one moves (rich motion). Two designs of one card had opened with the same tall pinned story. A finished trade
- *  template ("|fix:" seed) is left exactly as it was written. Applied as the designs are read, so the choose screen and the design put
- *  live always agree. */
-const PREMIUM_TOPS = ["full-bleed", "glass-card", "split-frame", "editorial-marquee", "parallax-collage", "diagonal"] as const;
-/** Match the palette and spacing to the structure of each generated design. */
-const TOP_FEEL: Record<(typeof PREMIUM_TOPS)[number], (sp: AdvancedSpec) => Partial<AdvancedSpec>> = {
-  "full-bleed": () => ({ shape: "soft", density: "airy" }),
-  "glass-card": (sp) => ({ shape: "soft", density: "compact", palette: { ...sp.palette, tone: "light" } }),
-  "split-frame": (sp) => ({ shape: "sharp", palette: { ...sp.palette, tone: "light" } }),
-  "editorial-marquee": (sp) => ({ shape: "sharp", density: "airy", palette: { ...sp.palette, tone: "light" } }),
-  "parallax-collage": (sp) => ({ shape: "pill", density: "airy", palette: { ...sp.palette, tone: "light" } }),
-  "diagonal": (sp) => ({ shape: "sharp", density: "compact", palette: { ...sp.palette, tone: "light" } }),
-};
-function sixDistinct<T extends { spec?: unknown }>(items: T[]): T[] {
-  let k = 0;
-  return items.map((r) => {
-    const sp = r.spec as AdvancedSpec | undefined;
-    if (!sp || String(sp.seed ?? "").includes("|fix:")) return r;
-    const hero = PREMIUM_TOPS[k++ % PREMIUM_TOPS.length];
-    return { ...r, spec: { ...sp, hero, motion: "rich", ...TOP_FEEL[hero](sp) } };
-  });
-}
 const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> => (await seenItems(uid, cardId)).map((r) => r.spec as AdvancedSpec).filter(Boolean);
 
 /** Six designs to choose from (owner, 14 Nov 2026), the same number as a Standard website's looks: the ones already made, filled up from

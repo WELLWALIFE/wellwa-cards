@@ -29,7 +29,7 @@ import { heroModel, stripEmoji, tradeLabel, type HeroModel } from "@/lib/site-he
 import { Icon, iconFor } from "@/components/site-icons";
 import { cardProducts, isProductSlug } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, sinceYear, trustFacts, type HomeSection } from "@/lib/site-home";
-import { BottomSheet, CountUp, CtaPair, Display, HERO_CSS, HeroPhoto, Kicker, Marquee, OpenNowChip, SMART_CSS, Sub, TrustRow, Wordmark } from "@/components/site-smart";
+import { BottomSheet, CountUp, CtaPair, Display, HERO_CSS, HeroPhoto, heroSizes, Kicker, Marquee, OpenNowChip, SMART_CSS, Sub, TrustRow, Wordmark } from "@/components/site-smart";
 import { BentoHero, bentoFacts, BENTO_CSS } from "@/components/site-bento";
 import { CinematicHero, ParallaxBand, QuoteRotator, CINEMATIC_CSS } from "@/components/site-cinematic";
 import { PosterHero, POSTER_CSS } from "@/components/site-poster";
@@ -62,7 +62,7 @@ const BlueprintCtx = createContext<BlueprintKey | undefined>(undefined);
 const UiHiCtx = createContext(false);
 import { localLine, mapPin, pageHref } from "@/lib/seo";
 
-import { Pic as Img, picUrl } from "@/components/pic";
+import { Pic as Img, decodePic, picUrl } from "@/components/pic";
 
 /* ---- product photo normaliser ----
  * Cut-out product photos come with wildly different transparent margins (one
@@ -224,14 +224,33 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
   // the VISITOR's language, so the language switch re-speaks it.
   // The standard website's sliding banners too (owner, 24 Oct 2026: "standard me bhi 3 banner ka option"): with 2–3 banners
   // (site.hero.slides) the top shows each one's picture and words in turn, every few seconds; never for a visitor who asks for less motion.
-  const slides = (card.site?.hero?.slides ?? []).filter((x) => x && x.headline).slice(0, 3);
+  const savedSlides = card.site?.hero?.slides;
+  const slides = useMemo(() => (savedSlides ?? []).filter((x) => x && x.headline).slice(0, 3), [savedSlides]);
+  const slideBlueprint = card.site?.style?.blueprint;
+  const slideMotion = card.site?.style?.motion;
   const [slideAt, setSlideAt] = useState(0);
   useEffect(() => {
-    if (slides.length < 2) return;
-    try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch { /* old browser */ }
-    const t = window.setInterval(() => setSlideAt((i) => (i + 1) % slides.length), 5500);
-    return () => window.clearInterval(t);
-  }, [slides.length]);
+    if (slides.length < 2 || slideMotion === "none" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const sizes = heroSizes(slideBlueprint && slideBlueprint !== "cinematic" ? "tile" : "cover");
+    let index = 0;
+    let busy = false;
+    let active = true;
+    const timer = window.setInterval(async () => {
+      if (busy || document.hidden) return;
+      busy = true;
+      index = (index + 1) % slides.length;
+      try {
+        const source = slides[index].imageUrl;
+        if (source) await decodePic(source, sizes);
+        if (active) setSlideAt(index);
+      } catch {
+        // Keep the current banner if the next image cannot load.
+      } finally {
+        busy = false;
+      }
+    }, 5500);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [slides, slideBlueprint, slideMotion]);
   const slide = slides.length >= 2 ? slides[slideAt % slides.length] : null;
   const heroCard: Card = slide && card.site ? (() => {
     const h = card.site.hero ?? { headline: "", sub: "" };

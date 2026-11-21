@@ -1,4 +1,5 @@
 import type { Card, CardBlock, CardPage } from "@/lib/types";
+import { isEmptyBlock } from "@/lib/site-home";
 
 /**
  * The website check (plan Phase 2, 21 Nov 2026): rules every generated site is held to before a visitor sees it.
@@ -68,9 +69,32 @@ const title = (b: CardBlock) => ("title" in b ? (b.title ?? "").trim() : "");
 
 export function checkSite(card: Card): QualityNote[] {
   const out: QualityNote[] = [];
-  for (const p of card.pages) {
+  const hiddenPages = new Set(card.site?.hidden ?? []);
+  const hiddenSections = new Set(card.site?.home?.hidden ?? []);
+  const pages = card.pages.filter((page) => !page.hidden && !hiddenPages.has(page.slug));
+  const contact = card.links.some(({ type, value }) => {
+    if (type === "email") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+    const digits = value.replace(/\D/g, "");
+    if (type === "whatsapp") return /^\d{8,15}$/.test(digits);
+    return type === "phone" && /^\d{6,15}$/.test(digits);
+  });
+  const contactSection = pages.some((page) => page.blocks.some((block) => {
+    if (page.slug === "home" && hiddenSections.has(block.id)) return false;
+    if (block.kind === "contact" || (block.kind === "form" && !isEmptyBlock(block))) return true;
+    if (block.kind !== "appointment") return false;
+    try {
+      const url = new URL(block.url);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch { return false; }
+  }));
+  const personal = card.seo?.categoryKey === "personal";
+  if (!personal && !contact && !contactSection) out.push({
+    level: "todo", page: "Website", en: "Add a working phone, WhatsApp, email, contact form or booking link so customers can reach you.",
+    hi: "ग्राहक आपसे संपर्क कर सकें, इसके लिए सही फ़ोन, WhatsApp, ईमेल, संपर्क फ़ॉर्म या बुकिंग लिंक जोड़ें।",
+  });
+  for (const p of pages) {
     const name = p.label || p.slug;
-    const blocks = p.blocks;
+    const blocks = p.blocks.filter((block) => !isEmptyBlock(block) && !(p.slug === "home" && hiddenSections.has(block.id)));
     if (p.slug === "home" && blocks.length > 11) out.push({ level: "todo", page: name, en: `Home has ${blocks.length} sections. 9 to 11 read best; hide the ones that repeat.`, hi: `Home पर ${blocks.length} हिस्से हैं। 9 से 11 सबसे अच्छे लगते हैं; जो दोहराते हैं उन्हें छुपाएँ।` });
     blocks.forEach((b, i) => {
       const tt = title(b);

@@ -17,10 +17,10 @@ import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
 import { cardHomeShown } from "@/lib/site-url";
-import { applyLook, styleFitsTrade, threeLooks, type Look } from "@/lib/site-looks";
+import { applyLook, openingLook, styleFitsTrade, threeLooks, type Look } from "@/lib/site-looks";
 import { wearAdvanced, type AdvPreview } from "@/lib/adv-preview";
 import type { Card } from "@/lib/types";
-import { withQuality } from "@/lib/site-quality";
+import { SiteCheck } from "@/components/site-check";
 import { isShubhoraSellerCard, withoutFreeCard } from "@/lib/shubhora-page";
 import type { OrderState } from "@/lib/site-order";
 import { SITE_PALETTES, fontSetFor } from "@/lib/site-style";
@@ -38,13 +38,14 @@ function swatchOf(palKey: string | undefined, color: string | undefined, tone: "
 
 const PREVIEW_KEY = "site-choose";
 type Design = AdvPreview & { spec?: { seed?: string; archetype?: string } };
-type Option = { id: string; name: string; sub: string; card: Card; on: boolean; look?: Look; seed?: string; swatch?: Swatch };
+type Option = { id: string; name: string; sub: string; card: Card; on: boolean; recommended?: boolean; look?: Look; seed?: string; swatch?: Swatch };
 
 export default function ChooseDesignPage() {
   const router = useRouter();
   const { lang } = useT(); const hi = lang !== "en";
   const T = (en: string, h: string) => (hi ? h : en);
-  const [card, setCard] = useState<Card | null>(null);
+  const [savedCard, setCard] = useState<Card | null>(null);
+  const card = useMemo(() => savedCard && isShubhoraSellerCard(savedCard) ? withoutFreeCard(savedCard, true) : savedCard, [savedCard]);
   const [designs, setDesigns] = useState<Design[] | null>(null);   // the Premium designs; null = still loading
   const [pick, setPick] = useState("");
   const [busy, setBusy] = useState(false);
@@ -71,7 +72,7 @@ export default function ChooseDesignPage() {
     }
     setPending(false);
     // A Shubhora website is shown as it is drawn live (its story sections, three banners, no free-card lines), so the preview matches.
-    setCard(withQuality(isShubhoraSellerCard(c) ? withoutFreeCard(c, true) : c));
+    setCard(c);
     // The Premium designs kept for this card, filled up to six from the library (any paid website; none when the server says no).
     const r = await api<{ designs?: Design[] }>("/api/card/advanced", { method: "POST", json: { cardId: c.id, more: true } }).catch(() => null);
     // A trade with finished templates (bridal wear, 16 Nov 2026): its twelve are the whole choice — marked by their seed ("|fix:").
@@ -93,8 +94,11 @@ export default function ChooseDesignPage() {
     const plain: Card = advOn ? { ...card, site: { ...card.site, advancedOn: false } as Card["site"] } : card;
     const cur = card.site.style?.blueprint;
     const keepOwn = styleFitsTrade(plain);
-    const looks: Option[] = threeLooks(plain, plain.site?.style).slice(0, 6).map((l, i) => ({
-      id: `s${l.key}`, look: l, name: `Design ${prem.length + i + 1}`, sub: hi ? l.hi : l.name,
+    const standard = threeLooks(plain, plain.site?.style);
+    const best = openingLook(standard, plain.seo?.categoryKey);
+    const ranked = best ? [best, ...standard.filter((look) => look.key !== best.key)] : standard;
+    const looks: Option[] = ranked.slice(0, 6).map((l, i) => ({
+      id: `s${l.key}`, look: l, recommended: l.key === best?.key, name: `Design ${prem.length + i + 1}`, sub: hi ? l.hi : l.name,
       // The look the website wears now keeps its own colours and choices; the others are drawn from it.
       // …unless those colours are another trade's (a cleaning company made in cream and brown before 17 Nov 2026): then it is shown in its trade's.
       card: l.key === cur && keepOwn ? plain : applyLook(plain, l), on: !advOn && l.key === cur,
@@ -123,16 +127,16 @@ export default function ChooseDesignPage() {
   }
 
   async function applyDesign() {
-    if (!card || !chosen || (chosen.on && confirmed)) return;
+    if (!savedCard || !chosen || (chosen.on && confirmed)) return;
     setBusy(true); setErr(""); setMsg("");
     try {
       if (chosen.look) {
         // A Premium design on the website is switched off first (it stays stored, and can be chosen again here).
-        let base = card;
+        let base = savedCard;
         if (advOn) {
-          const t = await api<{ ok?: boolean; error?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, toggle: false } });
+          const t = await api<{ ok?: boolean; error?: string }>("/api/card/advanced", { method: "POST", json: { cardId: savedCard.id, toggle: false } });
           if (!t.ok || !t.data.ok) { setErr(t.data?.error || T("Could not change the design now. Please try again.", "Design अभी नहीं बदल पाया। दोबारा try करें।")); return; }
-          base = (await fetchMyCardsStrict().catch(() => [])).find((x) => x.id === card.id) ?? { ...card, site: { ...card.site!, advancedOn: false } as Card["site"] };
+          base = (await fetchMyCardsStrict().catch(() => [])).find((x) => x.id === savedCard.id) ?? { ...savedCard, site: { ...savedCard.site!, advancedOn: false } as Card["site"] };
         }
         // The design already on the website is only confirmed (nothing redrawn); another one is put on. Either way the choice is recorded.
         const worn = chosen.on ? base : applyLook(base, chosen.look);
@@ -141,9 +145,9 @@ export default function ChooseDesignPage() {
         if (!r.ok) { setErr(r.error); return; }
         setCard(next);
       } else {
-        const r = await api<{ ok?: boolean; error?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, accept: "choose", acceptSeed: chosen.seed } });
+        const r = await api<{ ok?: boolean; error?: string }>("/api/card/advanced", { method: "POST", json: { cardId: savedCard.id, accept: "choose", acceptSeed: chosen.seed } });
         if (!r.ok || !r.data.ok) { setErr(r.data?.error || T("Could not change the design now. Please try again.", "Design अभी नहीं बदल पाया। दोबारा try करें।")); return; }
-        const fresh = (await fetchMyCardsStrict().catch(() => [])).find((x) => x.id === card.id);
+        const fresh = (await fetchMyCardsStrict().catch(() => [])).find((x) => x.id === savedCard.id);
         if (fresh) setCard(fresh);
       }
       setPick(""); setMsg(T("Done. This design is final on your website. You can still change it here any time.", "हो गया। यही design आपकी website पर final है। यहाँ से कभी भी बदल सकते हैं।"));
@@ -217,9 +221,8 @@ export default function ChooseDesignPage() {
         {head(1, T(`Select any one from ${options.length}`, `${options.length} में से कोई एक चुनें`), confirmed ? T("Tap a design to see it below. Your website has the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website पर ✓ वाला design है।") : T("Tap a design to see it below, then make one final. Until then this page opens every time.", "Design दबाएँ, नीचे दिखेगा, फिर एक को final करें। तब तक हर बार यही page खुलेगा।"))}
         {options.length ? (
           <>
-            {/* Two rows with their names (owner, 20 Nov 2026: "pehle 6 premium, 2nd row me 6 standard"): the Premium designs move and are
-                laid out for the business; the Standard ones are the plain, quick website. */}
-            {([["p", T("Premium designs · with motion", "Premium designs · motion के साथ")], ["s", T("Standard designs", "Standard designs")]] as const).map(([row, label]) => {
+            {/* Keep design numbers stable within their two labeled sets. */}
+            {([["p", T("Premium designs", "Premium designs")], ["s", T("Standard designs", "Standard designs")]] as const).map(([row, label]) => {
               const rowOpts = options.map((o, i) => ({ o, i })).filter(({ o }) => (row === "p") === o.id.startsWith("p"));
               if (!rowOpts.length) return null;
               return (
@@ -240,6 +243,7 @@ export default function ChooseDesignPage() {
                       )}
                       <span className="block text-sm font-bold">{o.name}</span>
                       <span className="block truncate text-[10px] capitalize text-muted">{o.sub}</span>
+                      {o.recommended && <span className="block text-[10px] font-semibold text-brand-ink">{T("Trade match", "आपके काम के लिए")}</span>}
                     </button>
                     {/* The whole website in this design, full size, in a new tab (owner, 14 Nov 2026). */}
                     <button type="button" onClick={() => openFull(o, i)} aria-label={T(`Open ${o.name} in a new tab`, `${o.name} नए tab में खोलें`)} title={T("Open in a new tab", "नए tab में खोलें")}
@@ -253,6 +257,7 @@ export default function ChooseDesignPage() {
             </div>
               );
             })}
+            {chosen && <SiteCheck card={chosen.card} hi={hi} staged />}
             {/* Right under the tiles: tapping a design only shows it; this button puts it on the website (owner, 14 Nov 2026: "click kar raha hu, select nahi ho raha" — the button was below the preview, out of sight). */}
             <button type="button" onClick={() => void applyDesign()} disabled={busy || !chosen || (chosen.on && confirmed)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
