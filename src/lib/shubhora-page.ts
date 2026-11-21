@@ -300,6 +300,20 @@ function sellerRank(b: CardBlock, seen: { flow: number }): number | null {
   }
 }
 
+/** The partner's inner pages (plan Phase 6): one comparison on "Why" instead of two (the paper-card one is the old V-Card pitch), the
+ *  template steps as a numbered timeline, and the questions under the company's heading everywhere. */
+function sellerInnerPage(p: CardPage): CardPage {
+  const blocks = p.blocks.flatMap((b): CardBlock[] => {
+    if (b.kind === "compare" && /paper visiting card/i.test(b.title)) return [];
+    if (b.kind === "services" && /how a template becomes/i.test(b.title) && b.items.length >= 2 && b.items.length <= 6) {
+      return [{ id: b.id, kind: "story", style: "flow", title: b.title, items: b.items.map((it) => ({ title: it.name.replace(/^\d+[.)]\s*/, ""), ...(it.desc ? { text: it.desc } : {}) })) }];
+    }
+    if (b.kind === "faq" && /^good to know$/i.test(b.title.trim())) return [{ ...b, title: SELLER_HEADS["good to know"] }];
+    return [b];
+  });
+  return blocks.length === p.blocks.length && blocks.every((b, i) => b === p.blocks[i]) ? p : { ...p, blocks };
+}
+
 function sellerHomePage(p: CardPage): CardPage {
   if (p.slug !== "home") return p;
   const seen = { flow: 0 };
@@ -326,7 +340,7 @@ function sellerOrder(home: CardPage): string[] {
 function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
   if (!seller) return card;
   const c = card as T & { site?: Card["site"]; company?: string };
-  const pages = card.pages.map(sellerHomePage);
+  const pages = card.pages.map((p) => sellerHomePage(sellerInnerPage(p)));
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;

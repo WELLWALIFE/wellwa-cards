@@ -35,7 +35,9 @@ export type SiteDesignPlan = {
   looks?: MoodPlan[];
 };
 
-const MODEL = "gemini-3.5-flash-lite";
+// The website is designed once per build, so the stronger model leads (plan Phase 5, 21 Nov 2026); the light one answers when it
+// does not. Both "think", and the thinking counts against maxOutputTokens: the budget below leaves room for it.
+const MODELS = ["gemini-3.5-flash", "gemini-3.5-flash-lite"];
 const HOME_KINDS: HomeKind[] = ["trust", "catalog", "services", "whyUs", "steps", "about", "offer", "booking", "photos", "reviews"];
 
 /** What the designer is told about the business. */
@@ -300,18 +302,19 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
   if (!key) return null;
   const system = `You are a senior web designer with 15 years of agency work on small-business websites in India. You design for THIS business from its facts, never from a template. You answer with one JSON object and nothing else.\n\n${PRINCIPLES}`;
   const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website: THREE plans, each on a different blueprint, your pick first. Reply with JSON: {"plans": [{"blueprint": "...", "heroVariant": "...", "palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "tiles": ["..."] (bento only), "pattern": "...", "motion": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 20 words, to the owner"}, {...}, {...}]}.`;
+  for (const [mi, MODEL] of MODELS.entries()) {
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: "POST", signal: AbortSignal.timeout(timeoutMs),
+      method: "POST", signal: AbortSignal.timeout(mi === 0 ? timeoutMs : Math.min(timeoutMs, 15_000)),
       headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ parts: [{ text }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 1600 },
+        generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 4096 },
       }),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) return null;
+    if (!r.ok) continue;
     logUsage("site-design", MODEL, j?.usageMetadata);
     const parts = (j?.candidates?.[0]?.content?.parts ?? []) as { text?: unknown; thought?: unknown }[];
     const out = parts.filter((p) => typeof p?.text === "string" && !p.thought).map((p) => p.text as string).join("").trim();
@@ -319,11 +322,13 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
     try { v = JSON.parse(out); } catch { const a = out.indexOf("{"), z = out.lastIndexOf("}"); if (a >= 0 && z > a) { try { v = JSON.parse(out.slice(a, z + 1)); } catch { v = null; } } }
     const raws = v && typeof v === "object" && Array.isArray((v as { plans?: unknown }).plans) ? (v as { plans: unknown[] }).plans : v ? [v] : [];
     const plans = threePlans(raws, b);
-    if (!plans.length) return null;
+    if (!plans.length) continue;
     const [first, ...rest] = plans;
     const looks: MoodPlan[] = [first, ...rest].map((p) => ({ blueprint: p.style.blueprint!, style: p.style, ...(p.order ? { order: p.order } : {}), ...(p.tiles ? { tiles: p.tiles } : {}), why: p.why }));
     return { ...first, looks };
   } catch {
-    return null;
+    // slow or down: the next model, then the trade's own look
   }
+  }
+  return null;
 }

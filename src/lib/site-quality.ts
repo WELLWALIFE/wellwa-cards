@@ -46,7 +46,10 @@ function hasPicture(b: CardBlock): boolean {
   switch (b.kind) {
     case "about": return !!b.imageUrl;
     case "services": return b.items.some((it) => it.imageUrl);
-    case "story": return b.items.some((it) => it.imageUrl) || b.style === "stats";
+    // A timeline, a before/after or a strip of figures is a composition of its own, not a wall of words.
+    case "story": return b.items.some((it) => it.imageUrl) || b.style !== "bento";
+    // An icon grid and a folded list of questions read at a glance.
+    case "highlights": case "faq": return true;
     case "product": return true;
     case "showcase": return b.items.some((it) => it.imageUrl);
     case "gallery": case "image": case "carousel": return b.images.length > 0;
@@ -71,8 +74,9 @@ export function checkSite(card: Card): QualityNote[] {
       if (b.kind === "faq" && p.slug === "home" && b.items.length > 6) out.push({ level: "todo", page: name, en: `${b.items.length} questions on Home. Keep the top 6; put the rest on a page of their own.`, hi: `Home पर ${b.items.length} सवाल हैं। सबसे ज़रूरी 6 रखें, बाक़ी अलग पेज पर।` });
       if (isLoc(b) && !b.mapUrl && vagueAddress(b.address)) out.push({ level: "fixed", page: name, en: `The address "${b.address.trim()}" is not a place on a map, so the map is hidden. Add your full address to show it.`, hi: `पता "${b.address.trim()}" नक्शे पर कोई जगह नहीं है, इसलिए नक्शा छुपा दिया। पूरा पता डालें तो दिखेगा।` });
       if (isLoc(b) && !b.mapUrl && townOnly(b.address)) out.push({ level: "todo", page: name, en: `The address "${b.address.trim()}" has no street, so the map finds the town, not you. Add the full address or a Google Maps link.`, hi: `पते "${b.address.trim()}" में गली/दुकान नहीं है, नक्शा सिर्फ़ शहर दिखाएगा। पूरा पता या Google Maps link डालें।` });
-      const prev = blocks[i - 1];
-      if (prev && !hasPicture(prev) && !hasPicture(b)) out.push({ level: "todo", page: name, en: `"${title(prev) || prev.kind}" and "${tt || b.kind}" come one after another with no picture. Add a photo to one of them.`, hi: `"${title(prev) || prev.kind}" और "${tt || b.kind}" लगातार बिना फ़ोटो के हैं। किसी एक में फ़ोटो डालें।` });
+      // Three sections of words in a row is where a page starts to read like a document (two is normal on an inner page).
+      const p1 = blocks[i - 1], p2 = blocks[i - 2];
+      if (p1 && p2 && !hasPicture(p2) && !hasPicture(p1) && !hasPicture(b)) out.push({ level: "todo", page: name, en: `"${title(p2) || p2.kind}", "${title(p1) || p1.kind}" and "${tt || b.kind}" are three sections of text in a row. Add a photo to the middle one.`, hi: `"${title(p2) || p2.kind}", "${title(p1) || p1.kind}" और "${tt || b.kind}" लगातार तीन हिस्से सिर्फ़ लिखाई के हैं। बीच वाले में फ़ोटो डालें।` });
       if (tt && blocks.slice(0, i).some((x) => title(x).toLowerCase() === tt.toLowerCase())) out.push({ level: "todo", page: name, en: `Two sections are called "${tt}". Rename or join them.`, hi: `दो हिस्सों का नाम "${tt}" है। एक का नाम बदलें या दोनों को जोड़ें।` });
     });
   }

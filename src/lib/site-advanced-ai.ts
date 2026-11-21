@@ -108,7 +108,7 @@ async function askJson(text: string, o: { tag: string; timeout: number; temperat
       const r = await fetch(endpoint(model), {
         method: "POST", signal: AbortSignal.timeout(i === 0 ? o.timeout : Math.min(o.timeout, 35_000)),
         headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text }] }], generationConfig: { responseMimeType: "application/json", temperature: o.temperature, maxOutputTokens: o.maxOut } }),
+        body: JSON.stringify({ contents: [{ parts: [{ text }] }], generationConfig: { responseMimeType: "application/json", temperature: o.temperature, maxOutputTokens: Math.max(o.maxOut, 4096) } }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(`AI error ${r.status}`);
@@ -450,6 +450,7 @@ RULES (a rule broken means the line is thrown away, so keep them)
 4. hero.headline: 3 to 6 words, a claim or a feeling specific to THIS business; not the business name, no slash, no number. hero.sub: ONE line, at most 14 words and 85 characters: what they offer and where; different from the headline.
 5. about.body: 90 to 170 words in 2-3 short paragraphs separated by a blank line, first person plural if the current text is, built from the current about text and the facts (keep every real fact in it, improve the rhythm and the specifics). about.title: 2-4 words, an invitation (not "About us").
 6. titles: for each id above, a new title of 2 to 5 words - an invitation to look or ask ("Find your piece", "Questions, answered", "Come and see"), never a dull label and never a claim the facts do not make. Keep the id exactly. Skip an id you cannot improve honestly.
+7. No two titles may say the same thing or start with the same word, and none may repeat the headline: a page whose sections echo each other reads as a template.
 Return {"hero":{"headline":"","sub":""},"about":{"title":"","body":""},"titles":{"<id>":"<title>"}}`;
 }
 
