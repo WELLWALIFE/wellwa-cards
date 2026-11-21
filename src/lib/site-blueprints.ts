@@ -27,19 +27,19 @@ export const BLUEPRINTS: Blueprint[] = [
     fits: ["kirana", "mobile", "hardware", "medical", "clinic", "electrician", "plumber", "ca", "tuition", "coaching", "it", "real-estate", "travel", "insurance"],
   },
   {
-    key: "cinematic", name: "Full photo", hi: "फुल फ़ोटो", blurb: "Full-screen photo, scene by scene", blurbHi: "पूरी screen की photo, scene दर scene",
+    key: "cinematic", name: "Full photo", hi: "फुल फ़ोटो", blurb: "A wide photo cover with compact scenes", blurbHi: "चौड़ी कवर फ़ोटो और छोटे सेक्शन",
     defaults: { hero: "photo", radius: "soft", motion: "calm", pattern: "none", heroVariant: "cover", layouts: { about: "photo-right", services: "list", products: "showcase", faq: "accordion", reviews: "quote", gallery: "masonry" } },
     fits: ["hotel", "restaurant", "gym", "jewellery", "car", "events", "wedding", "salon", "interior", "furniture", "architect", "photography"],
   },
   {
-    key: "story", name: "Colour poster", hi: "रंगीन पोस्टर", blurb: "A bold colour block, big type, the photo as a card", blurbHi: "रंग का bold block, बड़ा type, photo एक card में",
+    key: "story", name: "Colour poster", hi: "रंगीन पोस्टर", blurb: "A bold headline panel alongside a large photo", blurbHi: "बड़ी हेडलाइन के साथ बराबर में बड़ी फ़ोटो",
     defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "poster", layouts: { about: "photo-left", services: "cards", products: "dense", faq: "open", reviews: "pair", gallery: "mosaic" } },
     fits: ["cafe", "bakery", "sweets", "garments", "boutique", "beauty", "fitness", "tiffin", "home-food", "handicraft", "gifts", "florist"],
   },
   // The three structures added after the Oct 2026 market review (docs/website-looks-v3.md): what the best bakery,
   // shop and services sites are built like, none of which the first three could draw.
   {
-    key: "wordmark", name: "Big name", hi: "बड़ा नाम", blurb: "The name set huge, a strip of photos under it", blurbHi: "नाम बहुत बड़ा, नीचे photos की पट्टी",
+    key: "wordmark", name: "Big name", hi: "बड़ा नाम", blurb: "A business masthead, a bold headline and a photo strip", blurbHi: "नाम, बड़ी हेडलाइन और नीचे फ़ोटो की पट्टी",
     defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "mark", layouts: { about: "photo-right", services: "list", products: "grid", faq: "accordion", reviews: "quote", gallery: "masonry" } },
     fits: ["cafe", "sweets", "restaurant", "garments", "boutique", "photography", "interior", "event", "dance", "printing"],
   },
@@ -49,7 +49,7 @@ export const BLUEPRINTS: Blueprint[] = [
     fits: ["kirana", "sweets", "garments", "mobile", "medical", "gift", "footwear", "optical", "hardware", "furniture", "grocery-online", "wholesale", "cleanprod", "dairy"],
   },
   {
-    key: "collage", name: "Photo collage", hi: "फ़ोटो कोलाज", blurb: "Words and quick actions beside a photo collage", blurbHi: "शब्द और quick actions, बगल में photo collage",
+    key: "collage", name: "Photo collage", hi: "फ़ोटो कोलाज", blurb: "A lead photo with supporting frames and quick actions", blurbHi: "एक मुख्य फ़ोटो, साथ में छोटी फ़ोटो और संपर्क के विकल्प",
     defaults: { radius: "round", motion: "calm", pattern: "none", heroVariant: "collage", layouts: { about: "photo-right", services: "list", products: "grid", faq: "open", reviews: "pair", gallery: "mosaic" } },
     fits: ["salon", "spa", "doctor", "dentist", "gym", "electrician", "cleaning", "auto", "school", "coaching", "hospital", "hotel"],
   },

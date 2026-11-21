@@ -312,26 +312,24 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
     return () => window.removeEventListener("scroll", on);
   }, []);
   const bento = bp ? bentoFacts(card) : null;
-  // Cinematic: the photos not already on the hero, as the bands between the scenes. A band must not repeat what the home page
-  // already shows (the first four tiles, the gallery's first five photos, the About photo — 15 Oct 2026: the three bands were the
-  // first three product photos, each sitting right above its own tile), so the photos the home page does not show come first.
-  const bands = bp === "cinematic" ? (() => {
+  // One cinematic interlude, using a photo the cover or home sections have yet to show.
+  const bandPhoto = isHome && bp === "cinematic" ? (() => {
     const visible = card.pages.filter((p) => !p.hidden);
-    const use: Record<string, number> = {};
-    const bump = (u?: string) => { if (u) use[u] = (use[u] ?? 0) + 1; };
+    const shown = new Set([heroCard.coverUrl]);
+    const markShown = (u?: string) => { if (u) shown.add(u); };
     for (const sec of homeSections(card, visible)) {
-      if (sec.kind === "featured") sec.items.forEach((it) => bump(it.images?.[0] ?? it.imageUrl));
-      else if (sec.kind === "gallery") sec.images.forEach((i) => bump(i.url));
+      if (sec.kind === "featured") sec.items.forEach((it) => markShown(it.images?.[0] ?? it.imageUrl));
+      else if (sec.kind === "gallery") sec.images.forEach((i) => markShown(i.url));
       else if (sec.kind === "block") {
         const b = sec.block;
-        if (b.kind === "gallery" || b.kind === "image" || b.kind === "carousel") b.images.forEach((i) => bump(i.url));
-        else if (b.kind === "about") bump(b.imageUrl);
-        else if (b.kind === "product") b.items.forEach((it) => bump(it.images?.[0] ?? it.imageUrl));
+        if (b.kind === "gallery" || b.kind === "image" || b.kind === "carousel") b.images.forEach((i) => markShown(i.url));
+        else if (b.kind === "about") markShown(b.imageUrl);
+        else if (b.kind === "product") b.items.forEach((it) => markShown(it.images?.[0] ?? it.imageUrl));
       }
     }
     const gallery = visible.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "gallery" || b.kind === "image" || b.kind === "carousel" ? b.images.map((i) => i.url ?? "") : [])).filter(Boolean);
-    return [...new Set([...strip, ...gallery])].filter((u) => u !== card.coverUrl).sort((a, b) => (use[a] ?? 0) - (use[b] ?? 0)).slice(0, 3);
-  })() : [];
+    return [...strip, ...gallery].find((u) => !shown.has(u));
+  })() : undefined;
   const sinceOf = bp ? sinceYear([...card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "highlights" ? b.items : [])), card.about ?? "", card.tagline ?? ""]) : null;
   // Announcement bar: shown until its date (IST day), closable for the visit.
   const bar = card.site?.bar;
@@ -490,8 +488,7 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
         ) : isHome && bp === "story" ? (
           <PosterHero card={heroCard} hi={L.lang === "hi"} t={t} onBook={go} />
         ) : isHome && bp === "cinematic" ? (
-          <CinematicHero card={heroCard} hi={L.lang === "hi"} t={t} photo={heroCard.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}
-            phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} eyebrow={eyebrowRole} pills={[]} />
+          <CinematicHero card={heroCard} hi={hiNow} t={t} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} textSide={hero?.textSide} onBook={go} />
         ) : isHome && bento ? (
           <div className="relative">
             <BentoHero card={heroCard} hi={L.lang === "hi"} t={t} photo={heroCard.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento.clip : undefined} focus={heroFocus}
@@ -550,19 +547,16 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
           </>
         )}
 
-        {groups.map((g, i) => (
-          <div key={Array.isArray(g) ? g[0].id : g.key} className="contents">
-            {Array.isArray(g) ? <SiteRun run={g} index={i} {...runProps} /> : <Pulled section={g} index={i} {...runProps} />}
-            {/* Cinematic: a slow photo band after every second scene (never one the hero already shows, and never the last thing
-                before the footer — a band flush against it read as cut off, owner 14 Oct 2026). */}
-            {/* A bare "See all …" button belongs to the scene above it: the band waits one group so it never lands between them (QA pass, 16 Oct 2026). */}
-            {(() => {
-              const bare = (x?: (typeof groups)[number]) => !!x && Array.isArray(x) && x.length === 1 && x[0].kind === "cta" && !x[0].body;
-              const at = i % 2 === 1 && !bare(groups[i + 1]) ? i : i % 2 === 0 && i > 0 && bare(g) ? i - 1 : -1;
-              return bands.length > 0 && at > 0 && i < groups.length - 1 && bands[(at - 1) / 2] ? <ParallaxBand src={bands[(at - 1) / 2]} /> : null;
-            })()}
-          </div>
-        ))}
+        {groups.map((g, i) => {
+          const next = groups[i + 1];
+          const nextIsLink = Array.isArray(next) && next.length === 1 && next[0].kind === "cta" && !next[0].body;
+          return (
+            <div key={Array.isArray(g) ? g[0].id : g.key} className="contents">
+              {Array.isArray(g) ? <SiteRun run={g} index={i} {...runProps} /> : <Pulled section={g} index={i} {...runProps} />}
+              {bandPhoto && i === 1 && next && !nextIsLink && <ParallaxBand src={bandPhoto} />}
+            </div>
+          );
+        })}
 
         {/* Bulk and custom orders — a banner for the trades that take them (the leading shop sites carry one). */}
         {isHome && wa && BULK_TRADES.has(card.seo?.categoryKey ?? "") && (
@@ -822,9 +816,9 @@ function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, in
   return (
     <section className={`${band ? "hero-dark relative overflow-hidden" : ""} ${className}`} data-reveal data-m2={index % 2} data-m3={index % 3} style={band ? undefined : index % 2 ? { background: "var(--paper-2)" } : { background: "var(--paper)" }}>
       {band && <i aria-hidden="true" className="hero-grain" />}
-      <div className={`relative mx-auto px-5 md:px-6 ${tight ? "py-12 md:py-16" : "sec-pad"} ${narrow ? "max-w-2xl" : wide ? "max-w-6xl" : "max-w-3xl"}`}>
+      <div className={`site-section-inner relative mx-auto px-5 md:px-6 ${tight ? "py-12 md:py-16" : "sec-pad"} ${narrow ? "max-w-2xl" : wide ? "max-w-6xl" : "max-w-3xl"}`}>
         {(title || eyebrow || lead) && (
-          <div className={`${tight ? "mb-8" : "mb-10 md:mb-12"} flex flex-wrap items-end justify-between gap-6`}>
+          <div className={`site-section-head ${tight ? "mb-8" : "mb-10 md:mb-12"} flex flex-wrap items-end justify-between gap-6`}>
             <div className="max-w-2xl">
               {eyebrow && <p className={cls.kicker}>{eyebrow}</p>}
               {title && <h2 className={`sec-h2 ${eyebrow ? "mt-3" : ""}`}>{title}</h2>}
@@ -833,7 +827,7 @@ function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, in
             {aside}
           </div>
         )}
-        {children}
+        <div className="site-section-content">{children}</div>
       </div>
     </section>
   );
@@ -842,6 +836,7 @@ function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, in
 /** The sections' own rules (§4), inlined with the tokens: the "good to know" line, section type, cards, products,
  *  reviews, the sticky bar's entrance. Everything else is the shared `.site` block in globals.css. */
 const VIEW_CSS = `
+.site .site-section-content{display:contents}
 .site .gtk{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5);padding:var(--s3) 0;margin:0;list-style:none;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:var(--t-meta);font-weight:500;color:var(--muted)}
 .site .gtk li{display:inline-flex;align-items:center;gap:.45em}.site .gtk svg{color:var(--accent);flex:none}
 .site .stat{font-family:var(--font-display,var(--look-head));font-size:clamp(20px,5.6vw,var(--t-stat));white-space:nowrap;line-height:1;letter-spacing:-.01em;font-weight:var(--display-w,var(--head-w,600));font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
@@ -851,6 +846,12 @@ const VIEW_CSS = `
 .site .pg-pic{aspect-ratio:4/3;overflow:hidden;border-radius:24px;box-shadow:0 24px 60px -24px rgba(15,23,42,.35)}
 /* Card grids that never leave one card alone on a row (plan Phase 1): 3 across on desktop, a 2-card tail shares
    the row, a single tail card sits in the middle, 4 cards make a 2x2. data-n carries the count. */
+.site .showcase-grid>*{min-width:0;overflow-wrap:anywhere}
+@media (min-width:320px) and (max-width:639.98px){
+ .site .fitg.showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+ .site .showcase-grid>:last-child:nth-child(odd){grid-column:1/-1}
+ .site .showcase-grid>:last-child:nth-child(odd) img{max-height:12rem}
+}
 .site .fitg{display:grid;gap:var(--fg,1.25rem);grid-template-columns:minmax(0,1fr)}
 @media (min-width:640px) and (max-width:1023.98px){.site .fitg{grid-template-columns:repeat(2,minmax(0,1fr))}.site .fitg>:last-child:nth-child(odd){grid-column:1/-1;justify-self:center;width:calc((100% - var(--fg,1.25rem))/2)}}
 @media (min-width:1024px){.site .fitg{grid-template-columns:repeat(6,minmax(0,1fr))}.site .fitg>*{grid-column:span 2}
@@ -1717,13 +1718,13 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       if (bp === "cinematic") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<SceneStrip imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
       if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<LabelWall imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
       if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<BentoGallery imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
-      if (bp === "shop" || bp === "collage") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<TileRow imgs={imgs} onOpen={openAt} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
+      if (bp === "shop") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<TileRow imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
       if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<StaggerGallery imgs={imgs.slice(0, 6)} onOpen={openAt} t={t} />{lightbox}</Section>;
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} lead={ledeT("gallery")}
           aside={<SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} फ़ोटो` : t(`All ${s.total} photos`)}</SeeAll>}>
           {headChips}
-          <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 md:h-[520px]">
+          <div className={bp === "collage" ? "collage-gallery" : "grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 md:h-[520px]"} data-count={imgs.length}>
             {imgs.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative overflow-hidden rounded-2xl border border-border cursor-zoom-in ${i === 0 ? "col-span-2 row-span-2 aspect-square md:aspect-auto" : "aspect-square md:aspect-auto"} ${FOCUS}`}>
                 <Img src={g.url!} alt={g.label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 3} sizes={i === 0 ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 50vw"} />
@@ -2165,13 +2166,15 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "showcase":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="fitg" data-n={block.items.filter((it) => it.imageUrl || it.label).length}>
+          <div className="fitg showcase-grid" data-n={block.items.filter((it) => it.imageUrl || it.label).length}>
             {block.items.filter((it) => it.imageUrl || it.label).map((it, i) => {
               const inner = (
                 <>
-                  <div className="aspect-[16/8] w-full overflow-hidden bg-surface2">
-                    {it.imageUrl && <Img src={it.imageUrl} alt={it.label} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" />}
-                  </div>
+                  {it.imageUrl && (
+                    <div className="aspect-[16/8] w-full overflow-hidden bg-surface2">
+                      <Img src={it.imageUrl} alt={it.label} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transform-none" sizes="(min-width: 1024px) 33vw, (min-width: 320px) 50vw, 100vw" />
+                    </div>
+                  )}
                   <div className="p-3">
                     <p className="font-semibold leading-tight">{t(it.label)}</p>
                     {it.sub && <p className="mt-0.5 text-sm text-muted">{t(it.sub)}</p>}

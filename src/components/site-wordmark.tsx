@@ -1,13 +1,9 @@
 "use client";
-// The WORDMARK blueprint (docs/website-looks-v3.md §1): built like the bakery, café and boutique sites that led the
-// Oct 2026 market review — the business name set huge on paper (the name IS the hero), the trade and city small
-// above it, the claim and the benefit beside it, and under it a strip of the card's photos with ONE colour tile
-// carrying the button, the address and the open state. No scrim, no words over a photo. Without a photo the strip
-// is dropped and the name sits on the ink field (`mark-ink`). Everything it says comes from heroModel().
+// A masthead for the business, followed by the main claim and a photo strip.
 import { heroModel } from "@/lib/site-hero";
 import { siteAddress, sitePhotos } from "@/lib/site-photos";
 import type { Card } from "@/lib/types";
-import { CtaPair, HeroPhoto, Kicker, OpenNowChip, Sub, TrustRow } from "@/components/site-smart";
+import { CtaPair, Display, HeroPhoto, Kicker, OpenNowChip, Sub, TrustRow } from "@/components/site-smart";
 import { Icon } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
 import { trackClick } from "@/lib/track";
@@ -23,7 +19,6 @@ export function WordmarkHero({ card, hi, t, onBook }: { card: Card; hi: boolean;
   const lead = cover ? null : others.shift() ?? null;   // no cover: the first other photo leads the strip
   const address = siteAddress(card);
   const name = t(m.name);
-  const len = Array.from(name).length;
   const jump = (href: string) => (e: React.MouseEvent) => { if (href.startsWith("#") && onBook) { e.preventDefault(); onBook(href.slice(1)); } };
   const ext = m.primary.kind === "whatsapp" ? { target: "_blank", rel: "noreferrer" } : {};
   const sizes = "(min-width:1024px) 25vw, 50vw";
@@ -31,10 +26,12 @@ export function WordmarkHero({ card, hi, t, onBook }: { card: Card; hi: boolean;
     <section className={`mark ${ink ? "hero-dark mark-ink" : ""}`} data-variant={ink ? "mark-ink" : "mark"} lang={lang} aria-label={m.name}>
       {ink && <HeroArt kind={artKind(card.seo?.categoryKey)} />}
       <div className="mark-top hero-stagger">
-        <Kicker lang={lang}>{t(m.kicker)}</Kicker>
-        <h1 className="mark-name" lang={lang} data-len={len > 14 ? "long" : len > 9 ? "mid" : undefined}>{name}</h1>
+        <div className="mark-masthead">
+          <p className="mark-name">{name}</p>
+          <Kicker lang={lang}>{t(m.kicker)}</Kicker>
+        </div>
+        <Display className="mark-claim" lang={lang}>{t(m.headline)}</Display>
         <div className="mark-side">
-          <p className="mark-claim">{t(m.headline)}</p>
           <Sub lang={lang}>{t(m.sub)}</Sub>
           <TrustRow trust={m.trust} hours={m.hours} hi={hi} />
           {ink && <CtaPair primary={m.primary} secondary={m.secondary} username={card.username} secondaryStyle="ghost" onBook={onBook} className="mark-ctas" />}
@@ -73,12 +70,10 @@ export const WORDMARK_CSS = `
 .site .mark-ink{background:var(--hero-ink);color:var(--hero-text);padding-bottom:var(--s8);overflow:hidden}
 .site .mark-ink .mark-top{position:relative;z-index:1}
 .site .mark-top{max-width:calc(var(--content) + 2*var(--gutter));margin:0 auto;padding:0 var(--gutter)}
-.site .mark-name{margin:var(--s3) 0 0;font-family:var(--font-display,var(--look-head));font-weight:var(--display-w,var(--head-w,700));font-size:clamp(3.25rem,17vw,5.5rem);line-height:.92;letter-spacing:-.035em;text-wrap:balance;overflow-wrap:anywhere}
-.site .mark-name[data-len=mid]{font-size:clamp(2.75rem,14vw,4.5rem)}
-.site .mark-name[data-len=long]{font-size:clamp(2.25rem,11vw,3.5rem);line-height:1}
-.site .mark-name:lang(hi){letter-spacing:0;line-height:1.15;font-weight:var(--display-w-hi,700)}
-.site .mark-side{margin-top:var(--s5);display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3)}
-.site .mark-claim{margin:0;font-family:var(--font-display,var(--look-head));font-size:clamp(1.25rem,5vw,1.75rem);line-height:1.2;letter-spacing:-.01em;font-weight:var(--display-w,500);max-width:22ch;text-wrap:balance}
+.site .mark-masthead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s2) var(--s5);padding-bottom:var(--s4);border-bottom:1px solid var(--line);margin-bottom:var(--s5)}
+.site .mark-name{font-family:var(--font-display,var(--look-head));font-size:clamp(1.125rem,3vw,1.65rem);line-height:1.2;font-weight:var(--head-w,700);overflow-wrap:anywhere}
+.site .mark-side{margin-top:var(--s4);display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3)}
+.site .mark .mark-claim{--t-display:clamp(2.5rem,8vw,6rem);max-width:16ch}
 .site .mark-side .hero-sub{color:var(--muted)}
 .site .mark-ink .mark-side .hero-sub{color:var(--hero-text);opacity:.85}
 .site .mark-ctas{margin-top:var(--s3)}
@@ -86,7 +81,7 @@ export const WORDMARK_CSS = `
 .site .mark-strip>:nth-child(3):last-child{grid-column:1/-1;aspect-ratio:2/1}
 /* An odd photo out (3 photos, or 1) would sit alone with an empty cell beside it on a phone: it takes the full row instead. */
 .site .mark-strip>.mark-ph:nth-child(4):last-child,.site .mark-strip>.mark-ph:first-child:nth-last-child(2){grid-column:1/-1;aspect-ratio:2/1}
-.site .mark-strip .mark-tile{grid-column:1/-1;order:9;min-height:0;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3) var(--s5)}
+.site .mark-strip .mark-tile{grid-column:1/-1;order:-1;min-height:0;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3) var(--s5)}
 .site .mark-strip .mark-tile .mark-tile-foot{flex:1 1 220px}
 .site .mark-tile .btn-primary{white-space:nowrap}
 .site .mark-ph{position:relative;aspect-ratio:1;overflow:hidden;border-radius:var(--r-img);background:var(--paper-2)}
@@ -104,16 +99,13 @@ export const WORDMARK_CSS = `
 @media (min-width:1024px){
 .site .mark{padding-top:var(--s8)}
 .site .mark-top{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,4fr);column-gap:var(--s7);align-items:end}
-.site .mark-top .kicker{grid-column:1/-1}
-.site .mark-name{font-size:clamp(5rem,11.5vw,11rem);letter-spacing:-.045em}
-.site .mark-name[data-len=mid]{font-size:clamp(4rem,9vw,8.5rem)}
-.site .mark-name[data-len=long]{font-size:clamp(3rem,6.5vw,6rem)}
+.site .mark-masthead{grid-column:1/-1}
 .site .mark-side{margin-top:0;padding-bottom:var(--s2)}
 .site .mark-strip{margin-top:var(--s7);grid-template-columns:repeat(4,1fr);gap:var(--s3);padding:0 var(--s3)}
-.site .mark-strip>:nth-child(3):last-child,.site .mark-strip>.mark-ph:nth-child(4):last-child,.site .mark-strip>.mark-ph:first-child:nth-last-child(2){grid-column:auto;aspect-ratio:4/5}
+.site .mark-strip>:nth-child(3):last-child,.site .mark-strip>.mark-ph:nth-child(4):last-child,.site .mark-strip>.mark-ph:first-child:nth-last-child(2){grid-column:auto;aspect-ratio:4/3}
 .site .mark-strip .mark-tile{grid-column:auto;order:0;flex-direction:column;align-items:flex-start;justify-content:space-between;min-height:100%}
 .site .mark-strip .mark-tile .mark-tile-foot{flex:0 0 auto}
-.site .mark-ph{aspect-ratio:4/5}
+.site .mark-ph{aspect-ratio:4/3}
 .site .mark-tile{padding:var(--s5)}
 /* Fewer photos than four columns (a cover and one more, or the cover alone): the strip fills the row instead of leaving the right side bare. */
 .site .mark-strip:has(>:nth-child(3):last-child){grid-template-columns:repeat(3,1fr)}

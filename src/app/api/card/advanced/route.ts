@@ -47,18 +47,16 @@ const tradeItems = async (uid: string, row: { id: string; data: Card }) => {
 };
 
 /** Six Premium designs that look like six (owner, 20 Nov 2026: "sab ke sab different and perfect hone chahiye"): every one opens with a
- *  different top, in this order — cinematic photo, floating glass card, split product, asymmetric editorial, floating collage, slanted
+ *  different top, in this order — cinematic photo, framed landscape with floating card, split product, asymmetric editorial, floating collage, slanted
  *  split — and every one moves (rich motion). Two designs of one card had opened with the same tall pinned story. A finished trade
  *  template ("|fix:" seed) is left exactly as it was written. Applied as the designs are read, so the choose screen and the design put
  *  live always agree. */
 const PREMIUM_TOPS = ["full-bleed", "glass-card", "split-frame", "editorial-marquee", "parallax-collage", "diagonal"] as const;
-/** Each top's own feel beyond its layout (12-design review, 21 Nov 2026: "the same template wearing different colours" — designs 1 and 6
- *  were both a dark photo with words on it). The editorial, the collage and the slanted catalogue stand on a light page with their own
- *  corners and rhythm; the cinematic, glass and split tops keep the palette's tone. */
+/** Match the palette and spacing to the structure of each generated design. */
 const TOP_FEEL: Record<(typeof PREMIUM_TOPS)[number], (sp: AdvancedSpec) => Partial<AdvancedSpec>> = {
   "full-bleed": () => ({ shape: "soft", density: "airy" }),
-  "glass-card": () => ({ shape: "soft" }),
-  "split-frame": () => ({}),
+  "glass-card": (sp) => ({ shape: "soft", density: "compact", palette: { ...sp.palette, tone: "light" } }),
+  "split-frame": (sp) => ({ shape: "sharp", palette: { ...sp.palette, tone: "light" } }),
   "editorial-marquee": (sp) => ({ shape: "sharp", density: "airy", palette: { ...sp.palette, tone: "light" } }),
   "parallax-collage": (sp) => ({ shape: "pill", density: "airy", palette: { ...sp.palette, tone: "light" } }),
   "diagonal": (sp) => ({ shape: "sharp", density: "compact", palette: { ...sp.palette, tone: "light" } }),

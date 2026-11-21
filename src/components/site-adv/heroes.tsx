@@ -178,10 +178,10 @@ const HEROES_BASE_CSS = `
 @media (min-width:900px){.ahs-grid{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}.ahs-art{justify-self:end}.ahs-inset{left:-12%}.ahs-stamp{right:-6%}}
 
 .ahb{position:relative;display:flex;align-items:flex-end;min-height:min(92svh,860px);isolation:isolate}
-.ahb>.ahb-photo{position:absolute;inset:0;z-index:-1;background:var(--hero-ink)}
+.ahb>.ahb-photo{position:absolute;inset:0;z-index:0;background:var(--hero-ink)}
 .ahb-photo .hero-ph-wrap,.ahb-photo .mo-art{position:absolute;inset:0;width:100%;height:100%}
 .ahb-stamp{position:absolute;z-index:2;top:clamp(5rem,12vw,8.5rem);right:var(--gutter);--st:clamp(84px,9vw,128px);--rot:9deg}
-.ahb-inner{padding-top:clamp(7rem,18vw,12rem);padding-bottom:clamp(1.75rem,4vw,3rem)}
+.ahb-inner{position:relative;z-index:1;padding-top:clamp(7rem,18vw,12rem);padding-bottom:clamp(1.75rem,4vw,3rem)}
 .site .hero-dark .ahb-top .kicker{color:var(--hero-text);opacity:.85}
 .ahb-top{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5);margin-bottom:var(--s4)}
 .ahb-title{--ah-fs:clamp(2.75rem,8.5vw,7rem);max-width:15ch;line-height:.95}
@@ -251,19 +251,20 @@ export function HeroEditorialMarquee({ c, x, spec }: VariantProps) {
   );
 }
 
-/* ---------- glass-card: the photograph edge to edge, the words on a frosted card, two figures beside it ---------- */
+/* ---------- glass-card: a landscape frame behind a centered, floating card ---------- */
 export function HeroGlassCard({ c, x, spec }: VariantProps) {
   const { hm } = c;
   const stats = c.facts.slice(0, 2);
   const badge = badgeOf(c, x);
   return (
-    <section id="adv-hero" data-sec="hero" className="adv-hero ahg hero-dark" aria-label={hm.name}>
+    <section id="adv-hero" data-sec="hero" className="adv-hero ahg" aria-label={hm.name}>
       <PointerStage className="ahg-stage">
-        <Parallax className="ahg-bg" depth={6}>
+        <Parallax className="ahg-bg" depth={4} range="cover">
           {hm.photo
-            ? <HeroPhoto photo={hm.photo} crop="cover" priority scrim kenBurns side="center" />
+            ? <HeroPhoto photo={hm.photo} crop="cover" priority kenBurns />
             : <><ArtField seed={spec.seed} letter={initialOf(hm.name)} /><i className="ahg-glow" aria-hidden="true" /></>}
         </Parallax>
+        {badge && <Stamp className="ahg-stamp" value={badge.value} sub={badge.sub} ring={badge.ring} hi={x.hi} />}
         <div className="adv-wrap adv-wide ahg-inner">
           <div className="ahg-card hero-stagger">
             <Kick c={c} x={x} />
@@ -271,18 +272,15 @@ export function HeroGlassCard({ c, x, spec }: VariantProps) {
             <Sub c={c} x={x} />
             <Cta c={c} x={x} />
             {(hm.trust.rating || hm.trust.since || hm.trust.open) && <div className="ahg-meta"><Live c={c} x={x} /><Trust c={c} x={x} /></div>}
-          </div>
-          <div className="ahg-side">
             {stats.length >= 2 && (
               <ul className="ahg-stats ah-figs">
                 {stats.map((f, i) => (
-                  <li key={i} className="ahg-stat ah-glass" data-depth="" style={{ "--k": i ? -16 : 22 } as CSSProperties}>
+                  <li key={i} className="ahg-stat" data-depth="" style={{ "--k": i ? -8 : 8 } as CSSProperties}>
                     <CountUp value={x.t(f.value)} className="ah-fig-v" /><span>{x.t(f.label)}</span>
                   </li>
                 ))}
               </ul>
             )}
-            {badge && <Stamp className="ahg-stamp" tone="paper" value={badge.value} sub={badge.sub} ring={badge.ring} hi={x.hi} />}
           </div>
         </div>
       </PointerStage>
@@ -764,26 +762,22 @@ export const HEROES_MORE_CSS = `
 @media (min-width:900px){.ahe-stamp{top:0;transform:translateY(-50%) rotate(-9deg)}}
 
 /* glass-card */
-.ahg{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:min(86vh,800px);min-height:min(86svh,800px);padding-block:clamp(5rem,12vw,8rem) clamp(1rem,3vw,2.5rem)}
-.ahg-stage{display:flex;align-items:flex-end;width:100%;min-height:inherit}
-.ahg>.ahg-stage .ahg-bg{position:absolute;inset:0;z-index:-1}
+.ahg{position:relative;background:var(--paper-2);padding-block:clamp(1rem,4vw,3rem) clamp(2rem,5vw,4rem)}
+.ahg-stage{width:100%}
+.ahg-bg{position:relative;margin-inline:var(--gutter);height:clamp(12rem,28vw,26rem);border-radius:var(--r-tile);background:var(--paper)}
 .ahg-bg .hero-ph-wrap,.ahg-bg .mo-art{position:absolute;inset:0;width:100%;height:100%}
-.ahg>.ahg-stage{position:static}
-.ahg-glow{position:absolute;inset:0;background:radial-gradient(60% 75% at 82% 18%,color-mix(in srgb,var(--accent) 42%,transparent),transparent 70%),radial-gradient(50% 60% at 8% 100%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%)}
-.ahg-inner{display:grid;gap:var(--s5);align-items:end}
-.ahg-card{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4);max-width:33rem;padding:clamp(1.25rem,3vw,2.25rem);border:1px solid var(--hero-line);border-radius:var(--r-tile);background:color-mix(in srgb,var(--hero-ink) 66%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ahg-card{background:color-mix(in srgb,var(--hero-ink) 90%,transparent)}}
-/* 12-design review: the glass card covered too much of the picture and its lines were packed tight. */
-.ahg-title{--ah-fs:clamp(2.3rem,5.2vw,4.3rem);line-height:1.02}
-.ahg-card .hero-sub{max-width:36ch}
-.ahg-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s4);width:100%;padding-top:var(--s4);border-top:1px solid var(--hero-line)}
-.ahg-meta .trust-row{color:var(--hero-muted)}
-.ahg-side{display:none}
-.ahg-stats{display:flex;flex-direction:column;gap:var(--s3)}
-.ahg-stat{min-width:12rem;padding:var(--s4) var(--s5)}
-.ahg-stat span:last-child{color:var(--hero-muted)}
-.ahg-stamp{--rot:8deg}
-@media (min-width:900px){.ahg{align-items:center}.ahg-inner{grid-template-columns:minmax(0,33rem) 1fr}.ahg-side{display:flex;flex-direction:column;align-items:flex-end;gap:var(--s6);align-self:end;justify-self:end}}
+.ahg-glow{position:absolute;inset:0;background:radial-gradient(60% 75% at 82% 18%,color-mix(in srgb,var(--accent) 35%,transparent),transparent 70%)}
+.ahg-inner{position:relative;display:grid;justify-items:center;gap:var(--s4);margin-top:clamp(-5rem,-7vw,-2rem)}
+.ahg-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--s4);width:min(100%,46rem);padding:clamp(1.25rem,4vw,3rem);border:1px solid var(--line);border-radius:var(--r-tile);background:color-mix(in srgb,var(--paper) 94%,transparent);box-shadow:var(--e-1);backdrop-filter:blur(18px)}
+.ahg-card .hero-ctas,.ahg-card .trust-row{justify-content:center}
+.ahg-title{--ah-fs:clamp(2.3rem,5.2vw,4.3rem);line-height:1.04}
+.ahg-card .hero-sub{max-width:42ch}
+.ahg-meta{display:flex;justify-content:center;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s4);width:100%;padding-top:var(--s4);border-top:1px solid var(--line)}
+.ahg-stats{display:none;flex-wrap:wrap;justify-content:center;gap:var(--s3)}
+.ahg-stat{padding:var(--s3) var(--s5);border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper)}
+.ahg-stat span:last-child{color:var(--muted)}
+.ahg-stamp{display:none;position:absolute;top:var(--s4);right:calc(var(--gutter) + var(--s4));--rot:8deg}
+@media (min-width:900px){.ahg-stats,.ahg-stamp{display:flex}}
 
 /* stacked-poster */
 .ahp{position:relative;overflow:hidden;isolation:isolate;padding-top:0;text-align:center}

@@ -1,12 +1,5 @@
 "use client";
-// The Cinematic blueprint (docs/website-looks-v2.md §3.2, premium-look.md §3.4): a full-bleed photo cover with the
-// words bottom-left, a nav that only appears once the hero is scrolled, photo bands that move slower than the page
-// between the scenes, and one big review that fades to the next.
-//
-// The hero is `heroModel()` drawn with the shared pieces (site-smart.tsx): kicker · headline (a claim, never the
-// slug) · one line of benefit · the trust row · ONE paper-filled button + the phone as a text link. The photo is
-// dimmed only at the bottom where the words sit (plus the text side on desktop), Ken Burns runs on desktop only,
-// and a card without a photo or clip gets the `cover-ink` field (ink, grain on desktop, type-led).
+// A compact, full-bleed cover with short photo interludes between content scenes.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Card, TestimonialItem } from "@/lib/types";
 import { heroModel, ownUpload } from "@/lib/site-hero";
@@ -28,11 +21,11 @@ function ownStill(card: Card): string | undefined {
   return undefined;
 }
 
-/** The old props (photo, focus, phone, wa, waHref, hours, eyebrow, pills) are still accepted so site-view compiles;
- *  the hero reads everything from `heroModel(card)` and only falls back to `clip` / `textSide` when the model lacks them. */
-export function CinematicHero({ card, hi, t, clip, textSide }: {
-  card: Card; hi: boolean; t: (s: string) => string; photo?: string; clip?: { url: string; poster?: string }; focus?: string; textSide?: "left" | "right" | "center";
-  phone?: string; wa?: string; waHref: (text?: string) => string; hours?: { day: string; time: string }[]; eyebrow?: string; pills?: string[];
+export function CinematicHero({ card, hi, t, clip, textSide, onBook }: {
+  card: Card; hi: boolean; t: (s: string) => string;
+  clip?: { url: string; poster?: string };
+  textSide?: "left" | "right" | "center";
+  onBook?: (slug: string) => void;
 }) {
   const m = heroModel(card, hi ? "hi" : "en");
   const lang = hi ? "hi" : undefined;
@@ -53,11 +46,10 @@ export function CinematicHero({ card, hi, t, clip, textSide }: {
           <Sub lang={lang}>{t(m.sub)}</Sub>
           <TrustRow trust={m.trust} hours={m.hours} hi={hi} />
           <i aria-hidden="true" className="cin-rule" />
-          <CtaPair primary={m.primary} secondary={m.secondary} username={card.username} secondaryStyle="link" />
+          <CtaPair primary={m.primary} secondary={m.secondary} username={card.username} secondaryStyle="link" onBook={onBook} />
         </div>
         {still && <div className="cin-still"><Img src={still} alt="" className="cin-still-img" sizes="(max-width: 1023px) 100vw, 480px" eager /></div>}
       </div>
-      <div aria-hidden="true" className="cin-cue"><i /><span>{hi ? "नीचे" : "Scroll"}</span></div>
     </section>
   );
 }
@@ -115,11 +107,11 @@ export function QuoteRotator({ items, t }: { items: TestimonialItem[]; t: (s: st
     return () => { clearInterval(id); window.clearTimeout(pending.current); };
   }, [items.length]);
   const r = items[i]; if (!r) return null;
-  const stars = Math.max(0, Math.min(5, Math.round(Number(r.rating) || 5)));
+  const stars = Math.max(0, Math.min(5, Math.round(Number(r.rating) || 0)));
   return (
     <figure className="cin-quote">
       <i aria-hidden="true" className="cin-quote-rule" />
-      <p className="cin-quote-stars" aria-label={`${stars} / 5`}>{Array.from({ length: 5 }).map((_, k) => <Icon key={k} name="star" size={14} fill={k < stars} className={k < stars ? "" : "cin-star-off"} />)}</p>
+      {stars > 0 && <p className="cin-quote-stars" aria-label={`${stars} / 5`}>{Array.from({ length: 5 }).map((_, k) => <Icon key={k} name="star" size={14} fill={k < stars} className={k < stars ? "" : "cin-star-off"} />)}</p>}
       <blockquote className="cin-quote-text" style={{ opacity: fade ? 1 : 0 }}>“{t(r.text)}”</blockquote>
       <figcaption className="cin-quote-name">{r.name}</figcaption>
       {items.length > 1 && <div className="cin-quote-dots">{items.map((_, k) => <button key={k} type="button" aria-label={`${k + 1} / ${items.length}`} aria-pressed={k === i} onClick={() => { window.clearTimeout(pending.current); setI(k); setFade(true); }} />)}</div>}
@@ -130,12 +122,13 @@ export function QuoteRotator({ items, t }: { items: TestimonialItem[]; t: (s: st
 /** The blueprint's CSS. The shared hero rules (photo wrapper, Ken Burns, sub line, CTA row, entrance) are HERO_CSS
  *  in site-smart.tsx and globals.css `.site`, which site-view inlines before this; only the cover's own rules sit here. */
 export const CINEMATIC_CSS = `
-.site[data-bp="cinematic"] .cin-hero{position:relative;display:flex;align-items:flex-end;min-height:100svh;overflow:hidden;background:var(--hero-ink);color:var(--hero-text)}
+.site[data-bp="cinematic"] .cin-hero{position:relative;display:flex;align-items:center;min-height:clamp(23rem,62svh,39rem);overflow:hidden;background:var(--hero-ink);color:var(--hero-text)}
 .site .cin-hero .hero-ph-wrap{position:absolute;inset:0}
 /* A shade under the menu on the cover itself, so a white bar of text never lands on a pale part of the picture. */
 .site .cin-cover::before{content:"";position:absolute;left:0;right:0;top:0;height:160px;z-index:1;pointer-events:none;background:linear-gradient(to bottom,rgb(0 0 0/.5),transparent)}
 .site .cin-hero>.hero-grain{display:none}
-.site .cin-body{position:relative;z-index:1;width:100%;max-width:calc(var(--content) + 2*var(--gutter));margin:0 auto;padding:var(--s9) var(--gutter) calc(var(--s5) + env(safe-area-inset-bottom,0px))}
+.site .cin-cover .hero-scrim{background:linear-gradient(0deg,rgb(0 0 0/.78),rgb(0 0 0/.48) 64%,rgb(0 0 0/.34))}
+.site .cin-body{position:relative;z-index:1;width:100%;max-width:calc(var(--content) + 2*var(--gutter));margin:0 auto;padding:clamp(4.75rem,10vw,7rem) var(--gutter) clamp(2rem,5vw,4rem)}
 .site .cin-col{display:flex;flex-direction:column;align-items:flex-start;max-width:var(--hero-col)}
 .site .cin-col>.display{margin-top:var(--s4)}
 .site .cin-col>.hero-sub{margin-top:var(--s5)}
@@ -161,25 +154,15 @@ export const CINEMATIC_CSS = `
 .site .kicker:lang(hi){letter-spacing:0;text-transform:none;font-size:13px}
 /* The no-photo cover: the ink field, type-led; the owner's own product shot as a still-life when there is one. */
 .site .cin-ink .cin-body{display:flex;flex-direction:column;gap:var(--s6)}
-.site .cin-still{width:100%;max-width:360px;aspect-ratio:4/5;background:var(--paper-2);border-radius:var(--r-img);overflow:hidden}
+.site .cin-still{width:100%;max-width:360px;aspect-ratio:3/2;background:var(--paper-2);border-radius:var(--r-img);overflow:hidden}
 .site .cin-still-img{width:100%;height:100%;object-fit:contain}
-/* Scroll cue: a 1 px accent line and the word, bottom-right on desktop, no bounce. */
-.site .cin-cue{position:absolute;right:var(--gutter);bottom:var(--s8);z-index:1;display:none;flex-direction:column;align-items:center;gap:var(--s3)}
-.site .cin-cue i{display:block;width:1px;height:48px;background:var(--gold,var(--accent))}
-.site .cin-cue span{font:600 9px/1 var(--font-text,var(--look-body));letter-spacing:.12em;text-transform:uppercase;color:var(--hero-muted)}
-.site .cin-cue span:lang(hi){letter-spacing:0;text-transform:none;font-size:11px}
 @media (min-width:1024px){
-.site[data-bp="cinematic"] .cin-hero{min-height:88vh}
-.site .cin-body{padding-bottom:var(--s9)}
-.site .cin-rule,.site .cin-cue{display:flex}
-.site .cin-ink .cin-body{flex-direction:row;align-items:flex-end;justify-content:space-between;gap:var(--s8)}
-.site .cin-ink .cin-still{max-width:420px;flex:0 0 auto}
-.site .cin-ink .display{--t-display:6rem}
-.site .cin-ink .display[data-len="long"]{--t-display:4.5rem}
+.site .cin-rule{display:block}
+.site .cin-ink .cin-body{flex-direction:row;align-items:center;justify-content:space-between;gap:var(--s8)}
+.site .cin-ink .cin-still{max-width:420px;flex:0 1 40%}
 }
 /* Photo bands between scenes and the one big review. */
-.site .cin-band{position:relative;height:46vh;min-height:260px;overflow:hidden;isolation:isolate;contain:paint}
-@media (min-width:768px){.site .cin-band{height:58vh}}
+.site .cin-band{position:relative;height:clamp(8rem,25vw,18rem);overflow:hidden;isolation:isolate;contain:paint}
 .site .cin-band-img{position:absolute;left:0;top:-12%;width:100%;height:124%;object-fit:cover}
 .site .cin-band[data-fit="contain"]::before{content:"";position:absolute;inset:-40px;z-index:-1;background:var(--band-src) center/cover;filter:blur(32px) saturate(1.1);opacity:.9}
 .site .cin-band[data-fit="contain"] .cin-band-img{object-fit:contain}

@@ -185,16 +185,6 @@ const WHY = `
  *  so below the hero the six looks are six pages and not one page in six colours (live check, 14 Oct 2026: the
  *  section heights of all six looks were within 5% of each other). */
 const SECTIONS = `
-.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{justify-content:center;text-align:center}
-.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child .max-w-2xl{margin-inline:auto}
-/* A centred heading with a "See all" link: the pair was centred together, so the title sat left of the page's middle (QA sweep, 16 Oct 2026; the shop look has its own rule below).
-   From 1024 px the link goes to the row's right edge and the title keeps the page's centre. */
-@media (min-width:1024px){
-.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{position:relative}
-.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child>:not(:first-child){position:absolute;right:0;bottom:.4rem}
-}
-/* Below 1024 px the heading and its link stack, both centred (a short title plus its link on one row sat 70px left of centre on a phone: "Visit us" / "Contact page"). */
-@media (max-width:1023px){.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{flex-direction:column;align-items:center;gap:.75rem}}
 .site[data-bp="cinematic"] main .faq summary{text-transform:uppercase;letter-spacing:.08em;font-size:.9rem}
 .site[data-bp="cinematic"] main img.rounded-3xl,.site[data-bp="cinematic"] main .group{border-radius:0}
 .site[data-bp="cinematic"] main .columns-2,.site[data-bp="cinematic"] main .grid.grid-cols-2.gap-3{gap:2px}
@@ -206,11 +196,6 @@ const SECTIONS = `
 .site[data-bp="wordmark"] main .faq summary{font-family:var(--font-display,var(--look-head));font-size:1.45rem;letter-spacing:-.01em;padding-block:22px}
 .site[data-bp="wordmark"] main img.rounded-3xl{border-radius:var(--r-img);aspect-ratio:4/5;max-height:640px;object-fit:cover}
 .site[data-bp="wordmark"] main .group{border-radius:0}
-.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{justify-content:center;text-align:center}
-.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child .max-w-2xl{margin-inline:auto}
-/* The centred title is centred on the page, not on "title + its See-all link" (it sat 35-100px left of centre on a laptop): the link leaves the flow at the right edge (QA pass, 16 Oct 2026). */
-@media (max-width:767px){.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{flex-direction:column;align-items:center;gap:.75rem}}
-@media (min-width:768px){.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{position:relative}.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child>:not(.max-w-2xl){position:absolute;right:0;bottom:4px}}
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .sec-h2::after{content:"";display:block;width:48px;height:4px;border-radius:4px;background:var(--accent);margin:12px auto 0}
 /* A left-aligned heading (About beside its story) keeps its accent bar under its first letter, not centred under a block it does not fill (QA sweep, 16 Oct 2026). */
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .grid>div>.sec-h2::after{margin-left:0}
@@ -226,4 +211,42 @@ const SECTIONS = `
 /* Devanagari must not be letter-spaced: the looks' spaced kickers and tight headings broke conjuncts ("प्रो ड क्ट", "प्र क्रि या") (QA sweep, 16 Oct 2026). */
 .site[data-bp]:lang(hi) main :is(.kicker,.sec-h2,.mark-claim,.ed-about-title,.hrs em){letter-spacing:0}
 `;
-export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK + WHY + SECTIONS, shop: PHOTOS + SHOP + WHY + SECTIONS, collage: PHOTOS + COLLAGE + SECTIONS, story: PHOTOS + POSTER + WHY + SECTIONS, cinematic: PHOTOS + CINEMATIC_DARK + WHY + SECTIONS, bento: PHOTOS + BENTO };
+const COMPOSITION = `
+/* Keep headings and actions in flow, including when the heading occupies its own column. */
+.site[data-bp] .site-section-head{overflow-wrap:anywhere}
+.site[data-bp="story"] .site-section-head{padding-block:var(--s4);margin-bottom:var(--s5);border-block:2px solid var(--ink)}
+.site[data-bp="bento"][data-home] .site-section-inner{padding-block:var(--s5)}
+.site[data-bp="bento"][data-home] .site-section-head{margin-bottom:var(--s4);padding:var(--s5);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-tile)}
+.site[data-bp="cinematic"][data-home] .site-section-inner{padding-block:clamp(2rem,5vw,4.25rem)}
+.site[data-bp="cinematic"] .site-section-head{display:grid;justify-items:center;justify-content:center;gap:var(--s3);text-align:center}
+.site[data-bp="cinematic"] .site-section-head .lede{margin-inline:auto}
+.site[data-bp="shop"] .site-section-head{display:grid;justify-items:center;justify-content:center;gap:var(--s3);text-align:center}
+.site[data-bp="shop"] .site-section-head .lede{margin-inline:auto}
+.site[data-bp="shop"][data-home] .site-section-head{padding-bottom:var(--s4);margin-bottom:var(--s4);border-bottom:1px solid var(--line)}
+.site[data-bp="collage"] .collage-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+.site[data-bp="collage"] .collage-gallery>button{min-width:0}
+.site[data-bp="collage"] .collage-gallery[data-count="1"]>button{aspect-ratio:16/9}
+.site[data-bp="collage"] .collage-gallery[data-count="2"]>button:first-child{grid-column:auto;grid-row:auto}
+@media (min-width:900px){
+  .site[data-bp="wordmark"] .site-section-inner.max-w-6xl:has(>.site-section-head){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.1fr);align-items:start;gap:var(--s7)}
+  .site[data-bp="wordmark"] .site-section-inner.max-w-6xl>.site-section-head{display:grid;justify-items:start;margin-bottom:0}
+  .site[data-bp="wordmark"] .site-section-inner.max-w-6xl>.site-section-content{display:block;min-width:0}
+  .site[data-bp="bento"][data-home] .site-section-inner.max-w-6xl:has(>.site-section-head){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.6fr);gap:var(--s3);align-items:stretch}
+  .site[data-bp="bento"][data-home] .site-section-inner.max-w-6xl>.site-section-head{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:var(--s4);margin:0}
+  .site[data-bp="bento"][data-home] .site-section-inner.max-w-6xl>.site-section-content{display:block;min-width:0}
+  .site[data-bp="shop"] .site-section-head{grid-template-columns:minmax(0,1fr) auto;text-align:start;justify-items:start;align-items:end}
+  .site[data-bp="shop"] .site-section-head .lede{margin-inline:0}
+  .site[data-bp="shop"] .site-section-head .sec-h2::after{margin-inline-start:0}
+  .site[data-bp="collage"][data-home] .site-section-inner.max-w-6xl{max-width:min(94vw,78rem)}
+  .site[data-bp="collage"] .collage-gallery{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:clamp(9rem,15vw,13rem)}
+  .site[data-bp="collage"] .collage-gallery[data-count="1"]{grid-template-columns:1fr;grid-auto-rows:auto}
+  .site[data-bp="collage"] .collage-gallery[data-count="1"]>button{grid-column:auto;grid-row:auto}
+  .site[data-bp="collage"] .collage-gallery[data-count="2"]{grid-template-columns:minmax(0,2fr) minmax(0,1fr);grid-auto-rows:clamp(14rem,25vw,22rem)}
+  .site[data-bp="collage"] .collage-gallery[data-count="3"]{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+  .site[data-bp="collage"] .collage-gallery[data-count="4"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .site[data-bp="collage"] .collage-gallery[data-count="4"]>button:first-child{grid-column:auto}
+  .site[data-bp="collage"] .collage-gallery[data-count="3"]>button:first-child{grid-column:auto}
+}
+`;
+
+export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK + WHY + SECTIONS + COMPOSITION, shop: PHOTOS + SHOP + WHY + SECTIONS + COMPOSITION, collage: PHOTOS + COLLAGE + SECTIONS + COMPOSITION, story: PHOTOS + POSTER + WHY + SECTIONS + COMPOSITION, cinematic: PHOTOS + CINEMATIC_DARK + WHY + SECTIONS + COMPOSITION, bento: PHOTOS + BENTO + COMPOSITION };

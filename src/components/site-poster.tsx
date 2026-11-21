@@ -1,8 +1,5 @@
 "use client";
-// The POSTER look (the third blueprint, key "story" for stored styles): a bold block of the trade's colour with the headline
-// set big, the photo as a card that hangs over the edge into the page, and the trust line as its caption. It replaced the
-// swipe slides (owner, 6 Oct 2026: "story wala look sahi nahi hai — ye layout hi hata ke dusra koi lagao"): on a phone it
-// reads nothing like the Cinematic cover (words over the photo) or the Bento board (paper tiles).
+// Colour Poster pairs a compact colour panel with a full-size photo panel.
 import { heroModel } from "@/lib/site-hero";
 import { tradeMood } from "@/lib/trade-moods";
 import type { Card } from "@/lib/types";
@@ -19,7 +16,7 @@ export function PosterHero({ card, hi, t, onBook }: { card: Card; hi: boolean; t
       {!photo && <HeroArt kind={artKind(card.seo?.categoryKey)} tone={luxe ? "gold" : "light"} />}
       <div className="poster-in">
         <div className="poster-copy hero-stagger" lang={lang}>
-          <Kicker lang={lang}>{m.kicker}</Kicker>
+          <Kicker lang={lang}>{t(m.kicker)}</Kicker>
           <Display lang={lang}>{t(m.headline)}</Display>
           <Sub lang={lang}>{t(m.sub)}</Sub>
           <CtaPair primary={m.primary} secondary={m.secondary} username={card.username} secondaryStyle="ghost" onBook={onBook} className="poster-ctas" />
@@ -36,37 +33,22 @@ export function PosterHero({ card, hi, t, onBook }: { card: Card; hi: boolean; t
 }
 
 export const POSTER_CSS = `
-.site .poster{position:relative;background:var(--accent);color:var(--on-accent);--hero-text:var(--on-accent);padding:calc(28px + env(safe-area-inset-top,0px)) var(--gutter,20px) 0}
-.site .poster[data-field=ink]{background:var(--hero-ink);color:var(--hero-text)}
-.site .poster[data-field=ink] .kicker{color:var(--gold,var(--accent))}
-.site .poster .kicker{color:var(--hero-text);opacity:.8}
-.site .poster .trust-row{color:var(--hero-text);opacity:.85}
-.site .poster .display{--t-display:clamp(2.75rem,12vw,3.5rem);max-width:16ch}
-.site .poster .hero-sub{max-width:34ch;opacity:.9;margin-top:var(--s4,16px)}
-.site .poster .display{margin-top:var(--s3,12px)}
-/* No photo: the drawn art sits behind the words and must not widen the page. */
-.site .poster:not([data-photo]){overflow:hidden}
+.site .poster{position:relative;overflow:hidden;background:var(--accent);color:var(--on-accent);--hero-text:var(--on-accent)}
+.site .poster[data-field=ink]{--hero-text:#fff;background:var(--hero-ink);color:var(--hero-text)}
+.site .poster .kicker,.site .poster .trust-row{color:var(--hero-text)}
+.site .poster .display{--t-display:clamp(2.35rem,7vw,4.25rem);max-width:16ch;margin-top:var(--s3)}
+.site .poster .hero-sub{max-width:40ch;margin-top:var(--s4)}
 .site .poster-in{position:relative;z-index:1}
-.site .poster-ctas{margin-top:var(--s5,24px)}
-.site .poster-trust{margin-top:var(--s5,24px);padding-bottom:var(--s6,32px)}
-/* the photo card hangs over the bottom edge of the colour block into the page below */
-.site .poster-card{position:relative;z-index:1;margin:var(--s5,24px) 0 0;transform:translateY(var(--s7,48px))}
-.site .poster[data-photo]{margin-bottom:calc(var(--s7,48px) + 64px)}
-.site .poster-ph{aspect-ratio:4/3;border-radius:var(--r-tile);overflow:hidden;box-shadow:0 24px 48px -24px rgb(0 0 0/.45)}
-.site .poster-ph img{width:100%;height:100%;object-fit:cover;display:block}
-.site .poster-card figcaption{margin-top:var(--s4,16px)}
-.site .poster-card figcaption .trust-row{color:var(--muted)}
-@media (min-width:1024px){
-  .site .poster{padding:0 var(--gutter,64px)}
-  .site .poster-in{max-width:var(--content,1120px);margin:0 auto;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:64px;align-items:center;min-height:64vh}
-  .site .poster-copy{padding:96px 0 80px}
-  .site .poster .display{--t-display:clamp(3.75rem,5vw,5rem);max-width:15ch}
-  /* The card is bottom-aligned in the block and hangs a fixed 72 px below it; the gap under it is that hang plus 40 px (it was centred and
-     pushed 96 px, which hung it only ~20 px and left ~90 px of empty paper under the colour block - 16 Oct 2026). */
-  .site .poster-card{margin:0;align-self:end;transform:translateY(72px)}
-  .site .poster[data-photo]{margin-bottom:112px}
-  .site .poster-ph{aspect-ratio:1;box-shadow:16px 16px 0 0 var(--paper),0 32px 64px -32px rgb(0 0 0/.5)}
-  .site .poster-trust{padding-bottom:0}
+.site .poster-copy{min-width:0;padding:clamp(1.75rem,5vw,4.75rem) var(--gutter)}
+.site .poster-ctas,.site .poster-trust{margin-top:var(--s5)}
+.site .poster-card{margin:0;min-width:0;background:var(--paper-2)}
+.site .poster-ph{width:100%;height:100%;min-height:clamp(13rem,54vw,22rem)}
+.site .poster-ph img{object-fit:cover}
+.site .poster:not([data-photo]) .poster-in{max-width:calc(var(--content) + 2 * var(--gutter));margin-inline:auto}
+@media (min-width:850px){
+  .site .poster[data-photo] .poster-in{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
+  .site .poster[data-photo] .poster-copy{align-self:center;padding-left:max(var(--gutter),calc((100vw - var(--content)) / 2))}
+  .site .poster-ph{min-height:clamp(22rem,39vw,36rem)}
 }
 .site .poster .hero-stagger>*{animation-name:hero-in}
 `;

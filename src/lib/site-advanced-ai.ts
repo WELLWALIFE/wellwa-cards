@@ -291,7 +291,7 @@ Return {"summary":{"en":"","hi":""},"items":[{"area":"hero|copy|photos|proof|str
 /** A line per id, for the designer to choose by meaning (the renderer's own descriptions, shortened). An id not here is still offered. */
 const GLOSS: Record<string, string> = {
   "split-frame": "words left, tall framed photo right", "full-bleed": "photo edge to edge, words low, facts bar", "editorial-marquee": "huge type, scrolling facts ribbon, wide photo",
-  "glass-card": "photo edge to edge, frosted card of words", "stacked-poster": "centred words on ink, arched photo rising", mosaic: "bento of words, photos, figures",
+  "glass-card": "framed landscape photo overlapped by a centered frosted card", "stacked-poster": "centred words on ink, arched photo rising", mosaic: "bento of words, photos, figures",
   "video-first": "headline row then a rounded stage for the clip", "centered-minimal": "small arch, the claim, lots of air", diagonal: "photo cut on a slant", masthead: "name as a magazine title",
   strip: "ruled row of facts", counters: "big counting numbers", "icon-row": "icon per fact", ticker: "slim scrolling band", "split-cards": "statement left, fact cards right",
   "story-columns": "big statement + columns", "overlap-card": "big photo with overlapping text card", "editorial-split": "sticky title, wide photo, story", "pull-quote": "opening line as a big quote",
