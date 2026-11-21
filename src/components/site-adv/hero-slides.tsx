@@ -31,15 +31,18 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
     if (hold || n < 2) return;
     let reduce = false;
     try { reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { /* old browser */ }
-    if (reduce || p.spec.motion === "none") return;
+    // The banners turn on every design (owner, 21 Nov 2026: "1 per hi ruka hua hai"): a design without motion still has three banners to
+    // show. Only a visitor who asks for less motion keeps the first one.
+    if (reduce) return;
     const t = setInterval(() => setAt((i) => (i + 1) % n), EVERY_MS);
     return () => clearInterval(t);
-  }, [hold, n, p.spec.motion]);
+  }, [hold, n]);
   return (
     // One column exactly as wide as the page (minmax(0, 1fr)): an auto column grew to a wide hero's content and pushed its words and
-    // picture far off the right edge, so the top looked empty (found on a new design, 25 Oct 2026).
+    // picture far off the right edge, so the top looked empty (found on a new design, 25 Oct 2026). Held only while the keyboard is
+    // inside it: a resting mouse over a full-screen banner held it on the first one for good (21 Nov 2026).
     <div className="adv-slides" style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", width: "100%" }}
-      onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocusCapture={() => setHold(true)} onBlurCapture={() => setHold(false)}>
+      onFocusCapture={() => setHold(true)} onBlurCapture={() => setHold(false)}>
       {slides.map((s, i) => (
         <div key={i} data-slide="" aria-hidden={i !== at} inert={i !== at}
           style={{ gridArea: "1 / 1", minWidth: 0, opacity: i === at ? 1 : 0, pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
