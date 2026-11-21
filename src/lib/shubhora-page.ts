@@ -214,7 +214,9 @@ const FREE_SAY: [RegExp, string][] = [
 const brandPhoto = (value: string) => value
   .replace(/\/art\/shubhora\/brand-v2\//g, "/art/shubhora/brand-v3/")
   .replace(/\/art\/shubhora\/ai\/(hero-[123]|get-(?:link|contact|products|leads|website|ai|poster|ads)|biz-(?:demo|team))\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v3/$1.webp")
-  .replace(/\/art\/shubhora\/hero\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v3/hero-1.webp");
+  .replace(/\/art\/shubhora\/hero\.jpg(?=["\s?#]|$)/g, "/art/shubhora/brand-v3/hero-1.webp")
+  // Banner 3's phone shows a real reply of the AI (demo account), not drawn bubbles.
+  .replace(/\/art\/shubhora\/brand-v3\/hero-3\.webp/g, "/art/shubhora/brand-v3/hero-3-chat.webp");
 
 const sayNoFree = (s: string) => FREE_SAY.reduce((t, [re, to]) => t.replace(re, to), s);
 
@@ -327,6 +329,13 @@ function sellerInnerPage(p: CardPage): CardPage {
   return blocks.length === p.blocks.length && blocks.every((b, i) => b === p.blocks[i]) ? p : { ...p, blocks };
 }
 
+const PRODUCT_SHOTS: Record<string, string> = {
+  website: "/art/shubhora/brand-v3/product-website.webp",
+  "digital card": "/art/shubhora/brand-v3/product-card.webp",
+  "whatsapp ai": "/art/shubhora/brand-v3/product-ai.webp",
+  crm: "/art/shubhora/brand-v3/product-crm.webp",
+};
+
 function sellerHomePage(p: CardPage): CardPage {
   if (p.slug !== "home") return p;
   const seen = { flow: 0 };
@@ -334,7 +343,13 @@ function sellerHomePage(p: CardPage): CardPage {
   ranked.sort((x, y) => x.r - y.r || x.i - y.i);
   const blocks = ranked.map(({ b }) => {
     const t = "title" in b ? SELLER_HEADS[(b.title ?? "").trim().toLowerCase()] : undefined;
-    const out = (t ? { ...b, title: t } : b) as CardBlock;
+    let out = (t ? { ...b, title: t } : b) as CardBlock;
+    // The four tools show the product itself: screens of the real app (demo account) in a laptop or phone, not drawn screens
+    // (owner, 21 Nov 2026: "images dummy jaisi kyon"). A partner's own picture on a tile is kept.
+    if (out.kind === "story" && out.style === "bento") out = { ...out, items: out.items.map((it) => {
+      const shot = PRODUCT_SHOTS[(it.tag ?? "").trim().toLowerCase()];
+      return shot && (!it.imageUrl || /\/art\/shubhora\//.test(it.imageUrl)) ? { ...it, imageUrl: shot } : it;
+    }) };
     // Six questions on the home page; the rest stay on the page that has them.
     return out.kind === "faq" && out.items.length > 6 ? { ...out, items: out.items.slice(0, 6) } : out;
   });
