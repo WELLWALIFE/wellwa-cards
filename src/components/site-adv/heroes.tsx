@@ -938,7 +938,8 @@ export const HEROES_NEW_CSS = `
 /* kinetic-type */
 .ahk{position:relative;isolation:isolate;overflow:hidden;padding-block:clamp(1.5rem,4vw,3.5rem) clamp(2.5rem,6vw,5rem)}
 .ahk-head{position:relative;margin-top:clamp(2rem,6vw,5rem)}
-.ahk-back{position:absolute;left:calc(var(--gutter)*-1);right:calc(var(--gutter)*-1);top:50%;z-index:-1;transform:translateY(-42%);opacity:.7}
+/* The outlined ticker behind the headline ran through its letters (12-design review, 21 Nov 2026): off; the solid ticker stays. */
+.ahk-back{display:none}
 .ahk-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3) var(--s5);padding-bottom:var(--s4);border-bottom:1px solid var(--ink)}
 .ahk-title{--ah-fs:clamp(3rem,10.6vw,9.5rem);line-height:.98;letter-spacing:-.035em;max-width:15ch}
 .site:lang(hi) .ahk-title{line-height:1.3}

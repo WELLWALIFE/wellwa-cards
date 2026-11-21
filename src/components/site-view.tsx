@@ -63,6 +63,7 @@ const UiHiCtx = createContext(false);
 import { localLine, mapPin, pageHref } from "@/lib/seo";
 
 import { Pic as Img, decodePic, picUrl } from "@/components/pic";
+import { isPlanArt } from "@/lib/site-quality";
 
 /* ---- product photo normaliser ----
  * Cut-out product photos come with wildly different transparent margins (one
@@ -347,7 +348,8 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
       }
     }
     const gallery = visible.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "gallery" || b.kind === "image" || b.kind === "carousel" ? b.images.map((i) => i.url ?? "") : [])).filter(Boolean);
-    return [...strip, ...gallery].find((u) => !shown.has(u));
+    // A photo, never an explainer graphic or a price card: a blurred "109 crore" chart filled the band (21 Nov 2026).
+    return [...strip, ...gallery].find((u) => !shown.has(u) && !isPlanArt(u) && !/\/demo\//.test(u));
   })() : undefined;
   const sinceOf = bp ? sinceYear([...card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "highlights" ? b.items : [])), card.about ?? "", card.tagline ?? ""]) : null;
   // Announcement bar: shown until its date (IST day), closable for the visit.
@@ -879,7 +881,7 @@ const VIEW_CSS = `
  .site .fitg[data-n="4"]>:nth-child(n){grid-column:span 3}
  .site .fitg[data-n="1"]>:nth-child(n){grid-column:2/span 4}}
 /* Story sections, one composition per style */
-.site .sst-tag{display:inline-block;align-self:flex-start;margin-bottom:.55rem;padding:.25rem .65rem;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.site .sst-tag{display:inline-block;align-self:flex-start;margin-bottom:.55rem;padding:.25rem .65rem;border-radius:999px;background:color-mix(in srgb,var(--accent) 18%,var(--paper));color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .site .sst-pic{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:14px;margin-bottom:var(--s3,1rem)}
 .site .sst-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4,1.5rem);margin:0;padding:0;list-style:none}
 @media (min-width:768px){.site .sst-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -891,7 +893,8 @@ const VIEW_CSS = `
 .site .sst-before,.site .sst-after>div{display:flex;flex-direction:column;padding:clamp(1.25rem,2.4vw,2rem);border-radius:20px;border:1px solid var(--line)}
 .site .sst-before{background:var(--paper)}.site .sst-before b{color:var(--muted)}
 .site .sst-after{display:grid;gap:var(--s3,1rem)}
-.site .sst-after>div{background:var(--accent-soft);border-color:transparent}
+/* Tinted from the page colour, so a dark look gets a dark tint: on Full Photo the light card held light words (21 Nov 2026). */
+.site .sst-after>div{background:color-mix(in srgb,var(--accent) 16%,var(--paper));border-color:transparent}
 .site .sst-split b{font-family:var(--font-display,var(--look-head,inherit));font-size:1.35rem;line-height:1.2;font-weight:700}
 .site .sst-split ul{margin:.7rem 0 0;padding-left:1.1rem;list-style:disc;color:var(--muted);font-size:15px;line-height:1.75}
 .site .sst-arrow{display:none}
