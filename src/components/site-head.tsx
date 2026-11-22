@@ -97,8 +97,8 @@ export function SiteHeader({ username, name, tradeWord, logo, lang, setLang, tra
             )}
           </nav>
           <div className="hidden md:block"><LanguagePicker lang={lang} setLang={setLang} busy={translating} theme={theme} /></div>
-          {startHref && <a href="/login" className={`max-xl:hidden text-sm font-medium opacity-80 hover:opacity-100 ${FOCUS}`}>{hi ? "लॉग इन" : "Log in"}</a>}
-          {startHref && <a href={startHref} onClick={() => trackClick(username, "site-start")} className={`max-md:hidden btn-ghost btn-sm ${FOCUS}`}>{hi ? "शुरू करें" : "Get started"}</a>}
+          {startHref && <a href="/login" className={`max-xl:hidden whitespace-nowrap text-sm font-medium opacity-80 hover:opacity-100 ${FOCUS}`}>{hi ? "लॉग इन" : "Log in"}</a>}
+          {startHref && <a href={startHref} onClick={() => trackClick(username, "site-start")} className={`max-md:hidden btn-ghost btn-sm whitespace-nowrap ${FOCUS}`}>{hi ? "शुरू करें" : "Get started"}</a>}
           {waHref && (
             <a href={waHref} target="_blank" rel="noreferrer" onClick={() => trackClick(username, "site-whatsapp")} className={`site-head-wa max-md:hidden btn-primary btn-sm ${FOCUS} ${waGate ? "invisible" : ""}`}
               aria-hidden={waGate ? true : undefined} tabIndex={waGate ? -1 : undefined}>

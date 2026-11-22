@@ -251,7 +251,7 @@ function BusinessNumber({ linked, onPicked, onUnlinkFor }: { linked: string; onP
         </form>
       )}
       {!hasCard && <p className="mt-1 text-xs text-muted">Make your V-Card first — this number goes on its WhatsApp button.</p>}
-      {!linked && num && !edit && <p className="mt-1 text-xs text-muted">This is the number linked below. To link a different WhatsApp, tap Change.</p>}
+      {!linked && num && !edit && <p className="mt-1 text-xs text-muted">Link this number above. To link a different WhatsApp, tap Change.</p>}
       {differs && (
         <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-ink">
           <p>The linked WhatsApp is <b className="mono">+{linked}</b>, but customers are sent to <b className="mono">{num}</b>.</p>
@@ -295,7 +295,7 @@ function LinkBox({ status, qr, onChange, suggest = "" }: { status: Status | null
   }, []);
   useEffect(() => { if (status?.pairCode) setWay("code"); }, [status?.pairCode]);
   // The business WhatsApp number (from the box above) is the one to link — it replaces the login-mobile guess.
-  useEffect(() => { if (suggest) { setPhone(suggest.replace(/^\+?91/, "")); setWay("code"); } }, [suggest]);
+  useEffect(() => { if (suggest) { setPhone(suggest.replace(/^\+?91/, "")); if (/Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)) setWay("code"); } }, [suggest]);
 
   async function getCode(e?: React.FormEvent) {
     e?.preventDefault();
@@ -474,7 +474,7 @@ function AutoReplyEditor() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-ai" />
-          <h2 className="font-semibold">Auto-reply flows</h2>
+          <h2 className="font-semibold">AI replies</h2>
         </div>
         <button onClick={save} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">
           {saved ? <Check className="h-4 w-4" /> : null} {saved ? "Saved" : "Save"}

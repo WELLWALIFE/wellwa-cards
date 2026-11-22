@@ -310,6 +310,7 @@ export const NAV_CSS = `
 .nv-link[aria-current=page]{color:var(--ink)}
 .nv-right{display:none;align-items:center;gap:var(--s3);margin-left:auto}
 .nv-login,.nv-start{display:none!important}
+.nv-start,.nv-login{white-space:nowrap}
 @media (min-width:1100px){.nv-start{display:inline-flex!important}}
 @media (min-width:1280px){.nv-login{display:inline-flex!important}}
 .nv-cta{visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .3s,transform .3s,visibility 0s .3s}
