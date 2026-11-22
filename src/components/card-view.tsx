@@ -2,7 +2,7 @@
 import { initials } from "@/lib/initials";
 import { SITE_URL } from "@/lib/site-url";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -13,6 +13,7 @@ import {
 import { lookOf, lookCss, lookFontHref } from "@/lib/looks";
 import { oklchVars, siteDesign } from "@/lib/site-style";
 import { faqLayout, galleryLayout, servicesLayout } from "@/lib/site-layout";
+import { galleryNamed } from "@/lib/site-quality";
 import type { Card, CardBlock, CardImage, CardPage, CardTemplate } from "@/lib/types";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { Pic, picUrl } from "@/components/pic";
@@ -255,7 +256,7 @@ function EditChip({ label, onClick, className = "" }: { label: string; onClick: 
   );
 }
 
-export function CardView({ card, qr, brand, expired = false, shareUrl, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, onEdit, editLabel = "Edit" }: {
+export function CardView({ card: rawCard, qr, brand, expired = false, shareUrl, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, onEdit, editLabel = "Edit" }: {
   card: Card; qr: string; brand?: CardBrand | null; expired?: boolean;
   /** Editor preview: shows an "✏️ Edit" chip on the header, the buttons and every section; tapping one opens it in the editor. */
   onEdit?: (target: EditTarget) => void;
@@ -276,6 +277,8 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
   /** Base for page links on this host: "/c/<user>" on Shubhora, "" on the owner's domain. Unset: no page URLs (editor preview). */
   linkBase?: string;
 }) {
+  // "Photos" (the old default name) reads "Gallery" on every card, the editor's preview included.
+  const card = useMemo(() => galleryNamed(rawCard), [rawCard]);
   const first = card.pages[0]?.slug ?? "home";
   const [active, setActiveState] = useState(initialPage && card.pages.some((p) => p.slug === initialPage) ? initialPage : first);
   const hrefFor = (slug: string) => (linkBase === undefined ? `#${slug}` : pageHref(linkBase, encodeURIComponent(slug), slug === first));
@@ -342,8 +345,10 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
     .filter(Boolean) as Card["links"];
   // Shops lead with the business name; the owner moves to a line of their own.
   const bizLead = card.lead === "business" && !!card.company?.trim();
-  const ownerLine = bizLead && card.name?.trim() && card.name.trim().toLowerCase() !== card.company.trim().toLowerCase()
-    ? `${card.language === "hi" ? "मालिक" : "Owner"}: ${card.name.trim()}`
+  // No "Owner:" word in front (owner, 22 Nov 2026: "owner word is not good"): the name, then the role the owner chose
+  // ("Dr JS Yadav · Founder"), or nothing at all when the owner switched the line off in the editor.
+  const ownerLine = bizLead && card.ownerLine !== false && card.name?.trim() && card.name.trim().toLowerCase() !== card.company.trim().toLowerCase()
+    ? [card.name.trim(), card.ownerRole?.trim()].filter(Boolean).join(" · ")
     : "";
   // The owner's logo as a white chip on the cover, when the avatar is not already that logo.
   // A minimal card without a banner has a 12px cover strip, too short to hold it.
@@ -449,7 +454,12 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
           </div>
           <p className="text-muted">{t(card.jobTitle)}</p>
           {bizLead
-            ? ownerLine && <p className="text-muted">{ownerLine}</p>
+            ? onEdit
+              // In the editor the line carries its own pencil, so the owner can see it is changeable — and a switched-off line shows faintly.
+              ? <button type="button" onClick={() => onEdit({ kind: "profile" })} className={`inline-flex items-center gap-1.5 text-muted hover:text-ink ${ownerLine ? "" : "opacity-50 text-sm"}`}>
+                  {ownerLine || (editLabel === "बदलें" ? "नाम की line छिपी है" : "Name line hidden")} <Pencil className="h-3.5 w-3.5" />
+                </button>
+              : ownerLine && <p className="text-muted">{ownerLine}</p>
             : <p className="text-muted">{t(card.company)}</p>}
           <p className="mt-2 font-medium look-tagline" style={{ color: theme }}>{t(card.tagline)}</p>
           {onEdit && <div className={`mt-2 flex ${cfg.centered ? "justify-center" : ""}`}><EditChip label={`${editLabel} — photo, name`} onClick={() => onEdit({ kind: "profile" })} /></div>}

@@ -120,7 +120,9 @@ async function googleToken(g) {
 }
 const STARS = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 async function runGoogle() {
-  if (!env.GOOGLE_CLIENT_ID) return;
+  // No env gate: the platform's Google client is set in Admin → Google (platform_secrets), which googleCreds() reads; with the old
+  // `env.GOOGLE_CLIENT_ID` gate a server without that env var never answered a Google review (21 Nov 2026). A row exists only once
+  // a user has connected, and a missing client fails that row with a logged error.
   const rows = await restList(`google_accounts?auto_reply=eq.true&status=eq.ok&select=*`);
   for (const g of rows) {
     try {

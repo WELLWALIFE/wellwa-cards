@@ -30,8 +30,28 @@ function pageWithQuality(p: CardPage): CardPage {
   return { ...p, blocks: p.blocks.filter((b) => !(isLoc(b) && !b.mapUrl && vagueAddress(b.address))) };
 }
 
+/** The old default name of a gallery ("Photos" / "फ़ोटो"), which the owner never chose. A name the owner typed stays. */
+const OLD_GALLERY = /^\s*(photos?|photo gallery|फ़ोटो|फोटो|फ़ोटोज़|तस्वीरें)\s*$/i;
+const galleryWord = (s: string) => (/[\u0900-\u097F]/.test(s) ? "गैलरी" : "Gallery");
+
+/** Every card calls its photo album "Gallery" (owner, 22 Nov 2026: "photo ki jagah gallery, by default sabhi me"): a page or a
+ *  gallery section still under the old default name "Photos" is shown as "Gallery". Pure; the saved card is never changed. */
+export function galleryNamed(card: Card): Card {
+  let changed = false;
+  const pages = card.pages.map((p) => {
+    if (!p.blocks.some((b) => b.kind === "gallery")) return p;
+    const label = OLD_GALLERY.test(p.label ?? "") ? galleryWord(p.label) : p.label;
+    const blocks = p.blocks.map((b) => (b.kind === "gallery" && OLD_GALLERY.test(b.title ?? "") ? { ...b, title: galleryWord(b.title) } : b));
+    if (label === p.label && blocks.every((b, i) => b === p.blocks[i])) return p;
+    changed = true;
+    return { ...p, label, blocks };
+  });
+  return changed ? { ...card, pages } : card;
+}
+
 /** The safe fixes, for the page as drawn. The saved card is never changed. */
 export function withQuality(card: Card): Card {
+  card = galleryNamed(card);
   const pages = card.pages.map(pageWithQuality);
   return pages.every((p, i) => p === card.pages[i]) ? card : { ...card, pages };
 }

@@ -262,6 +262,10 @@ export interface Card {
   /** Header order: 'business' puts the business name first (shops); absent or
    *  'person' keeps the person-first layout, so older cards render unchanged. */
   lead?: "business" | "person";
+  /** Business-first cards: the line under the business name. `ownerRole` follows the name ("Dr JS Yadav · Founder");
+   *  `ownerLine: false` hides the line. Unset = the name alone (no "Owner:" word any more, 22 Nov 2026). */
+  ownerRole?: string;
+  ownerLine?: boolean;
   /** GST number as the owner typed it; shown in the footer and JSON-LD taxID. */
   gstin?: string;
   // ---- ads & measurement (Pro; read by card_tracking on the public page) ----

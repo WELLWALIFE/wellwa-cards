@@ -805,6 +805,28 @@ export function CardEditor({ id }: { id: string }) {
                   <Field label={L("Your work (job title)", "आपका काम")}><input className="ed-input" value={card.jobTitle} onChange={(e) => patch({ jobTitle: e.target.value })} /></Field>
                   <Field label={L("Business name", "Business का नाम")}><input className="ed-input" value={card.company} onChange={(e) => patch({ company: e.target.value })} /></Field>
                 </div>
+                {/* Business-first cards show a line with the person's name under the business name. The owner chooses the
+                    word after the name ("Founder") or switches the line off (owner, 22 Nov 2026: no way to change or hide "Owner:"). */}
+                {card.lead === "business" && !!card.company?.trim() && (
+                  <div className="rounded-xl border border-border bg-surface2/50 p-3 space-y-2">
+                    <label className="flex items-center justify-between gap-3 text-[13px] font-medium">
+                      <span>{L("Show your name under the business name", "Business के नाम के नीचे अपना नाम दिखाएँ")}</span>
+                      <input type="checkbox" className="h-4 w-4 accent-brand" checked={card.ownerLine !== false} onChange={(e) => patch({ ownerLine: e.target.checked ? undefined : false })} />
+                    </label>
+                    {card.ownerLine !== false && (
+                      <Field label={L("Your role after the name (optional)", "नाम के बाद आपका पद (चाहें तो)")}>
+                        <input className="ed-input" value={card.ownerRole ?? ""} maxLength={40} placeholder={L("e.g. Founder, Director, Proprietor", "जैसे Founder, Director, मालिक")} onChange={(e) => patch({ ownerRole: e.target.value.slice(0, 40) || undefined })} />
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {["Founder", "Director", "Proprietor", "Partner", "CEO"].map((r) => (
+                            <button key={r} type="button" onClick={() => patch({ ownerRole: card.ownerRole === r ? undefined : r })}
+                              className={`rounded-full border px-2.5 py-0.5 text-[11px] ${card.ownerRole === r ? "border-brand bg-brand-soft text-brand-ink" : "border-border"}`}>{r}</button>
+                          ))}
+                        </div>
+                      </Field>
+                    )}
+                    <p className="text-[11px] text-muted">{L("Card shows:", "Card पर दिखेगा:")} <b className="text-ink">{card.ownerLine === false ? L("(nothing)", "(कुछ नहीं)") : [card.name?.trim(), card.ownerRole?.trim()].filter(Boolean).join(" · ")}</b></p>
+                  </div>
+                )}
                 <Field label={<span className="flex items-center gap-1.5">{L("One line about you", "आपके बारे में एक line")} <Sparkles className="h-3.5 w-3.5 text-ai" /><span className="text-ai text-[11px] mono">AI writer</span></span>}>
                   <AiTextarea
                     value={card.tagline}

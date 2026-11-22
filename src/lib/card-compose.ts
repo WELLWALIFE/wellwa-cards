@@ -47,7 +47,7 @@ const TABLE: Record<TitleKey | "cta", Tri> = {
   services: tri("Our services", "Hamari services", "हमारी सेवाएँ"),
   servicesPage: tri("Services", "Services", "सेवाएँ"),
   about: tri("About us", "Hamare baare mein", "हमारे बारे में"),
-  photos: tri("Photos", "Photos", "फ़ोटो"),
+  photos: tri("Gallery", "Gallery", "गैलरी"),
   reviews: tri("What customers say", "Customers kya kehte hain", "ग्राहक क्या कहते हैं"),
   offer: tri("Current offer", "Abhi ka offer", "अभी का ऑफ़र"),
   booking: tri("Book an appointment", "Appointment book karein", "अपॉइंटमेंट बुक करें"),
@@ -868,7 +868,7 @@ export function addStockMedia<T extends TemplateCard>(card: T, media: StockMedia
   // 2b. gallery page (when there is no gallery / image / carousel anywhere, apart from product shots)
   const hasGallery = all().some((b) => b.kind === "gallery" || (b.kind === "image" && !/product/i.test(b.title)) );
   if (!hasGallery && photos.length >= 3) {
-    const title = l === "hi" ? "फ़ोटो" : "Photos";
+    const title = l === "hi" ? "गैलरी" : "Gallery";
     const page: CardPage = { id: uid(), slug: "gallery", label: title, blocks: [{ id: uid(), kind: "gallery", title, images: photos.slice(1).concat(photos.slice(0, 1)).map((p) => ({ url: p.url, color: card.themeColor, label: "" })) }] };
     const ci = out.pages.findIndex((p) => p.slug === "faq" || p.slug === "contact");
     out.pages.splice(ci < 0 ? out.pages.length : ci, 0, page);

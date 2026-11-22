@@ -159,7 +159,7 @@ function addToGallery(card: Card, url: string, group = "", video = ""): Card | n
     // makes one — on the website's Gallery page when it has one, else on the home page just above the closing contact / call-to-action.
     const host = card.pages.find((p) => !p.hidden && p.slug === "gallery") ?? card.pages.find((p) => !p.hidden && p.slug === "home") ?? card.pages.find((p) => !p.hidden);
     if (!host) return null;
-    const block: CardBlock = { id: randomUUID().slice(0, 8), kind: "gallery", title: card.language === "hi" ? "फ़ोटो" : "Photos", images: [] };
+    const block: CardBlock = { id: randomUUID().slice(0, 8), kind: "gallery", title: card.language === "hi" ? "गैलरी" : "Gallery", images: [] };
     let at = host.blocks.findIndex((b) => b.kind === "contact" || b.kind === "cta");
     if (at < 0) at = host.blocks.length;
     card = { ...card, pages: card.pages.map((p) => (p === host ? { ...p, blocks: [...p.blocks.slice(0, at), block, ...p.blocks.slice(at)] } : p)) };

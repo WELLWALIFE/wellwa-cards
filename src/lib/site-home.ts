@@ -97,7 +97,7 @@ function defaultSections(card: Card, pages: CardPage[]): HomeSection[] {
     const g = find(pages, home, "gallery");
     if (g) {
       const images = g.block.images.filter((i) => i.url).slice(0, 5); // one big + four small tiles
-      if (images.length >= 3) insertBefore(["testimonials", "faq", "contact", "appointment", "cta"], { key: "gallery", kind: "gallery", title: g.block.title || L(card, "Photos", "फ़ोटो"), images, page: g.page.slug, total: g.block.images.filter((i) => i.url).length });
+      if (images.length >= 3) insertBefore(["testimonials", "faq", "contact", "appointment", "cta"], { key: "gallery", kind: "gallery", title: g.block.title || L(card, "Gallery", "गैलरी"), images, page: g.page.slug, total: g.block.images.filter((i) => i.url).length });
     }
     // No photo anywhere (a photographer or a planner who has not added any yet): a typographic reel of the services takes the gallery's place.
     else {
@@ -216,7 +216,7 @@ export function sectionLabel(s: HomeSection, lang?: string): string {
     const b = s.block;
     const title = "title" in b ? (b.title ?? "").trim() : "";
     const kind: Record<CardBlock["kind"], [string, string]> = {
-      about: ["About", "परिचय"], highlights: ["Highlights", "खासियत"], services: ["Services", "सेवाएँ"], product: ["Products", "प्रोडक्ट"], gallery: ["Photos", "फ़ोटो"],
+      about: ["About", "परिचय"], highlights: ["Highlights", "खासियत"], services: ["Services", "सेवाएँ"], product: ["Products", "प्रोडक्ट"], gallery: ["Gallery", "गैलरी"],
       image: ["Picture", "चित्र"], carousel: ["Pictures", "चित्र"], video: ["Video", "वीडियो"], pdf: ["PDF", "PDF"], testimonials: ["Reviews", "रिव्यू"], faq: ["FAQ", "सवाल-जवाब"],
       hours: ["Timings", "समय"], appointment: ["Appointment", "अपॉइंटमेंट"], location: ["Location", "पता"], offer: ["Offer", "ऑफ़र"], contact: ["Contact", "संपर्क"], cta: ["Call to action", "बटन"],
       compare: ["Comparison", "तुलना"], showcase: ["Showcase", "शोकेस"], story: ["Story section", "कहानी section"], table: ["Price list", "दाम की सूची"], form: ["Form", "फ़ॉर्म"],
