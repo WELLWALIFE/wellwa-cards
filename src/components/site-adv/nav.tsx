@@ -124,9 +124,11 @@ type HeaderProps = {
   lang: ReactNode;
   chrome: Chrome;
   onHome: () => void;
+  /** "Log in" and "Get started" (the joining link): a Shubhora partner's website only (site.signupNav). */
+  startHref?: string;
 };
 
-export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHome }: HeaderProps) {
+export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHome, startHref }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const burger = useRef<HTMLButtonElement>(null);
   const headRef = useRef<HTMLElement>(null);
@@ -170,6 +172,12 @@ export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHo
   const cta = x.wa
     ? <a href={x.waHref()} target="_blank" rel="noreferrer" className="nv-cta btn-primary btn-sm" data-show={showCta ? "" : undefined} tabIndex={showCta ? undefined : -1} aria-hidden={showCta ? undefined : true} onClick={() => x.track("nav-whatsapp")}><Icon name="whatsapp" /> {x.ui("Enquire", "पूछें")}</a>
     : x.phone ? <a href={linkHref(x.phone.type, x.phone.value)} className="nv-cta btn-primary btn-sm" data-show={showCta ? "" : undefined} tabIndex={showCta ? undefined : -1} aria-hidden={showCta ? undefined : true} onClick={() => x.track("nav-call")}><Icon name="phone" /> {x.ui("Call", "कॉल")}</a> : null;
+  const start = startHref ? (
+    <>
+      <a href="/login" className="nv-link nv-login">{x.ui("Log in", "लॉग इन")}</a>
+      <a href={startHref} className="nv-start btn-ghost btn-sm" onClick={() => x.track("nav-start")}>{x.ui("Get started", "शुरू करें")}</a>
+    </>
+  ) : null;
   const brand = (
     <a href={pages.list.find((e) => e.role === "home")?.href ?? "#"} className="nv-brand" aria-label={`${name} — ${x.ui("home", "होम")}`} onClick={(e) => { e.preventDefault(); onHome(); }}>{logo}</a>
   );
@@ -184,6 +192,7 @@ export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHo
               <div className="nv-right">
                 <nav className="nv-links nv-rightlinks" aria-label={x.ui("More pages", "और पेज")}>{items.slice(half).map(link)}</nav>
                 <div className="nv-lang">{lang}</div>
+                {start}
                 {cta}
               </div>
             </>
@@ -191,7 +200,7 @@ export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHo
             <>
               {brand}
               <nav className="nv-links" aria-label={x.ui("Pages", "पेज")}>{items.map(link)}</nav>
-              <div className="nv-right"><div className="nv-lang">{lang}</div>{cta}</div>
+              <div className="nv-right"><div className="nv-lang">{lang}</div>{start}{cta}</div>
             </>
           )}
           <button ref={burger} type="button" className="nv-burger" aria-expanded={open} aria-controls="nv-menu" aria-label={open ? x.ui("Close menu", "मेन्यू बंद करें") : x.ui("Menu", "मेन्यू")} onClick={() => setOpen(!open)}>
@@ -212,6 +221,7 @@ export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHo
         <div className="nv-menu-foot" style={{ ["--i" as string]: pages.list.length }}>
           {addressOf(x) ? <p className="nv-menu-addr"><Icon name="pin" /> {addressOf(x)}</p> : null}
           <div className="nv-menu-act">
+            {startHref && <a className="btn-ghost" href={startHref} onClick={() => x.track("menu-start")}>{x.ui("Get started", "शुरू करें")}</a>}
             {x.wa && <a className="btn-primary" href={x.waHref()} target="_blank" rel="noreferrer" onClick={() => x.track("menu-whatsapp")}><Icon name="whatsapp" /> WhatsApp</a>}
             {x.phone && <a className="btn-ghost" href={linkHref(x.phone.type, x.phone.value)} onClick={() => x.track("menu-call")}><Icon name="phone" /> {x.ui("Call", "कॉल")}</a>}
           </div>
@@ -299,6 +309,9 @@ export const NAV_CSS = `
 .nv-link:hover{color:var(--ink)}.nv-link:hover::after,.nv-link[aria-current=page]::after{transform:scaleX(1)}
 .nv-link[aria-current=page]{color:var(--ink)}
 .nv-right{display:none;align-items:center;gap:var(--s3);margin-left:auto}
+.nv-login,.nv-start{display:none!important}
+@media (min-width:1100px){.nv-start{display:inline-flex!important}}
+@media (min-width:1280px){.nv-login{display:inline-flex!important}}
 .nv-cta{visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .3s,transform .3s,visibility 0s .3s}
 .nv-cta[data-show]{visibility:visible;opacity:1;transform:none;transition:opacity .3s,transform .3s}
 .nv-cta.btn-primary{min-height:40px;padding:0 var(--s4);font-size:14px}

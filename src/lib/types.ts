@@ -325,7 +325,11 @@ export interface Card {
       /** Premium website: 2–3 banners that slide by themselves, each with its own big line, small line and picture (owner,
        *  23 Oct 2026). Drawn by components/site-adv/hero-slides.tsx; fewer than 2 = the one hero as before. */
       slides?: HeroSlide[];
+      /** A second hero button that opens one of the card's pages ("Get a demo" -> the contact page), in place of "Call". */
+      cta2?: { label: string; labelHi?: string; slug: string };
     };
+    /** The header shows "Log in" and "Get started" (the joining link). Set at render time on a Shubhora partner's website only. */
+    signupNav?: boolean;
     hidden?: string[];      // page slugs left out of the website nav
     hideProfile?: boolean;  // no photo+name chip under the hero headline
     showcase?: boolean;  // information website: products shown with no order / WhatsApp button of their own

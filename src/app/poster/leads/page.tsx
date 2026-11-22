@@ -51,7 +51,7 @@ function LeadsTab() {
       {tab === "leads" && <Guide hi="हर customer की WhatsApp chat और follow-up यहाँ हैं। जो जल्दी खरीदना चाहते हैं, उन्हें पहले call करें। Reply AI लिख देता है।" en="Every customer's WhatsApp chat and follow-ups are here. Call the ones who are ready to buy first. The AI writes the replies for you." />}
       {tab === "wa" && <Link href="/poster/connect" className="block text-xs font-semibold text-brand-ink">🔗 {t.tabMore === "मेरा" ? "सारे connections (Facebook, Instagram, Google) →" : "All connections (Facebook, Instagram, Google) →"}</Link>}
       {tab === "wa" && <ConnectConsent kind="whatsapp" />}
-      {tab === "wa" && <Guide hi="इसी phone पर code से WhatsApp link करें। दूसरे phone की ज़रूरत नहीं। फिर bot दिन-रात जवाब देगा। आप खुद जवाब दें तो bot 15 मिनट चुप रहता है।" en="Link your WhatsApp with a code on this same phone. No second phone is needed. Then the bot answers any time, day or night. If you reply yourself, the bot stays quiet for 15 minutes." />}
+      {/* The how-to sits next to the QR / code itself now (owner, 22 Nov 2026: too much text above it pushed the code off screen). */}
       {tab === "learn" && <LearnPage />}
       <div className="poster-embed" onClickCapture={(e: MouseEvent<HTMLDivElement>) => { const a = (e.target as HTMLElement).closest("a"); const to = a && a.target !== "_blank" ? appPath(a.getAttribute("href") ?? "") : null; if (to) { e.preventDefault(); router.push(to); } }}>{tab === "wa" ? <WhatsappPage /> : null}</div>
       {tab === "leads" && <CustomerTools />}

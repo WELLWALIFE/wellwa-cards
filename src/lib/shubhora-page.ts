@@ -308,6 +308,7 @@ function sellerRank(b: CardBlock, seen: { flow: number }): number | null {
     case "services": return /everything in one link|what you get/i.test(b.title) ? null : 65;
     case "product": case "table": case "compare": return 70;
     case "testimonials": return 75;
+    case "cta": return b.id === GOOGLE_CHECK.id ? 72 : 66;
     case "faq": return 80;
     case "location": case "hours": return 85;
     case "contact": case "form": case "appointment": return 90;
@@ -365,19 +366,36 @@ function sellerOrder(home: CardPage): string[] {
   return [...own, ...pulled].sort((x, y) => x.r - y.r || x.i - y.i).map((x) => x.k);
 }
 
+/** The price of each plan on the home page itself (the competitor review, 22 Nov 2026: every SaaS site shows its prices; designs
+ *  1-6 drew only the home's own sections, so the plans stayed on the Plans page). A copy of the Plans page's list, its home rank 70. */
+function withPlansOnHome(pages: CardPage[]): CardPage[] {
+  const home = pages.find((p) => p.slug === "home");
+  if (!home || home.blocks.some((b) => b.kind === "product" || b.kind === "table")) return pages;
+  const plans = pages.find((p) => p !== home && !p.hidden && /plan|price|pricing/i.test(`${p.slug} ${p.label}`))?.blocks.find((b) => b.kind === "product" && b.items.length > 0);
+  if (!plans) return pages;
+  return pages.map((p) => (p === home ? { ...p, blocks: [...p.blocks, { ...plans, id: `${plans.id}-home` }] } : p));
+}
+
+/** "Check your Google profile free" (the free tool at /google-check), after the plans: the SaaS sites' free tools that bring leads. */
+const GOOGLE_CHECK: CardBlock = { id: "sh-google-check", kind: "cta", title: "Is your business showing on Google?", body: "Free Google check: your score out of 100, where you rank on Maps and the three things to fix first. Takes a minute.", joinUrl: "/google-check", joinLabel: "Check my Google profile", referralCode: "" };
+
 function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
   if (!seller) return card;
   const c = card as T & { site?: Card["site"]; company?: string };
-  const pages = card.pages.map((p) => sellerHomePage(sellerInnerPage(p)));
+  const pages = withPlansOnHome(card.pages).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p)));
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;
   const key = (h?: string) => (h ?? "").replace(/\s+/g, " ").trim().replace(/[.!]$/, "").toLowerCase();
   const fresh = (h?: string) => (SELLER_HEADLINES_OLD.has(key(h)) ? SELLER_HEADLINE : h);
   const slides = hero?.slides?.map((sl, i) => (i === 0 ? { ...sl, headline: fresh(sl.headline) ?? sl.headline } : sl));
+  // "Get a demo" beside WhatsApp in the hero (the page with the demo form), and "Log in · Get started" in the header.
+  const formPage = (p: CardPage) => !p.hidden && p.slug !== "home" && p.blocks.some((b) => b.kind === "form" || b.kind === "contact");
+  const demo = (pages.find((p) => p.slug === "contact" && formPage(p)) ?? pages.find(formPage))?.slug;
   const nextSite = site ? {
     ...site,
-    hero: hero ? { ...hero, headline: fresh(hero.headline) ?? hero.headline, ...(slides ? { slides } : {}) } : hero,
+    signupNav: true,
+    hero: hero ? { ...hero, headline: fresh(hero.headline) ?? hero.headline, ...(slides ? { slides } : {}), ...(demo ? { cta2: { label: "Get a demo", labelHi: "डेमो देखें", slug: demo } } : {}) } : hero,
     // This order wins over the partner's saved one and the trade's own (which put the plans first): the company's page.
     home: { ...(site.home ?? {}), order: home ? sellerOrder(home) : site.home?.order, hidden: [...new Set([...(site.home?.hidden ?? []), "updates", "ask-review"])] },
   } as Card["site"] : site;
@@ -398,7 +416,8 @@ function withSellerSlides<T extends { pages: CardPage[] }>(card: T, seller: bool
   if (hero?.slides && hero.slides.length >= 2) {
     const slides = hero.slides.map((slide, index) => {
       if (!slide.imageUrl) return slide;
-      const imageUrl = brandPhoto(slide.imageUrl);
+      // The first banner shows the real card on a phone beside the shop owner (hero-1-card), the product itself as the SaaS sites do.
+      const imageUrl = index === 0 ? brandPhoto(slide.imageUrl).replace(/\/brand-v3\/hero-1\.webp$/, "/brand-v3/hero-1-card.webp") : brandPhoto(slide.imageUrl);
       const currentBrandSlide = SHUBHORA_SLIDES[index]?.imageUrl === imageUrl;
       return { ...slide, imageUrl, ...(currentBrandSlide ? { chips: SHUBHORA_SLIDES[index].chips } : {}) };
     });

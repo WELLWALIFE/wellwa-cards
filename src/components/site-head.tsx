@@ -21,13 +21,15 @@ import { trackClick } from "@/lib/track";
 
 const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
 
-export function SiteHeader({ username, name, tradeWord, logo, lang, setLang, translating, theme, isHome, scrolled, active, navMain, navMore, allPages, hrefFor, go, waHref, phoneHref, t }: {
+export function SiteHeader({ username, name, tradeWord, logo, lang, setLang, translating, theme, isHome, scrolled, active, navMain, navMore, allPages, hrefFor, go, waHref, phoneHref, startHref, t }: {
   username: string; name: string; tradeWord: string; logo?: string;
   lang: string; setLang: (l: string) => void; translating: boolean; theme: string;
   isHome: boolean; scrolled: boolean; active: string;
   navMain: CardPage[]; navMore: CardPage[]; allPages: CardPage[];
   hrefFor: (slug: string) => string; go: (slug: string) => void;
   waHref?: string; phoneHref?: string; t: (s: string) => string;
+  /** "Log in" and "Get started" (the joining link): a Shubhora partner's website only (site.signupNav). */
+  startHref?: string;
 }) {
   const hi = lang === "hi";
   const [open, setOpen] = useState(false);
@@ -95,6 +97,8 @@ export function SiteHeader({ username, name, tradeWord, logo, lang, setLang, tra
             )}
           </nav>
           <div className="hidden md:block"><LanguagePicker lang={lang} setLang={setLang} busy={translating} theme={theme} /></div>
+          {startHref && <a href="/login" className={`max-xl:hidden text-sm font-medium opacity-80 hover:opacity-100 ${FOCUS}`}>{hi ? "लॉग इन" : "Log in"}</a>}
+          {startHref && <a href={startHref} onClick={() => trackClick(username, "site-start")} className={`max-md:hidden btn-ghost btn-sm ${FOCUS}`}>{hi ? "शुरू करें" : "Get started"}</a>}
           {waHref && (
             <a href={waHref} target="_blank" rel="noreferrer" onClick={() => trackClick(username, "site-whatsapp")} className={`site-head-wa max-md:hidden btn-primary btn-sm ${FOCUS} ${waGate ? "invisible" : ""}`}
               aria-hidden={waGate ? true : undefined} tabIndex={waGate ? -1 : undefined}>
@@ -126,6 +130,8 @@ export function SiteHeader({ username, name, tradeWord, logo, lang, setLang, tra
             <div className="site-menu-act" style={{ ["--i" as string]: allPages.length } as React.CSSProperties}>
               {waHref && <a href={waHref} target="_blank" rel="noreferrer" onClick={() => trackClick(username, "site-menu-whatsapp")} className="btn-primary hero-cta"><Icon name="whatsapp" /> <span>{hi ? "WhatsApp करें" : "WhatsApp us"}</span></a>}
               {phoneHref && <a href={phoneHref} onClick={() => trackClick(username, "site-menu-phone")} className="btn-ghost hero-cta"><Icon name="phone" /> <span>{hi ? "कॉल करें" : "Call us"}</span></a>}
+              {startHref && <a href={startHref} onClick={() => trackClick(username, "site-menu-start")} className="btn-ghost hero-cta"><span>{hi ? "शुरू करें" : "Get started"}</span></a>}
+              {startHref && <a href="/login" className="text-center text-sm underline">{hi ? "लॉग इन" : "Log in"}</a>}
               <div className="site-menu-lang"><LanguagePicker lang={lang} setLang={setLang} busy={translating} theme={theme} /></div>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  MessageCircle, Smartphone, Building2, RefreshCw, LogOut, Check, Plus, X, Bot, Send, LoaderCircle,
+  MessageCircle, Smartphone, Building2, LogOut, Check, Plus, X, Bot, Send, LoaderCircle,
   CalendarClock, Sparkles,
 } from "lucide-react";
 import { useFeature } from "@/lib/plan";
@@ -66,17 +66,14 @@ function WhatsappPageInner({ free = false }: { free?: boolean }) {
   useEffect(() => { (async () => { try { const r = await api<{ account: { enabled: boolean } | null }>("/api/wa-cloud/account"); setMode(r.ok && r.data.account?.enabled ? "api" : "mobile"); } catch { setMode("mobile"); } })(); }, []);
   if (!mode) return <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   return (
-    <div className="space-y-6">
-      <div className="flex items-start gap-4">
-        <span className="h-12 w-12 rounded-xl grid place-items-center text-white shrink-0" style={{ background: "var(--good)" }}>
-          <MessageCircle className="h-6 w-6" />
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <span className="h-10 w-10 rounded-xl grid place-items-center text-white shrink-0" style={{ background: "var(--good)" }}>
+          <MessageCircle className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">WhatsApp Auto-Reply</h1>
-          <p className="text-muted mt-1 max-w-2xl">
-            A 24/7 assistant answers your WhatsApp automatically — powered by AI when a key is set,
-            with keyword rules as a fallback. Every chat is captured as a lead.
-          </p>
+          <h1 className="text-xl font-semibold tracking-tight">WhatsApp AI</h1>
+          <p className="text-sm text-muted mt-0.5">Link your number once. The AI answers customers day and night, and saves each one as a lead.</p>
         </div>
       </div>
 
@@ -92,8 +89,8 @@ function WhatsappPageInner({ free = false }: { free?: boolean }) {
         </button>
       </div>
 
-      <FeatureTable />
       {mode === "mobile" ? <MobileMode free={free} /> : <ApiMode />}
+      <FeatureTable />
     </div>
   );
 }
@@ -154,10 +151,10 @@ function MobileMode({ free = false }: { free?: boolean }) {
   }
 
   return (
-    <div className="grid lg:grid-cols-[360px_1fr] gap-6 items-start">
+    <div className="grid gap-5 items-start xl:grid-cols-[400px_1fr]">
       {/* connection card */}
-      <section className="rounded-2xl border border-border bg-surface p-5 shadow-card">
-        <h2 className="font-semibold">Connection</h2>
+      <section className="w-full max-w-[440px] rounded-2xl border border-border bg-surface p-5 shadow-card">
+        <h2 className="font-semibold">{status?.state === "connected" ? "Connection" : "Link your WhatsApp"}</h2>
         {accessError ? (
           <div className="mt-4 rounded-xl border border-border bg-surface2/50 p-4 text-sm">
             <p className="font-medium text-danger">WhatsApp unavailable</p>
@@ -195,15 +192,12 @@ function MobileMode({ free = false }: { free?: boolean }) {
             </button>
           </div>
         ) : (
-          <div className="mt-4">
-            <UnofficialNotice />
-            <BusinessNumber linked="" onPicked={setLinkNumber} />
+          <div className="mt-3">
             <LinkBox status={status} qr={qr} onChange={poll} suggest={linkNumber} />
+            <div className="mt-4"><BusinessNumber linked="" onPicked={setLinkNumber} /></div>
+            <UnofficialNotice />
           </div>
         )}
-        <p className="mt-4 text-[11px] text-faint leading-relaxed">
-          Works like WhatsApp Web (linked device). For Meta&apos;s official API with your own number, switch to <b>Cloud API</b> above — one button, no QR, no ban risk.
-        </p>
       </section>
 
       {free ? <GrowthForAi /> : <AutoReplyEditor />}
@@ -338,8 +332,12 @@ function LinkBox({ status, qr, onChange, suggest = "" }: { status: Status | null
 
       {way === "qr" ? (
         <>
-          <p className="text-sm text-muted mb-3">Open WhatsApp → <b>Linked devices</b> → <b>Link a device</b>, then scan:</p>
-          <div className="rounded-xl border border-border bg-white p-3 grid place-items-center aspect-square">
+          <ol className="mb-3 list-decimal space-y-0.5 pl-5 text-sm text-muted">
+            <li>Open <b className="text-ink">WhatsApp</b> on your phone.</li>
+            <li><b className="text-ink">Settings</b> (iPhone) or <b className="text-ink">⋮</b> (Android) → <b className="text-ink">Linked devices</b> → <b className="text-ink">Link a device</b>.</li>
+            <li>Point the phone at this code.</li>
+          </ol>
+          <div className="mx-auto w-full max-w-[260px] rounded-xl border border-border bg-white p-3 grid place-items-center aspect-square">
             {qr && !status?.pairPhone ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qr} alt="WhatsApp QR" className="w-full" />
@@ -393,15 +391,9 @@ function LinkBox({ status, qr, onChange, suggest = "" }: { status: Status | null
 
 function UnofficialNotice() {
   return (
-    <div className="mb-4 rounded-xl border border-border bg-surface2/50 p-3.5 text-xs leading-relaxed">
-      <p className="font-semibold text-ink">💡 Good to know before you connect</p>
-      <ul className="mt-1.5 space-y-1 text-muted list-disc pl-4">
-        <li>This works like <b>WhatsApp Web</b> (a linked device), not the official WhatsApp Business API. It is quick, free and needs no approval.</li>
-        <li>WhatsApp prefers automation through its official API, so we recommend linking a <b>dedicated business number</b> rather than your personal one.</li>
-        <li>Best used for replying to people who message you. Bulk or marketing broadcasts are better done from the official API.</li>
-      </ul>
-      <p className="mt-2 text-muted">Want the fully official, Meta-approved setup? Switch to <b>Cloud API</b> above and press <b>Connect with Facebook</b> — your own number on Meta&apos;s API in two minutes, no QR, no ban risk.</p>
-    </div>
+    <p className="mt-3 text-[11px] leading-relaxed text-faint">
+      Works like WhatsApp Web. Best on a separate business number. For Meta&apos;s official API (no QR), choose <b>Business API</b> above.
+    </p>
   );
 }
 
@@ -490,12 +482,26 @@ function AutoReplyEditor() {
       </div>
 
       <label className="flex items-center gap-3">
-        <button onClick={() => patch({ enabled: !config.enabled })}
+        <button onClick={() => patch({ enabled: !config.enabled })} aria-label="Auto-reply on / off"
           className={`relative h-6 w-10 rounded-full transition-colors shrink-0 ${config.enabled ? "bg-good" : "bg-surface2 border border-border"}`}>
           <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-all ${config.enabled ? "left-[1.15rem]" : "left-0.5"}`} />
         </button>
-        <span className="text-sm font-medium">Auto-reply {config.enabled ? "on" : "off"}</span>
+        <span className="text-sm font-medium">AI replies {config.enabled ? "on" : "off"}</span>
       </label>
+
+      {/* Everything the AI says and to whom lives in AI Training (owner, 22 Nov 2026: the same settings sat here too, some with
+          their own copy — the follow-up hours here were overruled by AI Training's). Only what is not there stays below. */}
+      <a href="/poster/ai" className="flex items-center justify-between gap-3 rounded-xl border border-ai/30 bg-ai/5 p-3.5 hover:bg-ai/10">
+        <span>
+          <span className="block text-sm font-semibold">AI Training</span>
+          <span className="block text-xs text-muted">Language, what the AI knows, follow-up messages, who it answers, family numbers</span>
+        </span>
+        <span className="text-sm font-semibold text-brand-ink">Open →</span>
+      </a>
+
+      <details className="rounded-xl border border-border px-3 py-2">
+        <summary className="cursor-pointer text-sm font-medium">Advanced <span className="text-xs font-normal text-muted">— reply mode, keyword rules, old chats</span></summary>
+        <div className="mt-3 space-y-5">
 
       {/* Reply mode selector */}
       <div>
@@ -517,7 +523,6 @@ function AutoReplyEditor() {
             );
           })}
         </div>
-        <p className="text-[11px] text-faint mt-1.5">AI needs <span className="mono">ANTHROPIC_API_KEY</span>. Uses your card&apos;s products/offers/FAQ as context.</p>
       </div>
 
       <FollowupSection
@@ -525,14 +530,16 @@ function AutoReplyEditor() {
         onChange={(f) => patch({ followup: f })}
       />
 
-      <Field label={<span className="flex items-center gap-1.5">Never auto-reply to these numbers <span className="text-xs text-muted font-normal">(family, friends — one per line)</span></span>}>
-        <textarea className="ed-input min-h-16 resize-y mono" placeholder={"98765 43210\n+91 91234 56789"}
-          value={neverText ?? (config.neverReply ?? []).join("\n")}
-          onChange={(e) => { setNeverText(e.target.value); patch({ neverReply: e.target.value.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean) }); }} />
-        <span className="block text-[11px] text-faint mt-1">The assistant stays silent with them: no reply, no follow-up, not added to Leads. You chat with them as always.</span>
-      </Field>
+      {/* Numbers saved here before AI Training had its own list: still honoured, shown so they can be removed. */}
+      {(config.neverReply ?? []).length > 0 && (
+        <Field label={<span className="flex items-center gap-1.5">Never reply to <span className="text-xs text-muted font-normal">(older list — add new ones in AI Training)</span></span>}>
+          <textarea className="ed-input min-h-16 resize-y mono"
+            value={neverText ?? (config.neverReply ?? []).join("\n")}
+            onChange={(e) => { setNeverText(e.target.value); patch({ neverReply: e.target.value.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean) }); }} />
+        </Field>
+      )}
 
-      <Field label="Welcome message (first contact)">
+      <Field label="Message when the AI is off (first contact)">
         <textarea className="ed-input min-h-24 resize-y" value={config.welcome} onChange={(e) => patch({ welcome: e.target.value })} />
       </Field>
 
@@ -563,41 +570,22 @@ function AutoReplyEditor() {
       </Field>
 
       <p className="text-[11px] text-faint flex items-center gap-1.5"><Send className="h-3 w-3" /> Order: keyword rules → AI → welcome/fallback. Every incoming chat is also saved to Leads.</p>
+        </div>
+      </details>
     </section>
   );
 }
 
 function FollowupSection({ value, onChange }: { value: Followup; onChange: (f: Followup) => void }) {
-  const [preview, setPreview] = useState<{ step: number; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function doPreview(step: number, lastMsg: string) {
-    setBusy(true);
-    setPreview(null);
-    try {
-      const r = await waFetch("/api/wa/followups/test", {
-        method: "POST",
-        body: JSON.stringify({ step, lastMsg }),
-      }).then((x) => x.json());
-      setPreview({ step, text: r.message || "(no message — is the bridge + AI key running?)" });
-    } catch {
-      setPreview({ step, text: "Could not reach the bridge. Run npm run wa." });
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="rounded-xl border border-ai/30 bg-ai/5 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <CalendarClock className="h-5 w-5 text-ai mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold text-sm">AI auto follow-up</p>
+            <p className="font-semibold text-sm">Follow-up messages</p>
             <p className="text-xs text-muted mt-0.5">
-              Automatically nurtures leads who message you: Day&nbsp;1, 3, 6 product reminders, then one gentle
-              wellness message a week. Any reply restarts the cycle. Only contacts who messaged you first, business
-              hours only, &ldquo;STOP&rdquo; opts out.
+              To people who messaged you and went quiet. The days, the hours and the words are set in AI Training (section 5).
             </p>
           </div>
         </div>
@@ -609,43 +597,6 @@ function FollowupSection({ value, onChange }: { value: Followup; onChange: (f: F
 
       {value.enabled && (
         <>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted">Send only between</span>
-            <select className="ed-input !w-auto !py-1" value={value.businessStart}
-              onChange={(e) => onChange({ ...value, businessStart: Number(e.target.value) })}>
-              {hours().map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
-            </select>
-            <span className="text-muted">and</span>
-            <select className="ed-input !w-auto !py-1" value={value.businessEnd}
-              onChange={(e) => onChange({ ...value, businessEnd: Number(e.target.value) })}>
-              {hours().map((h) => <option key={h} value={h}>{fmtHour(h)}</option>)}
-            </select>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted mr-1">Preview:</span>
-            <button disabled={busy} onClick={() => doPreview(0, "Aura Plus ka price kya hai?")}
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-surface disabled:opacity-60">
-              <Sparkles className="h-3 w-3" /> Day 1
-            </button>
-            <button disabled={busy} onClick={() => doPreview(2, "Payment kaise karna hoga?")}
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-surface disabled:opacity-60">
-              <Sparkles className="h-3 w-3" /> Day 6
-            </button>
-            <button disabled={busy} onClick={() => doPreview(3, "demo kab milega?")}
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-surface disabled:opacity-60">
-              <Sparkles className="h-3 w-3" /> Weekly
-            </button>
-            {busy && <LoaderCircle className="h-4 w-4 animate-spin text-ai" />}
-          </div>
-
-          {preview && (
-            <div className="rounded-lg border border-border bg-surface p-2.5 text-sm">
-              <p className="text-[11px] text-faint mb-1">{preview.step <= 2 ? `Day ${[1, 3, 6][preview.step]}` : "Weekly"} message:</p>
-              <p className="whitespace-pre-wrap">{preview.text}</p>
-            </div>
-          )}
-
           <StartFollowups />
         </>
       )}
@@ -765,8 +716,6 @@ function StartFollowups() {
   );
 }
 
-const hours = () => Array.from({ length: 24 }, (_, i) => i);
-const fmtHour = (h: number) => `${((h + 11) % 12) + 1}${h < 12 ? "am" : "pm"}`;
 
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (

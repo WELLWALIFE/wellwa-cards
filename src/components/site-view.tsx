@@ -494,7 +494,8 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
       {/* ---- header (site-head.tsx): wordmark (or the owner's logo) · pages · language · WhatsApp once the hero has scrolled; a full-height menu on phones ---- */}
       <SiteHeader username={card.username} name={hm.name} tradeWord={trade} logo={logo} lang={L.lang} setLang={L.setLang} translating={L.translating} theme={theme}
         isHome={isHome} scrolled={scrolled} active={active} navMain={navMain} navMore={navMore} allPages={navPages} hrefFor={hrefFor} go={go}
-        waHref={wa ? waHref() : undefined} phoneHref={phone ? linkHref(phone.type, phone.value) : undefined} t={t} />
+        waHref={wa ? waHref() : undefined} phoneHref={phone ? linkHref(phone.type, phone.value) : undefined} t={t}
+        startHref={card.site?.signupNav ? (joinHandle ? `/signup?by=${encodeURIComponent(joinHandle)}` : "/signup") : undefined} />
       {/* The owner's notice — news, an offer, a closure — under the header (src/lib/notice.ts). */}
       <NoticeBar card={card} hi={hiNow} />
 

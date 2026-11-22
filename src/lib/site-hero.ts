@@ -139,7 +139,10 @@ export function heroModel(card: Card, lang: Lang): HeroModel {
   const primary: HeroModel["primary"] = wa
     ? { label: waLabel, href: waHref(card, wa.value), kind: "whatsapp" }
     : call ?? book ?? { label: hi ? "संपर्क करें" : "Contact us", href: "#contact", kind: "book" };
-  const secondary = primary.kind !== "call" && call ? call : primary.kind !== "book" && book ? book : undefined;
+  // A page button the website asked for (a Shubhora partner's "Get a demo", like the SaaS sites' "Book a demo") wins over Call.
+  const cta2 = hero?.cta2 && card.pages.some((p) => !p.hidden && p.slug === hero.cta2!.slug)
+    ? { label: (hi && hero.cta2.labelHi) || hero.cta2.label, href: `#${hero.cta2.slug}`, kind: "book" as const } : null;
+  const secondary = cta2 && primary.kind === "whatsapp" ? cta2 : primary.kind !== "call" && call ? call : primary.kind !== "book" && book ? book : undefined;
 
   /* ---- picture, clip, logo ---- */
   const bp = style?.blueprint;

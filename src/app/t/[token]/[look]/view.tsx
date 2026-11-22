@@ -5,14 +5,18 @@ import QRCode from "qrcode";
 import { SiteView } from "@/components/site-view";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
-import { isShubhoraSellerCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { isShubhoraSellerCard, withoutFreeCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { withQuality } from "@/lib/site-quality";
 import { activeAdvanced, advancedItemStubs, withAdvancedPages } from "@/lib/site-advanced";
 
 export function TestSite({ card, name, n, of }: { card: Card; name: string; n: number; of: number }) {
   const [qr, setQr] = useState("");
   useEffect(() => { QRCode.toDataURL(SITE_URL, { width: 320, margin: 1 }).then(setQr).catch(() => setQr("")); }, []);
   const shown = useMemo(() => {
-    const base = isShubhoraSellerCard(card) ? card : withoutShubhoraLeaks(card);
+    // Drawn exactly as the live website draws it (app/c/[username]/render.tsx): the partner's home order, the new banners and
+    // pictures, the website check's fixes. Without this a test link showed the stored card as it was (old pictures, no plans on home).
+    const seller = isShubhoraSellerCard(card);
+    const base = withQuality(withoutFreeCard(seller ? card : withoutShubhoraLeaks(card), seller));
     if (!activeAdvanced(base.site, base.username)) return base;
     const withPages = withAdvancedPages(base);
     return { ...withPages, pages: [...withPages.pages, ...advancedItemStubs(withPages)] };

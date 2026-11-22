@@ -277,7 +277,8 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
           </div>
         )}
 
-        <AdvHeader x={x} name={c.name} logo={logo} scrolled={scrolled} showCta={!isHome || pastHero} lang={lang} chrome={chrome} onHome={() => (isHome ? jump("top") : open(pages.home))} />
+        <AdvHeader x={x} name={c.name} logo={logo} scrolled={scrolled} showCta={!isHome || pastHero} lang={lang} chrome={chrome} onHome={() => (isHome ? jump("top") : open(pages.home))}
+          startHref={card.site?.signupNav ? (joinHandle ? `/signup?by=${encodeURIComponent(joinHandle)}` : "/signup") : undefined} />
         <NoticeBar card={card} hi={hi} />
 
         <main className={`relative flex-1 nv-page ${moved ? "nv-curtain" : ""}`} key={slug} id="adv-main" tabIndex={-1}>
