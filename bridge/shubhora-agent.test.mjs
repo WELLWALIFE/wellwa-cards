@@ -588,3 +588,43 @@ test("links used in replies are remembered", () => {
   assert.deepEqual(linkKeys(`x ${links.join} y ${links.tutorial} [document]`, links).sort(), ["join", "pdf", "tutorial"]);
   assert.equal(strip(callReply("Niteen", "en")), "Sure 🙏 I'll let Niteen know — as soon as Niteen is free, you'll get a call.");
 });
+
+/* ---- partner programme switched off (22 Nov 2026): a Shubhora number that sells software and websites only ---- */
+test("partner off: four-option menu, no partner words", () => {
+  const m = menuText({ lang: "hi", seller: "JS", cardUrl: links.card, partner: false });
+  assert.doesNotMatch(m, /पार्टनर/);
+  assert.match(m, /4️⃣ अन्य जानकारी/);
+  assert.doesNotMatch(m, /5️⃣/);
+  assert.match(menuText({ lang: "hi", seller: "JS", cardUrl: links.card }), /4️⃣ पार्टनर प्रोग्राम/);
+});
+
+test("partner off: the prompt has no plan, a first rule, and the seller's own link", () => {
+  const off = { ...card, partnerPlan: false, botFiles: [{ label: "MLM software live demo", url: "https://network.shubhora.com/", kind: "link" }] };
+  const sys = buildAgentSystem({ channel: "whatsapp", seller: "JS", card: off, links: { ...links, own: ["https://network.shubhora.com/"] }, override: {}, lang: "hi" });
+  assert.match(sys, /^=== FIRST RULE: NO PARTNER PROGRAMME/);
+  assert.doesNotMatch(sys, /Matching Bonus|Rank Rewards|Sponsor Bonus/);
+  assert.doesNotMatch(sys, new RegExp(links.planVideo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(sys, /network\.shubhora\.com/);
+  assert.match(sys, /· 4 अन्य जानकारी\)/);
+  // everyone else keeps the plan
+  assert.match(buildAgentSystem({ channel: "whatsapp", seller: "Niteen", card, links, override: {}, lang: "hi" }), /PARTNER PROGRAMME/);
+});
+
+test("the seller's own link survives cleaning; an invented shubhora.com page still becomes the card", () => {
+  const l = { ...links, own: ["https://network.shubhora.com/"] };
+  assert.match(cleanLinks("देखिए https://network.shubhora.com/", l), /https:\/\/network\.shubhora\.com\//);
+  assert.match(cleanLinks("देखिए https://shubhora.com/made-up", l), new RegExp(links.card));
+});
+
+test("partner off: menu 4 is 'other', the word 'partner' gets the no-programme answer", async () => {
+  const off = { ...card, partnerPlan: false };
+  const octx = { ...ctx, card: off };
+  const menu = menuText({ lang: "hi", seller: "Niteen", cardUrl: links.card, partner: false });
+  const history = [{ role: "user", content: "hi", at: T0 }, { role: "assistant", content: menu, at: T0 }];
+  const four = await agentTurn({ channel: "whatsapp", text: "4", history, state: {}, contact: {}, ctx: octx, now: T0 + 60_000, complete: fakeModel("x").complete });
+  assert.equal(four.reply, optionReply(5, { lang: "hi", seller: "Niteen", links }));
+  const m = fakeModel("ये नंबर सिर्फ़ सॉफ्टवेयर और वेबसाइट के लिए है जी।");
+  const p = await agentTurn({ channel: "whatsapp", text: "पार्टनर प्रोग्राम", history, state: {}, contact: {}, ctx: octx, now: T0 + 60_000, complete: m.complete });
+  assert.doesNotMatch(p.reply, /Bonus|बोनस/);
+  assert.match(m.calls[0].system, /FIRST RULE: NO PARTNER PROGRAMME/);
+});

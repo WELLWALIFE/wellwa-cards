@@ -74,6 +74,7 @@ export default function AiTrainingPage() {
           <section>
             {sec(2, T("What your AI knows and sends", "आपका AI क्या जानता और भेजता है"), T("Prices, details, common questions, brochures, a demo video.", "दाम, जानकारी, आम सवाल-जवाब, brochure, demo video।"))}
             <BotSiteBox card={card} trainOnly onChanged={(c) => { setCard(c); void load(); }} />
+            {sellsShubhora(card) && <div className="mt-3"><AiPartnerSwitch card={card} onSaved={setCard} hi={hi} /></div>}
           </section>
 
           <section>
@@ -123,6 +124,41 @@ export default function AiTrainingPage() {
           <p className="text-[11px] text-muted">{T("Changing the website (by talking, or writing it again) is on Card & Website.", "Website बदलना (बोलकर, या दोबारा लिखवाना) Card & Website में है।")} <a href="/poster/site" className="font-semibold text-brand-ink underline">{T("Open", "खोलें")}</a></p>
         </>
       )}
+    </div>
+  );
+}
+
+/** A Shubhora partner's card (the assistant sells Shubhora): the same test the assistant uses (bridge/shubhora-kb.mjs isShubhoraCard). */
+const sellsShubhora = (c: Card) => (c.kb ? c.kb === "shubhora" : /shubhora/i.test(c.company ?? "") || /shubhora partner/i.test(c.jobTitle ?? ""));
+
+/** "Partner programme" on / off (owner, 22 Nov 2026): a Shubhora number that sells software and websites only — the AI then never
+ *  talks about the income plan, never sends its video or PDF, and the menu has four options. Saved at once. */
+function AiPartnerSwitch({ card, onSaved, hi }: { card: Card; onSaved: (c: Card) => void; hi: boolean }) {
+  const T = (en: string, h: string) => (hi ? h : en);
+  const on = card.partnerPlan !== false;
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
+  async function flip() {
+    setBusy(true); setNote(null);
+    const next: Card = { ...card, partnerPlan: on ? false : undefined };
+    const r = await publishCard(next).catch(() => ({ ok: false } as { ok: false; error?: string }));
+    setBusy(false);
+    if (!r.ok) { setNote({ text: T("Could not save — try again.", "Save नहीं हुआ — दोबारा try करें।"), bad: true }); return; }
+    onSaved(next); setNote({ text: T("✅ Saved. WhatsApp follows within 5 minutes.", "✅ Save हो गया। WhatsApp पर 5 मिनट में लागू।") });
+  }
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-border bg-surface p-3.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold">{T("Partner programme (income plan)", "Partner programme (income plan)")}</p>
+        <p className="text-xs text-muted">{on
+          ? T("On: the AI explains the Shubhora partner plan and sends its video and PDF.", "On: AI Shubhora partner plan समझाता है और उसका video व PDF भेजता है।")
+          : T("Off: the AI never talks about the partner plan; it sells software and websites only.", "Off: AI partner plan की बात नहीं करता; सिर्फ़ software और website बेचता है।")}</p>
+        {note && <p className={`mt-1 text-xs font-semibold ${note.bad ? "text-danger" : "text-good"}`}>{note.text}</p>}
+      </div>
+      <button type="button" role="switch" aria-checked={on} aria-label={T("Partner programme on / off", "Partner programme on / off")} disabled={busy} onClick={() => void flip()}
+        className={`relative mt-0.5 h-6 w-10 shrink-0 rounded-full transition-colors disabled:opacity-50 ${on ? "bg-good" : "border border-border bg-surface2"}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-all ${on ? "left-[1.15rem]" : "left-0.5"}`} />
+      </button>
     </div>
   );
 }

@@ -297,6 +297,9 @@ export interface Card {
    *  with its own link, and only that page's chat answers as a Shubhora seller — the two are never
    *  mixed into one answer, and the daily posters stay the owner's own. */
   kb?: "shubhora" | "both";
+  /** A Shubhora seller who switched the partner programme off (AI Training): the assistant sells software and websites only and never
+   *  speaks of the income plan (bridge/shubhora-agent.mjs partnerOff). Unset = on. */
+  partnerPlan?: boolean;
   /** Set by the builder when the card was written from the owner's OWN website: the site is the truth, so a
    *  merge into an older card must not keep that card's search title, website / email links or brand art. */
   builtFrom?: "own-site";

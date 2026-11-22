@@ -318,6 +318,46 @@ export function isAdOpener(text) {
   return !!p && p.split(" ").length <= 16 && AD_OPENER_RE.test(p);
 }
 
+/* ================================ the seller's switches ================================ */
+
+/** The card owner switched the partner programme off (AI Training, 22 Nov 2026: a Shubhora company number that sells software
+ *  and websites, never the income plan). Then nothing about the plan, its video or its PDF is said or sent, and the menu has four
+ *  options. Every other partner keeps it — unset means on. */
+export const partnerOff = (card) => card?.partnerPlan === false;
+
+/** The seller's own files and links (AI Training → "Files and links the AI can send") the assistant may share as they are. */
+export function ownLinks(card) {
+  return (Array.isArray(card?.botFiles) ? card.botFiles : [])
+    .map((f) => ({ label: String(f?.label || "").slice(0, 80), url: String(f?.url || "").trim() }))
+    .filter((f) => /^https?:\/\//i.test(f.url))
+    .slice(0, 20);
+}
+
+/** The links for one turn: the seller's own added; with the partner programme off, the plan video and the PDF taken out (a model
+ *  that still writes them has them dropped by cleanLinks). */
+export function turnLinks(ctx) {
+  const own = ownLinks(ctx?.card).map((f) => f.url);
+  const base = { ...(ctx?.links || {}), own };
+  return partnerOff(ctx?.card) ? { ...base, planVideo: "", pdf: "" } : base;
+}
+
+/** The partner programme's parts of the facts and the questions, for a seller who switched it off. */
+export function knowledgeWithoutPartner(text) {
+  // The section runs from its heading to the next heading ("TRUTH RULES:"): its "- …" lines go with it.
+  let skip = false;
+  return String(text || "").split("\n").filter((l) => {
+    if (/^\s*SHUBHORA PARTNER BUSINESS\s*:/i.test(l)) { skip = true; return false; }
+    if (skip && /^[A-Z][A-Z0-9 /()&,'.-]{2,}:/.test(l.trim())) skip = false;
+    return !skip;
+  // "VIDEOS AND DOCUMENTS": the partner-plan video goes, the rest stays.
+  }).map((l) => (/^\s*VIDEOS AND DOCUMENTS/i.test(l) ? l.split(/\s;\s/).filter((x) => !/partner/i.test(x)).join(" ; ") : l)).join("\n");
+}
+const PARTNER_Q = /बिज़नेस प्लान|joining|कमा|income|गारंटी|pakka milega|MLM|chain system|ID लाल|Red \/ Green|लेफ्ट लिंक|left link|पेमेंट कब|closing|रैंक|reward|Sponsor|Renewal Income|partner|पार्टनर/i;
+export function faqWithoutPartner(text) {
+  const blocks = String(text || "").split(/\n(?=Q:)/);
+  return blocks.filter((b) => !(b.startsWith("Q:") && PARTNER_Q.test(b.split("\n")[0]))).join("\n");
+}
+
 /* ================================ fixed texts ================================ */
 
 // The menu in the owner's own format (27 Sep 2026).
@@ -339,9 +379,9 @@ const LANG_LINE = "🌐 You can reply in any language (हिंदी, English,
 
 /** Menu for a new chat. `hi` for Hindi-reading languages, `en` otherwise. Web chat: no card link (they are on it).
  *  `offerLanguage` false drops the language line (they have just chosen a language). */
-export function menuText({ lang = "hi", seller, cardUrl, web = false, offerLanguage = true } = {}) {
+export function menuText({ lang = "hi", seller, cardUrl, web = false, offerLanguage = true, partner = true } = {}) {
   const L = menuLangOf(lang);
-  const opts = MENU_OPTIONS[L].map((o, i) => `${NUM[i]} ${o}`).join("\n");
+  const opts = MENU_OPTIONS[L].filter((_, i) => partner || i !== 3).map((o, i) => `${NUM[i]} ${o}`).join("\n");
   const tail = [];
   if (!web && cardUrl) tail.push(L === "en" ? `🔗 ${seller ? `${seller}'s` : "Our"} card: ${cardUrl}` : `🔗 ${seller ? `${seller} जी का` : "हमारा"} कार्ड: ${cardUrl}`);
   if (offerLanguage) tail.push(LANG_LINE);
@@ -626,7 +666,36 @@ function sellerBlock(card = {}) {
  * The system prompt. `channel` "whatsapp" | "web".
  * `chat` = { fresh, gapMs, known, saved, menuShown, shared[] }
  */
-export function buildAgentSystem({ channel = "whatsapp", seller, card, links, override, lang = "hi", chat = {}, directive = "", now = Date.now() }) {
+export function buildAgentSystem(opts) {
+  const text = buildAgentSystemFull(opts);
+  return partnerOff(opts.card) ? withoutPartnerPrompt(text) : text;
+}
+
+/** The prompt of a seller with the partner programme off: its rules, link lines, examples and facts taken out, and one rule
+ *  that wins over the rest. Works on the text so the full prompt stays one piece for everyone else. */
+function withoutPartnerPrompt(text) {
+  const RULE = "5. NO PARTNER PROGRAMME ON THIS NUMBER: this number does not offer any partner, income, joining, bonus, network or MLM business opportunity. Never explain or offer one and never mention bonuses, pairs, ranks or income. If someone asks, say politely in one line that this number is for software and websites, and offer those. (Software FOR a direct-selling or MLM company is a custom-software need — handle it as 4.)";
+  let t = text
+    .replace(/ · 4 पार्टनर प्रोग्राम · 5 अन्य जानकारी\)/g, " · 4 अन्य जानकारी)")
+    .replace(/^5\. PARTNER PROGRAMME.*$/m, RULE)
+    .replace(/^6\. SOMETHING ELSE \(option 5\)/m, "6. SOMETHING ELSE (option 4)")
+    .replace(/^7\. PDF \/ PPT.*$/m, "7. PDF / PPT / \"details\": there is no PDF to send on this number; send the Shubhora video, or a file or link from the seller's own list that fits.")
+    .replace(/^- Motivate partners.*\n/m, "")
+    .replace(/, an income of their own/g, "")
+    .replace(/ and \S+ helps businesses get it and invites people to the Shubhora partner programme\./, " and helps businesses get it.")
+    .replace(/ On INCOME be exact, not nervous:[^\n]*?(?=\n)/, "")
+    .replace(/^- Partner plan \(Hindi video\).*\n/m, "")
+    .replace(/^- Shubhora presentation PDF.*\n/m, "")
+    .replace(/ AND to join the partner programme/g, "")
+    .replace(/^- "\[MEDIA\] <pdf url>" alone on a line.*\n/m, "");
+  // The salesman examples about income, guarantees and "is it MLM".
+  t = t.replace(/\nCustomer: kitna kama sakte hain\?[\s\S]*?(?=\nCustomer: standard mehenga hai)/, "");
+  const f1 = t.indexOf("=== SHUBHORA FACTS"), f2 = t.indexOf("=== QUESTIONS AND GOOD ANSWERS"), f3 = t.indexOf("\n===", f2 + 5);
+  if (f1 >= 0 && f2 > f1 && f3 > f2) t = t.slice(0, f1) + knowledgeWithoutPartner(t.slice(f1, f2)) + faqWithoutPartner(t.slice(f2, f3)) + t.slice(f3);
+  return `=== FIRST RULE: NO PARTNER PROGRAMME ON THIS NUMBER ===\n${RULE.replace(/^5\. /, "")}\n\n${t}`;
+}
+
+function buildAgentSystemFull({ channel = "whatsapp", seller, card, links, override, lang = "hi", chat = {}, directive = "", now = Date.now() }) {
   const S = seller || "the seller";
   const SJ = lang === "hi" ? `${S} जी` : S;
   const kb = shubhoraTraining(override || {});
@@ -712,7 +781,7 @@ A good salesman creates demand and closes; a beginner scares people off. So:
 - Shubhora presentation PDF (products, plans, the full partner plan of November 2026) — send it as a file on its own line: [MEDIA] ${links.pdf}
 - ${S}'s own card (a live sample of a V-Card): ${links.card}
 - DESIGNS by trade: ${tpl}. Any other trade: there is no separate design — use ${S}'s card as the sample.
-- Shubhora support (account or payment problems): WhatsApp / call ${SHUBHORA_SUPPORT.phone}, ${SHUBHORA_SUPPORT.email}
+- Shubhora support (account or payment problems): WhatsApp / call ${SHUBHORA_SUPPORT.phone}, ${SHUBHORA_SUPPORT.email}${ownLinks(card).map((f) => `\n- ${S}'s own: ${f.label || "link"} → ${f.url}`).join("")}
 
 === TAGS (read by the system; the customer never sees them) ===
 - "[MEDIA] <pdf url>" alone on a line → the PDF goes as a file.
@@ -892,7 +961,7 @@ export function wrongScript(text, lang) {
 export function cleanLinks(text, links, fromCustomer = "") {
   const theirs = String(fromCustomer || "").match(/https?:\/\/[^\s)\]]+/g) || [];
   const allowed = new Set([links.card, links.join, links.pdf, links.productVideo, links.planVideo, links.tutorial,
-    links.gallery, links.pricing, links.disclosures, links.site, ...(links.templates || []).map((t) => t.url),
+    links.gallery, links.pricing, links.disclosures, links.site, ...(links.templates || []).map((t) => t.url), ...(links.own || []),
     ...theirs.map((u) => u.replace(/[.,!?;:'")\]]+$/, ""))].filter(Boolean));
   const siteHost = hostOf(links.site);
   const cardHost = hostOf(links.card);
@@ -1034,7 +1103,8 @@ export async function agentTurn(input) {
   const state = { sent: {}, ...(input.state || {}) };
   state.sent = { ...(state.sent || {}) };
   const seller = ctx.seller || "";
-  const links = ctx.links;
+  const links = turnLinks(ctx);
+  const partner = !partnerOff(ctx.card);
   const q = quickRead(text);
   const recent = (history || []).filter((m) => !m.at || now - m.at < FRESH_AFTER);
   const fresh = recent.length === 0;
@@ -1071,7 +1141,7 @@ export async function agentTurn(input) {
   if (L.asked) {
     const ackMenu = fresh || menuLive;
     const fixed = ackMenu && (lang === "hi" || lang === "en")
-      ? menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, offerLanguage: false })
+      ? menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, offerLanguage: false, partner })
       : languageAck(lang);
     if (fixed) return done({ reply: fixed, reason: `language → ${lang}` });
     // other languages: the AI writes the acknowledgement (and the menu, on a new chat)
@@ -1082,14 +1152,19 @@ export async function agentTurn(input) {
   //    sees the ad in the message) and a generic "I want to know more about …" — the same start, in Hindi.
   const adStart = fresh && (!!contact.fromAd || (!contact.known && isAdOpener(text)));
   if (adStart || (fresh && (q.kind === "opener" || q.kind === "social") && !contact.known)) {
-    return done({ reply: menuText({ lang, seller, cardUrl: links.card, web: !wa }), reason: adStart ? "ad / know-more lead → menu" : "new chat, greeting → menu" });
+    return done({ reply: menuText({ lang, seller, cardUrl: links.card, web: !wa, partner }), reason: adStart ? "ad / know-more lead → menu" : "new chat, greeting → menu" });
   }
 
   // 5. A number (or option name) answering the menu we just sent.
   if (q.choice && (menuLive || (!wa && fresh))) {
-    const fixed = optionReply(q.choice, { lang, seller, links });
+    // Partner programme off: the menu's 4 is "other information"; the words "partner" / "plan" go to the AI, which says
+    // this number has no such programme.
+    const digit = /^\s*(4|४|four|char|chaar|चार)\s*(️?⃣)?\s*[.)]?\s*$/i.test(text);
+    if (!partner && q.choice === 4 && !digit) return aiTurn({ directive: "The customer asked about a partner / income / joining programme. This number has none: say so politely in one line and offer what it does have (software, websites)." });
+    const choice = !partner && q.choice === 4 ? 5 : q.choice;
+    const fixed = optionReply(choice, { lang, seller, links });
     if (fixed) return done({ reply: fixed, reason: `menu option ${q.choice}` });
-    return aiTurn({ directive: `The customer chose option ${q.choice} (${MENU_OPTIONS.en[q.choice - 1]}) from the menu. Handle it as WHAT YOU DO says for that option.` });
+    return aiTurn({ directive: `The customer chose option ${choice} (${MENU_OPTIONS.en[choice - 1]}) from the menu. Handle it as WHAT YOU DO says for that option.` });
   }
 
   // 6. "Call me" / "baat karni hai" — the one moment the partner is brought in, in the owner's words. On the website
@@ -1162,11 +1237,11 @@ Reply as WHAT YOU DO 2e says. No [[ALERT]] for this.`);
         res = await complete({ system: redo ? `${system}\n\nIMPORTANT — rewrite your previous draft: ${redo}` : system, messages, maxTokens: 700, temperature: 0.5 });
       } catch (e) {
         if (out) break; // keep the first draft
-        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa }) : fallbackLine(seller, lang), alert: fresh ? null : `AI error — please reply yourself: "${String(text).slice(0, 80)}"`, reason: `ai error: ${e?.message || e}` });
+        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa, partner }) : fallbackLine(seller, lang), alert: fresh ? null : `AI error — please reply yourself: "${String(text).slice(0, 80)}"`, reason: `ai error: ${e?.message || e}` });
       }
       if (!res || res.blocked || !String(res.text || "").trim()) {
         if (out) break;
-        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa }) : fallbackLine(seller, lang), alert: fresh ? null : `No AI answer — please reply yourself: "${String(text).slice(0, 80)}"`, reason: "ai empty/blocked" });
+        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa, partner }) : fallbackLine(seller, lang), alert: fresh ? null : `No AI answer — please reply yourself: "${String(text).slice(0, 80)}"`, reason: "ai empty/blocked" });
       }
       out = parseTags(res.text);
       if (out.personal || out.skip || out.menu) break;
@@ -1183,7 +1258,7 @@ Reply as WHAT YOU DO 2e says. No [[ALERT]] for this.`);
     const askWhat = lang === "en" ? "Sure! What would you like to know? 🙂" : "जी, बताइए — क्या जानना चाहते हैं? 🙂";
     if (out.menu) {
       if (!fresh && menuShown) return done({ reply: askWhat, reason: "menu asked again → short prompt" });
-      return done({ reply: menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa }), reason: "AI chose the menu" });
+      return done({ reply: menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, partner }), reason: "AI chose the menu" });
     }
     // The card chat always answers something (the visitor is waiting in the box).
     if (!wa && (out.personal || out.skip || !out.text)) return done({ reply: askWhat, alert: out.alert, reason: "web: nothing to say → prompt" });
@@ -1227,7 +1302,7 @@ export async function agentFollowup({ history = [], state = {}, ctx = {}, step =
   }
   if (typeof complete !== "function") return null;
   const seller = ctx.seller || "";
-  const links = ctx.links;
+  const links = turnLinks(ctx);
   const shared = Object.keys(state.sent || {});
   const goal = step > 2
     ? "This is a weekly check-in: no pitch — one small useful tip about getting more customers online (WhatsApp, Google reviews, a daily poster, replying fast), and that they can ask anything."

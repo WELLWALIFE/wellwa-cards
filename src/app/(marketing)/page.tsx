@@ -10,7 +10,7 @@ export const metadata: Metadata = pageMeta("/", {
 import {
   ArrowRight, BadgeCheck, Bot, CalendarDays, Check, CheckCheck, Clapperboard, Globe,
   Image as ImageIcon, LayoutDashboard, Megaphone, MessageCircle, Mic, Play, Send, ShieldCheck,
-  Smartphone, Sparkles, Star, UserRoundPlus, Workflow,
+  Network, Smartphone, Sparkles, Star, UserRoundPlus, Workflow,
 } from "lucide-react";
 import { SERVICES } from "@/lib/services";
 import { ALL_TEMPLATES } from "@/lib/template-catalog";
@@ -19,6 +19,7 @@ import { countBy, toLite } from "@/lib/template-lite";
 import { GST_PCT, PRO_CUSTOM } from "@/lib/billing";
 
 const SOLUTION_ICONS: Record<string, typeof Bot> = {
+  "mlm-software": Network,
   "ai-software": Bot,
   "business-automation": Workflow,
   "crm-software": LayoutDashboard,

@@ -81,9 +81,10 @@ export async function GET(
   return Response.json({
     v2: true,
     title: `${seller} जी का AI असिस्टेंट`,
-    subtitle: "V-Card, सर्विसेज़ और पार्टनर प्रोग्राम",
+    subtitle: card.partnerPlan === false ? "वेबसाइट, V-Card और सॉफ्टवेयर" : "V-Card, सर्विसेज़ और पार्टनर प्रोग्राम",
     greeting: `नमस्ते जी! 🙏 मैं ${seller} जी का AI असिस्टेंट हूँ। आप किस बारे में जानना चाहते हैं?`,
-    chips: WEB_CHIPS.map((c: { label: string }) => c.label),
+    // Partner programme off: no "पार्टनर प्रोग्राम" chip.
+    chips: WEB_CHIPS.filter((_: unknown, i: number) => card.partnerPlan !== false || i !== 3).map((c: { label: string }) => c.label),
     placeholder: "अपना सवाल लिखिए…",
   });
 }

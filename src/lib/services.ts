@@ -15,7 +15,7 @@ export type Service = {
   modulesTitle: string;
   modules: { title: string; body: string }[];
   faqs: { q: string; a: string }[];
-  /** Optional plan-type grid (currently unused). */
+  /** Optional plan-type grid (the MLM software page shows its plan types). */
   planTypes?: { name: string; body: string }[];
   /** A real deployment we can show — honest proof beats claimed numbers. */
   liveBuild?: {
@@ -26,6 +26,57 @@ export type Service = {
 };
 
 export const SERVICES: Service[] = [
+  {
+    // Shubhora Network (network.shubhora.com), the direct-selling software (owner, 22 Nov 2026). Every fact below is from that site.
+    slug: "mlm-software",
+    tag: "Direct selling",
+    name: "MLM & Direct Selling Software — Shubhora Network",
+    short: "Your company's own admin panel, member app and website, with compensation plans, payouts, KYC, shop and compliance built in.",
+    metaTitle: "MLM & Direct Selling Software — Shubhora Network",
+    metaDescription: "Direct selling (MLM) software for Indian companies: binary, level, matrix, hybrid and performance plans, wallets and payouts, KYC, GST, member app. Live demo, no sign-up.",
+    heroBody: "Shubhora Network gives your company its own branded web address, admin panel and member app, with compensation plans, payouts, KYC, shop and compliance built in. Open a live demo company for your plan type in one click, or have a demo made with your own plan.",
+    painTitle: "What it replaces",
+    pains: [
+      "Closings worked out in spreadsheets, and members who doubt their payout figures.",
+      "Old software that breaks when the plan changes, with nobody to fix it.",
+      "No KYC, TDS or grievance record when the Direct Selling Rules ask for one.",
+    ],
+    modulesTitle: "What is built in",
+    modules: [
+      { title: "Every plan type", body: "Binary, level (unilevel), hybrid, matrix and performance plans, with matching, club / royalty, fast start and retail profit incomes, daily or monthly closing and income limits." },
+      { title: "Paisa-perfect wallets", body: "Double-entry ledger, TDS and admin charge on payouts, bank file export, e-pins and stockists." },
+      { title: "Built for Indian rules", body: "Direct Selling Rules 2021 grievance desk, KYC before payout, GST invoices, TDS return data and Tally export." },
+      { title: "Member app", body: "Installs on any phone in English or Hindi: team tree, incomes, shop, withdrawals and support." },
+      { title: "Secure by default", body: "A separate database per company, 2-step login for staff, login lockout and an audit log of every action." },
+      { title: "Reports and dashboards", body: "36 ready reports with CSV export, the payout ratio on every closing, and a dry run before any money moves." },
+    ],
+    planTypes: [
+      { name: "Binary + Level (hybrid)", body: "Direct bonus, level income on the sponsor tree and daily left / right pair matching with carry forward." },
+      { name: "Forced Matrix 3 × 7", body: "A 3-wide forced matrix with automatic spill-over; level income up to 7 levels of the matrix." },
+      { name: "Performance (differential) + leadership", body: "Monthly slab % on group business minus the legs (differential), plus a leadership bonus. Product based." },
+    ],
+    liveBuild: {
+      eyebrow: "Try it live, no sign-up",
+      title: "One demo company per plan type, already full of members and closings",
+      body: "Open the admin panel, the member app or the company website with one click and look around freely; nothing you change is saved. Hosting, backups and updates are included in every plan.",
+      points: [
+        "Your own branded web address, admin panel and member app",
+        "Plans and prices for every company size on the Network site",
+        "Supports compliant direct selling only — no recruitment-only or money-circulation plans",
+      ],
+      links: [
+        { label: "See Shubhora Network", href: "https://network.shubhora.com/" },
+        { label: "Request a demo", href: "/contact" },
+      ],
+    },
+    faqs: [
+      { q: "Which compensation plans does it support?", a: "Binary, level (unilevel), hybrid, matrix and performance (differential) plans, with matching, club / royalty, fast start and retail profit incomes, and daily or monthly closing." },
+      { q: "Can I see it before I pay?", a: "Yes. Open a live demo company for your plan type on network.shubhora.com — admin panel, member app and company website — with no sign-up, or ask for a demo made with your own plan." },
+      { q: "Is it ready for Indian compliance?", a: "It has a Direct Selling Rules 2021 grievance desk, KYC before payout, GST invoices, TDS on payouts with return data, and Tally export." },
+      { q: "Do members get an app?", a: "Yes. The member app installs on any phone, in English or Hindi, with the team tree, incomes, shop, withdrawals and support." },
+      { q: "What does it cost?", a: "Plans are priced by company size, with hosting, backups and updates included; the current plans are on network.shubhora.com. SMS, WhatsApp, payment gateway charges and your domain are paid by you to those providers." },
+    ],
+  },
   {
     slug: "ai-software",
     tag: "AI",

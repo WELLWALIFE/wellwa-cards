@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowRight, Bot, Check, LayoutDashboard, Megaphone, MessageCircle,
+  ArrowRight, Bot, Network, Check, LayoutDashboard, Megaphone, MessageCircle,
   Smartphone, Workflow, X,
 } from "lucide-react";
 import { SERVICES, getService } from "@/lib/services";
@@ -14,6 +14,7 @@ import { OG_IMAGE } from "@/lib/site-brand";
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com").replace(/\/$/, "");
 
 const ICONS = {
+  "mlm-software": Network,
   "ai-software": Bot,
   "business-automation": Workflow,
   "crm-software": LayoutDashboard,
