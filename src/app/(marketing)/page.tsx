@@ -19,7 +19,7 @@ import { countBy, toLite } from "@/lib/template-lite";
 import { GST_PCT, PRO_CUSTOM } from "@/lib/billing";
 
 const SOLUTION_ICONS: Record<string, typeof Bot> = {
-  "mlm-software": Network,
+  "direct-selling-software": Network,
   "ai-software": Bot,
   "business-automation": Workflow,
   "crm-software": LayoutDashboard,

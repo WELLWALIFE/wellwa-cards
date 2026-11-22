@@ -28,7 +28,7 @@ export type Service = {
 export const SERVICES: Service[] = [
   {
     // Shubhora Network (network.shubhora.com), the direct-selling software (owner, 22 Nov 2026). Every fact below is from that site.
-    slug: "mlm-software",
+    slug: "direct-selling-software",
     tag: "Direct selling",
     name: "MLM & Direct Selling Software — Shubhora Network",
     short: "Your company's own admin panel, member app and website, with compensation plans, payouts, KYC, shop and compliance built in.",

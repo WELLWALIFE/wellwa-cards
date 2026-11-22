@@ -16,7 +16,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/solutions/mlm-software", destination: "/solutions", permanent: true },
+      // The old MLM page was taken down with a permanent redirect, which browsers keep: the new page (Shubhora Network, 22 Nov 2026)
+      // lives under a new address, and the old one leads to it.
+      { source: "/solutions/mlm-software", destination: "/solutions/direct-selling-software", permanent: false },
       // The APK is gone (owner's call, 24 Sep 2026) — every old download link now opens the "Install app" page.
       { source: "/poster/Shubhora.apk", destination: "/app", permanent: false },
       { source: "/poster/:file(.*\\.apk)", destination: "/app", permanent: false },

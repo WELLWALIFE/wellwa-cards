@@ -14,7 +14,7 @@ import { OG_IMAGE } from "@/lib/site-brand";
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com").replace(/\/$/, "");
 
 const ICONS = {
-  "mlm-software": Network,
+  "direct-selling-software": Network,
   "ai-software": Bot,
   "business-automation": Workflow,
   "crm-software": LayoutDashboard,

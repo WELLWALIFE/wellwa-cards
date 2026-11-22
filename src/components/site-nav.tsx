@@ -14,7 +14,7 @@ const links: { href: string; label: string; from?: "xl" | "menu" }[] = [
   { href: "/features", label: "Business Suite" },
   { href: "/pricing", label: "Pricing" },
   { href: "/templates", label: "Templates", from: "menu" },
-  { href: "/solutions/mlm-software", label: "MLM Software", from: "xl" },
+  { href: "/solutions/direct-selling-software", label: "MLM Software", from: "xl" },
   { href: "/solutions", label: "Solutions", from: "xl" },
   { href: "/work", label: "Work", from: "menu" },
   { href: "/about", label: "About", from: "xl" },
@@ -35,7 +35,7 @@ export function SiteNav() {
 
         <nav className="hidden lg:flex items-center gap-0.5">
           {links.map((l) => {
-            const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href) && !(l.href === "/solutions" && pathname.startsWith("/solutions/mlm-software"));
+            const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href) && !(l.href === "/solutions" && pathname.startsWith("/solutions/direct-selling-software"));
             return (
               <Link
                 key={l.href}
