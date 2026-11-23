@@ -26,7 +26,7 @@ import { activeAdvanced, advancedItemStubs, findAdvancedItem, homeSlugOf, withAd
 import { publicCard, sitePending } from "@/lib/site-ready";
 import { restAsService } from "@/lib/poster-server";
 import { addonOn } from "@/lib/addons-server";
-import { publicRateFor } from "@/lib/jewellery-server";
+import { publicCatalogFor, publicRateFor } from "@/lib/jewellery-server";
 import { packageOf, premiumTier } from "@/lib/site-tier";
 import { withQuality } from "@/lib/site-quality";
 import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutFreeCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
@@ -176,7 +176,10 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
     try { return ownerId && (await addonOn(ownerId, "jewellery")) ? await publicRateFor(ownerId) : null; } catch { return null; }
   })();
   const stored1: Card = stored0.site ? { ...stored0, site: { ...stored0.site, staffLogin: ordersOn, premiumOn: appOn } as Card["site"] } : stored0;
-  const stored: Card = { ...stored1, jewelRate };
+  const jewelCatalog = await (async () => {
+    try { return ownerId && (await addonOn(ownerId, "jewellery")) ? await publicCatalogFor(ownerId, 12) : null; } catch { return null; }
+  })();
+  const stored: Card = { ...stored1, jewelRate, jewelCatalog };
   // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
   // card gets it here, for this request only, hidden from the tab row (owner's call, 2 Oct 2026).
   const shPage = hasShubhoraPage(stored) ? null : shubhoraPage({ visible: false });

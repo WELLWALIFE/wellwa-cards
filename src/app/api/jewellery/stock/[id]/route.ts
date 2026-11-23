@@ -1,6 +1,7 @@
 // One piece: GET it (with the bill it was sold on); PATCH to edit it (until it is sold) or move it: back in stock, out on approval,
 // melted / broken, returned to the supplier (with a note). "Sold" is only ever set by a bill.
 import { NextResponse } from "next/server";
+import { SUPA_URL } from "@/lib/admin-guard";
 import { restAsService } from "@/lib/poster-server";
 import { jwCtx, jwDenied, jwHas } from "@/lib/jewellery-server";
 import { stockById } from "@/lib/jewellery-stock-server";
@@ -33,7 +34,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
   let patch: Partial<StockRow>;
   if (b.action === "edit") {
     if (item.status === "sold") return NextResponse.json({ error: "A sold piece cannot be changed. Cancel its bill first." }, { status: 400 });
-    const f = cleanStockFields(b);
+    const f = cleanStockFields(b, SUPA_URL);
     if (!f.gross_mg) return NextResponse.json({ error: "Type the gross weight." }, { status: 400 });
     if (!setup.purities.some((p) => p.key === f.purity)) return NextResponse.json({ error: "Pick the purity." }, { status: 400 });
     if (f.huid && f.huid.length !== 6) return NextResponse.json({ error: "HUID is 6 letters / digits." }, { status: 400 });

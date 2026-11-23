@@ -303,6 +303,8 @@ export interface Card {
   /** Today's gold / silver rate of a Shubhora Jewellery shop (lib/jewellery-server.ts publicRateFor). Put on the card for each request
    *  only (c/[username]/render.tsx), never saved; drawn as the "Today's rate" strip on the V-Card and the website. */
   jewelRate?: { day: string; rows: { label: string; metal: string; paise: number; unit: string }[] } | null;
+  /** A Jewellery shop's stock for its website (lib/jewellery-server.ts publicCatalogFor) — put on the card for each request only. */
+  jewelCatalog?: { count: number; priced: boolean; items: { id: string; tag: string; type: string; name: string; purity: string; netMg: number; grossMg: number; huid: string; size: string; photo: string; fromPaise: number }[] } | null;
   /** Set by the builder when the card was written from the owner's OWN website: the site is the truth, so a
    *  merge into an older card must not keep that card's search title, website / email links or brand art. */
   builtFrom?: "own-site";

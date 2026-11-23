@@ -2,6 +2,8 @@
 // The piece's form (add and edit): item type, purity, weights, stone value, HUID, size, where it is kept, where it came from, and
 // what it cost (owner only). Making / wastage come from the item type (Settings) unless "own making" is ticked for this piece.
 import { useMemo, useState } from "react";
+import { Camera, LoaderCircle } from "lucide-react";
+import { uploadImage } from "@/lib/poster-client";
 import { grams, mgOf, paiseOf, type JwSetup, type MakingKind } from "@/lib/jewellery";
 import type { StockRow } from "@/lib/jewellery-stock";
 import { JwTip } from "@/components/jewellery/jw-tip";
@@ -9,6 +11,7 @@ import { JwTip } from "@/components/jewellery/jw-tip";
 export type StockDraft = {
   item_type: string; purity: string; descr: string; pieces: string; gross: string; stone: string; net: string; stoneRs: string;
   huid: string; size: string; counter: string; source: string; costRs: string; ownMaking: boolean; making: MakingKind; makingValue: string; wastage: string;
+  photo: string;
 };
 const r2 = (paise: number) => (paise ? String(paise / 100) : "");
 const g3 = (mg: number) => (mg ? String(mg / 1000) : "");
@@ -16,12 +19,13 @@ const g3 = (mg: number) => (mg ? String(mg / 1000) : "");
 export function draftOf(s: StockRow | null, setup: JwSetup, keep?: Partial<StockDraft>): StockDraft {
   const it = setup.items[0];
   const pur = setup.purities.find((p) => p.on && p.metal === "gold" && p.fine < 999) ?? setup.purities.find((p) => p.on);
-  if (!s) return { item_type: it?.key ?? "", purity: pur?.key ?? "", descr: "", pieces: "1", gross: "", stone: "", net: "", stoneRs: "", huid: "", size: "", counter: "", source: "", costRs: "", ownMaking: false, making: "per_g", makingValue: "", wastage: "", ...keep };
+  if (!s) return { item_type: it?.key ?? "", purity: pur?.key ?? "", descr: "", pieces: "1", gross: "", stone: "", net: "", stoneRs: "", huid: "", size: "", counter: "", source: "", costRs: "", ownMaking: false, making: "per_g", makingValue: "", wastage: "", photo: "", ...keep };
   return {
     item_type: s.item_type, purity: s.purity, descr: s.descr, pieces: String(s.pieces || 1), gross: g3(s.gross_mg), stone: g3(s.stone_mg),
     net: s.net_mg !== s.gross_mg - s.stone_mg ? g3(s.net_mg) : "", stoneRs: r2(s.stone_paise), huid: s.huid, size: s.size, counter: s.counter, source: s.source,
     costRs: r2(s.cost_paise), ownMaking: !!s.making, making: s.making || "per_g",
     makingValue: s.making === "pct" ? String(s.making_value / 100) : r2(s.making_value), wastage: s.wastage_bp ? String(s.wastage_bp / 100) : "",
+    photo: s.photo ?? "",
   };
 }
 
@@ -34,12 +38,14 @@ export function bodyOf(d: StockDraft): Record<string, unknown> {
     huid: d.huid, size: d.size, counter: d.counter, source: d.source, cost_paise: paiseOf(d.costRs),
     making: d.ownMaking ? d.making : "", making_value: d.ownMaking ? (d.making === "pct" ? Math.round(n(d.makingValue) * 100) : paiseOf(d.makingValue)) : 0,
     wastage_bp: d.ownMaking ? Math.round(n(d.wastage) * 100) : 0,
+    photo: d.photo,
   };
 }
 
 export function StockForm({ d, set, setup, owner, hi }: { d: StockDraft; set: (p: Partial<StockDraft>) => void; setup: JwSetup; owner: boolean; hi: boolean }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const [more, setMore] = useState(!!(d.counter || d.source || d.costRs || d.ownMaking));
+  const [uploading, setUploading] = useState(false);
   const purities = useMemo(() => setup.purities.filter((p) => p.on), [setup]);
   const net = Math.max(0, mgOf(d.gross) - mgOf(d.stone));
   const inp = "w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm outline-none focus:border-brand";
@@ -63,6 +69,19 @@ export function StockForm({ d, set, setup, owner, hi }: { d: StockDraft; set: (p
         <label><span className={lab}>{T("Pieces", "नग")}<JwTip k="Pieces" /></span><input className={inp} inputMode="numeric" value={d.pieces} onChange={(e) => set({ pieces: e.target.value })} /></label>
       </div>
       {huidBad && <p className="text-xs font-semibold text-danger">{T("HUID is 6 letters / digits (on the hallmark).", "HUID 6 अक्षर / अंक का होता है (हॉलमार्क पर)।")}</p>}
+      <div className="flex items-center gap-3">
+        {d.photo
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={d.photo} alt="" className="h-16 w-16 rounded-xl border border-border object-cover" />
+          : <span className="grid h-16 w-16 place-items-center rounded-xl border border-dashed border-border text-[10px] text-muted">{T("No photo", "फ़ोटो नहीं")}</span>}
+        <div className="space-y-1">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold">
+            {uploading ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />} {d.photo ? T("Change photo", "फ़ोटो बदलें") : T("Add photo (for the website)", "फ़ोटो जोड़ें (वेबसाइट के लिए)")}
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; setUploading(true); const url = await uploadImage(f, "product"); setUploading(false); if (url) set({ photo: url }); }} />
+          </label>
+          {d.photo && <button type="button" onClick={() => set({ photo: "" })} className="block text-[11px] text-danger">{T("Remove photo", "फ़ोटो हटाएँ")}</button>}
+        </div>
+      </div>
       <label className="block"><span className={lab}>{T("Description (optional)", "विवरण (optional)")}<JwTip k="Description (optional)" /></span><input className={inp} value={d.descr} onChange={(e) => set({ descr: e.target.value })} placeholder={T("e.g. Ladies ring, ruby", "जैसे लेडीज़ अंगूठी, रूबी")} /></label>
       <button type="button" onClick={() => setMore(!more)} className="text-xs font-semibold text-brand-ink">{more ? "−" : "+"} {T("Where kept, from where, cost, own making", "कहाँ रखा, कहाँ से आया, लागत, अलग मेकिंग")}</button>
       {more && (

@@ -25,6 +25,7 @@ const JW_USE: [string, string, string, string][] = [
   ["Orders and repairs", "ऑर्डर और रिपेयर", "Book with advance (lock today's rate if asked), give to karigar, mark ready — the customer gets a WhatsApp; deliver with the bill.", "एडवांस लेकर बुक करें (चाहें तो रेट lock), कारीगर को दें, तैयार करें — ग्राहक को WhatsApp; बिल से दें।"],
   ["Karigar ledger", "कारीगर का खाता", "Gold given and work received in fine weight, wastage allowed, labour and money paid.", "दिया सोना और आया माल fine वज़न में, घटत, मज़दूरी और दिए पैसे।"],
   ["Stock and tags", "स्टॉक और टैग", "Add every piece — it gets a tag number and a barcode label to print. Selling the tag takes it out of stock.", "हर पीस चढ़ाएँ — टैग नंबर और बारकोड लेबल मिलेगा। बिकते ही स्टॉक से हटेगा।"],
+  ["Your website sells too", "वेबसाइट भी बेचती है", "Every piece in stock shows on your website with its photo and a “from ₹” price at today's rate; customers ask about it on WhatsApp. Add a photo when you add stock.", "स्टॉक का हर पीस वेबसाइट पर फ़ोटो और आज के रेट से “₹… से शुरू” दाम के साथ; ग्राहक WhatsApp पर पूछते हैं। स्टॉक चढ़ाते समय फ़ोटो जोड़ें।"],
   ["Evening: day close", "शाम: डे क्लोज़", "Reports → Today: sale, GST, money by cash / UPI, old gold — send it to yourself on WhatsApp. Excel for the CA.", "रिपोर्ट → आज: बिक्री, GST, cash / UPI पैसे, पुराना सोना — खुद को WhatsApp करें। CA के लिए Excel।"],
 ];
 const SILAI_USE: [string, string, string, string][] = [

@@ -60,3 +60,18 @@ test("Code 128-B: every symbol 11 modules, the stop 13; it decodes back to the t
   assert.equal(syms.at(-1), (104 + vals.reduce((a, v, i) => a + v * (i + 1), 0)) % 103);
   assert.throws(() => S.code128("é"));
 });
+
+test("website pieces: only in stock, 'from ₹' = net × today's rate rounded down to ₹10, no price without a rate; photos only from our storage", () => {
+  const rows = [
+    { id: "a", tag: "RI00001", status: "in_stock", item_type: "ring", descr: "", purity: "g22", net_mg: 5000, gross_mg: 5200, huid: "AB12CD", size: "14", photo: "" },
+    { id: "b", tag: "RI00002", status: "sold", item_type: "ring", descr: "", purity: "g22", net_mg: 5000, gross_mg: 5000, huid: "", size: "", photo: "" },
+  ];
+  const [p, ...rest] = S.publicPieces(rows, setup, () => 660183);
+  assert.equal(rest.length, 0);
+  assert.equal(p.name, "Ring"); assert.equal(p.purity, "22K (916)");
+  assert.equal(p.fromPaise, 3300000);                       // ₹6,601.83 × 5 g = ₹33,009.15 → ₹33,000
+  assert.equal(S.publicPieces(rows, setup, () => 0)[0].fromPaise, 0);
+  const base = "https://x.supabase.co";
+  assert.equal(S.cleanPhotoUrl(`${base}/storage/v1/object/public/media/a.jpg`, base), `${base}/storage/v1/object/public/media/a.jpg`);
+  assert.equal(S.cleanPhotoUrl("https://evil.com/a.jpg", base), "");
+});

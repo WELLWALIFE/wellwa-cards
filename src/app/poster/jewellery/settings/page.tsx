@@ -82,6 +82,12 @@ export default function JewellerySettings() {
       </section>
 
       <label className={`${box} flex cursor-pointer items-start gap-3`}>
+        <input type="checkbox" checked={s.showCatalogue} onChange={(e) => set({ showCatalogue: e.target.checked })} className="mt-0.5 h-4 w-4" />
+        <span><span className="block text-sm font-bold">{T("Show my stock on my website", "मेरा स्टॉक मेरी वेबसाइट पर दिखाएँ")}</span>
+          <span className="block text-xs text-muted">{T("Every piece in stock, with its photo, weight, purity, HUID and a “from ₹” price (the metal at today's rate; making, stones and GST extra). Sold pieces go off by themselves.", "स्टॉक का हर पीस — फ़ोटो, वज़न, purity, HUID और “₹… से शुरू” दाम (आज के रेट से धातु; मेकिंग, नग और GST अलग)। बिकते ही अपने-आप हट जाता है।")}</span></span>
+      </label>
+
+      <label className={`${box} flex cursor-pointer items-start gap-3`}>
         <input type="checkbox" checked={s.showRate} onChange={(e) => set({ showRate: e.target.checked })} className="mt-0.5 h-4 w-4" />
         <span><span className="block text-sm font-bold">{T("Show today's rate on my website and V-Card", "आज का रेट मेरी वेबसाइट और V-Card पर दिखाएँ")}</span>
           <span className="block text-xs text-muted">{T("The purities switched on below, gold per 10 g and silver per 1 kg. A rate older than 3 days is not shown.", "नीचे चालू purity — सोना 10 g, चाँदी 1 kg के हिसाब से। 3 दिन से पुराना रेट नहीं दिखता।")}</span></span>

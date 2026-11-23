@@ -23,10 +23,10 @@ export type StockRow = {
   gross_mg: number; stone_mg: number; net_mg: number; stone_paise: number;
   making: "" | MakingKind; making_value: number; wastage_bp: number;
   huid: string; size: string; counter: string; source: string; cost_paise: number;
-  bill_id: string | null; sold_at: string | null; status_note: string;
+  bill_id: string | null; sold_at: string | null; status_note: string; photo: string;
   created_by_name: string; created_at: string; updated_at: string;
 };
-export const STOCK_COLS = "id,owner_id,seq,tag,status,item_type,descr,purity,pieces,gross_mg,stone_mg,net_mg,stone_paise,making,making_value,wastage_bp,huid,size,counter,source,cost_paise,bill_id,sold_at,status_note,created_by_name,created_at,updated_at";
+export const STOCK_COLS = "id,owner_id,seq,tag,status,item_type,descr,purity,pieces,gross_mg,stone_mg,net_mg,stone_paise,making,making_value,wastage_bp,huid,size,counter,source,cost_paise,bill_id,sold_at,status_note,photo,created_by_name,created_at,updated_at";
 
 const int = (v: unknown, min: number, max: number, d: number) => {
   const n = Math.round(Number(v));
@@ -47,8 +47,15 @@ export const cleanTag = (v: unknown) => String(v ?? "").toUpperCase().replace(/[
 export const cleanHuid = (v: unknown) => String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 export const validHuid = (h: string) => /^[A-Z0-9]{6}$/.test(h);
 
+/** A photo link only from the app's own storage (uploaded in the app); "" otherwise. */
+export function cleanPhotoUrl(v: unknown, storageBase: string): string {
+  const u = typeof v === "string" ? v.trim() : "";
+  const base = `${storageBase.replace(/\/$/, "")}/storage/v1/object/public/`;
+  return u.startsWith(base) && u.length < 600 && !/[\s"'<>]/.test(u) ? u : "";
+}
+
 /** The app's fields for a piece, made safe (the server sets owner, tag, status). */
-export function cleanStockFields(b: Record<string, unknown>) {
+export function cleanStockFields(b: Record<string, unknown>, storageBase = "") {
   const making = b.making === "per_g" || b.making === "pct" || b.making === "piece" ? b.making : "";
   const grossMg = int(b.gross_mg, 0, 1e9, 0), stoneMg = int(b.stone_mg, 0, 1e9, 0);
   const netTyped = int(b.net_mg, 0, 1e9, 0);
@@ -58,6 +65,7 @@ export function cleanStockFields(b: Record<string, unknown>) {
     stone_paise: int(b.stone_paise, 0, 1e11, 0), making: making as StockRow["making"], making_value: int(b.making_value, 0, 1e10, 0),
     wastage_bp: int(b.wastage_bp, 0, 5000, 0), huid: cleanHuid(b.huid), size: txt(b.size, 20), counter: txt(b.counter, 30),
     source: txt(b.source, 80), cost_paise: int(b.cost_paise, 0, 1e12, 0),
+    photo: storageBase ? cleanPhotoUrl(b.photo, storageBase) : "",
   };
 }
 
@@ -101,4 +109,25 @@ export function code128(text: string): number[] {
   });
   const check = (104 + vals.reduce((a, v, i) => a + v * (i + 1), 0)) % 103;
   return [104, ...vals, check, 106].flatMap((v) => [...C128[v]].map(Number));
+}
+
+/* ---------------- the website catalogue (phase 6) ---------------- */
+
+/** One piece as the public sees it: no cost, no counter, no who-added. fromPaise: the metal at today's rate (net × the purity's
+ *  rate), rounded down to ₹10 — shown as "from ₹X" (making, stones and GST are added at the shop); 0 when there is no fresh rate. */
+export type PublicPiece = { id: string; tag: string; type: string; name: string; purity: string; netMg: number; grossMg: number; huid: string; size: string; photo: string; fromPaise: number };
+export function publicPieces(
+  rows: Pick<StockRow, "id" | "tag" | "status" | "item_type" | "descr" | "purity" | "net_mg" | "gross_mg" | "huid" | "size" | "photo">[],
+  setup: Pick<JwSetup, "items" | "purities">, rateOf: (purityKey: string) => number,
+): PublicPiece[] {
+  return rows.filter((r) => r.status === "in_stock").map((r) => {
+    const it = setup.items.find((i) => i.key === r.item_type);
+    const p = setup.purities.find((x) => x.key === r.purity);
+    const rate = rateOf(r.purity);
+    return {
+      id: r.id, tag: r.tag, type: r.item_type, name: r.descr || it?.en || "Jewellery", purity: p?.label ?? r.purity,
+      netMg: r.net_mg, grossMg: r.gross_mg, huid: r.huid, size: r.size, photo: r.photo ?? "",
+      fromPaise: rate > 0 ? Math.floor((rate * r.net_mg) / 1000 / 1000) * 1000 : 0,
+    };
+  });
 }

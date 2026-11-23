@@ -99,6 +99,8 @@ export type JwSetup = {
   staff: Record<string, { title: string; rights: JwRight[] }>;
   /** Today's rate is shown on the shop's website and V-Card (and the rate poster can be shared). */
   showRate: boolean;
+  /** The stock (pieces in stock) on the shop's website with a "from ₹" price at today's rate (phase 6). */
+  showCatalogue: boolean;
   /** Gold saving scheme (phase 5): off until the shop switches it on after the legal note; its plans. */
   schemeOn: boolean;
   plans: SchemePlan[];
@@ -115,7 +117,7 @@ export const DEFAULT_TERMS = "Goods once sold can be exchanged as per shop polic
 export const DEFAULT_JW_SETUP: JwSetup = {
   purities: DEFAULT_PURITIES, items: DEFAULT_ITEM_TYPES, gstBp: 300, gstMakingBp: 300, stateCode: "", gstin: "", bis: "",
   billPrefix: "INV", estimatePrefix: "EST", roundTo: 1, counterDiscountBp: 1000, panAbovePaise: 20000000, oldGoldDeductBp: 200,
-  terms: DEFAULT_TERMS, bank: "", shopName: "", address: "", phone: "", staff: {}, showRate: true,
+  terms: DEFAULT_TERMS, bank: "", shopName: "", address: "", phone: "", staff: {}, showRate: true, showCatalogue: true,
   schemeOn: false, plans: DEFAULT_PLANS, girviOn: false, girviLicence: "", girviRateBp: 150, girviMinDays: 30, girviLtvBp: 7500, girviMonths: 12,
 };
 
@@ -165,6 +167,7 @@ export function cleanJwSetup(v: unknown): JwSetup {
     shopName: txt(s.shopName, 80), address: String(s.address ?? "").slice(0, 300), phone: txt(s.phone, 30),
     staff,
     showRate: s.showRate !== false,
+    showCatalogue: s.showCatalogue !== false,
     plans: Array.isArray(s.plans) ? s.plans.slice(0, 10).map(cleanPlan).filter((p): p is SchemePlan => !!p) : DEFAULT_PLANS,
     girviLicence: txt(s.girviLicence, 60),
     girviRateBp: int(s.girviRateBp, 0, 1000, 150),

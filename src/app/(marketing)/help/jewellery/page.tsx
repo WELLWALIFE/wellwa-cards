@@ -32,12 +32,12 @@ const STEPS: [string, string][] = [
   ["Report aur day close", "Aaj / kal / mahina / vitt varsh: bikri, GST (CGST/SGST/IGST, HSN, B2B), aaye paise mode ke hisaab se (order ke advance bhi), purana sona, purity ka vazan. Day close WhatsApp par; Excel (CSV) mein bikri register, HSN, B2B — CA ko dene ke liye."],
   ["Gold scheme (switch se)", "Owner Settings mein kanooni note padh kar chalu kare. Plan: har mahine ₹X, N mahine, dukaan ka bonus (aakhri bill par chhoot). Member, kisht, WhatsApp passbook; poora hone par 'bill mein lagayein' — jama advance, bonus chhoot. Koi byaaj/return ka vaada nahi."],
   ["Girvi (switch se)", "Sirf saahukari license number daal kar chalu. Saman ka vazan, touch → fine, keemat (aaj ke khareed rate se), loan (keemat ka tay % tak). Byaaj roz ke hisaab se, kam se kam din; payment pehle byaaj phir mool. Yaad dilana, tareekh ke baad notice, 14 din baad hi neelami darj."],
+  ["Website par collection", "Stock ka har piece apne aap website par: photo, vazan, purity, HUID aur aaj ke rate se '₹… se shuru' (sirf dhatu; making, nag, GST alag). Grahak 'WhatsApp par poochhein' dabata hai — tag ke saath message aata hai. Bikte hi hat jaata hai. Settings se band bhi kar sakte hain."],
   ["Bill bhejna / print", "Save karte hi customer ke WhatsApp par bill ka link (dukaan ke number se). A4/A5 print ya PDF. Bill kabhi delete nahi hota — sirf karan likhkar rad."],
 ];
 
 const COMING = [
   "Stock milaan (scanner se poora showcase ginna), supplier se khareed aur unka khata",
-  "Website par aaj ke rate se live daam wala catalogue",
 ];
 
 export default function JewelleryGuide() {

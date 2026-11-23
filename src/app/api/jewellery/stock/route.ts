@@ -1,6 +1,7 @@
 // Stock: GET the pieces (filters) with what is in hand by purity, or one piece by its tag (?tag=, for the bill's scan box);
 // POST to add a piece (it gets the next tag).
 import { NextResponse } from "next/server";
+import { SUPA_URL } from "@/lib/admin-guard";
 import { jwCtx, jwDenied, jwHas } from "@/lib/jewellery-server";
 import { shopName } from "@/lib/jobs-server";
 import { createStock, stockByTag, stockInHand, stockList } from "@/lib/jewellery-stock-server";
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
   if (!c.ok) return c.res;
   const { scope, setup, access } = c;
   if (!jwHas(access, "stock")) return jwDenied("add stock");
-  const f = cleanStockFields(b);
+  const f = cleanStockFields(b, SUPA_URL);
   if (!f.gross_mg) return NextResponse.json({ error: "Type the gross weight." }, { status: 400 });
   if (!setup.purities.some((p) => p.key === f.purity)) return NextResponse.json({ error: "Pick the purity." }, { status: 400 });
   if (f.huid && f.huid.length !== 6) return NextResponse.json({ error: "HUID is 6 letters / digits." }, { status: 400 });

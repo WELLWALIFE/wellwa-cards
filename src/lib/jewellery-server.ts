@@ -9,8 +9,9 @@ import { resolveScope, type Scope } from "@/lib/crm-server";
 import { shopName, shopSend } from "@/lib/jobs-server";
 import { SITE_URL } from "@/lib/site-url";
 import { markSold } from "@/lib/jewellery-stock-server";
+import { publicPieces, type PublicPiece, type StockRow } from "@/lib/jewellery-stock";
 import {
-  BILL_COLS, DEFAULT_JW_SETUP, JW_ALL_RIGHTS, billInputOf, billMessage, billTotals, cleanJwSetup, finYear, inr, publicRate,
+  BILL_COLS, DEFAULT_JW_SETUP, JW_ALL_RIGHTS, billInputOf, billMessage, billTotals, cleanJwSetup, finYear, inr, publicRate, sellRate,
   type BillKind, type BillRow, type PublicRate, type JwRight, type JwSetup, type RateBook,
 } from "@/lib/jewellery";
 
@@ -86,6 +87,21 @@ export async function publicRateFor(ownerId: string): Promise<PublicRate | null>
   const book = await rateOf(ownerId);
   if (!book || Date.parse(`${istDay()}T00:00:00Z`) - Date.parse(`${book.day}T00:00:00Z`) > 3 * 86400_000) return null;
   return publicRate(book, setup);
+}
+/** The shop's stock for its website (Settings → "Show my stock on my website"): pieces in stock, newest first, with a "from ₹"
+ *  price at today's rate — no price when the last rate is more than 3 days old. count: all pieces in stock. */
+export async function publicCatalogFor(ownerId: string, limit = 12): Promise<{ count: number; items: PublicPiece[]; priced: boolean } | null> {
+  const setup = await jwSetup(ownerId);
+  if (!setup.showCatalogue) return null;
+  const [book, rows, all] = await Promise.all([
+    rateOf(ownerId),
+    restAsService<StockRow[]>(`jw_stock?owner_id=eq.${ownerId}&status=eq.in_stock&select=id,tag,status,item_type,descr,purity,net_mg,gross_mg,huid,size,photo&order=photo.desc,seq.desc&limit=${Math.min(500, Math.max(1, limit))}`),
+    restAsService<{ id: string }[]>(`jw_stock?owner_id=eq.${ownerId}&status=eq.in_stock&select=id&limit=5000`),
+  ]);
+  if (!rows.ok) return null;
+  const fresh = !!book && Date.parse(`${istDay()}T00:00:00Z`) - Date.parse(`${book.day}T00:00:00Z`) <= 3 * 86400_000;
+  const items = publicPieces(list(rows), setup, (k) => (fresh ? sellRate(book, setup, k) : 0));
+  return items.length ? { count: list(all).length, items, priced: fresh } : null;
 }
 export async function rateHistory(ownerId: string, days = 30) {
   return list(await restAsService<{ day: string; sell: Record<string, number>; buy: Record<string, number>; set_by_name: string; updated_at: string }[]>(`jw_rates?owner_id=eq.${ownerId}&select=day,sell,buy,set_by_name,updated_at&order=day.desc&limit=${days}`));

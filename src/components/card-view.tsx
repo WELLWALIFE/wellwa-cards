@@ -1,4 +1,5 @@
 "use client";
+import { CatalogueStrip } from "@/components/jewellery/catalogue";
 import { TodayRate } from "@/components/jewellery/today-rate";
 import { initials } from "@/lib/initials";
 import { SITE_URL } from "@/lib/site-url";
@@ -505,6 +506,7 @@ export function CardView({ card: rawCard, qr, brand, expired = false, shareUrl, 
         {/* ---- Blocks ---- */}
         <div ref={blocksRef} className="px-6 py-6 space-y-6 min-h-40">
           {card.jewelRate && (!page || page.slug === navPages[0]?.slug) && <TodayRate rate={card.jewelRate} accent={theme} hi={lang === "hi"} />}
+          {card.jewelCatalog && (!page || page.slug === navPages[0]?.slug) && <CatalogueStrip card={card} hi={lang === "hi"} compact />}
           {(page?.blocks ?? [])
             .map((b) => onEdit
               ? <div key={b.id} className="relative"><EditChip label={editLabel} onClick={() => onEdit({ kind: "block", blockId: b.id })} className="absolute -top-3 right-0" /><Block block={b} card={card} theme={theme} /></div>
