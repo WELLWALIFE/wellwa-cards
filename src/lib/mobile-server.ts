@@ -117,7 +117,8 @@ export async function trueLines(ownerId: string, lines: BillLine[], kind: BillKi
   return { lines: out };
 }
 
-export async function createBill(scope: Scope, setup: MsSetup, kind: BillKind, f: NewBill): Promise<BillRow | null> {
+/** noStock: a repair bill — its parts already left the stock when they were put on the job. */
+export async function createBill(scope: Scope, setup: MsSetup, kind: BillKind, f: NewBill, noStock = false): Promise<BillRow | null> {
   // A bill made offline and sent twice is saved once.
   if (f.client_id) {
     const had = list(await restAsService<BillRow[]>(`ms_bills?owner_id=eq.${scope.ownerId}&client_id=eq.${encodeURIComponent(f.client_id)}&select=${BILL_COLS}&limit=1`))[0];
@@ -136,7 +137,7 @@ export async function createBill(scope: Scope, setup: MsSetup, kind: BillKind, f
     const r = await restAsService<BillRow[]>(`ms_bills?select=${BILL_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
     if (r.ok) {
       const bill = list(r)[0] ?? null;
-      if (bill && kind === "sale") await moveStock(scope.ownerId, bill, -1).catch((e) => console.error("[mobile] stock out", e));
+      if (bill && kind === "sale" && !noStock) await moveStock(scope.ownerId, bill, -1).catch((e) => console.error("[mobile] stock out", e));
       if (bill?.customer_phone) await linkCustomerPhone(scope.ownerId, bill.customer_phone, bill.customer_name, `📱 ${kind === "sale" ? "Bill" : "Estimate"} ${bill.code} · ₹${Math.round(bill.total_paise / 100).toLocaleString("en-IN")}`, kind === "sale" ? "converted" : "interested", kind === "sale" ? bill.total_paise : 0).catch(() => undefined);
       return bill;
     }

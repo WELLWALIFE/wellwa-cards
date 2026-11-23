@@ -31,6 +31,7 @@ const JW_USE: [string, string, string, string][] = [
 ];
 const MS_USE: [string, string, string, string][] = [
   ["Sell: New bill", "बेचना: नया बिल", "Type the item or the phone it fits (cover redmi 13), or scan the barcode. Tap Cash / UPI. Save.", "item या किस फ़ोन का है लिखें (cover redmi 13), या barcode scan करें। Cash / UPI दबाएँ। Save।"],
+  ["Repair", "रिपेयर", "New repair job: mobile, model, problem, advance. Mark Ready — the customer gets a WhatsApp. Give it back — the bill is made, advance taken off.", "नया रिपेयर job: मोबाइल, model, ख़राबी, advance। तैयार दबाएँ — ग्राहक को WhatsApp। फ़ोन दें — बिल बन जाता है, advance घटकर।"],
   ["Udhaar", "उधार", "Pick “Part / udhaar” and type what came. The rest shows on the home screen; take it later from the bill.", "“कुछ / उधार” चुनकर जो मिला लिखें। बाकी home पर दिखता है; बाद में बिल से ले लें।"],
   ["New stock came", "नया माल आया", "Purchase: pick the item, how many, cost of one. The stock goes up.", "ख़रीद: item चुनें, कितने आए, एक की लागत। स्टॉक बढ़ जाता है।"],
   ["Phones (if you sell them)", "फ़ोन (अगर बेचते हैं)", "Add the model once as “Phone”. Scan IMEIs in Purchase; on the bill just scan the IMEI.", "model एक बार “फ़ोन” में जोड़ें। ख़रीद में IMEI scan करें; बिल पर बस IMEI scan करें।"],

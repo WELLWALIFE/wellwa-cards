@@ -36,6 +36,7 @@ export const CATEGORIES: { key: string; en: string; hi: string; hsn: string; kin
 export const MS_RIGHTS = [
   { key: "bill", en: "Make bills and estimates", hi: "बिल और estimate बनाना" },
   { key: "stock", en: "Add items, stock and purchases", hi: "item, स्टॉक और ख़रीद चढ़ाना" },
+  { key: "repair", en: "Take and work on repair jobs", hi: "रिपेयर job लेना और उन पर काम करना" },
   { key: "discount", en: "Give a discount above the counter limit", hi: "counter limit से ज़्यादा छूट देना" },
   { key: "cancel", en: "Cancel a bill", hi: "बिल रद्द करना" },
   { key: "cost", en: "See cost and profit", hi: "लागत और मुनाफ़ा देखना" },
@@ -55,11 +56,15 @@ export type MsSetup = {
   /** The most discount a counter login may give without the "discount" right, in basis points of the bill. */
   counterDiscountBp: number;
   terms: string; upi: string;
+  /** Repair: job number prefix, warranty given on a repair (days, printed on its bill), and the terms on the job slip. */
+  jobPrefix: string; repairWarrantyDays: number; repairTerms: string;
   staff: Record<string, { title: string; rights: MsRight[] }>;
 };
 export const DEFAULT_MS_SETUP: MsSetup = {
   shopName: "", address: "", phone: "", gstOn: false, gstin: "", stateCode: "", billPrefix: "MB", estimatePrefix: "ME", paper: "80",
-  counterDiscountBp: 500, terms: "No return on accessories once opened. Warranty as per the brand.", upi: "", staff: {},
+  counterDiscountBp: 500, terms: "No return on accessories once opened. Warranty as per the brand.", upi: "",
+  jobPrefix: "MJ", repairWarrantyDays: 30, repairTerms: "Data is the customer's responsibility — please take a backup. Collect the phone within 30 days of the ready message. Warranty is on the part changed only, not on water or physical damage.",
+  staff: {},
 };
 
 const int = (v: unknown, min: number, max: number, d: number) => {
@@ -88,7 +93,9 @@ export function cleanMsSetup(v: unknown): MsSetup {
     estimatePrefix: String(s.estimatePrefix ?? "").replace(/[^A-Za-z0-9/-]/g, "").slice(0, 8) || "ME",
     paper: s.paper === "58" || s.paper === "a5" || s.paper === "a4" ? s.paper : "80",
     counterDiscountBp: int(s.counterDiscountBp, 0, 10000, 500),
-    terms: String(s.terms ?? DEFAULT_MS_SETUP.terms).slice(0, 400), upi: txt(s.upi, 80), staff,
+    terms: String(s.terms ?? DEFAULT_MS_SETUP.terms).slice(0, 400), upi: txt(s.upi, 80),
+    jobPrefix: String(s.jobPrefix ?? "").replace(/[^A-Za-z0-9/-]/g, "").slice(0, 8) || "MJ",
+    repairWarrantyDays: int(s.repairWarrantyDays, 0, 730, 30), repairTerms: String(s.repairTerms ?? DEFAULT_MS_SETUP.repairTerms).slice(0, 500), staff,
   };
 }
 

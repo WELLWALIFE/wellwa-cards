@@ -7,7 +7,7 @@ import { pageMeta } from "@/lib/site-brand";
 
 export const metadata: Metadata = pageMeta("/help/mobile", {
   title: "Mobile aur accessory shop software — bill, stock, udhaar, IMEI | Shubhora",
-  description: "Mobile aur accessory dukaan ke liye: 10 second mein bill (naam, phone model ya barcode se), stock aur kam-stock, udhaar, IMEI se phone ki bikri, bina internet ke bhi bill — website, WhatsApp AI aur CRM ke saath.",
+  description: "Mobile aur accessory dukaan ke liye: repair job card, 10 second mein bill (naam, phone model ya barcode se), stock aur kam-stock, udhaar, IMEI se phone ki bikri, bina internet ke bhi bill — website, WhatsApp AI aur CRM ke saath.",
 });
 
 const FLOW = [
@@ -27,6 +27,7 @@ const STEPS: [string, string][] = [
   ["Print aur WhatsApp", "Thermal parchi ya kaagaz par print. 'Save & WhatsApp' se bill ka link grahak ke WhatsApp par (dukaan ka WhatsApp juda ho to apne aap, warna ek button se)."],
   ["Khareed (maal aaya)", "Supplier ka naam, item, kitne aaye, ek ki laagat — stock badh jaata hai aur nayi laagat se munafa nikalta hai."],
   ["Phone bechte hain?", "Model ko 'Phone' mein jodein. Khareed mein har IMEI scan karein. Bill par bas IMEI scan karein — wahi piece bikta hai, IMEI aur warranty bill par chhapti hai, aur ek IMEI do baar nahi bik sakta."],
+  ["Repair job card", "Phone repair ke liye aaya: grahak ka mobile, model, kharabi, phone ki haalat (kharonch, SIM andar…), andaaz kharch, advance. Grahak ko parchi aur WhatsApp par link milta hai jahan wo status dekh sakta hai. Lage parts stock se ghatte hain. 'Taiyaar' dabate hi grahak ko WhatsApp; phone dete waqt bill apne aap banta hai, advance ghata hua, repair warranty ke saath."],
   ["Estimate", "Grahak ko daam ka estimate dein; pasand aaye to ek tap mein bill."],
   ["Bina internet", "Network chala jaaye to bhi bill bante rehte hain — phone mein rakhe jaate hain aur network aate hi account mein chadh jaate hain. Bill number tab milta hai; WhatsApp bhejna aur IMEI khojna network aane par."],
   ["Din ka hisaab", "Home par aaj ki bikri, cash aur UPI alag, munafa (sirf maalik ko), udhaar aur kam stock ki list."],
@@ -34,7 +35,6 @@ const STEPS: [string, string][] = [
 ];
 
 const COMING = [
-  "Repair job card: phone jama, kharabi, andaaz kharch, technician, status — grahak ko WhatsApp par update",
   "Warranty aur return ka hisaab, supplier ka khata",
   "Barcode label print, stock milaan",
   "Report: mahine ki bikri, GST (HSN), sabse zyada bikne wale item, Excel export",

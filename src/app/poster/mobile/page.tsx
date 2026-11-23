@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Boxes, ChevronRight, FileText, IndianRupee, LoaderCircle, PackagePlus, ReceiptText, Settings2 } from "lucide-react";
+import { AlertTriangle, Boxes, Wrench, ChevronRight, FileText, IndianRupee, LoaderCircle, PackagePlus, ReceiptText, Settings2 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { WorkspaceSwitch, useWorkspace } from "@/components/orders/orders-common";
@@ -15,7 +15,7 @@ import { MsHelp } from "@/components/mobile/page-help";
 import { BillLink } from "@/components/mobile/bill-link";
 import { OfflineBar } from "@/components/mobile/offline-bar";
 
-type Home = { shop: string; setup: MsSetup; access: MsAccess; today: string; day: string; close: DayClose; items: number; low: { id: string; name: string; brand: string; variant: string; stock: number; low: number }[]; due: { count: number; paise: number }; recent: BillRow[]; error?: string };
+type Home = { shop: string; setup: MsSetup; access: MsAccess; today: string; day: string; close: DayClose; items: number; low: { id: string; name: string; brand: string; variant: string; stock: number; low: number }[]; due: { count: number; paise: number }; recent: BillRow[]; jobs?: { open: number; ready: number; late: number }; seeJobs?: boolean; error?: string };
 
 export default function MobileHome() {
   const router = useRouter();
@@ -65,6 +65,14 @@ export default function MobileHome() {
         <Link href={`/poster/mobile/bill${q}`} className="flex flex-col items-center gap-1 rounded-2xl grad-brand px-4 py-5 text-white shadow-card"><ReceiptText className="h-6 w-6" /><span className="text-base font-bold">{T("New bill", "नया बिल")}</span><span className="text-[11px] opacity-90">{T("Search or scan", "खोजें या scan करें")}</span></Link>
         <Link href={`/poster/mobile/bill${amp}kind=estimate`} className="flex flex-col items-center gap-1 rounded-2xl border-2 border-brand/40 bg-surface px-4 py-5 shadow-card"><FileText className="h-6 w-6 text-brand" /><span className="text-base font-bold">Estimate</span><span className="text-[11px] text-muted">{T("Price for the customer", "ग्राहक के लिए दाम")}</span></Link>
       </div>
+
+      {d.seeJobs && d.jobs && (
+        <div className="grid grid-cols-2 gap-3">
+          {can("repair") && <Link href={`/poster/mobile/repair${q}`} className="flex items-center gap-2 rounded-2xl border-2 border-brand/40 bg-surface px-3 py-3 shadow-card"><Wrench className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{T("New repair job", "नया रिपेयर job")}</span><span className="block text-[11px] text-muted">{T("A phone came for repair", "फ़ोन रिपेयर के लिए आया")}</span></span></Link>}
+          <Link href={`/poster/mobile/repairs${q}`} className={`${tile} ${can("repair") ? "" : "col-span-2"}`}><p className="text-[11px] text-muted">{T("Repair jobs in the shop", "दुकान में रिपेयर jobs")}</p><p className="text-lg font-bold tabular-nums">{d.jobs.open}</p>
+            <p className="text-[11px]"><span className="font-semibold text-good">{d.jobs.ready} {T("ready", "तैयार")}</span>{d.jobs.late > 0 && <span className="font-semibold text-danger"> · {d.jobs.late} {T("late", "देर")}</span>} →</p></Link>
+        </div>
+      )}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className={tile}><p className="text-[11px] text-muted">{T("Today's sale", "आज की बिक्री")}</p><p className="text-lg font-bold tabular-nums">{inr(close.sale)}</p><p className="text-[11px] text-muted">{close.bills} {close.bills === 1 ? T("bill", "बिल") : T("bills", "बिल")} · {close.qty} {T("pcs", "पीस")}</p></div>

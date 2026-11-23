@@ -88,6 +88,15 @@ export default function MobileSettings() {
         </div>
       </section>
 
+      <section className={card}>
+        <h2 className="text-sm font-bold">🔧 {T("Repair", "रिपेयर")}</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className={lab}>{T("Job prefix", "Job prefix")}{tip("Letters before the job number, e.g. MJ → MJ/2026-27/1.", "job नंबर के पहले के अक्षर, जैसे MJ → MJ/2026-27/1।")}<input className={inp} value={s.jobPrefix} onChange={(e) => set({ jobPrefix: e.target.value })} /></label>
+          <label className={lab}>{T("Repair warranty (days)", "रिपेयर वारंटी (दिन)")}{tip("Printed on the repair bill. 0 = no warranty line.", "रिपेयर के बिल पर छपती है। 0 = वारंटी की line नहीं।")}<input className={inp} inputMode="numeric" value={s.repairWarrantyDays} onChange={(e) => set({ repairWarrantyDays: Math.max(0, Math.min(730, Math.round(Number(e.target.value) || 0))) })} /></label>
+          <label className={`${lab} sm:col-span-3`}>{T("Terms on the job slip", "job पर्ची की शर्तें")}{tip("Printed on the slip the customer takes, and shown on their tracking link.", "ग्राहक की पर्ची पर छपती हैं, और उसके tracking लिंक पर दिखती हैं।")}<textarea className={inp} rows={3} value={s.repairTerms} onChange={(e) => set({ repairTerms: e.target.value })} /></label>
+        </div>
+      </section>
+
       {d.access.owner && (
         <section className={card}>
           <h2 className="text-sm font-bold">{T("Staff rights", "Staff के हक़")}{tip("Tick what each staff login may do here. The owner can always do everything.", "हर staff login यहाँ क्या कर सकता है, tick करें। मालिक हमेशा सब कर सकता है।")}</h2>

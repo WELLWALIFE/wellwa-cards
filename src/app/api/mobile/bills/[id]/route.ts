@@ -47,7 +47,12 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const reason = String(b.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
       if (!reason) return NextResponse.json({ error: "Write why it is cancelled." }, { status: 400 });
       const next = await save({ status: "cancelled", cancel_reason: `${reason} — ${access.name}` });
-      if (next && bill.kind === "sale") await moveStock(scope.ownerId, bill, 1).catch(() => undefined);
+      if (next && bill.kind === "sale") {
+        // A repair bill: its parts stay on the job (they left the stock there), and the job opens again as "ready".
+        const job = (await restAsService<{ id: string; events: unknown[] | null }[]>(`ms_jobs?owner_id=eq.${scope.ownerId}&bill_id=eq.${bill.id}&select=id,events&limit=1`)).data?.[0];
+        if (job) await restAsService(`ms_jobs?id=eq.${job.id}&owner_id=eq.${scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "ready", bill_id: null, delivered_at: null, updated_at: new Date().toISOString(), events: [...(job.events ?? []), { at: new Date().toISOString(), by: access.name, text: `Bill ${bill.code} cancelled — job open again` }] }) });
+        else await moveStock(scope.ownerId, bill, 1).catch(() => undefined);
+      }
       return out(next);
     }
     case "send":

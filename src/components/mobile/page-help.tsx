@@ -8,6 +8,7 @@ type Help = { en: string; hi: string; steps: [string, string][] };
 const HELP: Record<string, Help> = {
   home: { en: "Your mobile shop", hi: "आपकी मोबाइल दुकान", steps: [
     ["Selling? Tap New bill — search the item or scan it.", "बेच रहे हैं? नया बिल दबाएँ — item खोजें या scan करें।"],
+    ["A phone came for repair? Tap New repair job.", "फ़ोन रिपेयर के लिए आया? नया रिपेयर job दबाएँ।"],
     ["New stock came? Tap Purchase and add what came.", "नया माल आया? ख़रीद दबाकर चढ़ाएँ।"],
     ["Items: add everything you sell once, with price.", "Items: जो भी बेचते हैं एक बार दाम के साथ जोड़ें।"],
     ["The top shows today's sale, cash and UPI apart, and udhaar.", "ऊपर आज की बिक्री, cash और UPI अलग, और उधार।"],
@@ -36,6 +37,25 @@ const HELP: Record<string, Help> = {
     ["Pick each item, type how many came and the cost of one.", "हर item चुनें, कितने आए और एक की लागत लिखें।"],
     ["Phones: scan every IMEI, one per line.", "फ़ोन: हर IMEI scan करें, एक line में एक।"],
     ["Save — the stock goes up.", "Save — स्टॉक बढ़ जाएगा।"],
+  ] },
+  repairNew: { en: "New repair job", hi: "नया रिपेयर job", steps: [
+    ["Type the customer's mobile and the phone's model.", "ग्राहक का मोबाइल और फ़ोन का model लिखें।"],
+    ["Tap what is wrong, and how the phone looks now (scratches, SIM inside…).", "क्या ख़राबी है और फ़ोन अभी कैसा है (खरोंच, SIM अंदर…) दबाएँ।"],
+    ["Estimate and advance, if any. Pick the day it will be ready.", "अंदाज़न ख़र्च और advance, हो तो। कब तक तैयार होगा वो दिन चुनें।"],
+    ["Save & WhatsApp: the customer gets the job number and a link to follow it. Then print the slip.", "Save & WhatsApp: ग्राहक को job नंबर और देखने का लिंक जाता है। फिर पर्ची print करें।"],
+  ] },
+  repairView: { en: "The repair job", hi: "रिपेयर job", steps: [
+    ["Tap the step the phone is at: Being repaired → Waiting for part → Ready.", "फ़ोन जिस step पर है वो दबाएँ: काम चालू → पार्ट का इंतज़ार → तैयार।"],
+    ["Parts used: search your items and tap — the stock reduces at once.", "लगे parts: अपने items खोजकर दबाएँ — स्टॉक तुरंत घटता है।"],
+    ["Repair charge: your labour, apart from the parts.", "Repair charge: आपकी मज़दूरी, parts के अलावा।"],
+    ["Ready: the customer gets a WhatsApp with the amount to pay.", "तैयार: ग्राहक को WhatsApp जाता है, देने वाली रक़म के साथ।"],
+    ["Give the phone back & make the bill: the advance comes off by itself.", "फ़ोन दें और बिल बनाएँ: advance अपने-आप घट जाता है।"],
+    ["Customer said no? Return unrepaired — the parts go back to stock.", "ग्राहक ने मना किया? बिना बने वापस — parts स्टॉक में लौट आते हैं।"],
+  ] },
+  repairs: { en: "Repair jobs", hi: "रिपेयर jobs", steps: [
+    ["In the shop: every phone you have now. Ready: done but not collected. Late: past the promised day.", "दुकान में: अभी जो फ़ोन आपके पास हैं। तैयार: बन गए पर ले नहीं गए। देर: वादे का दिन निकल गया।"],
+    ["Search by name, mobile, job number, model or IMEI.", "नाम, मोबाइल, job नंबर, model या IMEI से खोजें।"],
+    ["Tap a job to open it.", "job खोलने के लिए उसे दबाएँ।"],
   ] },
   settings: { en: "Settings", hi: "Settings", steps: [
     ["Shop name, address, phone — printed on every bill.", "दुकान का नाम, पता, फ़ोन — हर बिल पर छपते हैं।"],
