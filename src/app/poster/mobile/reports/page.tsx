@@ -11,7 +11,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { inr } from "@/lib/jewellery";
 import { toCsv } from "@/lib/jewellery-reports";
 import { itemTitle, type ItemRow } from "@/lib/mobile";
-import { msCloseText, msDaysCsv, msHsnCsv, msItemsCsv, msSalesCsv, type MsReport } from "@/lib/mobile-reports";
+import { msCloseText, msDaysCsv, msHsnCsv, msItemsCsv, msSalesCsv, msTallyMastersXml, msTallyVouchers, msTallyVouchersXml, type MsReport } from "@/lib/mobile-reports";
 import { MsHelp } from "@/components/mobile/page-help";
 
 type Ans = { report: MsReport; shop: string; today: string; gstOn: boolean; cost: boolean; dueTotal: number; error?: string };
@@ -27,7 +27,7 @@ function rangeOf(p: Pick, today: string, c: { from: string; to: string }) {
   return { from: today, to: today };
 }
 function save(name: string, csv: string) {
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const url = URL.createObjectURL(new Blob([csv], { type: name.endsWith(".xml") ? "application/xml;charset=utf-8" : "text/csv;charset=utf-8" }));
   const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
@@ -108,7 +108,20 @@ export default function MobileReports() {
               <button key={k} type="button" onClick={() => save(`${k}_${tag}.csv`, f())} className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Download className="h-3.5 w-3.5" /> {l}</button>))}
             <button type="button" onClick={() => void stockCsv()} className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Download className="h-3.5 w-3.5" /> {T("Stock list (today)", "स्टॉक list (आज की)")}</button>
           </div>
-          <p className="text-[11px] text-muted">{T("CSV files open in Excel and Google Sheets — give them to your CA. A direct Tally file and GST e-invoice are not made here.", "CSV फ़ाइलें Excel और Google Sheets में खुलती हैं — अपने CA को दें। सीधी Tally फ़ाइल और GST e-invoice यहाँ नहीं बनते।")}</p>
+          <p className="text-[11px] text-muted">{T("CSV files open in Excel and Google Sheets — give them to your CA.", "CSV फ़ाइलें Excel और Google Sheets में खुलती हैं — अपने CA को दें।")}</p>
+        </section>
+        <section className={card}>
+          <h2 className="text-sm font-bold">Tally <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{T("NEW — check once with your accountant", "नया — एक बार अकाउंटेंट से जँचवाएँ")}</span></h2>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => save("tally_ledgers_shubhora.xml", msTallyMastersXml())} className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Download className="h-3.5 w-3.5" /> {T("1. Ledgers (only the first time)", "1. Ledgers (सिर्फ़ पहली बार)")}</button>
+            <button type="button" disabled={msTallyVouchers(r).length === 0} onClick={() => save(`tally_vouchers_${tag}.xml`, msTallyVouchersXml(r))} className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50"><Download className="h-3.5 w-3.5" /> {T(`2. Vouchers of this period (${msTallyVouchers(r).length})`, `2. इस अवधि के vouchers (${msTallyVouchers(r).length})`)}</button>
+          </div>
+          <ol className="list-decimal space-y-0.5 pl-4 text-[12px] text-muted">
+            <li>{T("In TallyPrime: Import → Masters → pick the ledgers file (once). Then Import → Transactions → pick the vouchers file.", "TallyPrime में: Import → Masters → ledgers वाली फ़ाइल (एक बार)। फिर Import → Transactions → vouchers वाली फ़ाइल।")}</li>
+            <li>{T("Every bill goes to the ledger “Shubhora Counter Sales”; money received (cash, UPI, card, EMI) comes off it day by day. Its balance in Tally = udhaar still to come.", "हर बिल “Shubhora Counter Sales” ledger में जाता है; मिला पैसा (cash, UPI, card, EMI) रोज़ उसमें से घटता है। Tally में उसका balance = आना बाकी उधार।")}</li>
+            <li>{T("Do not import the same period twice — the bills would come twice. Returns need the “Credit Note” voucher type switched on in Tally.", "एक ही अवधि दो बार import न करें — बिल दो बार चढ़ जाएँगे। वापसी के लिए Tally में “Credit Note” voucher चालू होना चाहिए।")}</li>
+            <li>{T("These are accounts only (no stock items). We made the file to Tally's published format, but have not been able to test it inside Tally ourselves — try it first on a copy / test company.", "इसमें सिर्फ़ हिसाब है (stock items नहीं)। फ़ाइल Tally के छपे format के हिसाब से बनी है, पर हम इसे खुद Tally में नहीं परख पाए — पहले copy / test company में आज़माएँ।")}</li>
+          </ol>
         </section>
       </>}
     </div>

@@ -40,3 +40,19 @@ test("day close: a return today comes off today's sale and drawer", () => {
   const c = M.dayClose([B({ payments: [{ mode: "cash", paise: 23600, ref: "", at: "2026-11-23T06:00:00Z" }] }), ret], "2026-11-23");
   assert.equal(c.sale, 11800); assert.equal(c.money.cash, 11800); assert.equal(c.profit, 5000); assert.equal(c.qty, 1);
 });
+
+test("Tally: every voucher balances; receipts, refund and exchange go to their ledgers", () => {
+  const sale = B({ lines: [L({ qty: 1, price: 11850 })], payments: [{ mode: "cash", paise: 5000, ref: "", at: "2026-11-23T06:00:00Z" }, { mode: "other", paise: 3000, ref: "Exchange Redmi 9", at: "2026-11-23T06:00:00Z" }, { mode: "other", paise: 2000, ref: "EMI Bajaj", at: "2026-11-23T06:00:00Z" }] });
+  const ret = B({ kind: "return", code: "CN/1", lines: [L({ qty: 1, ref: 0 })], payments: [{ mode: "upi", paise: 11800, ref: "Refund", at: "2026-11-23T07:00:00Z" }] });
+  const r = R.buildMsReport([sale, ret], [], "22", day);
+  const v = R.msTallyVouchers(r);
+  for (const x of v) assert.equal(x.entries.reduce((a, e) => a + e.amount, 0), 0, `${x.type} ${x.number} does not balance`);
+  assert.deepEqual(v.map((x) => x.type).sort(), ["Credit Note", "Journal", "Payment", "Receipt", "Receipt", "Sales"]);
+  const s = v.find((x) => x.type === "Sales");
+  assert.equal(s.entries[0].amount, -11900); assert.equal(s.entries.find((e) => e.ledger === "Round Off").amount, 50);
+  assert.ok(v.some((x) => x.type === "Receipt" && x.entries[0].ledger === "EMI Finance Receivable" && x.entries[0].amount === -2000));
+  assert.ok(v.some((x) => x.type === "Payment" && x.entries[1].ledger === "UPI Collection"));
+  const x = R.msTallyVouchersXml(r);
+  assert.match(x, /<DATE>20261123<\/DATE><VOUCHERTYPENAME>Sales<\/VOUCHERTYPENAME>/); assert.match(x, /<ISDEEMEDPOSITIVE>Yes<\/ISDEEMEDPOSITIVE><ISPARTYLEDGER>Yes<\/ISPARTYLEDGER><ISLASTDEEMEDPOSITIVE>Yes<\/ISLASTDEEMEDPOSITIVE><AMOUNT>-119.00<\/AMOUNT>/);
+  assert.match(R.msTallyMastersXml(), /<LEDGER Action="Create"><NAME>Shubhora Counter Sales<\/NAME><PARENT>Sundry Debtors<\/PARENT>/);
+});

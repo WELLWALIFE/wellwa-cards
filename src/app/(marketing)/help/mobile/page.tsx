@@ -35,13 +35,14 @@ const STEPS: [string, string][] = [
   ["Barcode label aur supplier", "Kisi bhi item ka 50×25 mm barcode sticker print karein (barcode na ho to hum bana dete hain). Khareed par supplier ko kitna diya, kitna baaki — supplier-wise dikhta hai."],
   ["Stock milaan", "Shelf ka har piece scan karein ya ginti likhein; phone IMEI se. Aakhir mein farq dikhta hai, list Excel mein utar sakti hai, aur ek button se stock aapki ginti jitna ho jaata hai. Jo item nahi gine wo nahi badalte."],
   ["Purana phone exchange", "Naye bill par 'Old phone in exchange' — model, IMEI aur keemat likhein. Keemat grahak ke dene wale paison se ghat jaati hai aur purana phone 'Used <model>' naam se aapke stock mein aa jaata hai."],
+  ["Tally", "Report se Tally ki do file utarti hain: ledgers (ek baar) aur us avadhi ke vouchers. TallyPrime mein Import karke bikri, wapsi aur aaye paise chadh jaate hain. Naya hai — pehle apne accountant se test company mein jachwa lein."],
   ["EMI / finance", "Bill par 'EMI' chunein aur finance company ka naam likhein — din ke paison mein EMI alag dikhta hai."],
   ["Din ka hisaab", "Home par aaj ki bikri, cash aur UPI alag, munafa (sirf maalik ko), udhaar aur kam stock ki list."],
   ["Staff", "Har staff ka alag login. Kaun bill banaye, kaun stock chadhaye, kaun laagat/munafa dekhe, kitni chhoot de — sab aap tay karte hain. Bill kabhi delete nahi hota, sirf karan likhkar radd."],
 ];
 
 const COMING = [
-  "GST e-invoice, Tally ki seedhi file",
+  "GST e-invoice (sirf ₹5 crore se zyada turnover wali B2B dukaan ke liye zaroori — chhoti dukaan ko nahi chahiye)",
 ];
 
 export default function MobileGuide() {
