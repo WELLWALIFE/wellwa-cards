@@ -50,6 +50,8 @@ export const DEFAULT_ITEM_TYPES: ItemType[] = [
 export const JW_RIGHTS = [
   { key: "bill", en: "Make bills and estimates", hi: "बिल और estimate बनाना" },
   { key: "rate", en: "Set today's rate", hi: "आज का रेट डालना" },
+  { key: "orders", en: "Book orders and repairs", hi: "ऑर्डर और रिपेयर बुक करना" },
+  { key: "karigar", en: "Karigar ledger (gold given and received)", hi: "कारीगर का हिसाब (सोना दिया-लिया)" },
   { key: "discount", en: "Give a discount above the counter limit", hi: "counter limit से ज़्यादा discount देना" },
   { key: "cancel", en: "Cancel a bill", hi: "बिल रद्द करना" },
   { key: "reports", en: "See all bills, sales and money", hi: "सारे बिल, बिक्री और पैसे देखना" },

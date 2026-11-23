@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronRight, FileText, IndianRupee, LoaderCircle, Plus, ReceiptText, Settings2, TrendingUp } from "lucide-react";
+import { AlertTriangle, ChevronRight, FileText, Gem, Hammer, IndianRupee, LoaderCircle, Plus, ReceiptText, Settings2, TrendingUp } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { WorkspaceSwitch, useWorkspace } from "@/components/orders/orders-common";
@@ -12,7 +12,7 @@ import { inr, sellRate, type BillRow, type JwSetup, type RateBook } from "@/lib/
 import type { JwAccess } from "@/lib/jewellery-types";
 import { BillRowLink } from "@/components/jewellery/bill-row";
 
-type Home = { shop: string; setup: JwSetup; access: JwAccess; rate: RateBook | null; today: string; stats: { todaySales: number; todayPaise: number; todayEstimates: number; dueCount: number; duePaise: number }; recent: BillRow[]; error?: string };
+type Home = { shop: string; setup: JwSetup; access: JwAccess; rate: RateBook | null; today: string; stats: { todaySales: number; todayPaise: number; todayEstimates: number; dueCount: number; duePaise: number; ordersOpen?: number; ordersReady?: number; ordersLate?: number }; recent: BillRow[]; error?: string };
 
 export default function JewelleryHome() {
   const router = useRouter();
@@ -79,6 +79,25 @@ export default function JewelleryHome() {
         )}
         <Link href={`/poster/jewellery/bills${q}`} className="col-span-2 flex items-center justify-between rounded-2xl border border-border bg-surface p-3 sm:col-span-1"><span><p className="text-[11px] text-muted">{T("All bills", "सारे बिल")}</p><p className="text-sm font-bold">{T("Search, print, send", "खोजें, print, भेजें")}</p></span><ChevronRight className="h-4 w-4 text-muted" /></Link>
       </div>
+
+      {(can("orders") || can("karigar")) && (
+        <div className="grid grid-cols-2 gap-3">
+          {can("orders") && (
+            <Link href={`/poster/jewellery/orders${q}`} className="rounded-2xl border border-border bg-surface p-3">
+              <p className="flex items-center gap-1 text-[11px] text-muted"><Gem className="h-3 w-3" /> {T("Orders & repairs", "ऑर्डर और रिपेयर")}</p>
+              <p className="text-lg font-bold tabular-nums">{stats.ordersOpen ?? 0} <span className="text-xs font-normal text-muted">{T("in the shop", "दुकान में")}</span></p>
+              <p className="text-[11px]">{stats.ordersReady ? <span className="font-semibold text-good">{stats.ordersReady} {T("ready", "तैयार")} </span> : null}{stats.ordersLate ? <span className="font-semibold text-danger">· {stats.ordersLate} {T("late", "देर")}</span> : null}{!stats.ordersReady && !stats.ordersLate ? <span className="text-muted">{T("Book, track, deliver →", "बुक करें, देखें, दें →")}</span> : null}</p>
+            </Link>
+          )}
+          {can("karigar") && (
+            <Link href={`/poster/jewellery/karigars${q}`} className="rounded-2xl border border-border bg-surface p-3">
+              <p className="flex items-center gap-1 text-[11px] text-muted"><Hammer className="h-3 w-3" /> {T("Karigars", "कारीगर")}</p>
+              <p className="text-sm font-bold">{T("Gold given & received", "सोना दिया-लिया")}</p>
+              <p className="text-[11px] text-muted">{T("Fine-gold ledger →", "fine सोने का खाता →")}</p>
+            </Link>
+          )}
+        </div>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold">{T("Latest", "हाल के")}</h2>

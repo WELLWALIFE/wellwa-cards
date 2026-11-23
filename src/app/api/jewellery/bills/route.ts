@@ -5,6 +5,8 @@ import { restAsService } from "@/lib/poster-server";
 import { cleanPhone } from "@/lib/jobs";
 import { BILL_COLS, billTotals, cleanLine, cleanOld, cleanPayment, type BillKind, type BillRow, type Payment } from "@/lib/jewellery";
 import { createBill, istDay, jwCtx, jwDenied, jwHas, rateOf, sendBill } from "@/lib/jewellery-server";
+import { orderPaid } from "@/lib/jewellery-orders";
+import { orderById, patchOrder } from "@/lib/jewellery-orders-server";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 const txt = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -42,13 +44,16 @@ export async function POST(request: Request) {
   if (!lines.length) return NextResponse.json({ error: "Add at least one item." }, { status: 400 });
   const old_gold = (Array.isArray(b.old_gold) ? b.old_gold : []).slice(0, 30).map(cleanOld).filter((o) => o.grossMg > 0);
   const payments = (Array.isArray(b.payments) ? b.payments : []).slice(0, 20).map(cleanPayment).filter((x): x is Payment => !!x);
+  // A bill made from an order: the order's advance counts here (read from the order, never typed), and the order is delivered with it.
+  const order = kind === "sale" && typeof b.order_id === "string" && b.order_id ? await orderById(scope.ownerId, b.order_id) : null;
+  if (order && (order.kind !== "order" || order.status === "delivered" || order.status === "cancelled")) return NextResponse.json({ error: "This order is already closed." }, { status: 400 });
   const fields = {
     customer_name: txt(b.customer_name, 80), customer_phone: cleanPhone(b.customer_phone), customer_pan: txt(b.customer_pan, 10).toUpperCase(),
     customer_gstin: txt(b.customer_gstin, 15).toUpperCase(), customer_state: /^\d{2}$/.test(String(b.customer_state ?? "")) ? String(b.customer_state) : "",
     customer_address: txt(b.customer_address, 200),
     lines, old_gold, payments: kind === "estimate" ? [] : payments,
     discount_paise: Math.max(0, Math.round(Number(b.discount_paise) || 0)), discount_on: (b.discount_on === "total" ? "total" : "making") as "making" | "total",
-    advance_paise: Math.max(0, Math.round(Number(b.advance_paise) || 0)),
+    advance_paise: order ? orderPaid(order) : Math.max(0, Math.round(Number(b.advance_paise) || 0)),
     rate_day: (await rateOf(scope.ownerId))?.day ?? istDay(), notes: txt(b.notes, 400),
     due_date: typeof b.due_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.due_date) ? b.due_date : null,
     valid_till: kind === "estimate" && typeof b.valid_till === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.valid_till) ? b.valid_till : null,
@@ -65,6 +70,11 @@ export async function POST(request: Request) {
   }
   const bill = await createBill(scope, setup, kind, fields);
   if (!bill) return NextResponse.json({ error: "Could not save the bill. Please try again." }, { status: 500 });
+  if (order) {
+    await restAsService(`jw_bills?id=eq.${bill.id}&owner_id=eq.${scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ order_id: order.id }) });
+    await patchOrder(scope.ownerId, order.id, { status: "delivered", bill_id: bill.id, delivered_at: new Date().toISOString(),
+      events: [...(order.events ?? []), { at: new Date().toISOString(), by: access.name, text: `Delivered with bill ${bill.code}` }] });
+  }
   const sent = b.send === true && bill.customer_phone ? await sendBill(scope, bill) : null;
   return NextResponse.json({ bill, sent });
 }

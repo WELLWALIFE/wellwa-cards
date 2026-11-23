@@ -111,3 +111,38 @@ test("public rate: switched-on purities, gold per 10 g, silver per kg; shown by 
   assert.equal(publicRate(null, setup), null);
   assert.match(rateMessage({ day: "2026-11-23", sell: { g24: 720000 }, buy: {} }, setup, "Shop"), /₹72,000 \/ 10 g/);
 });
+
+const O = await jiti.import("./jewellery-orders.ts");
+
+test("karigar ledger: gold given by touch, work back with wastage, labour less payments; voided entries do not count", () => {
+  const issue = O.cleanTxn({ kind: "issue", metal: "gold", gross_mg: 50000, touch_bp: 9950 });   // 50 g of 99.5
+  assert.equal(issue.fine_mg, 49750);
+  const back = O.cleanTxn({ kind: "receive", metal: "gold", gross_mg: 52000, touch_bp: 9160, wastage_mg: 1200 }); // 52 g of 22K, 1.2 g wastage
+  assert.equal(back.fine_mg, 47632);
+  const labour = O.cleanTxn({ kind: "labour", paise: 520000 });
+  const paid = O.cleanTxn({ kind: "payment", paise: 300000 });
+  const wrong = { ...O.cleanTxn({ kind: "issue", gross_mg: 99999, touch_bp: 9950 }), voided: true };
+  const b = O.karigarBalance([issue, back, labour, paid, wrong].map((t) => ({ voided: false, ...t })));
+  assert.equal(b.fine.gold, 49750 - 47632 - 1200);   // 0.918 g still with the karigar
+  assert.equal(b.wastage.gold, 1200);
+  assert.equal(b.money, 220000);                      // ₹2,200 labour still to pay
+  // nothing typed, or no amount: no entry
+  assert.equal(O.cleanTxn({ kind: "issue" }), null);
+  assert.equal(O.cleanTxn({ kind: "payment", paise: 0 }), null);
+  assert.equal(O.cleanTxn({ kind: "steal", paise: 5 }), null);
+  // wastage is only for work received
+  assert.equal(O.cleanTxn({ kind: "issue", gross_mg: 1000, touch_bp: 9160, wastage_mg: 500 }).wastage_mg, 0);
+});
+
+test("orders: advance paid, late, items cleaned, the customer's messages", () => {
+  const o = { kind: "order", code: "ORD/2026-27/1", customer_name: "Priya", est_paise: 5000000, due_date: "2026-11-20", status: "karigar",
+    payments: [{ mode: "upi", paise: 1000000, ref: "", at: "" }, { mode: "cash", paise: 500000, ref: "", at: "" }],
+    items: [O.cleanOrderItem({ desc: "Ladies ring", weightMg: "4500", pieces: 0 })] };
+  assert.equal(O.orderPaid(o), 1500000);
+  assert.equal(O.overdue(o, "2026-11-23"), true);
+  assert.equal(O.overdue({ ...o, status: "ready" }, "2026-11-23"), false);
+  assert.equal(o.items[0].pieces, 1); assert.equal(o.items[0].weightMg, 4500);
+  assert.match(O.orderMessage(o, "Shop", "https://x/jo/1"), /Advance मिला: ₹15,000/);
+  assert.match(O.orderMessage({ ...o, status: "ready" }, "Shop", "L"), /तैयार है/);
+  assert.equal(O.cleanRateLock({ purity: "g22", rate: 0 }), null);
+});

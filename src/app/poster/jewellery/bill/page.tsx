@@ -9,6 +9,7 @@ import { ArrowLeft, LoaderCircle, Plus, Send, Trash2 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
+import { orderPaid, type OrderRow } from "@/lib/jewellery-orders";
 import {
   billTotals, fineBuyRate, grams, inr, mgOf, paiseOf, sellRate,
   type BillLine, type BillRow, type MakingKind, type Metal, type OldGoldLine, type Payment, type JwSetup, type RateBook,
@@ -76,7 +77,27 @@ function BillBuilder() {
       stoneRs: "", otherRs: "", huid: "", tag: "",
     };
   }, [setup, rate, purities]);
-  useEffect(() => { if (setup && !lines.length) setLines([blankLine()]); }, [setup, lines.length, blankLine]);
+  // ?order=<id>: the bill that delivers an order — the customer, the pieces (at the locked rate if there is one) and the advance.
+  const orderId = kind === "sale" ? sp.get("order") ?? "" : "";
+  const [order, setOrder] = useState<OrderRow | null>(null);
+  useEffect(() => {
+    if (!orderId || !setup || order) return;
+    void (async () => {
+      const r = await api<{ order: OrderRow }>(`/api/jewellery/orders/${orderId}${ws.q ? `?${ws.q}` : ""}`);
+      if (!r.ok || !r.data.order) return;
+      const o = r.data.order;
+      setOrder(o);
+      setCust((c) => ({ ...c, name: o.customer_name, phone: o.customer_phone }));
+      setLines(o.items.map((it) => {
+        const l = blankLine(it.itemType);
+        const pur = it.purity || l.purity;
+        const rr = o.rate_lock && o.rate_lock.purity === pur ? o.rate_lock.rate : sellRate(rate, setup, pur);
+        return { ...l, desc: it.desc, purity: pur, pieces: String(it.pieces || 1), gross: it.weightMg ? String(it.weightMg / 1000) : "", rate: rr ? String(Math.round((rr * 10) / 100)) : l.rate };
+      }));
+      setAdvance(String(orderPaid(o) / 100));
+    })();
+  }, [orderId, setup, order, rate, ws.q, blankLine]);
+  useEffect(() => { if (setup && !lines.length && !orderId) setLines([blankLine()]); }, [setup, lines.length, blankLine, orderId]);
   const blankOld = useCallback((): OldDraft => ({ desc: hi ? "पुराना सोना" : "Old gold", metal: "gold", gross: "", less: "", touch: "91.6", rate: setup ? String(Math.round((fineBuyRate(rate, setup, "gold") * 10) / 100)) : "" }), [setup, rate, hi]);
 
   const input = useMemo(() => setup ? {
@@ -94,7 +115,7 @@ function BillBuilder() {
       json: {
         as: ws.as || undefined, kind, send, customer_name: cust.name, customer_phone: cust.phone, customer_pan: cust.pan, customer_gstin: cust.gstin, customer_state: cust.state, customer_address: cust.address,
         lines: input.lines, old_gold: input.old, payments: input.payments, discount_paise: input.discountPaise, discount_on: input.discountOn, advance_paise: input.advancePaise,
-        due_date: due || undefined, valid_till: validTill || undefined, notes,
+        due_date: due || undefined, valid_till: validTill || undefined, notes, order_id: order?.id,
       },
     });
     setBusy(false);
@@ -116,6 +137,7 @@ function BillBuilder() {
       <Link href={`/poster/jewellery${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{kind === "estimate" ? T("New estimate", "नया estimate") : T("New bill", "नया बिल")}</h1>
       {!setup.gstin && (setup.gstBp > 0 || setup.gstMakingBp > 0) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("GST is added to bills but your GSTIN is not set. Add it, or set GST to 0 if your shop is not GST-registered. ", "बिल में GST जुड़ रहा है पर आपका GSTIN नहीं डला। GSTIN डालें, या दुकान GST में registered नहीं है तो GST 0 करें। ")}<Link href={`/poster/jewellery/settings${q}`} className="underline">{T("Settings", "सेटिंग")}</Link></p>}
+      {order && <p className="rounded-xl bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-800">{T(`Bill for order ${order.code}: type the actual weight. The advance ${inr(orderPaid(order))} is counted${order.rate_lock ? ", and the locked rate is filled in" : ""}; saving delivers the order.`, `ऑर्डर ${order.code} का बिल: असली वज़न डालें। एडवांस ${inr(orderPaid(order))} जुड़ गया${order.rate_lock ? ", lock किया रेट भरा है" : ""}; save करते ही ऑर्डर डिलीवर हो जाएगा।`)}</p>}
       {noRate && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("Today's rate is not set — the rate box of each item is filled from the last rate. ", "आज का रेट नहीं डला — हर item में पिछला रेट भरा है। ")}<Link href={`/poster/jewellery/rate${q}`} className="underline">{T("Set it", "डालें")}</Link></p>}
 
       {/* Customer */}
@@ -203,7 +225,7 @@ function BillBuilder() {
         <div className="grid grid-cols-2 gap-2">
           <label><span className={lab}>{T("Discount ₹", "छूट ₹")}</span><input className={inp} inputMode="decimal" value={disc.amount} onChange={(e) => setDisc({ ...disc, amount: e.target.value })} /></label>
           <label><span className={lab}>{T("Discount on", "छूट किस पर")}</span><select className={inp} value={disc.on} onChange={(e) => setDisc({ ...disc, on: e.target.value as "making" | "total" })}><option value="making">{T("Making only", "सिर्फ़ मेकिंग")}</option><option value="total">{T("Whole bill", "पूरा बिल")}</option></select></label>
-          <label><span className={lab}>{T("Advance already paid ₹", "पहले दिया advance ₹")}</span><input className={inp} inputMode="decimal" value={advance} onChange={(e) => setAdvance(e.target.value)} /></label>
+          <label><span className={lab}>{T("Advance already paid ₹", "पहले दिया advance ₹")}</span><input className={inp} inputMode="decimal" value={advance} disabled={!!order} onChange={(e) => setAdvance(e.target.value)} /></label>
           {kind === "estimate"
             ? <label><span className={lab}>{T("Valid till", "कब तक मान्य")}</span><input type="date" className={inp} value={validTill} onChange={(e) => setValidTill(e.target.value)} /></label>
             : <label><span className={lab}>{T("Balance due date (udhaar)", "बाकी कब तक (उधार)")}</span><input type="date" className={inp} value={due} onChange={(e) => setDue(e.target.value)} /></label>}

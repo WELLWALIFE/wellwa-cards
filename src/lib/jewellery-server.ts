@@ -65,7 +65,7 @@ export async function jwCtx(request: Request, as: string | null): Promise<
   const name = (row?.name || prof || "").trim().slice(0, 60);
   if (scope.role === "owner") return { ok: true, scope, setup, access: { title: "Owner", rights: JW_ALL_RIGHTS, owner: true, name: name || "Owner" } };
   const st = row ? setup.staff[row.id] : undefined;
-  const rights: JwRight[] = st ? st.rights : scope.role === "manager" ? JW_ALL_RIGHTS : ["bill"];
+  const rights: JwRight[] = st ? st.rights : scope.role === "manager" ? JW_ALL_RIGHTS : ["bill", "orders"];
   return { ok: true, scope, setup, access: { title: st?.title || (scope.role === "manager" ? "Manager" : "Counter"), rights, owner: false, name } };
 }
 export const jwDenied = (what: string) => NextResponse.json({ error: `You do not have the right to ${what}. Ask the owner (Jewellery → Settings → Staff).` }, { status: 403 });
@@ -118,16 +118,16 @@ export async function createBill(scope: Scope, setup: JwSetup, kind: BillKind, f
   return null;
 }
 
-/** Every bill with a mobile lands in the CRM (Customers): the same number is found in any of the ways the CRM keeps it
- *  ("+919876543210", "919876543210", "9876543210"), else a new customer is added. A sale marks the customer won and adds the bill
- *  to their value; an estimate marks a new enquiry interested. A line goes on the customer's timeline either way. */
-export async function linkCustomer(ownerId: string, b: BillRow): Promise<void> {
-  const d = (b.customer_phone || "").replace(/\D/g, "");
+/** Every bill, order and repair with a mobile lands in the CRM (Customers): the same number is found in any of the ways the CRM
+ *  keeps it ("+919876543210", "919876543210", "9876543210"), else a new customer is added. `status` moves the customer forward
+ *  ("converted" on a sale; "interested" lifts only a new / contacted one); `addPaise` adds to their value. A line goes on the
+ *  customer's timeline either way. */
+export async function linkCustomerPhone(ownerId: string, rawPhone: string, name: string, text: string, status: "converted" | "interested" | null, addPaise = 0): Promise<void> {
+  const d = (rawPhone || "").replace(/\D/g, "");
   if (d.length < 10) return;
   const ten = d.slice(-10);
   const phone = d.length === 10 || (d.length === 12 && d.startsWith("91")) ? `+91${ten}` : `+${d}`;
   const forms = [...new Set([phone, phone.slice(1), ten, `0${ten}`])].map((v) => `"${v}"`).join(",");
-  const sale = b.kind === "sale";
   type Lead = { id: string; name: string; status: string; value_paise: number | null };
   let lead = list(await restAsService<Lead[]>(`leads?owner_id=eq.${ownerId}&phone=in.(${encodeURIComponent(forms)})&select=id,name,status,value_paise&order=created_at&limit=1`))[0];
   const now = new Date().toISOString();
@@ -135,20 +135,26 @@ export async function linkCustomer(ownerId: string, b: BillRow): Promise<void> {
     const card = list(await restAsService<{ id: string }[]>(`cards?owner_id=eq.${ownerId}&select=id&order=created_at&limit=1`))[0];
     if (!card) return;
     const r = await restAsService<Lead[]>("leads?select=id,name,status,value_paise", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({
-      card_id: card.id, owner_id: ownerId, name: b.customer_name || "", phone, source: "jewellery", message: `${sale ? "Bill" : "Estimate"} ${b.code}`,
-      status: sale ? "converted" : "interested", value_paise: sale ? b.total_paise : 0, city: "", updated_at: now,
+      card_id: card.id, owner_id: ownerId, name: name || "", phone, source: "jewellery", message: text.replace(/^💍\s*/, ""),
+      status: status ?? "new", value_paise: addPaise, city: "", updated_at: now,
     }) });
     lead = list(r)[0];
     if (!lead) return;
   } else {
     const patch: Record<string, unknown> = { updated_at: now };
-    if (!lead.name && b.customer_name) patch.name = b.customer_name;
-    if (sale) { patch.value_paise = (lead.value_paise || 0) + b.total_paise; if (!["converted", "won"].includes(lead.status)) patch.status = "converted"; }
-    else if (["new", "contacted"].includes(lead.status)) patch.status = "interested";
+    if (!lead.name && name) patch.name = name;
+    if (addPaise) patch.value_paise = (lead.value_paise || 0) + addPaise;
+    if (status === "converted" && !["converted", "won"].includes(lead.status)) patch.status = "converted";
+    else if (status === "interested" && ["new", "contacted"].includes(lead.status)) patch.status = "interested";
     await restAsService(`leads?id=eq.${lead.id}&owner_id=eq.${ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
   }
+  await restAsService("lead_events", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: ownerId, lead_id: lead.id, kind: "note", text: text.slice(0, 500) }) });
+}
+
+export async function linkCustomer(ownerId: string, b: BillRow): Promise<void> {
+  const sale = b.kind === "sale";
   const text = `💍 ${sale ? "Bill" : "Estimate"} ${b.code} · ${inr(b.total_paise)}${sale && b.balance_paise > 0 ? ` · baaki ${inr(b.balance_paise)}` : ""}`;
-  await restAsService("lead_events", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: ownerId, lead_id: lead.id, kind: "note", text }) });
+  await linkCustomerPhone(ownerId, b.customer_phone, b.customer_name, text, sale ? "converted" : "interested", sale ? b.total_paise : 0);
 }
 
 /** Re-works a saved bill's totals after its payments or status change. */
