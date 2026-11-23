@@ -6,7 +6,7 @@
 //   • it works only once Shubhora has switched it on for that account (Super Admin → Users → "Advanced"), after payment.
 // Anyone who wants to stay simple never sees more than one "Advanced features" box. Shared by the app and the server.
 
-export type AddonKey = "orders" | "jewellery";
+export type AddonKey = "orders" | "jewellery" | "mobile";
 export type Addon = {
   key: AddonKey; emoji: string; en: string; hi: string; descEn: string; descHi: string; href: string;
   /** what it does, three or four short lines (the locked card shows them so the owner sees what they would get) */
@@ -53,6 +53,23 @@ export const ADDONS: Addon[] = [
     categories: ["jewellery"],
     words: /\b(jewell?ery|jewell?ers?|jewelry|jeweler|gold\s*smith|goldsmith|sunar|swarn|bullion|hallmark)\b|ज्वेलर्स|ज्वेलरी|सुनार|सर्राफ|स्वर्ण/i,
   },
+  {
+    // Shubhora Mobile Shop (owner, 23 Nov 2026 — plan https://claude.ai/artifact/Ji6XdzU2WzSU8eHGgmjEyd): accessories, phones by IMEI,
+    // repairs — for a small accessory + repair shop and for a phone seller alike.
+    key: "mobile", emoji: "📱", en: "Mobile & accessory shop (billing, stock, IMEI)", hi: "Mobile / accessory shop (बिल, स्टॉक, IMEI)",
+    descEn: "Fast bills for accessories and phones, stock by count or by IMEI, purchases, udhaar and the day's close — the bill goes to the customer on WhatsApp",
+    descHi: "Accessory और फ़ोन के तेज़ बिल, गिनती या IMEI से स्टॉक, ख़रीद, उधार और शाम का हिसाब — बिल ग्राहक को WhatsApp पर",
+    href: "/poster/mobile",
+    points: [
+      ["Bill in seconds: search by name, barcode or the phone it fits", "सेकंडों में बिल: नाम, barcode या 'किस फ़ोन का' से खोजें"],
+      ["Phones by IMEI: a sold or unknown IMEI cannot be billed", "फ़ोन IMEI से: बिका या ग़लत IMEI बिल में नहीं चलेगा"],
+      ["Stock goes down by itself; low stock list every day", "स्टॉक अपने-आप घटता है; कम स्टॉक की सूची"],
+      ["Day close: cash and UPI apart, profit, udhaar", "डे क्लोज़: cash और UPI अलग, मुनाफ़ा, उधार"],
+    ],
+    guide: "/help/mobile",
+    categories: ["mobile"],
+    words: /\b(mobiles?|phones?|smartphones?|accessor(y|ies)|mobile\s*repair(ing)?|recharge|telecom|cellular)\b|मोबाइल|फ़ोन|एक्सेसरी/i,
+  },
 ];
 
 export const addonOf = (key: string) => ADDONS.find((a) => a.key === key) ?? null;
@@ -68,6 +85,8 @@ export type AddonsAnswer = {
   teamOrders: boolean;
   /** shops this person works in as a team member that have Jewellery switched on */
   teamJewellery?: boolean;
+  /** shops this person works in as a team member that have Mobile Shop switched on */
+  teamMobile?: boolean;
 };
 
 export const addonWaText = (a: Addon, premium = true) => premium

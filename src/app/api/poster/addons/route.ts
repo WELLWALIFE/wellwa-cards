@@ -21,12 +21,13 @@ export async function GET(request: Request) {
     const fits = on || (await fitsBusiness(me.id, a));
     if (on || fits) list.push({ key: a.key, on, fits });
   }
-  let teamOrders = false, teamJewellery = false;
+  let teamOrders = false, teamJewellery = false, teamMobile = false;
   for (const t of (teams as { owner_id: string }[]).slice(0, 10)) {
     if (!teamOrders && (await addonOn(t.owner_id, "orders"))) teamOrders = true;
     if (!teamJewellery && (await addonOn(t.owner_id, "jewellery"))) teamJewellery = true;
-    if (teamOrders && teamJewellery) break;
+    if (!teamMobile && (await addonOn(t.owner_id, "mobile"))) teamMobile = true;
+    if (teamOrders && teamJewellery && teamMobile) break;
   }
-  const out: AddonsAnswer = { premium, list, teamOrders, teamJewellery };
+  const out: AddonsAnswer = { premium, list, teamOrders, teamJewellery, teamMobile };
   return NextResponse.json(out);
 }

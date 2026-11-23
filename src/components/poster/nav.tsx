@@ -21,7 +21,7 @@ type Tab = { href: string; label: string; icon: typeof Home };
 const DUKAAN = "/poster/dukaan";
 
 function isActive(href: string, p: string): boolean {
-  if (href === DUKAAN) return /^\/poster\/(dukaan|jewellery|orders)(\/|$)/.test(p);
+  if (href === DUKAAN) return /^\/poster\/(dukaan|jewellery|orders|mobile)(\/|$)/.test(p);
   if (href === "/poster") return p === "/poster" || p.startsWith("/poster/history");
   if (href === "/poster/more") return /^\/poster\/(more|setup|social|report|guide|connect|profiles)/.test(p);
   if (href === "/poster/create") return /^\/poster\/(create|video|calendar|brand|testimonials|card|text-video|explainer|reel|photoshoot|website)/.test(p);
@@ -55,7 +55,7 @@ export function PosterNav() {
   const ordersOn = shop.orders;
   // "Dukaan" (owner, 23 Nov 2026: "ye main rehne wala hai… properly highlight"): the shop's own work — Jewellery, Orders · Silai and
   // the modules to come — in the middle of the bar, drawn bigger. Shown when a module is on, or one suits this business.
-  const dukaan = shop.orders || shop.jewellery || shop.suits.length > 0;
+  const dukaan = shop.orders || shop.jewellery || shop.mobile || shop.suits.length > 0;
   const base: Tab[] = [
     { href: "/poster", label: t.tabHome, icon: Home },
     { href: "/poster/create", label: t.tabCard, icon: PlusCircle },

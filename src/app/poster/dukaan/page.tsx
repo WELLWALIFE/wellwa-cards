@@ -14,6 +14,7 @@ import { waLink } from "@/lib/site-brand";
 import type { JwSetup, RateBook } from "@/lib/jewellery";
 
 type Step = { en: string; hi: string; dEn: string; dHi: string; href: string; done?: boolean; optional?: boolean };
+type MsHome = { setup: { shopName: string; address: string; phone: string }; items: number; recent: unknown[] };
 type JwHome = { setup: JwSetup; rate: RateBook | null; today: string; recent: unknown[]; stats: { ordersOpen?: number } };
 
 /** Day-to-day use, in order — the "how to use" of each module. */
@@ -27,6 +28,14 @@ const JW_USE: [string, string, string, string][] = [
   ["Stock and tags", "स्टॉक और टैग", "Add every piece — it gets a tag number and a barcode label to print. Selling the tag takes it out of stock.", "हर पीस चढ़ाएँ — टैग नंबर और बारकोड लेबल मिलेगा। बिकते ही स्टॉक से हटेगा।"],
   ["Your website sells too", "वेबसाइट भी बेचती है", "Every piece in stock shows on your website with its photo and a “from ₹” price at today's rate; customers ask about it on WhatsApp. Add a photo when you add stock.", "स्टॉक का हर पीस वेबसाइट पर फ़ोटो और आज के रेट से “₹… से शुरू” दाम के साथ; ग्राहक WhatsApp पर पूछते हैं। स्टॉक चढ़ाते समय फ़ोटो जोड़ें।"],
   ["Evening: day close", "शाम: डे क्लोज़", "Reports → Today: sale, GST, money by cash / UPI, old gold — send it to yourself on WhatsApp. Excel for the CA.", "रिपोर्ट → आज: बिक्री, GST, cash / UPI पैसे, पुराना सोना — खुद को WhatsApp करें। CA के लिए Excel।"],
+];
+const MS_USE: [string, string, string, string][] = [
+  ["Sell: New bill", "बेचना: नया बिल", "Type the item or the phone it fits (cover redmi 13), or scan the barcode. Tap Cash / UPI. Save.", "item या किस फ़ोन का है लिखें (cover redmi 13), या barcode scan करें। Cash / UPI दबाएँ। Save।"],
+  ["Udhaar", "उधार", "Pick “Part / udhaar” and type what came. The rest shows on the home screen; take it later from the bill.", "“कुछ / उधार” चुनकर जो मिला लिखें। बाकी home पर दिखता है; बाद में बिल से ले लें।"],
+  ["New stock came", "नया माल आया", "Purchase: pick the item, how many, cost of one. The stock goes up.", "ख़रीद: item चुनें, कितने आए, एक की लागत। स्टॉक बढ़ जाता है।"],
+  ["Phones (if you sell them)", "फ़ोन (अगर बेचते हैं)", "Add the model once as “Phone”. Scan IMEIs in Purchase; on the bill just scan the IMEI.", "model एक बार “फ़ोन” में जोड़ें। ख़रीद में IMEI scan करें; बिल पर बस IMEI scan करें।"],
+  ["No internet?", "इंटरनेट नहीं?", "Bills still get made and are kept on the phone; they go up when the network is back.", "बिल फिर भी बनते हैं और फ़ोन में रखे जाते हैं; नेटवर्क आते ही चढ़ जाते हैं।"],
+  ["Night: check the day", "रात को: दिन देखें", "Home shows today's sale, cash and UPI apart, profit and low stock.", "Home पर आज की बिक्री, cash और UPI अलग, मुनाफ़ा और कम स्टॉक।"],
 ];
 const SILAI_USE: [string, string, string, string][] = [
   ["Book an order", "ऑर्डर बुक करें", "Customer, item (blouse, suit…), work, charge and date. Take the measurements once — they are kept for next time.", "ग्राहक, item (ब्लाउज़, सूट…), काम, चार्ज और तारीख़। नाप एक बार — अगली बार के लिए save।"],
@@ -73,8 +82,11 @@ export default function Dukaan() {
   const T = (en: string, h: string) => (hi ? h : en);
   const shop = useShopModules();
   const [jw, setJw] = useState<JwHome | null>(null);
+  const [ms, setMs] = useState<MsHome | null>(null);
   useEffect(() => { (async () => { if (!(await isLoggedIn())) router.replace(`/login?next=${encodeURIComponent(location.pathname)}`); })(); }, [router]);
   useEffect(() => { if (shop.jewellery) void api<JwHome>("/api/jewellery").then((r) => { if (r.ok) setJw(r.data); }); }, [shop.jewellery]);
+
+  useEffect(() => { if (shop.mobile) void api<MsHome>("/api/mobile").then((r) => { if (r.ok) setMs(r.data); }).catch(() => undefined); }, [shop.mobile]);
 
   if (!shop.loaded) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const jwSteps: Step[] = [
@@ -84,13 +96,19 @@ export default function Dukaan() {
     { en: "Add stock and print tags", hi: "स्टॉक चढ़ाएँ, टैग छापें", dEn: "Each piece gets a barcode tag; billing scans it.", dHi: "हर पीस को बारकोड टैग; बिल में scan करें।", href: "/poster/jewellery/stock/new", optional: true },
     { en: "Staff logins", hi: "Staff के login", dEn: "Add your counter staff in Customers → Settings → Team, then give rights in Jewellery settings.", dHi: "Customers → Settings → Team में staff जोड़ें, फिर Jewellery settings में अधिकार दें।", href: "/poster/crm?s=settings", optional: true },
   ];
+  const msSteps: Step[] = [
+    { en: "Your shop on the bill", hi: "बिल पर आपकी दुकान", dEn: "Shop name, address, phone, printer paper size. GST only if you have a GSTIN.", dHi: "दुकान का नाम, पता, फ़ोन, printer का paper साइज़। GST तभी जब GSTIN हो।", href: "/poster/mobile/settings", done: !!(ms && (ms.setup.address || ms.setup.phone)) },
+    { en: "Add your items", hi: "अपने items जोड़ें", dEn: "What you sell, with price and how many you have. Start with the 20 that sell most.", dHi: "जो बेचते हैं, दाम और गिनती के साथ। पहले सबसे ज़्यादा बिकने वाले 20 से शुरू करें।", href: "/poster/mobile/items", done: !!(ms && ms.items > 0) },
+    { en: "Make the first bill", hi: "पहला बिल बनाएँ", dEn: "Try it on a test name; cancel it after if you like.", dHi: "किसी टेस्ट नाम से बनाकर देखें; बाद में रद्द कर सकते हैं।", href: "/poster/mobile/bill", done: !!(ms && ms.recent.length > 0) },
+    { en: "Staff logins", hi: "Staff के login", dEn: "Add staff in Customers → Settings → Team, then give rights in Mobile shop settings.", dHi: "Customers → Settings → Team में staff जोड़ें, फिर Mobile shop settings में हक़ दें।", href: "/poster/crm?s=settings", optional: true },
+  ];
   const silaiSteps: Step[] = [
     { en: "Set up items and steps", hi: "Item और steps सेट करें", dEn: "Items you make, the measurements of each, and the steps (cutting, stitching…).", dHi: "जो item बनाते हैं, हर item का नाप, और steps (कटिंग, सिलाई…)।", href: "/poster/orders/setup" },
     { en: "Add staff and karigars", hi: "Staff और कारीगर जोड़ें", dEn: "Logins for the master and tailors; karigars get work on WhatsApp.", dHi: "मास्टर और टेलर के login; कारीगर को काम WhatsApp पर।", href: "/poster/orders/staff" },
     { en: "Book the first order", hi: "पहला ऑर्डर बुक करें", dEn: "Customer, item, measurements, charge, date.", dHi: "ग्राहक, item, नाप, चार्ज, तारीख़।", href: "/poster/orders" },
   ];
   const off = shop.suits.map((s) => ADDONS.find((a) => a.key === s.key)).filter((a): a is (typeof ADDONS)[number] => !!a);
-  const none = !shop.jewellery && !shop.orders;
+  const none = !shop.jewellery && !shop.orders && !shop.mobile;
 
   return (
     <div className="space-y-4">
@@ -108,6 +126,18 @@ export default function Dukaan() {
           <p className="text-xs font-semibold text-muted">{T("Start here", "यहाँ से शुरू करें")} · {jwSteps.filter((s) => s.done).length}/{jwSteps.filter((s) => !s.optional).length} {T("done", "पूरे")}</p>
           <Steps steps={jwSteps} hi={hi} />
           <HowTo rows={JW_USE} hi={hi} guide="/help/jewellery" />
+        </section>
+      )}
+
+      {shop.mobile && (
+        <section className="space-y-3 rounded-2xl border border-border bg-surface2/40 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-bold">📱 {T("Mobile shop", "मोबाइल दुकान")}</h2>
+            <Link href="/poster/mobile" className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2 text-sm font-bold text-white">{T("Open", "खोलें")} <ChevronRight className="h-4 w-4" /></Link>
+          </div>
+          <p className="text-xs font-semibold text-muted">{T("Start here", "यहाँ से शुरू करें")} · {msSteps.filter((s) => s.done).length}/{msSteps.filter((s) => !s.optional).length} {T("done", "पूरे")}</p>
+          <Steps steps={msSteps} hi={hi} />
+          <HowTo rows={MS_USE} hi={hi} guide="/help/mobile" />
         </section>
       )}
 
