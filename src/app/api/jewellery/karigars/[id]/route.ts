@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: Ctx) {
     if (!why) return NextResponse.json({ error: "Write why this entry is wrong." }, { status: 400 });
     const t = list(await restAsService<KarigarTxn[]>(`jw_karigar_txns?id=eq.${b.void}&owner_id=eq.${c.scope.ownerId}&karigar_id=eq.${k.id}&select=${TXN_COLS}&limit=1`))[0];
     if (!t) return NextResponse.json({ error: "Entry not found." }, { status: 404 });
-    const r = await restAsService(`jw_karigar_txns?id=eq.${t.id}&owner_id=eq.${c.scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ voided: true, note: `${t.note ? `${t.note} · ` : ""}VOID: ${why} — ${c.access.name}`.slice(0, 300) }) });
+    const r = await restAsService(`jw_karigar_txns?id=eq.${t.id}&owner_id=eq.${c.scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ voided: true, note: `${t.note ? `${t.note} · ` : ""}VOID by ${c.access.name}: ${why}`.slice(0, 300) }) });
     return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Could not save." }, { status: 500 });
   }
 

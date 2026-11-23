@@ -71,7 +71,9 @@ function OrderView() {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   const btn = "inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold disabled:opacity-50";
   const inp = "rounded-lg border border-border bg-surface px-2 py-2 text-sm";
-  const stepAt = STEPS.indexOf(o.status as (typeof STEPS)[number]);
+  // A piece made or mended in the shop itself never went to a karigar: that step is left out.
+  const steps = STEPS.filter((s) => s !== "karigar" || !!o.karigar_id || o.status === "karigar");
+  const stepAt = steps.indexOf(o.status as (typeof STEPS)[number]);
 
   return (
     <div className="space-y-3">
@@ -81,8 +83,8 @@ function OrderView() {
       <div className="print:hidden">
         <h1 className="text-lg font-bold">{repair ? "🔧" : "💍"} {o.code} <span className="text-sm font-normal text-muted">· {o.customer_name || o.customer_phone}</span></h1>
         {o.status === "cancelled" ? <p className="mt-1 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{T("Cancelled", "रद्द")}: {o.cancel_reason}</p> : (
-          <ol className="mt-2 grid grid-cols-4 gap-1 text-center text-[11px] font-semibold">
-            {STEPS.map((s, i) => { const st = ORDER_STATUSES.find((x) => x.key === s)!; return <li key={s} className={`rounded-lg px-1 py-1.5 ${i <= stepAt ? "bg-brand/15 text-brand-ink" : "bg-surface2 text-muted"}`}>{i < stepAt ? "✓ " : ""}{hi ? st.hi : st.en}</li>; })}
+          <ol className={`mt-2 grid ${steps.length === 4 ? "grid-cols-4" : "grid-cols-3"} gap-1 text-center text-[11px] font-semibold`}>
+            {steps.map((s, i) => { const st = ORDER_STATUSES.find((x) => x.key === s)!; return <li key={s} className={`rounded-lg px-1 py-1.5 ${i <= stepAt ? "bg-brand/15 text-brand-ink" : "bg-surface2 text-muted"}`}>{i < stepAt ? "✓ " : ""}{hi ? st.hi : st.en}</li>; })}
           </ol>
         )}
         {overdue(o, today) && <p className="mt-1 text-xs font-bold text-danger">{T("Late — the customer was promised ", "देर — ग्राहक को तारीख़ दी थी ")}{o.due_date}</p>}

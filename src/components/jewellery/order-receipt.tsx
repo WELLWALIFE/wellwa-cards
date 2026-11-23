@@ -42,12 +42,12 @@ export function OrderReceipt({ order: o, setup, shop }: { order: OrderRow; setup
       <section className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           {o.rate_lock && <p><b>Rate locked:</b> {purity(o.rate_lock.purity)} @ {inr(o.rate_lock.rate * 10)} / 10 g{o.rate_lock.day ? ` (rate of ${day(o.rate_lock.day)})` : ""}</p>}
-          {o.payments.length > 0 && <div><p className="font-semibold">Advance</p>{o.payments.map((p, k) => <p key={k}>{day(p.at)} · {MODE[p.mode] ?? p.mode}{p.ref ? ` (${p.ref})` : ""}: {inr(p.paise, true)}</p>)}</div>}
+          {o.payments.length > 0 && <div><p className="font-semibold">Payments</p>{o.payments.map((p, k) => <p key={k}>{day(p.at)} · {MODE[p.mode] ?? p.mode}{p.ref ? ` (${p.ref})` : ""}: {inr(p.paise, true)}</p>)}</div>}
           {o.notes && <p className="whitespace-pre-line"><b>Note:</b> {o.notes}</p>}
         </div>
         <div className="space-y-1 sm:text-right">
           {o.est_paise > 0 && <p>{repair ? "Repair charge" : "Estimate"}: <b>{inr(o.est_paise)}</b></p>}
-          <p>Advance paid: <b>{inr(paid, true)}</b></p>
+          <p>Paid: <b>{inr(paid, true)}</b></p>
           {repair && o.est_paise > 0 && <p>Balance: <b>{inr(Math.max(0, o.est_paise - paid), true)}</b></p>}
           {!repair && <p className="text-[11px] text-black/60">The final bill is made at delivery on the actual weight{o.rate_lock ? " at the locked rate" : " at that day's rate"}, with GST; the advance is adjusted in it.</p>}
         </div>
