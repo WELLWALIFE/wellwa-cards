@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronRight, FileText, Gem, Hammer, IndianRupee, LoaderCircle, Plus, ReceiptText, Settings2, Tags, TrendingUp } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronRight, FileText, Gem, Hammer, IndianRupee, LoaderCircle, Plus, ReceiptText, Settings2, Tags, TrendingUp } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { WorkspaceSwitch, useWorkspace } from "@/components/orders/orders-common";
@@ -99,6 +99,12 @@ export default function JewelleryHome() {
         </div>
       )}
 
+      {can("reports") && (
+        <Link href={`/poster/jewellery/reports${q}`} className="flex items-center justify-between rounded-2xl border border-border bg-surface p-3">
+          <span><p className="flex items-center gap-1 text-[11px] text-muted"><BarChart3 className="h-3 w-3" /> {T("Reports", "रिपोर्ट")}</p><p className="text-sm font-bold">{T("Day close, GST, Excel", "डे क्लोज़, GST, Excel")}</p></span>
+          <ChevronRight className="h-4 w-4 text-muted" />
+        </Link>
+      )}
       {can("stock") && (
         <Link href={`/poster/jewellery/stock${q}`} className="flex items-center justify-between rounded-2xl border border-border bg-surface p-3">
           <span><p className="flex items-center gap-1 text-[11px] text-muted"><Tags className="h-3 w-3" /> {T("Stock", "स्टॉक")}</p><p className="text-sm font-bold">{T("Tags, barcode labels, HUID", "टैग, बारकोड लेबल, HUID")}</p></span>
