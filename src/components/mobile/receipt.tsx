@@ -43,7 +43,7 @@ export function Receipt({ bill, setup, shop }: { bill: BillRow; setup: MsSetup; 
           {t.igst > 0 ? <p className="flex justify-between"><span>IGST</span><span>{inr(t.igst, true)}</span></p> : <><p className="flex justify-between"><span>CGST</span><span>{inr(t.cgst, true)}</span></p><p className="flex justify-between"><span>SGST</span><span>{inr(t.sgst, true)}</span></p></>}
         </>}
         <p className="flex justify-between border-y border-black py-0.5 font-bold" style={{ fontSize: slip ? 13 : 15 }}><span>{est ? "Estimate total" : ret ? "Returned" : "Total"} ({t.qty} pcs)</span><span>{inr(t.total)}</span></p>
-        {!est && (bill.payments ?? []).map((p, i) => <p key={i} className="flex justify-between"><span>{ret ? "Given back · " : ""}{MODE[p.mode] ?? p.mode}{p.ref && !ret ? ` (${p.ref})` : ""}</span><span>{inr(p.paise)}</span></p>)}
+        {!est && (bill.payments ?? []).map((p, i) => <p key={i} className="flex justify-between"><span>{ret ? `Given back · ${MODE[p.mode] ?? p.mode}` : /^Return /.test(p.ref) ? `Goods returned (${p.ref.slice(7)})` : /^EMI/.test(p.ref) ? p.ref : `${MODE[p.mode] ?? p.mode}${p.ref ? ` (${p.ref})` : ""}`}</span><span>{inr(p.paise)}</span></p>)}
         {!est && !ret && t.balance > 0 && <p className="flex justify-between font-bold"><span>Balance due</span><span>{inr(t.balance)}</span></p>}
       </div>
       {!slip && <p className="mt-1 italic">{inWords(t.total)}</p>}
