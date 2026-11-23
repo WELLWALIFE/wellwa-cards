@@ -11,6 +11,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, mgOf, paiseOf, sellRate, type JwSetup, type Payment, type RateBook } from "@/lib/jewellery";
 import type { Karigar, OrderRow } from "@/lib/jewellery-orders";
+import { JwTip } from "@/components/jewellery/jw-tip";
 
 type Home = { setup: JwSetup; rate: RateBook | null; today: string; error?: string };
 type ItemDraft = { itemType: string; desc: string; purity: string; weight: string; size: string; work: string; pieces: string };
@@ -84,8 +85,8 @@ function OrderForm() {
       <h1 className="text-lg font-bold">{repair ? T("New repair", "नया रिपेयर") : T("New order", "नया ऑर्डर")}</h1>
 
       <section className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
-        <label><span className={lab}>{T("Customer name", "ग्राहक का नाम")}</span><input className={inp} value={cust.name} onChange={(e) => setCust({ ...cust, name: e.target.value })} /></label>
-        <label><span className={lab}>{T("Mobile (WhatsApp)", "मोबाइल (WhatsApp)")}</span><input className={inp} inputMode="tel" value={cust.phone} onChange={(e) => setCust({ ...cust, phone: e.target.value })} placeholder="98765 43210" /></label>
+        <label><span className={lab}>{T("Customer name", "ग्राहक का नाम")}<JwTip k="Customer name" /></span><input className={inp} value={cust.name} onChange={(e) => setCust({ ...cust, name: e.target.value })} /></label>
+        <label><span className={lab}>{T("Mobile (WhatsApp)", "मोबाइल (WhatsApp)")}<JwTip k="Mobile (WhatsApp)" /></span><input className={inp} inputMode="tel" value={cust.phone} onChange={(e) => setCust({ ...cust, phone: e.target.value })} placeholder="98765 43210" /></label>
       </section>
 
       {items.map((it, i) => (
@@ -95,12 +96,12 @@ function OrderForm() {
             {setup.items.map((x) => <button key={x.key} type="button" onClick={() => setI(i, { itemType: x.key })} className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${it.itemType === x.key ? "border-brand bg-brand/10 text-brand-ink" : "border-border"}`}>{hi ? x.hi : x.en}</button>)}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <label><span className={lab}>{T("Purity", "Purity")}</span><select className={inp} value={it.purity} onChange={(e) => setI(i, { purity: e.target.value })}><option value="">—</option>{purities.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></label>
+            <label><span className={lab}>{T("Purity", "Purity")}<JwTip k="Purity" /></span><select className={inp} value={it.purity} onChange={(e) => setI(i, { purity: e.target.value })}><option value="">—</option>{purities.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></label>
             <label><span className={lab}>{repair ? T("Weight now (g)", "अभी का वज़न (g)") : T("Approx. weight (g)", "लगभग वज़न (g)")}</span><input className={inp} inputMode="decimal" value={it.weight} onChange={(e) => setI(i, { weight: e.target.value })} placeholder="0.000" /></label>
-            <label><span className={lab}>{T("Size", "साइज़")}</span><input className={inp} value={it.size} onChange={(e) => setI(i, { size: e.target.value })} placeholder={T("e.g. 14, 2.6", "जैसे 14, 2.6")} /></label>
-            <label><span className={lab}>{T("Pieces", "नग")}</span><input className={inp} inputMode="numeric" value={it.pieces} onChange={(e) => setI(i, { pieces: e.target.value.replace(/\D/g, "") })} /></label>
+            <label><span className={lab}>{T("Size", "साइज़")}<JwTip k="Size" /></span><input className={inp} value={it.size} onChange={(e) => setI(i, { size: e.target.value })} placeholder={T("e.g. 14, 2.6", "जैसे 14, 2.6")} /></label>
+            <label><span className={lab}>{T("Pieces", "नग")}<JwTip k="Pieces" /></span><input className={inp} inputMode="numeric" value={it.pieces} onChange={(e) => setI(i, { pieces: e.target.value.replace(/\D/g, "") })} /></label>
           </div>
-          <label className="block"><span className={lab}>{T("Name on the receipt", "रसीद पर नाम")}</span><input className={inp} value={it.desc} onChange={(e) => setI(i, { desc: e.target.value })} placeholder={typeName(it.itemType) || T("e.g. Ladies ring", "जैसे लेडीज़ अंगूठी")} /></label>
+          <label className="block"><span className={lab}>{T("Name on the receipt", "रसीद पर नाम")}<JwTip k="Name on the receipt" /></span><input className={inp} value={it.desc} onChange={(e) => setI(i, { desc: e.target.value })} placeholder={typeName(it.itemType) || T("e.g. Ladies ring", "जैसे लेडीज़ अंगूठी")} /></label>
           <label className="block"><span className={lab}>{repair ? T("Work to be done", "क्या काम करना है") : T("Design / details", "डिज़ाइन / जानकारी")}</span><input className={inp} value={it.work} onChange={(e) => setI(i, { work: e.target.value })} placeholder={repair ? T("e.g. solder the broken link, polish", "जैसे टूटी कड़ी जोड़ना, पॉलिश") : T("e.g. same as photo, ruby stone", "जैसे फ़ोटो जैसा, रूबी स्टोन")} /></label>
         </section>
       ))}
@@ -112,7 +113,7 @@ function OrderForm() {
           <label><span className={lab}>{repair ? T("Ready by", "कब तक तैयार") : T("Delivery by", "डिलीवरी की तारीख़")}</span><input type="date" className={inp} value={due} onChange={(e) => setDue(e.target.value)} /></label>
         </div>
         {karigars.length > 0 && (
-          <label className="block"><span className={lab}>{T("Give to karigar (optional)", "कारीगर को दें (ज़रूरी नहीं)")}</span><select className={inp} value={karigar} onChange={(e) => setKarigar(e.target.value)}><option value="">{T("Not yet", "अभी नहीं")}</option>{karigars.map((k) => <option key={k.id} value={k.id}>{k.name}{k.skill ? ` · ${k.skill}` : ""}</option>)}</select></label>
+          <label className="block"><span className={lab}>{T("Give to karigar (optional)", "कारीगर को दें (ज़रूरी नहीं)")}<JwTip k="Give to karigar (optional)" /></span><select className={inp} value={karigar} onChange={(e) => setKarigar(e.target.value)}><option value="">{T("Not yet", "अभी नहीं")}</option>{karigars.map((k) => <option key={k.id} value={k.id}>{k.name}{k.skill ? ` · ${k.skill}` : ""}</option>)}</select></label>
         )}
         <p className="pt-1 text-[11px] font-semibold text-muted">{T("Advance received", "एडवांस मिला")}</p>
         <div className="grid grid-cols-[auto_1fr_1fr] gap-2">
@@ -126,7 +127,7 @@ function OrderForm() {
             <span>{lockRate ? T(`Lock today's rate for this order: ${setup.purities.find((p) => p.key === lockPurity)?.label} @ ${inr(lockRate * 10)} / 10 g. The bill at delivery uses this rate.`, `इस ऑर्डर के लिए आज का रेट lock करें: ${setup.purities.find((p) => p.key === lockPurity)?.label} @ ${inr(lockRate * 10)} / 10 g। डिलीवरी के बिल में यही रेट लगेगा।`) : T("Set today's rate to lock it for this order.", "रेट lock करने के लिए पहले आज का रेट डालें।")}</span>
           </label>
         )}
-        <label className="block"><span className={lab}>{T("Note", "नोट")}</span><input className={inp} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+        <label className="block"><span className={lab}>{T("Note", "नोट")}<JwTip k="Note" /></span><input className={inp} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
       </section>
 
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}

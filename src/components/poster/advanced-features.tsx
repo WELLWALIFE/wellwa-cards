@@ -83,6 +83,22 @@ export function AdvancedFeatures({ hi, className = "" }: { hi: boolean; classNam
 }
 
 /** Orders · Silai is switched on for this account (or the person works in a shop that has it): the menus show it. Asked once per page view. */
+/** The shop modules this login can open (own or a team's) and the ones its business suits but are off — for the "Dukaan" tab. */
+export type ShopModules = { orders: boolean; jewellery: boolean; suits: AddonsAnswer["list"]; loaded: boolean };
+export function useShopModules(): ShopModules {
+  const [m, setM] = useState<ShopModules>({ orders: false, jewellery: false, suits: [], loaded: false });
+  useEffect(() => {
+    let live = true;
+    void api<AddonsAnswer>("/api/poster/addons").then((r) => {
+      if (!live || !r.ok) return;
+      const on = (k: string) => r.data.list.some((a) => a.key === k && a.on);
+      setM({ orders: r.data.teamOrders || on("orders"), jewellery: !!r.data.teamJewellery || on("jewellery"), suits: r.data.list.filter((a) => !a.on && a.fits), loaded: true });
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+  return m;
+}
+
 export function useOrdersOn(): boolean {
   const [on, setOn] = useState(false);
   useEffect(() => {

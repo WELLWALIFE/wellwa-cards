@@ -66,6 +66,8 @@ export type AddonsAnswer = {
   list: (AddonState & { fits: boolean })[];
   /** shops this person works in as a team member (tailor / manager) that have Orders switched on */
   teamOrders: boolean;
+  /** shops this person works in as a team member that have Jewellery switched on */
+  teamJewellery?: boolean;
 };
 
 export const addonWaText = (a: Addon, premium = true) => premium

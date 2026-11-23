@@ -11,6 +11,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { grams, inr, mgOf, paiseOf, type JwSetup, type Metal } from "@/lib/jewellery";
 import { TXN_KINDS, fineOf, type Karigar, type KarigarBalance, type KarigarTxn, type OrderRow, type TxnKind } from "@/lib/jewellery-orders";
+import { JwTip } from "@/components/jewellery/jw-tip";
 
 type Ans = { karigar: Karigar; txns: KarigarTxn[]; balance: KarigarBalance; orders: OrderRow[]; today: string; setup: JwSetup; error?: string };
 
@@ -117,16 +118,16 @@ function Ledger() {
           <label className="block"><span className={lab}>₹</span><input className={inp} inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></label>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <label><span className={lab}>{T("Metal", "धातु")}</span><select className={inp} value={f.metal} onChange={(e) => setF({ ...f, metal: e.target.value as Metal })}><option value="gold">{T("Gold", "सोना")}</option><option value="silver">{T("Silver", "चाँदी")}</option></select></label>
-            <label><span className={lab}>{T("Gross weight (g)", "वज़न (g)")}</span><input className={inp} inputMode="decimal" value={f.gross} onChange={(e) => setF({ ...f, gross: e.target.value })} placeholder="0.000" /></label>
-            <label><span className={lab}>{T("Touch %", "टंच %")}</span><input className={inp} inputMode="decimal" value={f.touch} onChange={(e) => setF({ ...f, touch: e.target.value })} /></label>
-            {kind === "receive" && <label><span className={lab}>{T("Wastage allowed (fine g)", "वेस्टेज छूट (fine g)")}</span><input className={inp} inputMode="decimal" value={f.wastage} onChange={(e) => setF({ ...f, wastage: e.target.value })} placeholder="0.000" /></label>}
+            <label><span className={lab}>{T("Metal", "धातु")}<JwTip k="Metal" /></span><select className={inp} value={f.metal} onChange={(e) => setF({ ...f, metal: e.target.value as Metal })}><option value="gold">{T("Gold", "सोना")}</option><option value="silver">{T("Silver", "चाँदी")}</option></select></label>
+            <label><span className={lab}>{T("Gross weight (g)", "वज़न (g)")}<JwTip k="Gross weight (g)" /></span><input className={inp} inputMode="decimal" value={f.gross} onChange={(e) => setF({ ...f, gross: e.target.value })} placeholder="0.000" /></label>
+            <label><span className={lab}>{T("Touch %", "टंच %")}<JwTip k="Touch %" /></span><input className={inp} inputMode="decimal" value={f.touch} onChange={(e) => setF({ ...f, touch: e.target.value })} /></label>
+            {kind === "receive" && <label><span className={lab}>{T("Wastage allowed (fine g)", "वेस्टेज छूट (fine g)")}<JwTip k="Wastage allowed (fine g)" /></span><input className={inp} inputMode="decimal" value={f.wastage} onChange={(e) => setF({ ...f, wastage: e.target.value })} placeholder="0.000" /></label>}
           </div>
         )}
         {preview > 0 && <p className="text-xs font-semibold">= {grams(preview)} fine{kind === "receive" && mgOf(f.wastage) ? ` + ${grams(mgOf(f.wastage))} ${T("wastage", "वेस्टेज")}` : ""}</p>}
         <div className="grid grid-cols-2 gap-2">
-          <label><span className={lab}>{T("For order (optional)", "किस ऑर्डर के लिए")}</span><select className={inp} value={f.order} onChange={(e) => setF({ ...f, order: e.target.value })}><option value="">—</option>{d.orders.map((o) => <option key={o.id} value={o.id}>{o.code} · {o.customer_name}</option>)}{f.order && !d.orders.some((o) => o.id === f.order) && <option value={f.order}>{T("This order", "यह ऑर्डर")}</option>}</select></label>
-          <label><span className={lab}>{T("Date", "तारीख़")}</span><input type="date" className={inp} max={d.today} value={f.day || d.today} onChange={(e) => setF({ ...f, day: e.target.value })} /></label>
+          <label><span className={lab}>{T("For order (optional)", "किस ऑर्डर के लिए")}<JwTip k="For order (optional)" /></span><select className={inp} value={f.order} onChange={(e) => setF({ ...f, order: e.target.value })}><option value="">—</option>{d.orders.map((o) => <option key={o.id} value={o.id}>{o.code} · {o.customer_name}</option>)}{f.order && !d.orders.some((o) => o.id === f.order) && <option value={f.order}>{T("This order", "यह ऑर्डर")}</option>}</select></label>
+          <label><span className={lab}>{T("Date", "तारीख़")}<JwTip k="Date" /></span><input type="date" className={inp} max={d.today} value={f.day || d.today} onChange={(e) => setF({ ...f, day: e.target.value })} /></label>
         </div>
         <input className={inp} placeholder={T("Note (e.g. 2 bangles, bill no.)", "नोट (जैसे 2 चूड़ी, पर्ची नंबर)")} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
         {msg && <p className={`text-sm font-semibold ${msg.ok ? "text-good" : "text-danger"}`}>{msg.t}</p>}

@@ -4,6 +4,7 @@
 import { useMemo, useState } from "react";
 import { grams, mgOf, paiseOf, type JwSetup, type MakingKind } from "@/lib/jewellery";
 import type { StockRow } from "@/lib/jewellery-stock";
+import { JwTip } from "@/components/jewellery/jw-tip";
 
 export type StockDraft = {
   item_type: string; purity: string; descr: string; pieces: string; gross: string; stone: string; net: string; stoneRs: string;
@@ -52,31 +53,31 @@ export function StockForm({ d, set, setup, owner, hi }: { d: StockDraft; set: (p
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <label><span className={lab}>{T("Purity", "Purity")}</span><select className={inp} value={d.purity} onChange={(e) => set({ purity: e.target.value })}>{purities.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></label>
-        <label><span className={lab}>{T("Gross wt (g)", "कुल वज़न (g)")}</span><input className={inp} inputMode="decimal" value={d.gross} onChange={(e) => set({ gross: e.target.value })} placeholder="0.000" /></label>
-        <label><span className={lab}>{T("Stone wt (g)", "नग वज़न (g)")}</span><input className={inp} inputMode="decimal" value={d.stone} onChange={(e) => set({ stone: e.target.value })} placeholder="0.000" /></label>
-        <label><span className={lab}>{T("Net wt (g)", "शुद्ध वज़न (g)")}</span><input className={inp} inputMode="decimal" value={d.net} onChange={(e) => set({ net: e.target.value })} placeholder={grams(net).replace(" g", "")} /></label>
-        <label><span className={lab}>{T("Stone ₹", "नग ₹")}</span><input className={inp} inputMode="decimal" value={d.stoneRs} onChange={(e) => set({ stoneRs: e.target.value })} /></label>
-        <label><span className={lab}>HUID</span><input className={`${inp} ${huidBad ? "!border-danger" : ""}`} value={d.huid} maxLength={8} onChange={(e) => set({ huid: e.target.value.toUpperCase() })} placeholder="AB12CD" /></label>
-        <label><span className={lab}>{T("Size", "साइज़")}</span><input className={inp} value={d.size} onChange={(e) => set({ size: e.target.value })} placeholder="14, 2.6" /></label>
-        <label><span className={lab}>{T("Pieces", "नग")}</span><input className={inp} inputMode="numeric" value={d.pieces} onChange={(e) => set({ pieces: e.target.value })} /></label>
+        <label><span className={lab}>{T("Purity", "Purity")}<JwTip k="Purity" /></span><select className={inp} value={d.purity} onChange={(e) => set({ purity: e.target.value })}>{purities.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></label>
+        <label><span className={lab}>{T("Gross wt (g)", "कुल वज़न (g)")}<JwTip k="Gross wt (g)" /></span><input className={inp} inputMode="decimal" value={d.gross} onChange={(e) => set({ gross: e.target.value })} placeholder="0.000" /></label>
+        <label><span className={lab}>{T("Stone wt (g)", "नग वज़न (g)")}<JwTip k="Stone wt (g)" /></span><input className={inp} inputMode="decimal" value={d.stone} onChange={(e) => set({ stone: e.target.value })} placeholder="0.000" /></label>
+        <label><span className={lab}>{T("Net wt (g)", "शुद्ध वज़न (g)")}<JwTip k="Net wt (g)" /></span><input className={inp} inputMode="decimal" value={d.net} onChange={(e) => set({ net: e.target.value })} placeholder={grams(net).replace(" g", "")} /></label>
+        <label><span className={lab}>{T("Stone ₹", "नग ₹")}<JwTip k="Stone ₹" /></span><input className={inp} inputMode="decimal" value={d.stoneRs} onChange={(e) => set({ stoneRs: e.target.value })} /></label>
+        <label><span className={lab}>HUID<JwTip k="HUID" /></span><input className={`${inp} ${huidBad ? "!border-danger" : ""}`} value={d.huid} maxLength={8} onChange={(e) => set({ huid: e.target.value.toUpperCase() })} placeholder="AB12CD" /></label>
+        <label><span className={lab}>{T("Size", "साइज़")}<JwTip k="Size" /></span><input className={inp} value={d.size} onChange={(e) => set({ size: e.target.value })} placeholder="14, 2.6" /></label>
+        <label><span className={lab}>{T("Pieces", "नग")}<JwTip k="Pieces" /></span><input className={inp} inputMode="numeric" value={d.pieces} onChange={(e) => set({ pieces: e.target.value })} /></label>
       </div>
       {huidBad && <p className="text-xs font-semibold text-danger">{T("HUID is 6 letters / digits (on the hallmark).", "HUID 6 अक्षर / अंक का होता है (हॉलमार्क पर)।")}</p>}
-      <label className="block"><span className={lab}>{T("Description (optional)", "विवरण (optional)")}</span><input className={inp} value={d.descr} onChange={(e) => set({ descr: e.target.value })} placeholder={T("e.g. Ladies ring, ruby", "जैसे लेडीज़ अंगूठी, रूबी")} /></label>
+      <label className="block"><span className={lab}>{T("Description (optional)", "विवरण (optional)")}<JwTip k="Description (optional)" /></span><input className={inp} value={d.descr} onChange={(e) => set({ descr: e.target.value })} placeholder={T("e.g. Ladies ring, ruby", "जैसे लेडीज़ अंगूठी, रूबी")} /></label>
       <button type="button" onClick={() => setMore(!more)} className="text-xs font-semibold text-brand-ink">{more ? "−" : "+"} {T("Where kept, from where, cost, own making", "कहाँ रखा, कहाँ से आया, लागत, अलग मेकिंग")}</button>
       {more && (
         <div className="space-y-2 rounded-xl border border-border p-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <label><span className={lab}>{T("Kept at", "कहाँ रखा")}</span><input className={inp} value={d.counter} onChange={(e) => set({ counter: e.target.value })} placeholder={T("Counter 1, Locker", "काउंटर 1, लॉकर")} /></label>
-            <label><span className={lab}>{T("Came from", "कहाँ से आया")}</span><input className={inp} value={d.source} onChange={(e) => set({ source: e.target.value })} placeholder={T("Karigar / supplier", "कारीगर / सप्लायर")} /></label>
-            {owner && <label><span className={lab}>{T("Cost ₹ (only you see it)", "लागत ₹ (सिर्फ़ आप देखेंगे)")}</span><input className={inp} inputMode="decimal" value={d.costRs} onChange={(e) => set({ costRs: e.target.value })} /></label>}
+            <label><span className={lab}>{T("Kept at", "कहाँ रखा")}<JwTip k="Kept at" /></span><input className={inp} value={d.counter} onChange={(e) => set({ counter: e.target.value })} placeholder={T("Counter 1, Locker", "काउंटर 1, लॉकर")} /></label>
+            <label><span className={lab}>{T("Came from", "कहाँ से आया")}<JwTip k="Came from" /></span><input className={inp} value={d.source} onChange={(e) => set({ source: e.target.value })} placeholder={T("Karigar / supplier", "कारीगर / सप्लायर")} /></label>
+            {owner && <label><span className={lab}>{T("Cost ₹ (only you see it)", "लागत ₹ (सिर्फ़ आप देखेंगे)")}<JwTip k="Cost ₹ (only you see it)" /></span><input className={inp} inputMode="decimal" value={d.costRs} onChange={(e) => set({ costRs: e.target.value })} /></label>}
           </div>
           <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={d.ownMaking} onChange={(e) => set({ ownMaking: e.target.checked })} className="h-4 w-4" /> {T("This piece has its own making (not the item type's)", "इस पीस की मेकिंग अलग है")}</label>
           {d.ownMaking && (
             <div className="grid grid-cols-3 gap-2">
-              <label><span className={lab}>{T("Making", "मेकिंग")}</span><select className={inp} value={d.making} onChange={(e) => set({ making: e.target.value as MakingKind })}><option value="per_g">₹/g</option><option value="pct">%</option><option value="piece">₹/{T("piece", "पीस")}</option></select></label>
+              <label><span className={lab}>{T("Making", "मेकिंग")}<JwTip k="Making" /></span><select className={inp} value={d.making} onChange={(e) => set({ making: e.target.value as MakingKind })}><option value="per_g">₹/g</option><option value="pct">%</option><option value="piece">₹/{T("piece", "पीस")}</option></select></label>
               <label><span className={lab}>{d.making === "pct" ? "%" : "₹"}</span><input className={inp} inputMode="decimal" value={d.makingValue} onChange={(e) => set({ makingValue: e.target.value })} /></label>
-              <label><span className={lab}>{T("Wastage %", "वेस्टेज %")}</span><input className={inp} inputMode="decimal" value={d.wastage} onChange={(e) => set({ wastage: e.target.value })} /></label>
+              <label><span className={lab}>{T("Wastage %", "वेस्टेज %")}<JwTip k="Wastage %" /></span><input className={inp} inputMode="decimal" value={d.wastage} onChange={(e) => set({ wastage: e.target.value })} /></label>
             </div>
           )}
         </div>

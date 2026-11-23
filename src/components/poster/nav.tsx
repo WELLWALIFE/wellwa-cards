@@ -14,11 +14,14 @@ import { initials } from "@/lib/initials";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { endPartnerSession } from "@/lib/logout";
 import { ShareSheet } from "@/components/poster/share-links";
-import { useOrdersOn } from "@/components/poster/advanced-features";
+import { useShopModules } from "@/components/poster/advanced-features";
 
 type Tab = { href: string; label: string; icon: typeof Home };
 
+const DUKAAN = "/poster/dukaan";
+
 function isActive(href: string, p: string): boolean {
+  if (href === DUKAAN) return /^\/poster\/(dukaan|jewellery|orders)(\/|$)/.test(p);
   if (href === "/poster") return p === "/poster" || p.startsWith("/poster/history");
   if (href === "/poster/more") return /^\/poster\/(more|setup|social|report|guide|connect|profiles)/.test(p);
   if (href === "/poster/create") return /^\/poster\/(create|video|calendar|brand|testimonials|card|text-video|explainer|reel|photoshoot|website)/.test(p);
@@ -48,14 +51,19 @@ export function PosterNav() {
     })();
     return () => { on = false; };
   }, []);
-  const ordersOn = useOrdersOn();
-  const tabs: Tab[] = [
+  const shop = useShopModules();
+  const ordersOn = shop.orders;
+  // "Dukaan" (owner, 23 Nov 2026: "ye main rehne wala hai… properly highlight"): the shop's own work — Jewellery, Orders · Silai and
+  // the modules to come — in the middle of the bar, drawn bigger. Shown when a module is on, or one suits this business.
+  const dukaan = shop.orders || shop.jewellery || shop.suits.length > 0;
+  const base: Tab[] = [
     { href: "/poster", label: t.tabHome, icon: Home },
     { href: "/poster/create", label: t.tabCard, icon: PlusCircle },
     { href: "/poster/crm", label: t.tabLeads, icon: Users },
     { href: "/poster/business", label: t.tabBusiness, icon: Handshake },
     { href: "/poster/more", label: t.tabMore, icon: UserCircle },
   ].filter((x) => x.href !== "/poster/business" || showsPartnerUi(kind));   // a consumer has no Business tab
+  const tabs: Tab[] = dukaan ? [...base.slice(0, 2), { href: DUKAAN, label: hi ? "दुकान" : "My Shop", icon: Store }, ...base.slice(2)] : base;
   // The screens opened most, one click away on a computer.
   const quick: Tab[] = [
     ...(ordersOn ? [{ href: "/poster/orders", label: hi ? "Orders · सिलाई" : "Orders · Silai", icon: Scissors }] : []),
@@ -77,6 +85,12 @@ export function PosterNav() {
         <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map((x) => {
             const active = isActive(x.href, p);
+            if (x.href === DUKAAN) return (
+              <Link key={x.href} href={x.href} className="flex flex-col items-center gap-0.5 pb-2 text-[11px] font-bold text-brand-ink">
+                <span className={`-mt-4 grid h-11 w-11 place-items-center rounded-full grad-brand text-white shadow-lg ring-4 ring-surface ${active ? "scale-105" : ""}`}><x.icon className="h-5 w-5" /></span>
+                {x.label}
+              </Link>
+            );
             return (
               <Link key={x.href} href={x.href} className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${active ? "text-brand-ink" : "text-muted"}`}>
                 <x.icon className={`h-5 w-5 ${active ? "text-brand" : ""}`} />
@@ -97,6 +111,13 @@ export function PosterNav() {
           <ul className="space-y-0.5">
             {tabs.map((x) => {
               const active = isActive(x.href, p);
+              if (x.href === DUKAAN) return (
+                <li key={x.href}>
+                  <Link href={x.href} className={`my-1 flex items-center gap-3 rounded-xl grad-brand px-3 py-2.5 text-sm font-bold text-white shadow-card ${active ? "ring-2 ring-brand/40" : ""}`}>
+                    <x.icon className="h-5 w-5" /> {x.label}
+                  </Link>
+                </li>
+              );
               return (
                 <li key={x.href}>
                   <Link href={x.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? "bg-brand-soft text-brand-ink" : "text-ink hover:bg-surface2"}`}>

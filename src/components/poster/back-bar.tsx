@@ -9,7 +9,7 @@ import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
 
 /** The five tabs of the bottom menu (and "Me") — their own home, no back row. */
-const TAB_ROOTS = /^\/poster(\/(create|leads|business|more|settings))?\/?$/;
+const TAB_ROOTS = /^\/poster(\/(create|leads|business|more|settings|dukaan))?\/?$/;
 /** Pages that draw their own back arrow in their heading (a page listed here MUST have one in every state, or it has no Back at all;
  *  a page with an arrow that is missing here gets two), and full-screen steps with none: start, welcome (the first screens after
  *  sign-up — Back would land on the finished sign-up form). Pages left out get the row from here: ai, card, card/edit, card/looks,

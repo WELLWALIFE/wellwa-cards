@@ -12,6 +12,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { orderPaid, type OrderRow } from "@/lib/jewellery-orders";
 import { lineFromStock, type StockRow } from "@/lib/jewellery-stock";
 import type { SchemeRow, SchemeState } from "@/lib/jewellery-finance";
+import { JwTip } from "@/components/jewellery/jw-tip";
 import {
   billTotals, fineBuyRate, grams, inr, mgOf, paiseOf, sellRate,
   type BillLine, type BillRow, type MakingKind, type Metal, type OldGoldLine, type Payment, type JwSetup, type RateBook,
@@ -186,16 +187,16 @@ function BillBuilder() {
       {/* Customer */}
       <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
         <div className="grid grid-cols-2 gap-2">
-          <label><span className={lab}>{T("Customer name", "ग्राहक का नाम")}</span><input className={inp} value={cust.name} onChange={(e) => setCust({ ...cust, name: e.target.value })} /></label>
-          <label><span className={lab}>{T("Mobile (WhatsApp)", "मोबाइल (WhatsApp)")}</span><input className={inp} inputMode="tel" value={cust.phone} onChange={(e) => setCust({ ...cust, phone: e.target.value })} placeholder="98765 43210" /></label>
+          <label><span className={lab}>{T("Customer name", "ग्राहक का नाम")}<JwTip k="Customer name" /></span><input className={inp} value={cust.name} onChange={(e) => setCust({ ...cust, name: e.target.value })} /></label>
+          <label><span className={lab}>{T("Mobile (WhatsApp)", "मोबाइल (WhatsApp)")}<JwTip k="Mobile (WhatsApp)" /></span><input className={inp} inputMode="tel" value={cust.phone} onChange={(e) => setCust({ ...cust, phone: e.target.value })} placeholder="98765 43210" /></label>
         </div>
         <button type="button" onClick={() => setMore(!more)} className="text-xs font-semibold text-brand-ink">{more ? "−" : "+"} {T("PAN, GSTIN, state, address", "PAN, GSTIN, state, पता")}</button>
         {more && (
           <div className="grid grid-cols-2 gap-2">
-            <label><span className={lab}>PAN</span><input className={inp} value={cust.pan} maxLength={10} onChange={(e) => setCust({ ...cust, pan: e.target.value.toUpperCase() })} /></label>
-            <label><span className={lab}>GSTIN</span><input className={inp} value={cust.gstin} maxLength={15} onChange={(e) => setCust({ ...cust, gstin: e.target.value.toUpperCase(), state: /^\d{2}/.test(e.target.value) ? e.target.value.slice(0, 2) : cust.state })} /></label>
-            <label><span className={lab}>{T("State code (other state → IGST)", "State code (दूसरा state → IGST)")}</span><input className={inp} inputMode="numeric" maxLength={2} value={cust.state} placeholder={setup.stateCode || "06"} onChange={(e) => setCust({ ...cust, state: e.target.value.replace(/\D/g, "") })} /></label>
-            <label><span className={lab}>{T("Address", "पता")}</span><input className={inp} value={cust.address} onChange={(e) => setCust({ ...cust, address: e.target.value })} /></label>
+            <label><span className={lab}>PAN<JwTip k="PAN" /></span><input className={inp} value={cust.pan} maxLength={10} onChange={(e) => setCust({ ...cust, pan: e.target.value.toUpperCase() })} /></label>
+            <label><span className={lab}>GSTIN<JwTip k="GSTIN" /></span><input className={inp} value={cust.gstin} maxLength={15} onChange={(e) => setCust({ ...cust, gstin: e.target.value.toUpperCase(), state: /^\d{2}/.test(e.target.value) ? e.target.value.slice(0, 2) : cust.state })} /></label>
+            <label><span className={lab}>{T("State code (other state → IGST)", "State code (दूसरा state → IGST)")}<JwTip k="State code (other state → IGST)" /></span><input className={inp} inputMode="numeric" maxLength={2} value={cust.state} placeholder={setup.stateCode || "06"} onChange={(e) => setCust({ ...cust, state: e.target.value.replace(/\D/g, "") })} /></label>
+            <label><span className={lab}>{T("Address", "पता")}<JwTip k="Address" /></span><input className={inp} value={cust.address} onChange={(e) => setCust({ ...cust, address: e.target.value })} /></label>
           </div>
         )}
       </section>
@@ -223,26 +224,26 @@ function BillBuilder() {
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <label><span className={lab}>{T("Purity", "शुद्धता")}</span>
+              <label><span className={lab}>{T("Purity", "शुद्धता")}<JwTip k="Purity" /></span>
                 <select className={inp} value={l.purity} onChange={(e) => { const r = sellRate(rate, setup, e.target.value); setL(i, { purity: e.target.value, rate: r ? String(Math.round((r * 10) / 100)) : l.rate }); }}>
                   {purities.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
                 </select></label>
-              <label><span className={lab}>{T("Rate ₹ / 10 g", "रेट ₹ / 10 ग्राम")}</span><input className={inp} inputMode="decimal" value={l.rate} onChange={(e) => setL(i, { rate: e.target.value })} /></label>
-              <label><span className={lab}>{T("Gross wt (g)", "कुल वज़न (g)")}</span><input className={`${inp} font-bold`} inputMode="decimal" value={l.gross} onChange={(e) => setL(i, { gross: e.target.value })} placeholder="0.000" /></label>
-              <label><span className={lab}>{T("Stone wt (g)", "नग वज़न (g)")}</span><input className={inp} inputMode="decimal" value={l.stone} onChange={(e) => setL(i, { stone: e.target.value })} placeholder="0.000" /></label>
-              <label><span className={lab}>{T("Net wt (g)", "शुद्ध वज़न (g)")}</span><input className={inp} inputMode="decimal" value={l.net} onChange={(e) => setL(i, { net: e.target.value })} placeholder={(a.netMg / 1000).toFixed(3)} /></label>
-              <label><span className={lab}>{T("Making", "मेकिंग")}</span>
+              <label><span className={lab}>{T("Rate ₹ / 10 g", "रेट ₹ / 10 ग्राम")}<JwTip k="Rate ₹ / 10 g" /></span><input className={inp} inputMode="decimal" value={l.rate} onChange={(e) => setL(i, { rate: e.target.value })} /></label>
+              <label><span className={lab}>{T("Gross wt (g)", "कुल वज़न (g)")}<JwTip k="Gross wt (g)" /></span><input className={`${inp} font-bold`} inputMode="decimal" value={l.gross} onChange={(e) => setL(i, { gross: e.target.value })} placeholder="0.000" /></label>
+              <label><span className={lab}>{T("Stone wt (g)", "नग वज़न (g)")}<JwTip k="Stone wt (g)" /></span><input className={inp} inputMode="decimal" value={l.stone} onChange={(e) => setL(i, { stone: e.target.value })} placeholder="0.000" /></label>
+              <label><span className={lab}>{T("Net wt (g)", "शुद्ध वज़न (g)")}<JwTip k="Net wt (g)" /></span><input className={inp} inputMode="decimal" value={l.net} onChange={(e) => setL(i, { net: e.target.value })} placeholder={(a.netMg / 1000).toFixed(3)} /></label>
+              <label><span className={lab}>{T("Making", "मेकिंग")}<JwTip k="Making" /></span>
                 <span className="flex gap-1">
                   <select className={`${inp} !w-auto`} value={l.making} onChange={(e) => setL(i, { making: e.target.value as MakingKind })}>
                     <option value="per_g">₹/g</option><option value="pct">%</option><option value="piece">₹/pc</option>
                   </select>
                   <input className={inp} inputMode="decimal" value={l.makingValue} onChange={(e) => setL(i, { makingValue: e.target.value })} />
                 </span></label>
-              <label><span className={lab}>{T("Wastage / VA %", "वेस्टेज / VA %")}</span><input className={inp} inputMode="decimal" value={l.wastage} onChange={(e) => setL(i, { wastage: e.target.value })} /></label>
-              <label><span className={lab}>{T("Stone ₹", "नग ₹")}</span><input className={inp} inputMode="decimal" value={l.stoneRs} onChange={(e) => setL(i, { stoneRs: e.target.value })} /></label>
-              <label><span className={lab}>HUID</span><input className={inp} maxLength={6} value={l.huid} onChange={(e) => setL(i, { huid: e.target.value.toUpperCase() })} placeholder="AB12CD" /></label>
-              <label><span className={lab}>{T("Pieces", "नग")}</span><input className={inp} inputMode="numeric" value={l.pieces} onChange={(e) => setL(i, { pieces: e.target.value })} /></label>
-              <label className="col-span-2"><span className={lab}>{T("Description (optional)", "विवरण (चाहें तो)")}</span><input className={inp} value={l.desc} onChange={(e) => setL(i, { desc: e.target.value })} placeholder={T("e.g. Ladies ring with stone", "जैसे लेडीज़ अंगूठी नग वाली")} /></label>
+              <label><span className={lab}>{T("Wastage / VA %", "वेस्टेज / VA %")}<JwTip k="Wastage / VA %" /></span><input className={inp} inputMode="decimal" value={l.wastage} onChange={(e) => setL(i, { wastage: e.target.value })} /></label>
+              <label><span className={lab}>{T("Stone ₹", "नग ₹")}<JwTip k="Stone ₹" /></span><input className={inp} inputMode="decimal" value={l.stoneRs} onChange={(e) => setL(i, { stoneRs: e.target.value })} /></label>
+              <label><span className={lab}>HUID<JwTip k="HUID" /></span><input className={inp} maxLength={6} value={l.huid} onChange={(e) => setL(i, { huid: e.target.value.toUpperCase() })} placeholder="AB12CD" /></label>
+              <label><span className={lab}>{T("Pieces", "नग")}<JwTip k="Pieces" /></span><input className={inp} inputMode="numeric" value={l.pieces} onChange={(e) => setL(i, { pieces: e.target.value })} /></label>
+              <label className="col-span-2"><span className={lab}>{T("Description (optional)", "विवरण (चाहें तो)")}<JwTip k="Description (optional)" /></span><input className={inp} value={l.desc} onChange={(e) => setL(i, { desc: e.target.value })} placeholder={T("e.g. Ladies ring with stone", "जैसे लेडीज़ अंगूठी नग वाली")} /></label>
             </div>
             <p className="rounded-lg bg-surface2/70 px-2 py-1.5 text-xs tabular-nums">
               {grams(a.netMg)} × {inr(Math.round(paiseOf(l.rate) / 10), true)}/g = <b>{inr(a.metal)}</b>{a.wastage ? ` + VA ${inr(a.wastage)}` : ""} + {T("making", "मेकिंग")} <b>{inr(a.making)}</b>{a.stone ? ` + ${T("stone", "नग")} ${inr(a.stone)}` : ""} = <b>{inr(a.total)}</b>
@@ -258,12 +259,12 @@ function BillBuilder() {
         {olds.map((o, i) => (
           <div key={i} className="space-y-1.5 rounded-xl bg-surface2/50 p-2">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-              <label className="col-span-2"><span className={lab}>{T("What", "क्या")}</span><input className={inp} value={o.desc} onChange={(e) => setO(i, { desc: e.target.value })} /></label>
-              <label><span className={lab}>{T("Metal", "धातु")}</span><select className={inp} value={o.metal} onChange={(e) => { const m = e.target.value as Metal; setO(i, { metal: m, touch: m === "silver" ? "80" : "91.6", rate: String(Math.round((fineBuyRate(rate, setup, m) * 10) / 100)) }); }}><option value="gold">{T("Gold", "सोना")}</option><option value="silver">{T("Silver", "चाँदी")}</option></select></label>
-              <label><span className={lab}>{T("Gross (g)", "कुल (g)")}</span><input className={inp} inputMode="decimal" value={o.gross} onChange={(e) => setO(i, { gross: e.target.value })} /></label>
-              <label><span className={lab}>{T("Less (g)", "कम (g)")}</span><input className={inp} inputMode="decimal" value={o.less} onChange={(e) => setO(i, { less: e.target.value })} /></label>
-              <label><span className={lab}>{T("Touch %", "टच %")}</span><input className={inp} inputMode="decimal" value={o.touch} onChange={(e) => setO(i, { touch: e.target.value })} /></label>
-              <label className="col-span-2"><span className={lab}>{T("Fine rate ₹ / 10 g", "शुद्ध रेट ₹ / 10 g")}</span><input className={inp} inputMode="decimal" value={o.rate} onChange={(e) => setO(i, { rate: e.target.value })} /></label>
+              <label className="col-span-2"><span className={lab}>{T("What", "क्या")}<JwTip k="What" /></span><input className={inp} value={o.desc} onChange={(e) => setO(i, { desc: e.target.value })} /></label>
+              <label><span className={lab}>{T("Metal", "धातु")}<JwTip k="Metal" /></span><select className={inp} value={o.metal} onChange={(e) => { const m = e.target.value as Metal; setO(i, { metal: m, touch: m === "silver" ? "80" : "91.6", rate: String(Math.round((fineBuyRate(rate, setup, m) * 10) / 100)) }); }}><option value="gold">{T("Gold", "सोना")}</option><option value="silver">{T("Silver", "चाँदी")}</option></select></label>
+              <label><span className={lab}>{T("Gross (g)", "कुल (g)")}<JwTip k="Gross (g)" /></span><input className={inp} inputMode="decimal" value={o.gross} onChange={(e) => setO(i, { gross: e.target.value })} /></label>
+              <label><span className={lab}>{T("Less (g)", "कम (g)")}<JwTip k="Less (g)" /></span><input className={inp} inputMode="decimal" value={o.less} onChange={(e) => setO(i, { less: e.target.value })} /></label>
+              <label><span className={lab}>{T("Touch %", "टच %")}<JwTip k="Touch %" /></span><input className={inp} inputMode="decimal" value={o.touch} onChange={(e) => setO(i, { touch: e.target.value })} /></label>
+              <label className="col-span-2"><span className={lab}>{T("Fine rate ₹ / 10 g", "शुद्ध रेट ₹ / 10 g")}<JwTip k="Fine rate ₹ / 10 g" /></span><input className={inp} inputMode="decimal" value={o.rate} onChange={(e) => setO(i, { rate: e.target.value })} /></label>
             </div>
             <div className="flex items-center justify-between text-xs tabular-nums"><span>{grams(t.old[i]?.fineMg ?? 0)} {T("fine", "शुद्ध")} = <b>{inr(t.old[i]?.value ?? 0)}</b></span><button type="button" onClick={() => setOlds(olds.filter((_, k) => k !== i))} className="text-danger"><Trash2 className="h-4 w-4" /></button></div>
           </div>
@@ -273,12 +274,12 @@ function BillBuilder() {
       {/* Discount, advance, payment */}
       <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
         <div className="grid grid-cols-2 gap-2">
-          <label><span className={lab}>{T("Discount ₹", "छूट ₹")}</span><input className={inp} inputMode="decimal" value={disc.amount} onChange={(e) => setDisc({ ...disc, amount: e.target.value })} /></label>
-          <label><span className={lab}>{T("Discount on", "छूट किस पर")}</span><select className={inp} value={disc.on} onChange={(e) => setDisc({ ...disc, on: e.target.value as "making" | "total" })}><option value="making">{T("Making only", "सिर्फ़ मेकिंग")}</option><option value="total">{T("Whole bill", "पूरा बिल")}</option></select></label>
-          <label><span className={lab}>{T("Advance already paid ₹", "पहले दिया advance ₹")}</span><input className={inp} inputMode="decimal" value={advance} disabled={!!order} onChange={(e) => setAdvance(e.target.value)} /></label>
+          <label><span className={lab}>{T("Discount ₹", "छूट ₹")}<JwTip k="Discount ₹" /></span><input className={inp} inputMode="decimal" value={disc.amount} onChange={(e) => setDisc({ ...disc, amount: e.target.value })} /></label>
+          <label><span className={lab}>{T("Discount on", "छूट किस पर")}<JwTip k="Discount on" /></span><select className={inp} value={disc.on} onChange={(e) => setDisc({ ...disc, on: e.target.value as "making" | "total" })}><option value="making">{T("Making only", "सिर्फ़ मेकिंग")}</option><option value="total">{T("Whole bill", "पूरा बिल")}</option></select></label>
+          <label><span className={lab}>{T("Advance already paid ₹", "पहले दिया advance ₹")}<JwTip k="Advance already paid ₹" /></span><input className={inp} inputMode="decimal" value={advance} disabled={!!order} onChange={(e) => setAdvance(e.target.value)} /></label>
           {kind === "estimate"
-            ? <label><span className={lab}>{T("Valid till", "कब तक मान्य")}</span><input type="date" className={inp} value={validTill} onChange={(e) => setValidTill(e.target.value)} /></label>
-            : <label><span className={lab}>{T("Balance due date (udhaar)", "बाकी कब तक (उधार)")}</span><input type="date" className={inp} value={due} onChange={(e) => setDue(e.target.value)} /></label>}
+            ? <label><span className={lab}>{T("Valid till", "कब तक मान्य")}<JwTip k="Valid till" /></span><input type="date" className={inp} value={validTill} onChange={(e) => setValidTill(e.target.value)} /></label>
+            : <label><span className={lab}>{T("Balance due date (udhaar)", "बाकी कब तक (उधार)")}<JwTip k="Balance due date (udhaar)" /></span><input type="date" className={inp} value={due} onChange={(e) => setDue(e.target.value)} /></label>}
         </div>
         {kind === "sale" && (
           <div className="space-y-1.5">
@@ -299,7 +300,7 @@ function BillBuilder() {
             </div>
           </div>
         )}
-        <label><span className={lab}>{T("Note on the bill", "बिल पर नोट")}</span><input className={inp} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+        <label><span className={lab}>{T("Note on the bill", "बिल पर नोट")}<JwTip k="Note on the bill" /></span><input className={inp} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
       </section>
 
       {/* Totals, always in view */}

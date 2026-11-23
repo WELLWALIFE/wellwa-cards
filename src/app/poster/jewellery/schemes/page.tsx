@@ -9,6 +9,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, paiseOf, type Payment } from "@/lib/jewellery";
 import type { SchemePlan, SchemeRow, SchemeState } from "@/lib/jewellery-finance";
+import { JwTip } from "@/components/jewellery/jw-tip";
 
 type Row = SchemeRow & { state: SchemeState };
 type Ans = { schemes: Row[]; plans: SchemePlan[]; today: string; error?: string };
@@ -59,11 +60,11 @@ export default function Schemes() {
         <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
           <div className="flex flex-wrap gap-1.5">{d.plans.map((p) => <button key={p.key} type="button" onClick={() => setForm({ ...form, plan: p.key, amount: String(p.monthlyPaise / 100) })} className={`rounded-full border px-3 py-1 text-xs font-semibold ${form.plan === p.key ? "border-brand bg-brand/10 text-brand-ink" : "border-border"}`}>{p.name} · {inr(p.monthlyPaise)} × {p.months}{p.bonusPaise ? ` + ${inr(p.bonusPaise)}` : ""}</button>)}</div>
           <div className="grid grid-cols-2 gap-2">
-            <label><span className={lab}>{T("Name", "नाम")}</span><input className={inp} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-            <label><span className={lab}>{T("Mobile", "मोबाइल")}</span><input className={inp} inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-            <label><span className={lab}>{T("Address", "पता")}</span><input className={inp} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
-            <label><span className={lab}>{T("Nominee", "नॉमिनी")}</span><input className={inp} value={form.nominee} onChange={(e) => setForm({ ...form, nominee: e.target.value })} /></label>
-            <label><span className={lab}>{T("First instalment", "पहली किस्त")}</span><span className="flex gap-1"><select className="rounded-lg border border-border bg-surface px-1 text-sm" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="bank">Bank</option></select><input className={inp} inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></span></label>
+            <label><span className={lab}>{T("Name", "नाम")}<JwTip k="Name" /></span><input className={inp} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+            <label><span className={lab}>{T("Mobile", "मोबाइल")}<JwTip k="Mobile" /></span><input className={inp} inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+            <label><span className={lab}>{T("Address", "पता")}<JwTip k="Address" /></span><input className={inp} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
+            <label><span className={lab}>{T("Nominee", "नॉमिनी")}<JwTip k="Nominee" /></span><input className={inp} value={form.nominee} onChange={(e) => setForm({ ...form, nominee: e.target.value })} /></label>
+            <label><span className={lab}>{T("First instalment", "पहली किस्त")}<JwTip k="First instalment" /></span><span className="flex gap-1"><select className="rounded-lg border border-border bg-surface px-1 text-sm" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="bank">Bank</option></select><input className={inp} inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></span></label>
             <label className="flex items-end gap-2 pb-2 text-xs font-semibold"><input type="checkbox" checked={form.send} onChange={(e) => setForm({ ...form, send: e.target.checked })} /> {T("Send the passbook on WhatsApp", "पासबुक WhatsApp पर भेजें")}</label>
           </div>
           {plan && <p className="text-[11px] text-muted">{T(`${inr(plan.monthlyPaise)} every month for ${plan.months} months${plan.bonusPaise ? `; the shop adds ${inr(plan.bonusPaise)} as a discount when all are paid` : ""}. No interest or cash return is promised.`, `${plan.months} महीने तक हर महीने ${inr(plan.monthlyPaise)}${plan.bonusPaise ? `; सारी किस्तें पूरी होने पर दुकान ${inr(plan.bonusPaise)} की छूट देगी` : ""}। कोई ब्याज या नकद रिटर्न का वादा नहीं।`)}</p>}
