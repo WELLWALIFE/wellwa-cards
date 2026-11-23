@@ -11,6 +11,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { orderPaid, type OrderRow } from "@/lib/jewellery-orders";
 import { lineFromStock, type StockRow } from "@/lib/jewellery-stock";
+import type { SchemeRow, SchemeState } from "@/lib/jewellery-finance";
 import {
   billTotals, fineBuyRate, grams, inr, mgOf, paiseOf, sellRate,
   type BillLine, type BillRow, type MakingKind, type Metal, type OldGoldLine, type Payment, type JwSetup, type RateBook,
@@ -102,13 +103,27 @@ function BillBuilder() {
     })();
   }, [orderId, setup, order, rate, ws.q, blankLine]);
   useEffect(() => { if (setup && !lines.length && !orderId) setLines([blankLine()]); }, [setup, lines.length, blankLine, orderId]);
+  // ?scheme=<id>: a gold scheme member's bill — their deposits count as paid before, the shop's bonus (a full, matured scheme) as a discount.
+  const schemeId = kind === "sale" && !orderId ? sp.get("scheme") ?? "" : "";
+  const [scheme, setScheme] = useState<{ row: SchemeRow; state: SchemeState } | null>(null);
+  useEffect(() => {
+    if (!schemeId || scheme) return;
+    void (async () => {
+      const r = await api<{ scheme: SchemeRow; state: SchemeState }>(`/api/jewellery/schemes/${schemeId}${ws.q ? `?${ws.q}` : ""}`);
+      if (!r.ok || !r.data.scheme) return;
+      setScheme({ row: r.data.scheme, state: r.data.state });
+      setCust((c) => ({ ...c, name: r.data.scheme.customer_name, phone: r.data.scheme.customer_phone }));
+      setAdvance(String(r.data.state.paid / 100));
+    })();
+  }, [schemeId, scheme, ws.q]);
+  const bonus = scheme?.state.bonus ?? 0;
   const blankOld = useCallback((): OldDraft => ({ desc: hi ? "पुराना सोना" : "Old gold", metal: "gold", gross: "", less: "", touch: "91.6", rate: setup ? String(Math.round((fineBuyRate(rate, setup, "gold") * 10) / 100)) : "" }), [setup, rate, hi]);
 
   const input = useMemo(() => setup ? {
     lines: lines.map((l) => toLine(l, setup)), old: olds.map(toOld),
     payments: kind === "sale" ? pays.filter((p) => paiseOf(p.amount) > 0).map((p) => ({ mode: p.mode, paise: paiseOf(p.amount), ref: p.ref, at: new Date().toISOString() })) : [],
-    discountPaise: paiseOf(disc.amount), discountOn: disc.on, customerState: cust.state, advancePaise: paiseOf(advance),
-  } : null, [setup, lines, olds, pays, disc, cust.state, advance, kind]);
+    discountPaise: paiseOf(disc.amount) + bonus, discountOn: bonus > 0 ? "total" as const : disc.on, customerState: cust.state, advancePaise: paiseOf(advance),
+  } : null, [setup, lines, olds, pays, disc, cust.state, advance, kind, bonus]);
   const t = useMemo(() => (input && setup ? billTotals(input, setup) : null), [input, setup]);
 
   async function save(send: boolean) {
@@ -118,8 +133,8 @@ function BillBuilder() {
       method: "POST",
       json: {
         as: ws.as || undefined, kind, send, customer_name: cust.name, customer_phone: cust.phone, customer_pan: cust.pan, customer_gstin: cust.gstin, customer_state: cust.state, customer_address: cust.address,
-        lines: input.lines, old_gold: input.old, payments: input.payments, discount_paise: input.discountPaise, discount_on: input.discountOn, advance_paise: input.advancePaise,
-        due_date: due || undefined, valid_till: validTill || undefined, notes, order_id: order?.id,
+        lines: input.lines, old_gold: input.old, payments: input.payments, discount_paise: paiseOf(disc.amount), discount_on: disc.on, advance_paise: input.advancePaise,
+        due_date: due || undefined, valid_till: validTill || undefined, notes, order_id: order?.id, scheme_id: scheme?.row.id,
       },
     });
     setBusy(false);
@@ -164,6 +179,7 @@ function BillBuilder() {
       <Link href={`/poster/jewellery${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{kind === "estimate" ? T("New estimate", "नया estimate") : T("New bill", "नया बिल")}</h1>
       {!setup.gstin && (setup.gstBp > 0 || setup.gstMakingBp > 0) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("GST is added to bills but your GSTIN is not set. Add it, or set GST to 0 if your shop is not GST-registered. ", "बिल में GST जुड़ रहा है पर आपका GSTIN नहीं डला। GSTIN डालें, या दुकान GST में registered नहीं है तो GST 0 करें। ")}<Link href={`/poster/jewellery/settings${q}`} className="underline">{T("Settings", "सेटिंग")}</Link></p>}
+      {scheme && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">{T(`Gold scheme ${scheme.row.code} (${scheme.row.customer_name}): deposits ${inr(scheme.state.paid)} are counted as paid${bonus ? `, and the shop's bonus ${inr(bonus)} comes off as a discount` : scheme.state.complete ? "" : " — not complete, so no bonus"}. Saving the bill uses the scheme.`, `गोल्ड स्कीम ${scheme.row.code} (${scheme.row.customer_name}): जमा ${inr(scheme.state.paid)} पहले से मिला गिना गया${bonus ? `, दुकान का बोनस ${inr(bonus)} छूट में` : scheme.state.complete ? "" : " — स्कीम पूरी नहीं, इसलिए बोनस नहीं"}। बिल Save होते ही स्कीम इस्तेमाल हो जाएगी।`)}</p>}
       {order && <p className="rounded-xl bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-800">{T(`Bill for order ${order.code}: type the actual weight. The advance ${inr(orderPaid(order))} is counted${order.rate_lock ? ", and the locked rate is filled in" : ""}; saving delivers the order.`, `ऑर्डर ${order.code} का बिल: असली वज़न डालें। एडवांस ${inr(orderPaid(order))} जुड़ गया${order.rate_lock ? ", lock किया रेट भरा है" : ""}; save करते ही ऑर्डर डिलीवर हो जाएगा।`)}</p>}
       {noRate && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("Today's rate is not set — the rate box of each item is filled from the last rate. ", "आज का रेट नहीं डला — हर item में पिछला रेट भरा है। ")}<Link href={`/poster/jewellery/rate${q}`} className="underline">{T("Set it", "डालें")}</Link></p>}
 

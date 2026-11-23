@@ -5,6 +5,7 @@
 // Units, so nothing is lost to rounding: money in PAISE, weights in MILLIGRAMS, rates in paise per GRAM, percentages in BASIS
 // POINTS (1% = 100). Fineness is parts per 1000 (22K = 916). Every function here is pure and tested (jewellery.test.mjs).
 
+import { DEFAULT_PLANS, cleanPlan, type SchemePlan } from "@/lib/jewellery-finance";
 export type Metal = "gold" | "silver" | "platinum";
 export const METALS: { key: Metal; en: string; hi: string }[] = [
   { key: "gold", en: "Gold", hi: "सोना" },
@@ -53,6 +54,8 @@ export const JW_RIGHTS = [
   { key: "orders", en: "Book orders and repairs", hi: "ऑर्डर और रिपेयर बुक करना" },
   { key: "karigar", en: "Karigar ledger (gold given and received)", hi: "कारीगर का हिसाब (सोना दिया-लिया)" },
   { key: "stock", en: "Stock: add pieces, print tags", hi: "स्टॉक: माल चढ़ाना, टैग छापना" },
+  { key: "scheme", en: "Gold scheme: members and instalments", hi: "गोल्ड स्कीम: मेंबर और किस्त" },
+  { key: "girvi", en: "Girvi: loans, interest, release", hi: "गिरवी: लोन, ब्याज, छुड़ाना" },
   { key: "discount", en: "Give a discount above the counter limit", hi: "counter limit से ज़्यादा discount देना" },
   { key: "cancel", en: "Cancel a bill", hi: "बिल रद्द करना" },
   { key: "reports", en: "See all bills, sales and money", hi: "सारे बिल, बिक्री और पैसे देखना" },
@@ -96,12 +99,24 @@ export type JwSetup = {
   staff: Record<string, { title: string; rights: JwRight[] }>;
   /** Today's rate is shown on the shop's website and V-Card (and the rate poster can be shared). */
   showRate: boolean;
+  /** Gold saving scheme (phase 5): off until the shop switches it on after the legal note; its plans. */
+  schemeOn: boolean;
+  plans: SchemePlan[];
+  /** Girvi (phase 5): off until switched on with the money-lender licence; interest a month (bp), minimum days, loan limit
+   *  as a share of the valuation (bp), the usual term in months. */
+  girviOn: boolean;
+  girviLicence: string;
+  girviRateBp: number;
+  girviMinDays: number;
+  girviLtvBp: number;
+  girviMonths: number;
 };
 export const DEFAULT_TERMS = "Goods once sold can be exchanged as per shop policy. Weights and purity as per the bill. Subject to local jurisdiction.";
 export const DEFAULT_JW_SETUP: JwSetup = {
   purities: DEFAULT_PURITIES, items: DEFAULT_ITEM_TYPES, gstBp: 300, gstMakingBp: 300, stateCode: "", gstin: "", bis: "",
   billPrefix: "INV", estimatePrefix: "EST", roundTo: 1, counterDiscountBp: 1000, panAbovePaise: 20000000, oldGoldDeductBp: 200,
   terms: DEFAULT_TERMS, bank: "", shopName: "", address: "", phone: "", staff: {}, showRate: true,
+  schemeOn: false, plans: DEFAULT_PLANS, girviOn: false, girviLicence: "", girviRateBp: 150, girviMinDays: 30, girviLtvBp: 7500, girviMonths: 12,
 };
 
 const int = (v: unknown, min: number, max: number, d: number) => {
@@ -150,6 +165,15 @@ export function cleanJwSetup(v: unknown): JwSetup {
     shopName: txt(s.shopName, 80), address: String(s.address ?? "").slice(0, 300), phone: txt(s.phone, 30),
     staff,
     showRate: s.showRate !== false,
+    plans: Array.isArray(s.plans) ? s.plans.slice(0, 10).map(cleanPlan).filter((p): p is SchemePlan => !!p) : DEFAULT_PLANS,
+    girviLicence: txt(s.girviLicence, 60),
+    girviRateBp: int(s.girviRateBp, 0, 1000, 150),
+    girviMinDays: int(s.girviMinDays, 0, 365, 30),
+    girviLtvBp: int(s.girviLtvBp, 1000, 10000, 7500),
+    girviMonths: int(s.girviMonths, 1, 60, 12),
+    // On only by the shop's own choice; girvi also needs the licence typed.
+    schemeOn: s.schemeOn === true,
+    girviOn: s.girviOn === true && txt(s.girviLicence, 60).length >= 3,
   };
 }
 

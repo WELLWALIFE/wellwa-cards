@@ -30,12 +30,13 @@ const STEPS: [string, string][] = [
   ["Karigar ka khata", "Sona diya (gross × touch = fine), maal wapas aaya, wastage maaf, mazdoori aur diye paise — har karigar ke paas kitna fine sona hai, ek nazar mein. Galat entry delete nahi, 'void' hoti hai."],
   ["Stock aur tag", "Har piece chadhaate hi tag number (jaise RI00017) — barcode label print karein (95×12 mm jewellery tag ya 50×25 mm sticker). Bill mein tag scan karein: vazan, purity, HUID apne aap; bikte hi piece 'sold', bill radd ho to wapas stock mein. Pasand ke liye bahar diya, galaya, supplier ko wapas — sab note ke saath."],
   ["Report aur day close", "Aaj / kal / mahina / vitt varsh: bikri, GST (CGST/SGST/IGST, HSN, B2B), aaye paise mode ke hisaab se (order ke advance bhi), purana sona, purity ka vazan. Day close WhatsApp par; Excel (CSV) mein bikri register, HSN, B2B — CA ko dene ke liye."],
+  ["Gold scheme (switch se)", "Owner Settings mein kanooni note padh kar chalu kare. Plan: har mahine ₹X, N mahine, dukaan ka bonus (aakhri bill par chhoot). Member, kisht, WhatsApp passbook; poora hone par 'bill mein lagayein' — jama advance, bonus chhoot. Koi byaaj/return ka vaada nahi."],
+  ["Girvi (switch se)", "Sirf saahukari license number daal kar chalu. Saman ka vazan, touch → fine, keemat (aaj ke khareed rate se), loan (keemat ka tay % tak). Byaaj roz ke hisaab se, kam se kam din; payment pehle byaaj phir mool. Yaad dilana, tareekh ke baad notice, 14 din baad hi neelami darj."],
   ["Bill bhejna / print", "Save karte hi customer ke WhatsApp par bill ka link (dukaan ke number se). A4/A5 print ya PDF. Bill kabhi delete nahi hota — sirf karan likhkar rad."],
 ];
 
 const COMING = [
   "Stock milaan (scanner se poora showcase ginna), supplier se khareed aur unka khata",
-  "Gold saving scheme aur girvi (kanooni chetavani ke saath, switch se)",
   "Website par aaj ke rate se live daam wala catalogue",
 ];
 

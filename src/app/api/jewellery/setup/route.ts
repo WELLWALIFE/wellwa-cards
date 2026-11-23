@@ -22,6 +22,11 @@ export async function PUT(request: Request) {
   const next = cleanJwSetup(b.setup);
   // Only the owner gives staff rights.
   if (!c.access.owner) next.staff = c.setup.staff;
+  // The gold scheme and girvi carry legal duties: only the owner switches them, sets their plans, licence and interest.
+  if (!c.access.owner) {
+    next.schemeOn = c.setup.schemeOn; next.plans = c.setup.plans; next.girviOn = c.setup.girviOn; next.girviLicence = c.setup.girviLicence;
+    next.girviRateBp = c.setup.girviRateBp; next.girviMinDays = c.setup.girviMinDays; next.girviLtvBp = c.setup.girviLtvBp; next.girviMonths = c.setup.girviMonths;
+  }
   if (!(await saveJwSetup(c.scope.ownerId, next))) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 500 });
   return NextResponse.json({ ok: true, setup: next });
 }

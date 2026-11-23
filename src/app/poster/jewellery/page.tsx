@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, BarChart3, ChevronRight, FileText, Gem, Hammer, IndianRupee, LoaderCircle, Plus, ReceiptText, Settings2, Tags, TrendingUp } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronRight, Coins, Landmark, FileText, Gem, Hammer, IndianRupee, LoaderCircle, Plus, ReceiptText, Settings2, Tags, TrendingUp } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { WorkspaceSwitch, useWorkspace } from "@/components/orders/orders-common";
@@ -99,6 +99,12 @@ export default function JewelleryHome() {
         </div>
       )}
 
+      {((setup.schemeOn && can("scheme")) || (setup.girviOn && can("girvi"))) && (
+        <div className="grid grid-cols-2 gap-3">
+          {setup.schemeOn && can("scheme") && <Link href={`/poster/jewellery/schemes${q}`} className="rounded-2xl border border-border bg-surface p-3"><p className="flex items-center gap-1 text-[11px] text-muted"><Coins className="h-3 w-3" /> {T("Gold scheme", "गोल्ड स्कीम")}</p><p className="text-sm font-bold">{T("Members, instalments", "मेंबर, किस्त")}</p></Link>}
+          {setup.girviOn && can("girvi") && <Link href={`/poster/jewellery/girvi${q}`} className="rounded-2xl border border-border bg-surface p-3"><p className="flex items-center gap-1 text-[11px] text-muted"><Landmark className="h-3 w-3" /> {T("Girvi", "गिरवी")}</p><p className="text-sm font-bold">{T("Loans, interest, release", "लोन, ब्याज, छुड़ाना")}</p></Link>}
+        </div>
+      )}
       {can("reports") && (
         <Link href={`/poster/jewellery/reports${q}`} className="flex items-center justify-between rounded-2xl border border-border bg-surface p-3">
           <span><p className="flex items-center gap-1 text-[11px] text-muted"><BarChart3 className="h-3 w-3" /> {T("Reports", "रिपोर्ट")}</p><p className="text-sm font-bold">{T("Day close, GST, Excel", "डे क्लोज़, GST, Excel")}</p></span>

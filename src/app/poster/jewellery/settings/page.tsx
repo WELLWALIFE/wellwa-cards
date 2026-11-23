@@ -118,6 +118,48 @@ export default function JewellerySettings() {
       </section>
 
       {d.access.owner && (
+        <section className={`${box} border-amber-300`}>
+          <h2 className="text-sm font-bold">{T("Gold saving scheme", "गोल्ड सेविंग स्कीम")}</h2>
+          <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">{T("Legal note: money taken every month for jewellery later can count as a deposit. A company must follow the Companies (Acceptance of Deposits) Rules; any shop must not promise interest or returns. Ask your CA before you switch it on. The bonus here is the shop's discount on the final bill.", "कानूनी नोट: हर महीने बाद में गहने के लिए लिया पैसा ‘डिपॉज़िट’ माना जा सकता है। कंपनी को Companies (Acceptance of Deposits) Rules मानने होते हैं; कोई भी दुकान ब्याज या रिटर्न का वादा न करे। चालू करने से पहले CA से पूछें। यहाँ का बोनस आख़िरी बिल पर दुकान की छूट है।")}</p>
+          <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={s.schemeOn} onChange={(e) => set({ schemeOn: e.target.checked })} className="h-4 w-4" /> {T("I have checked the rules — switch the gold scheme on", "मैंने नियम देख लिए — गोल्ड स्कीम चालू करें")}</label>
+          {s.schemeOn && (
+            <div className="space-y-2">
+              {s.plans.map((pl, i) => (
+                <div key={pl.key} className="grid grid-cols-2 items-end gap-2 rounded-xl border border-border p-2 sm:grid-cols-5">
+                  <label><span className={lab}>{T("Plan name", "प्लान का नाम")}</span><input className={inp} value={pl.name} onChange={(e) => set({ plans: s.plans.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)) })} /></label>
+                  <label><span className={lab}>{T("Months", "महीने")}</span><input className={inp} inputMode="numeric" value={pl.months} onChange={(e) => set({ plans: s.plans.map((x, k) => (k === i ? { ...x, months: Number(e.target.value.replace(/\D/g, "")) || 1 } : x)) })} /></label>
+                  <label><span className={lab}>{T("Every month ₹", "हर महीने ₹")}</span><input className={inp} inputMode="decimal" value={pl.monthlyPaise / 100} onChange={(e) => set({ plans: s.plans.map((x, k) => (k === i ? { ...x, monthlyPaise: paiseOf(e.target.value) } : x)) })} /></label>
+                  <label><span className={lab}>{T("Shop bonus ₹ (discount)", "दुकान बोनस ₹ (छूट)")}</span><input className={inp} inputMode="decimal" value={pl.bonusPaise / 100} onChange={(e) => set({ plans: s.plans.map((x, k) => (k === i ? { ...x, bonusPaise: paiseOf(e.target.value) } : x)) })} /></label>
+                  <div className="flex items-center gap-2 pb-2">
+                    <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={pl.on} onChange={(e) => set({ plans: s.plans.map((x, k) => (k === i ? { ...x, on: e.target.checked } : x)) })} /> {T("On", "चालू")}</label>
+                    {s.plans.length > 1 && <button type="button" onClick={() => set({ plans: s.plans.filter((_, k) => k !== i) })} className="text-danger" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>}
+                  </div>
+                </div>
+              ))}
+              {s.plans.length < 10 && <button type="button" onClick={() => set({ plans: [...s.plans, { key: `p${Date.now().toString(36)}`, name: "", months: 11, monthlyPaise: 100000, bonusPaise: 0, on: true }] })} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" /> {T("Add a plan", "प्लान जोड़ें")}</button>}
+              <p className="text-[11px] text-muted">{T("Members already enrolled keep the plan they joined on.", "जो मेंबर पहले से जुड़े हैं, उनका प्लान वही रहता है।")}</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {d.access.owner && (
+        <section className={`${box} border-amber-300`}>
+          <h2 className="text-sm font-bold">{T("Girvi (gold loan)", "गिरवी (गोल्ड लोन)")}</h2>
+          <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">{T("Legal note: lending money against gold needs a money-lender licence in most states, and the state sets the highest interest and the steps before an auction (notice, waiting time). Type your licence number to switch girvi on, and keep the rate within your state's limit.", "कानूनी नोट: सोने पर पैसा उधार देने के लिए ज़्यादातर राज्यों में साहूकारी (money-lender) लाइसेंस चाहिए, और राज्य ही अधिकतम ब्याज और नीलामी से पहले के क़दम (नोटिस, इंतज़ार) तय करता है। गिरवी चालू करने के लिए लाइसेंस नंबर डालें, और ब्याज राज्य की सीमा में रखें।")}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <label className="col-span-2 sm:col-span-1"><span className={lab}>{T("Money-lender licence no.", "साहूकारी लाइसेंस नंबर")}</span><input className={inp} value={s.girviLicence} onChange={(e) => set({ girviLicence: e.target.value })} /></label>
+            <label><span className={lab}>{T("Interest % a month", "ब्याज % महीना")}</span><input className={inp} inputMode="decimal" value={s.girviRateBp / 100} onChange={(e) => set({ girviRateBp: Math.round((Number(e.target.value) || 0) * 100) })} /></label>
+            <label><span className={lab}>{T("Minimum days charged", "कम से कम दिन का ब्याज")}</span><input className={inp} inputMode="numeric" value={s.girviMinDays} onChange={(e) => set({ girviMinDays: Number(e.target.value.replace(/\D/g, "")) || 0 })} /></label>
+            <label><span className={lab}>{T("Loan up to % of value", "क़ीमत का अधिकतम % लोन")}</span><input className={inp} inputMode="decimal" value={s.girviLtvBp / 100} onChange={(e) => set({ girviLtvBp: Math.round((Number(e.target.value) || 0) * 100) })} /></label>
+            <label><span className={lab}>{T("Usual term (months)", "आम अवधि (महीने)")}</span><input className={inp} inputMode="numeric" value={s.girviMonths} onChange={(e) => set({ girviMonths: Number(e.target.value.replace(/\D/g, "")) || 1 })} /></label>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={s.girviOn} disabled={s.girviLicence.trim().length < 3} onChange={(e) => set({ girviOn: e.target.checked })} className="h-4 w-4" /> {T("I hold the licence and follow my state's rules — switch girvi on", "मेरे पास लाइसेंस है और मैं राज्य के नियम मानता हूँ — गिरवी चालू करें")}</label>
+          <p className="text-[11px] text-muted">{T(`${(s.girviRateBp / 100).toFixed(2)}% a month = ${((s.girviRateBp * 12) / 100).toFixed(1)}% a year, simple interest by the day.`, `${(s.girviRateBp / 100).toFixed(2)}% महीना = ${((s.girviRateBp * 12) / 100).toFixed(1)}% साल, रोज़ के हिसाब से साधारण ब्याज।`)}</p>
+        </section>
+      )}
+
+      {d.access.owner && (
         <section className={box}>
           <h2 className="text-sm font-bold">{T("Staff rights", "Staff के अधिकार")}</h2>
           {d.staff.length === 0 && <p className="text-xs text-muted">{T("No staff logins yet — add them in Customers → Settings → Team (the same team as Orders).", "अभी कोई staff login नहीं — Customers → Settings → Team में जोड़ें।")}</p>}

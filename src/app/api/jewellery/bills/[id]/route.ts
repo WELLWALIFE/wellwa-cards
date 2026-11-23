@@ -56,6 +56,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const next = await save({ status: "cancelled", cancel_reason: `${reason} — ${access.name}` });
       // Its tagged pieces go back to the showcase.
       if (next && bill.kind === "sale") await returnToStock(scope.ownerId, bill.id).catch(() => undefined);
+      // A gold scheme used on it is open again (its deposits were not spent).
+      if (next && bill.kind === "sale") await restAsService(`jw_schemes?owner_id=eq.${scope.ownerId}&bill_id=eq.${bill.id}&status=eq.redeemed`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "active", bill_id: null, close_note: `Bill ${bill.code} cancelled — open again`, updated_at: new Date().toISOString() }) }).catch(() => undefined);
       return next ? NextResponse.json({ bill: next }) : NextResponse.json({ error: "Could not save." }, { status: 500 });
     }
     case "send": {

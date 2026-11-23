@@ -8,6 +8,8 @@ import { BILL_COLS, billTotals, cleanLine, cleanOld, cleanPayment, type BillKind
 import { createBill, istDay, jwCtx, jwDenied, jwHas, rateOf, sendBill } from "@/lib/jewellery-server";
 import { orderPaid } from "@/lib/jewellery-orders";
 import { orderById, patchOrder } from "@/lib/jewellery-orders-server";
+import { patchScheme, schemeById } from "@/lib/jewellery-finance-server";
+import { schemeState } from "@/lib/jewellery-finance";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 const txt = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -48,21 +50,30 @@ export async function POST(request: Request) {
   // A bill made from an order: the order's advance counts here (read from the order, never typed), and the order is delivered with it.
   const order = kind === "sale" && typeof b.order_id === "string" && b.order_id ? await orderById(scope.ownerId, b.order_id) : null;
   if (order && (order.kind !== "order" || order.status === "delivered" || order.status === "cancelled")) return NextResponse.json({ error: "This order is already closed." }, { status: 400 });
+  // A bill that uses a gold scheme: the member's deposits count as paid before (advance); the shop's bonus (only for a scheme paid in
+  // full and matured) is the shop's discount on this bill. The scheme is marked used with the bill.
+  const scheme = kind === "sale" && typeof b.scheme_id === "string" && b.scheme_id ? (setup.schemeOn && jwHas(access, "scheme") ? await schemeById(scope.ownerId, b.scheme_id) : null) : null;
+  if (typeof b.scheme_id === "string" && b.scheme_id && kind === "sale" && !scheme) return NextResponse.json({ error: "Scheme not found (or the gold scheme is off)." }, { status: 400 });
+  if (scheme && scheme.status !== "active") return NextResponse.json({ error: "This scheme is already used or closed." }, { status: 400 });
+  if (scheme && order) return NextResponse.json({ error: "Use the scheme on a separate bill from the order." }, { status: 400 });
+  const sst = scheme ? schemeState(scheme, istDay()) : null;
   const fields = {
     customer_name: txt(b.customer_name, 80), customer_phone: cleanPhone(b.customer_phone), customer_pan: txt(b.customer_pan, 10).toUpperCase(),
     customer_gstin: txt(b.customer_gstin, 15).toUpperCase(), customer_state: /^\d{2}$/.test(String(b.customer_state ?? "")) ? String(b.customer_state) : "",
     customer_address: txt(b.customer_address, 200),
     lines, old_gold, payments: kind === "estimate" ? [] : payments,
-    discount_paise: Math.max(0, Math.round(Number(b.discount_paise) || 0)), discount_on: (b.discount_on === "total" ? "total" : "making") as "making" | "total",
-    advance_paise: order ? orderPaid(order) : Math.max(0, Math.round(Number(b.advance_paise) || 0)),
-    rate_day: (await rateOf(scope.ownerId))?.day ?? istDay(), notes: txt(b.notes, 400),
+    discount_paise: Math.max(0, Math.round(Number(b.discount_paise) || 0)) + (sst?.bonus ?? 0),
+    discount_on: (b.discount_on === "total" || (sst?.bonus ?? 0) > 0 ? "total" : "making") as "making" | "total",
+    advance_paise: order ? orderPaid(order) : sst ? sst.paid : Math.max(0, Math.round(Number(b.advance_paise) || 0)),
+    rate_day: (await rateOf(scope.ownerId))?.day ?? istDay(),
+    notes: [txt(b.notes, 400), scheme && sst ? `Gold scheme ${scheme.code}: deposits ₹${Math.round(sst.paid / 100).toLocaleString("en-IN")}${sst.bonus ? ` + shop bonus ₹${Math.round(sst.bonus / 100).toLocaleString("en-IN")} (as discount)` : ""}` : ""].filter(Boolean).join(" · ").slice(0, 600),
     due_date: typeof b.due_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.due_date) ? b.due_date : null,
     valid_till: kind === "estimate" && typeof b.valid_till === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.valid_till) ? b.valid_till : null,
     from_estimate: null, created_by: scope.userId, created_by_name: access.name,
   };
   const t = billTotals({ lines, old: old_gold, payments: fields.payments, discountPaise: fields.discount_paise, discountOn: fields.discount_on, customerState: fields.customer_state, advancePaise: fields.advance_paise }, setup);
   // A counter may give a discount up to the shop's limit (a share of the making); more needs the "discount" right.
-  if (t.discount > Math.round((t.making * setup.counterDiscountBp) / 10000) && !jwHas(access, "discount")) {
+  if (t.discount - (sst?.bonus ?? 0) > Math.round((t.making * setup.counterDiscountBp) / 10000) && !jwHas(access, "discount")) {
     return NextResponse.json({ error: `This discount is more than you may give (${setup.counterDiscountBp / 100}% of making). Ask the owner.`, code: "discount" }, { status: 403 });
   }
   // A sale at or above the shop's limit needs the customer's PAN (Income Tax rules on high-value sales).
@@ -78,6 +89,10 @@ export async function POST(request: Request) {
     await restAsService(`jw_bills?id=eq.${bill.id}&owner_id=eq.${scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ order_id: order.id }) });
     await patchOrder(scope.ownerId, order.id, { status: "delivered", bill_id: bill.id, delivered_at: new Date().toISOString(),
       events: [...(order.events ?? []), { at: new Date().toISOString(), by: access.name, text: `Delivered with bill ${bill.code}` }] });
+  }
+  if (scheme) {
+    await restAsService(`jw_bills?id=eq.${bill.id}&owner_id=eq.${scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ scheme_id: scheme.id }) });
+    await patchScheme(scope.ownerId, scheme.id, { status: "redeemed", bill_id: bill.id, close_note: `Used on bill ${bill.code} — ${access.name}` });
   }
   const sent = b.send === true && bill.customer_phone ? await sendBill(scope, bill) : null;
   return NextResponse.json({ bill, sent });
