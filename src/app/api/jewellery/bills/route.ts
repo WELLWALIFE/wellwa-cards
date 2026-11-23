@@ -1,6 +1,7 @@
 // Bills and estimates: GET the list (search, kind, money due), POST a new one. The totals are always worked out here from the
 // lines (src/lib/jewellery.ts billTotals), never taken from the app.
 import { NextResponse } from "next/server";
+import { checkTags } from "@/lib/jewellery-stock-server";
 import { restAsService } from "@/lib/poster-server";
 import { cleanPhone } from "@/lib/jobs";
 import { BILL_COLS, billTotals, cleanLine, cleanOld, cleanPayment, type BillKind, type BillRow, type Payment } from "@/lib/jewellery";
@@ -68,6 +69,9 @@ export async function POST(request: Request) {
   if (kind === "sale" && setup.panAbovePaise > 0 && t.total >= setup.panAbovePaise && !/^[A-Z]{5}\d{4}[A-Z]$/.test(fields.customer_pan)) {
     return NextResponse.json({ error: "This bill needs the customer's PAN (10 letters/digits, e.g. ABCDE1234F).", code: "pan" }, { status: 400 });
   }
+  // Tagged pieces: each must be in stock (a sale marks them sold; an estimate only checks).
+  const tagProblem = await checkTags(scope.ownerId, lines);
+  if (tagProblem) return NextResponse.json({ error: tagProblem, code: "tag" }, { status: 400 });
   const bill = await createBill(scope, setup, kind, fields);
   if (!bill) return NextResponse.json({ error: "Could not save the bill. Please try again." }, { status: 500 });
   if (order) {

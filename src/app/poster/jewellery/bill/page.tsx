@@ -5,11 +5,12 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, LoaderCircle, Plus, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Plus, ScanBarcode, Send, Trash2 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { orderPaid, type OrderRow } from "@/lib/jewellery-orders";
+import { lineFromStock, type StockRow } from "@/lib/jewellery-stock";
 import {
   billTotals, fineBuyRate, grams, inr, mgOf, paiseOf, sellRate,
   type BillLine, type BillRow, type MakingKind, type Metal, type OldGoldLine, type Payment, type JwSetup, type RateBook,
@@ -55,6 +56,9 @@ function BillBuilder() {
   const [notes, setNotes] = useState("");
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [scan, setScan] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<Home>(`/api/jewellery${ws.q ? `?${ws.q}` : ""}`);
@@ -128,6 +132,29 @@ function BillBuilder() {
   const q = ws.q ? `?${ws.q}` : "";
   const inp = "w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm outline-none focus:border-brand";
   const lab = "mb-0.5 block text-[11px] font-semibold text-muted";
+  async function addTag() {
+    const tag = scan.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!tag || !setup) return;
+    if (lines.some((l) => l.tag === tag)) { setScanMsg(T(`${tag} is already on this bill.`, `${tag} पहले से इस बिल में है।`)); return; }
+    setScanning(true); setScanMsg("");
+    const p = new URLSearchParams(ws.q); p.set("tag", tag);
+    const r = await api<{ item?: StockRow; error?: string }>(`/api/jewellery/stock?${p}`, { fresh: true });
+    setScanning(false);
+    if (!r.ok || !r.data.item) { setScanMsg(r.data.error || T("Not found.", "नहीं मिला।")); return; }
+    const s = r.data.item;
+    if (s.status !== "in_stock" && s.status !== "approval") { setScanMsg(T(`${s.tag} is ${s.status === "sold" ? "already sold" : s.status}.`, `${s.tag} ${s.status === "sold" ? "पहले ही बिक चुका है" : "स्टॉक में नहीं है"}।`)); return; }
+    const bl = lineFromStock(s, setup, sellRate(rate, setup, s.purity));
+    const g = (mg: number) => (mg ? String(mg / 1000) : "");
+    const draft: LineDraft = {
+      itemType: bl.itemType, desc: bl.desc, purity: bl.purity, pieces: String(bl.pieces), gross: g(bl.grossMg), stone: g(bl.stoneMg),
+      net: bl.netMg !== bl.grossMg - bl.stoneMg ? g(bl.netMg) : "", rate: bl.rate ? String(Math.round((bl.rate * 10) / 100)) : "",
+      wastage: String(bl.wastageBp / 100), making: bl.making, makingValue: String(bl.makingValue / 100),
+      stoneRs: bl.stonePaise ? String(bl.stonePaise / 100) : "", otherRs: "", huid: bl.huid, tag: s.tag,
+    };
+    // The empty first line is replaced; otherwise the piece is added below.
+    setLines((ls) => (ls.length === 1 && !ls[0].gross && !ls[0].tag ? [draft] : [...ls, draft]));
+    setScan("");
+  }
   const setL = (i: number, p: Partial<LineDraft>) => setLines((ls) => ls.map((l, k) => (k === i ? { ...l, ...p } : l)));
   const setO = (i: number, p: Partial<OldDraft>) => setOlds((ls) => ls.map((l, k) => (k === i ? { ...l, ...p } : l)));
   const noRate = !rate || rate.day !== h.today;
@@ -157,13 +184,20 @@ function BillBuilder() {
         )}
       </section>
 
+      {/* A tagged piece: scan its barcode (a USB scanner types the tag and Enter) or type the tag — the line fills from the stock. */}
+      <form onSubmit={(e) => { e.preventDefault(); void addTag(); }} className="flex gap-2">
+        <label className="flex flex-1 items-center gap-2 rounded-xl border-2 border-dashed border-brand/40 bg-surface px-3"><ScanBarcode className="h-4 w-4 text-brand" /><input value={scan} onChange={(e) => setScan(e.target.value.toUpperCase())} placeholder={T("Scan or type the tag (e.g. RI00017)", "टैग scan करें या लिखें (जैसे RI00017)")} className="w-full bg-transparent py-2.5 text-sm font-semibold uppercase outline-none" /></label>
+        <button type="submit" disabled={!scan.trim() || scanning} className="rounded-xl grad-brand px-4 text-sm font-semibold text-white disabled:opacity-50">{scanning ? <LoaderCircle className="h-4 w-4 animate-spin" /> : T("Add", "जोड़ें")}</button>
+      </form>
+      {scanMsg && <p className="text-xs font-semibold text-danger">{scanMsg}</p>}
+
       {/* Items */}
       {lines.map((l, i) => {
         const a = t.lines[i];
         return (
           <section key={i} className="space-y-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-bold">{T("Item", "Item")} {i + 1}</p>
+              <p className="text-sm font-bold">{T("Item", "Item")} {i + 1}{l.tag && <span className="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand-ink">{T("Tag", "टैग")} {l.tag} <button type="button" onClick={() => setL(i, { tag: "" })} aria-label="Remove tag" className="ml-0.5">×</button></span>}</p>
               {lines.length > 1 && <button type="button" onClick={() => setLines(lines.filter((_, k) => k !== i))} className="text-danger" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>}
             </div>
             <div className="flex flex-wrap gap-1.5">

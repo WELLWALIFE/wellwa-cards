@@ -52,6 +52,7 @@ export const JW_RIGHTS = [
   { key: "rate", en: "Set today's rate", hi: "आज का रेट डालना" },
   { key: "orders", en: "Book orders and repairs", hi: "ऑर्डर और रिपेयर बुक करना" },
   { key: "karigar", en: "Karigar ledger (gold given and received)", hi: "कारीगर का हिसाब (सोना दिया-लिया)" },
+  { key: "stock", en: "Stock: add pieces, print tags", hi: "स्टॉक: माल चढ़ाना, टैग छापना" },
   { key: "discount", en: "Give a discount above the counter limit", hi: "counter limit से ज़्यादा discount देना" },
   { key: "cancel", en: "Cancel a bill", hi: "बिल रद्द करना" },
   { key: "reports", en: "See all bills, sales and money", hi: "सारे बिल, बिक्री और पैसे देखना" },

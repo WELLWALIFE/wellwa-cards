@@ -26,13 +26,14 @@ const STEPS: [string, string][] = [
   ["Purana sona", "Gross, kam (nag/mail), touch % — shuddh vazan aur daam apne aap; bill mein se ghat jaata hai. Rate: aaj ke 24K se aapka set kiya % kam, ya alag khareed rate."],
   ["Payment aur udhaar", "Kai tareeke ek saath (cash + UPI + card). Baaki rehta hai to udhaar, tareekh ke saath; baad mein payment lene par balance apne aap kam."],
   ["Estimate", "Customer ko daam ka estimate — WhatsApp par link. Pasand aaye to ek tap mein bill."],
+  ["Order aur repair", "Naya order: design, andaaz vazan, advance, chahein to aaj ka rate lock, karigar. Ready par customer ko WhatsApp; dene par bill order se bhara hua khulta hai, advance ghata hua. Repair: aate waqt vazan likha jaata hai, charge le kar wapas."],
+  ["Karigar ka khata", "Sona diya (gross × touch = fine), maal wapas aaya, wastage maaf, mazdoori aur diye paise — har karigar ke paas kitna fine sona hai, ek nazar mein. Galat entry delete nahi, 'void' hoti hai."],
+  ["Stock aur tag", "Har piece chadhaate hi tag number (jaise RI00017) — barcode label print karein (95×12 mm jewellery tag ya 50×25 mm sticker). Bill mein tag scan karein: vazan, purity, HUID apne aap; bikte hi piece 'sold', bill radd ho to wapas stock mein. Pasand ke liye bahar diya, galaya, supplier ko wapas — sab note ke saath."],
   ["Bill bhejna / print", "Save karte hi customer ke WhatsApp par bill ka link (dukaan ke number se). A4/A5 print ya PDF. Bill kabhi delete nahi hota — sirf karan likhkar rad."],
 ];
 
 const COMING = [
-  "Customer order (custom design) aur repair — step by step, karigar ko message, Ready par customer ko WhatsApp",
-  "Karigar ko sona dena / wapas lena, har karigar ka shuddh sona (fine) khata",
-  "Stock: tag / barcode, label print, counter, HUID register, stock milaan, supplier se khareed",
+  "Stock milaan (scanner se poora showcase ginna), supplier se khareed aur unka khata",
   "Reports: roz ki bikri, GST summary, day close, Excel / Tally export",
   "Gold saving scheme aur girvi (kanooni chetavani ke saath, switch se)",
   "Website par aaj ke rate se live daam wala catalogue",

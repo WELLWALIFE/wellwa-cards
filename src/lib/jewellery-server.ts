@@ -8,6 +8,7 @@ import { addonGate } from "@/lib/addons-server";
 import { resolveScope, type Scope } from "@/lib/crm-server";
 import { shopName, shopSend } from "@/lib/jobs-server";
 import { SITE_URL } from "@/lib/site-url";
+import { markSold } from "@/lib/jewellery-stock-server";
 import {
   BILL_COLS, DEFAULT_JW_SETUP, JW_ALL_RIGHTS, billInputOf, billMessage, billTotals, cleanJwSetup, finYear, inr, publicRate,
   type BillKind, type BillRow, type PublicRate, type JwRight, type JwSetup, type RateBook,
@@ -112,7 +113,15 @@ export async function createBill(scope: Scope, setup: JwSetup, kind: BillKind, f
       total_paise: t.total, gst_paise: t.gst, balance_paise: t.balance,
     };
     const r = await restAsService<BillRow[]>(`jw_bills?select=${BILL_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
-    if (r.ok) { const bill = list(r)[0] ?? null; if (bill) await linkCustomer(scope.ownerId, bill).catch((e) => console.error("[jewellery] crm link", e)); return bill; }
+    if (r.ok) {
+      const bill = list(r)[0] ?? null;
+      if (bill) {
+        // A sale's tagged pieces leave the stock (the routes checked them with checkTags before saving).
+        if (kind === "sale") await markSold(scope.ownerId, bill.id, bill.lines ?? []).catch((e) => console.error("[jewellery] stock sold", e));
+        await linkCustomer(scope.ownerId, bill).catch((e) => console.error("[jewellery] crm link", e));
+      }
+      return bill;
+    }
     if (r.status !== 409 && !/duplicate key/i.test(r.text)) { console.error("[jewellery] bill save", r.status, r.text.slice(0, 200)); return null; }
   }
   return null;

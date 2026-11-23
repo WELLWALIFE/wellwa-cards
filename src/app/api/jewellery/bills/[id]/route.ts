@@ -1,6 +1,7 @@
 // One bill: GET it, PATCH to add a payment, set the due date, cancel (with a reason), send on WhatsApp, or turn an estimate
 // into a bill. A bill is never deleted — a cancelled one stays with its reason.
 import { NextResponse } from "next/server";
+import { checkTags, returnToStock } from "@/lib/jewellery-stock-server";
 import { restAsService } from "@/lib/poster-server";
 import { BILL_COLS, cleanPayment, type BillRow } from "@/lib/jewellery";
 import { billById, billLink, createBill, jwCtx, jwDenied, jwHas, sendBill, withTotals } from "@/lib/jewellery-server";
@@ -53,6 +54,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const reason = String(b.reason ?? "").trim().slice(0, 200);
       if (!reason) return NextResponse.json({ error: "Write why it is cancelled." }, { status: 400 });
       const next = await save({ status: "cancelled", cancel_reason: `${reason} — ${access.name}` });
+      // Its tagged pieces go back to the showcase.
+      if (next && bill.kind === "sale") await returnToStock(scope.ownerId, bill.id).catch(() => undefined);
       return next ? NextResponse.json({ bill: next }) : NextResponse.json({ error: "Could not save." }, { status: 500 });
     }
     case "send": {
@@ -62,6 +65,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
     case "convert": {
       if (bill.kind !== "estimate" || bill.status !== "open") return NextResponse.json({ error: "Only an open estimate becomes a bill." }, { status: 400 });
       if (!jwHas(access, "bill")) return jwDenied("make bills");
+      const tagProblem = await checkTags(scope.ownerId, bill.lines ?? []);
+      if (tagProblem) return NextResponse.json({ error: tagProblem, code: "tag" }, { status: 400 });
       const sale = await createBill(scope, setup, "sale", {
         customer_name: bill.customer_name, customer_phone: bill.customer_phone, customer_pan: bill.customer_pan, customer_gstin: bill.customer_gstin,
         customer_state: bill.customer_state, customer_address: bill.customer_address, lines: bill.lines, old_gold: bill.old_gold, payments: [],
