@@ -180,8 +180,18 @@ export async function saveJobSetup(ownerId: string, setup: JobSetup): Promise<bo
   return r.ok;
 }
 /** The shop's name for the customer's messages. */
+/** The shop's name for bills, messages and posters: the business name on its card, else its poster profile's name. (Not
+ *  businessContext().name, which puts the profile's tagline first — that is the business type, e.g. "Sarees / lehenga / textile".) */
 export async function shopName(ownerId: string): Promise<string> {
-  return remember(`shop:${ownerId}`, 2 * 60_000, async () => (await businessContext(ownerId).catch(() => null))?.name ?? "");
+  return remember(`shop:${ownerId}`, 2 * 60_000, async () => {
+    const [cr, pr] = await Promise.all([
+      restAsService<{ data: { company?: string; name?: string } | null }[]>(`cards?owner_id=eq.${ownerId}&order=created_at&limit=1&select=data`).catch(() => null),
+      restAsService<{ name: string | null }[]>(`poster_profiles?user_id=eq.${ownerId}&order=is_default.desc,created_at&limit=1&select=name`).catch(() => null),
+    ]);
+    const company = String(cr?.data?.[0]?.data?.company ?? "").trim();
+    const prof = String(pr?.data?.[0]?.name ?? "").trim();
+    return (company || prof || (await businessContext(ownerId).catch(() => null))?.name || "").slice(0, 80);
+  });
 }
 
 /** One measurement row from a request body ({ garment, unit, values, notes, person }); null when nothing was filled. */
