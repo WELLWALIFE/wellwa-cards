@@ -44,6 +44,7 @@ function NewBill() {
   const [part, setPart] = useState({ amount: "", mode: "cash" as Payment["mode"] });
   const [disc, setDisc] = useState("");
   const [emi, setEmi] = useState("");
+  const [ex, setEx] = useState({ open: false, model: "", imei: "", value: "" });
   const [notes, setNotes] = useState("");
   const [custom, setCustom] = useState({ open: false, name: "", price: "" });
   const [busy, setBusy] = useState("");
@@ -114,12 +115,16 @@ function NewBill() {
     const noImei = cart.find((c) => c.serial && !cleanCode(c.imei, 20)); if (noImei) { setNote(T(`Scan or type the IMEI of ${noImei.name}.`, `${noImei.name} का IMEI scan करें या लिखें।`)); return; }
     const phone = cust.phone.replace(/\D/g, "").slice(-10);
     if (cust.phone.trim() && phone.length !== 10) { setNote(T("The mobile number needs 10 digits.", "मोबाइल नंबर 10 अंकों का चाहिए।")); return; }
-    const payments = kind === "estimate" ? [] : mode === "part" ? (paiseOf(part.amount) ? [{ mode: part.mode, paise: paiseOf(part.amount), ref: "" }] : []) : mode === "emi" ? (totals.total ? [{ mode: "other" as const, paise: totals.total, ref: `EMI ${emi.trim()}`.trim().slice(0, 40) }] : []) : totals.total ? [{ mode, paise: totals.total, ref: "" }] : [];
+    const exPaise = kind === "sale" && ex.open ? paiseOf(ex.value) : 0;
+    if (kind === "sale" && ex.open && (!ex.model.trim() || !exPaise)) { setNote(T("For the exchange, type the old phone's model and its value (or close the exchange box).", "Exchange के लिए पुराने फ़ोन का model और उसकी क़ीमत लिखें (या exchange box बंद करें)।")); return; }
+    if (exPaise > totals.total) { setNote(T("The old phone's value is more than the bill.", "पुराने फ़ोन की क़ीमत बिल से ज़्यादा है।")); return; }
+    const toPay = totals.total - exPaise;
+    const payments = kind === "estimate" ? [] : mode === "part" ? (paiseOf(part.amount) ? [{ mode: part.mode, paise: paiseOf(part.amount), ref: "" }] : []) : mode === "emi" ? (toPay ? [{ mode: "other" as const, paise: toPay, ref: `EMI ${emi.trim()}`.trim().slice(0, 40) }] : []) : toPay ? [{ mode, paise: toPay, ref: "" }] : [];
     const paid = payments.reduce((a, p) => a + p.paise, 0);
-    if (paid > totals.total) { setNote(T("The money received is more than the bill.", "मिले पैसे बिल से ज़्यादा हैं।")); return; }
-    if (kind === "sale" && paid < totals.total && phone.length !== 10) { setNote(T("For udhaar (money left), type the customer's mobile.", "उधार (बाकी पैसे) के लिए ग्राहक का मोबाइल लिखें।")); return; }
+    if (paid > toPay) { setNote(T("The money received is more than the bill.", "मिले पैसे बिल से ज़्यादा हैं।")); return; }
+    if (kind === "sale" && paid < toPay && phone.length !== 10) { setNote(T("For udhaar (money left), type the customer's mobile.", "उधार (बाकी पैसे) के लिए ग्राहक का मोबाइल लिखें।")); return; }
     if (send && phone.length !== 10) { setNote(T("To send on WhatsApp, type the customer's mobile.", "WhatsApp पर भेजने के लिए ग्राहक का मोबाइल लिखें।")); return; }
-    const body = { as: ws.as || undefined, kind, client_id: clientId.current, lines, payments, customer_name: cust.name.trim(), customer_phone: phone, discount_paise: paiseOf(disc), notes: notes.trim(), send };
+    const body = { as: ws.as || undefined, kind, client_id: clientId.current, lines, payments, customer_name: cust.name.trim(), customer_phone: phone, discount_paise: paiseOf(disc), notes: notes.trim(), send, exchange: exPaise ? { model: ex.model.trim(), imei: ex.imei.trim(), paise: exPaise } : undefined };
     setBusy(send ? "send" : "save");
     try {
       const r = await api<{ bill?: BillRow; sent?: { sent?: boolean; error?: string } | null; error?: string }>("/api/mobile/bills", { method: "POST", json: body });
@@ -135,13 +140,13 @@ function NewBill() {
       const next = { ...d, items: d.items.map((i) => { const n = cart.filter((c) => c.itemId === i.id).reduce((a, c) => a + c.qty, 0); return n && kind === "sale" ? { ...i, stock: i.stock - n, qty: i.serial ? i.qty : i.qty - n } : i; }) };
       keepItems(ws.as, next); setD(next);
       setOfflineBill({ id: clientId.current, owner_id: "", kind, number: 0, fin_year: "", code: T("OFFLINE (number comes after sync)", "OFFLINE (नंबर sync के बाद)"), status: "open", customer_name: body.customer_name, customer_phone: phone, customer_gstin: "", customer_state: "",
-        lines, payments: payments.map((p) => ({ ...p, at: now })), discount_paise: body.discount_paise, total_paise: totals.total, gst_paise: totals.gst, balance_paise: totals.total - paid, profit_paise: 0, gst_on: setup.gstOn, notes: body.notes, due_date: null, token: "", client_id: clientId.current, ref_bill_id: null, created_by: null, created_by_name: "", cancel_reason: "", created_at: now, updated_at: now });
+        lines, payments: [...(exPaise ? [{ mode: "other" as const, paise: exPaise, ref: `Exchange ${ex.model.trim()}`.slice(0, 40), at: now }] : []), ...payments.map((p) => ({ ...p, at: now }))], discount_paise: body.discount_paise, total_paise: totals.total, gst_paise: totals.gst, balance_paise: toPay - paid, profit_paise: 0, gst_on: setup.gstOn, notes: body.notes, due_date: null, token: "", client_id: clientId.current, ref_bill_id: null, created_by: null, created_by_name: "", cancel_reason: "", created_at: now, updated_at: now });
       setTick((t) => t + 1);
     }
   }
   function fresh() {
     clientId.current = newClientId();
-    setCart([]); setCust({ name: "", phone: "" }); setMode("cash"); setEmi(""); setPart({ amount: "", mode: "cash" }); setDisc(""); setNotes(""); setNote(""); setOfflineBill(null);
+    setCart([]); setCust({ name: "", phone: "" }); setMode("cash"); setEmi(""); setEx({ open: false, model: "", imei: "", value: "" }); setPart({ amount: "", mode: "cash" }); setDisc(""); setNotes(""); setNote(""); setOfflineBill(null);
   }
 
   if (err) return <div className="space-y-3 py-16 text-center"><p className="font-semibold">{err}</p><Link href={`/poster/mobile${asQ}`} className="text-sm font-semibold text-brand-ink">← {T("Mobile shop", "मोबाइल दुकान")}</Link></div>;
@@ -229,6 +234,17 @@ function NewBill() {
             <label className="text-[12px] font-semibold text-muted">{T("Note on the bill", "बिल पर नोट")} <span className="font-normal">(optional)</span><input className={`${inp} mt-1`} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
           </section>
 
+          {kind === "sale" && (ex.open ? (
+            <section className="space-y-2 rounded-2xl border border-border bg-surface p-3">
+              <p className="flex items-center justify-between text-[12px] font-semibold text-muted"><span>{T("Old phone taken in exchange", "Exchange में लिया पुराना फ़ोन")}<FieldTip lang={lang} en="Its value comes off what the customer pays. The old phone goes into your stock as 'Used <model>' at this value — sell it later like any phone." hi="इसकी क़ीमत ग्राहक के देने वाले पैसों से घटती है। पुराना फ़ोन इसी क़ीमत पर 'Used <model>' नाम से आपके स्टॉक में आ जाता है — बाद में किसी भी फ़ोन की तरह बेचें।" /></span><button type="button" onClick={() => setEx({ open: false, model: "", imei: "", value: "" })} className="text-xs font-semibold text-muted">{T("Remove", "हटाएँ")}</button></p>
+              <div className="flex flex-wrap gap-2">
+                <input className={`${small} min-w-0 flex-1`} value={ex.model} onChange={(e) => setEx({ ...ex, model: e.target.value })} placeholder={T("Model (e.g. Redmi 9 blue)", "Model (जैसे Redmi 9 blue)")} />
+                <input className={`${small} w-40 font-mono`} inputMode="numeric" value={ex.imei} onChange={(e) => setEx({ ...ex, imei: e.target.value })} placeholder="IMEI" />
+                <input className={`${small} w-28`} inputMode="decimal" value={ex.value} onChange={(e) => setEx({ ...ex, value: e.target.value })} placeholder={T("Value ₹", "क़ीमत ₹")} />
+              </div>
+            </section>
+          ) : <button type="button" onClick={() => setEx({ ...ex, open: true })} className="text-sm font-semibold text-brand-ink">+ {T("Old phone in exchange", "पुराना फ़ोन exchange में")}</button>)}
+
           {kind === "sale" && (
             <section className="space-y-2 rounded-2xl border border-border bg-surface p-3">
               <p className="text-[12px] font-semibold text-muted">{T("Payment", "पेमेंट")}<FieldTip lang={lang} en="Cash, UPI or Card = the full bill is paid that way. Part / udhaar = type what came now; the rest shows as udhaar." hi="Cash, UPI या Card = पूरा बिल उसी से चुका। कुछ / उधार = अभी जो मिला वो लिखें; बाकी उधार में दिखेगा।" /></p>
@@ -245,7 +261,7 @@ function NewBill() {
                   <span>{T("Received now ₹", "अभी मिला ₹")}</span>
                   <input className={`${small} w-28`} inputMode="decimal" value={part.amount} onChange={(e) => setPart({ ...part, amount: e.target.value })} placeholder="0" />
                   <select className={small} value={part.mode} onChange={(e) => setPart({ ...part, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select>
-                  <span className="font-semibold text-danger">{T("Udhaar", "उधार")}: {inr(Math.max(0, totals.total - paiseOf(part.amount)))}</span>
+                  <span className="font-semibold text-danger">{T("Udhaar", "उधार")}: {inr(Math.max(0, totals.total - (ex.open ? paiseOf(ex.value) : 0) - paiseOf(part.amount)))}</span>
                 </div>
               )}
             </section>
@@ -255,6 +271,7 @@ function NewBill() {
             {(totals.lineDiscount + totals.billDiscount > 0) && <p className="flex justify-between text-sm text-muted"><span>{T("Discount", "छूट")}</span><span>− {inr(totals.lineDiscount + totals.billDiscount)}</span></p>}
             {setup.gstOn && <p className="flex justify-between text-[12px] text-muted"><span>{T("GST inside the price", "दाम में शामिल GST")}</span><span>{inr(totals.gst, true)}</span></p>}
             <p className="flex items-baseline justify-between"><span className="text-sm font-semibold">{T("Total", "कुल")} · {totals.qty} {T("pcs", "पीस")}</span><span className="text-2xl font-bold tabular-nums">{inr(totals.total)}</span></p>
+            {kind === "sale" && ex.open && paiseOf(ex.value) > 0 && <p className="flex justify-between text-sm"><span>{T("Old phone", "पुराना फ़ोन")} − {inr(paiseOf(ex.value))}</span><span className="font-bold">{T("Customer pays", "ग्राहक देगा")} {inr(Math.max(0, totals.total - paiseOf(ex.value)))}</span></p>}
             {note && <p className="text-sm font-semibold text-danger">{note}</p>}
             <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={!!busy} onClick={() => void save(false)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-bold disabled:opacity-50">{busy === "save" && <LoaderCircle className="h-4 w-4 animate-spin" />} Save</button>

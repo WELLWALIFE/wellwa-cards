@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { cleanPhone } from "@/lib/jobs";
 import { cleanPayment, type Payment } from "@/lib/jewellery";
-import { BILL_COLS, billTotals, cleanLine, type BillKind, type BillRow } from "@/lib/mobile";
+import { BILL_COLS, ITEM_COLS, billTotals, cleanCode, cleanLine, validImei, type BillKind, type BillRow, type ItemRow } from "@/lib/mobile";
 import { createBill, hideBillCost, msCtx, msDenied, msHas, sendBill, trueLines } from "@/lib/mobile-server";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -45,6 +45,19 @@ export async function POST(request: Request) {
   const tl = await trueLines(scope.ownerId, raw, kind);
   if ("error" in tl) return NextResponse.json({ error: tl.error, code: "stock" }, { status: 400 });
   const payments = kind === "estimate" ? [] : (Array.isArray(b.payments) ? b.payments : []).slice(0, 10).map(cleanPayment).filter((x): x is Payment => !!x).map((p) => ({ ...p, at: new Date().toISOString() }));
+  // An old phone taken in exchange: its value comes off what the customer pays (it is not money), and the phone goes into stock.
+  const exRaw = kind === "sale" && b.exchange && typeof b.exchange === "object" ? (b.exchange as Record<string, unknown>) : null;
+  const ex = exRaw ? { model: txt(exRaw.model, 60), imei: cleanCode(exRaw.imei, 20), paise: Math.max(0, Math.round(Number(exRaw.paise) || 0)) } : null;
+  if (ex) {
+    if (!ex.model || !ex.paise) return NextResponse.json({ error: "For an exchange, type the old phone's model and its value." }, { status: 400 });
+    if (!msHas(access, "stock") && !access.owner) return msDenied("take a phone in exchange");
+    if (/^\d{15}$/.test(ex.imei) && !validImei(ex.imei)) return NextResponse.json({ error: `Check the old phone's IMEI, a digit looks wrong: ${ex.imei}` }, { status: 400 });
+    if (ex.imei) {
+      const had = list(await restAsService<{ imei1: string }[]>(`ms_units?owner_id=eq.${scope.ownerId}&imei1=eq.${ex.imei}&select=imei1&limit=1`))[0];
+      if (had) return NextResponse.json({ error: `IMEI ${ex.imei} is already in your records.` }, { status: 400 });
+    }
+    payments.push({ mode: "other", paise: ex.paise, ref: `Exchange ${ex.model}`.slice(0, 40), at: new Date().toISOString() });
+  }
   const fields = {
     customer_name: txt(b.customer_name, 80), customer_phone: cleanPhone(b.customer_phone), customer_gstin: txt(b.customer_gstin, 15).toUpperCase(),
     customer_state: /^\d{2}$/.test(String(b.customer_state ?? "")) ? String(b.customer_state) : "",
@@ -62,6 +75,18 @@ export async function POST(request: Request) {
   if (kind === "sale" && t.balance > 0 && !fields.customer_phone) return NextResponse.json({ error: "For udhaar (money left), type the customer's mobile." }, { status: 400 });
   const bill = await createBill(scope, setup, kind, fields);
   if (!bill) return NextResponse.json({ error: "Could not save the bill. Please try again." }, { status: 500 });
+  if (ex) {
+    // The old phone: a "Used <model>" item (made once), one unit with its IMEI at the exchange value, and a purchase line for the record.
+    const o = scope.ownerId, name = `Used ${ex.model}`;
+    let item = list(await restAsService<ItemRow[]>(`ms_items?owner_id=eq.${o}&serial=is.true&name=eq.${encodeURIComponent(name)}&select=${ITEM_COLS}&limit=1`))[0];
+    if (!item) item = list(await restAsService<ItemRow[]>(`ms_items?select=${ITEM_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ owner_id: o, kind: "phone", serial: true, name, category: "phone", hsn: "8517", gst_bp: 1800, price_paise: ex.paise, cost_paise: ex.paise }) }))[0];
+    const imei = ex.imei || `USED${Date.now().toString().slice(-9)}`;
+    if (item) {
+      const pr = list(await restAsService<{ id: string }[]>("ms_purchases?select=id", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ owner_id: o, supplier_name: bill.customer_name || "Exchange customer", supplier_phone: bill.customer_phone, bill_no: bill.code, lines: [{ itemId: item.id, name, qty: 1, cost: ex.paise, imeis: [imei] }], total_paise: ex.paise, paid_paise: ex.paise, notes: `Old phone taken in exchange on bill ${bill.code}`, created_by: scope.userId, created_by_name: access.name }) }))[0];
+      const u = await restAsService("ms_units", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: o, item_id: item.id, imei1: imei, cost_paise: ex.paise, purchase_id: pr?.id ?? null }) });
+      if (!u.ok) console.error("[mobile] exchange unit", u.status, u.text.slice(0, 200));
+    } else console.error("[mobile] exchange item not made for", bill.code);
+  }
   const sent = b.send === true && bill.customer_phone ? await sendBill(scope, setup, bill) : null;
   return NextResponse.json({ bill: hideBillCost(bill, access), sent });
 }

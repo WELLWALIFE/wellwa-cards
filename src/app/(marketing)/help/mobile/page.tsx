@@ -33,14 +33,14 @@ const STEPS: [string, string][] = [
   ["Saaman wapsi", "Grahak kuch wapas laaye to bill khol kar 'Return items' — kitne piece likhein. Stock wapas chadh jaata hai, bill par udhaar ho to pehle wo ghatta hai, baaki paisa lautaya jaata hai. Asli bill nahi badalta; wapsi ki alag parchi (credit note) banti hai."],
   ["Report aur Excel", "Aaj / kal / mahina / vitt varsh: bikri (wapsi ghata kar), aaye paise (cash, UPI, card, EMI alag), munafa, GST HSN ke hisaab se, sabse zyada bika item, repair ka kaam. Saar WhatsApp par; bikri register, HSN, item-wise aur stock list Excel (CSV) mein — CA ko dene ke liye."],
   ["Barcode label aur supplier", "Kisi bhi item ka 50×25 mm barcode sticker print karein (barcode na ho to hum bana dete hain). Khareed par supplier ko kitna diya, kitna baaki — supplier-wise dikhta hai."],
+  ["Stock milaan", "Shelf ka har piece scan karein ya ginti likhein; phone IMEI se. Aakhir mein farq dikhta hai, list Excel mein utar sakti hai, aur ek button se stock aapki ginti jitna ho jaata hai. Jo item nahi gine wo nahi badalte."],
+  ["Purana phone exchange", "Naye bill par 'Old phone in exchange' — model, IMEI aur keemat likhein. Keemat grahak ke dene wale paison se ghat jaati hai aur purana phone 'Used <model>' naam se aapke stock mein aa jaata hai."],
   ["EMI / finance", "Bill par 'EMI' chunein aur finance company ka naam likhein — din ke paison mein EMI alag dikhta hai."],
   ["Din ka hisaab", "Home par aaj ki bikri, cash aur UPI alag, munafa (sirf maalik ko), udhaar aur kam stock ki list."],
   ["Staff", "Har staff ka alag login. Kaun bill banaye, kaun stock chadhaye, kaun laagat/munafa dekhe, kitni chhoot de — sab aap tay karte hain. Bill kabhi delete nahi hota, sirf karan likhkar radd."],
 ];
 
 const COMING = [
-  "Stock milaan (poori dukaan scanner se ginna)",
-  "Purana phone exchange mein lena (abhi: use Khareed se chadha kar bechein)",
   "GST e-invoice, Tally ki seedhi file",
 ];
 

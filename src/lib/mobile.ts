@@ -241,8 +241,8 @@ export function billMessage(b: Pick<BillRow, "kind" | "code" | "customer_name" |
 
 /* ---------------- returns (credit notes) ---------------- */
 
-/** A payment put on a bill because goods came back (it cleared udhaar; no money came in). */
-export const isReturnAdjust = (p: Pick<Payment, "ref">) => /^Return /.test(p.ref || "");
+/** A line in a bill's payments that is not money: goods that came back (cleared udhaar), or an old phone taken in exchange. */
+export const isReturnAdjust = (p: Pick<Payment, "ref">) => /^(Return|Exchange) /.test(p.ref || "");
 /** How many of each line of a bill have already come back. */
 export function returnedQty(bill: Pick<BillRow, "lines">, returns: Pick<BillRow, "lines" | "status">[]): number[] {
   const out = (bill.lines ?? []).map(() => 0);

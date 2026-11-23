@@ -64,6 +64,12 @@ const HELP: Record<string, Help> = {
     ["Send the summary to yourself or your partner on WhatsApp.", "सार खुद को या partner को WhatsApp पर भेजें।"],
     ["Download: files open in Excel. Give the sales register and HSN summary to your CA.", "डाउनलोड: फ़ाइलें Excel में खुलती हैं। बिक्री रजिस्टर और HSN सार अपने CA को दें।"],
   ] },
+  stocktake: { en: "Count the stock", hi: "स्टॉक मिलान", steps: [
+    ["Scan each piece on the shelf (one scan = one piece), or tap an item and type its count.", "shelf का हर पीस scan करें (एक scan = एक पीस), या item दबाकर गिनती लिखें।"],
+    ["Phones: scan each IMEI. At the end you see which IMEIs were not found.", "फ़ोन: हर IMEI scan करें। आख़िर में दिखेगा कौन-से IMEI नहीं मिले।"],
+    ["Your count stays on this phone until you finish — you can stop and come back.", "आपकी गिनती इसी फ़ोन में रहती है जब तक पूरा न करें — रुककर बाद में आ सकते हैं।"],
+    ["Check the differences, download the list, then 'Set stock to my count'. Items you did not count are not changed.", "फ़र्क़ देखें, list डाउनलोड करें, फिर 'स्टॉक मेरी गिनती जितना करें'। जो item नहीं गिने वो नहीं बदलते।"],
+  ] },
   labels: { en: "Barcode labels", hi: "Barcode label", steps: [
     ["Search an item and tap it. Type how many stickers you want.", "item खोजकर दबाएँ। कितने sticker चाहिए लिखें।"],
     ["No barcode on the item? Tap 'Give them a barcode' — we make one.", "item पर barcode नहीं? 'इन्हें barcode दें' दबाएँ — हम बना देते हैं।"],

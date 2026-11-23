@@ -137,7 +137,8 @@ export default function ItemsPage() {
       <div className="flex items-center justify-between gap-2"><h1 className="text-lg font-bold">{T("Items & stock", "Items और स्टॉक")}</h1>
         {can("stock") && <button type="button" onClick={() => { setNote(""); setF({ ...BLANK }); }} className="inline-flex items-center gap-1 rounded-xl grad-brand px-3 py-2 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {T("Add item", "item जोड़ें")}</button>}</div>
       <MsHelp k="items" />
-      {can("stock") && d.items.length > 0 && <Link href={`/poster/mobile/labels${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-ink">{T("Print barcode labels →", "Barcode label print करें →")}</Link>}
+      {can("stock") && d.items.length > 0 && <Link href={`/poster/mobile/labels${asQ}`} className="mr-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-ink">{T("Print barcode labels →", "Barcode label print करें →")}</Link>}
+      {can("stock") && d.items.length > 0 && <Link href={`/poster/mobile/stocktake${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-ink">{T("Count the stock →", "स्टॉक गिनें (मिलान) →")}</Link>}
       <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" /><input className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder={T("Search name, brand, phone model, barcode", "नाम, brand, फ़ोन model, barcode खोजें")} /></div>
       <div className="flex gap-2 text-sm">
         <button type="button" onClick={() => setOnly("all")} className={`rounded-xl border px-3 py-1.5 font-semibold ${only === "all" ? "border-brand bg-brand text-white" : "border-border bg-surface"}`}>{T("All", "सभी")} ({d.items.length})</button>

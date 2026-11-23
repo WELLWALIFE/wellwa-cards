@@ -28,6 +28,10 @@ export async function GET(request: Request) {
     const units = list(await restAsService<UnitRow[]>(`ms_units?owner_id=eq.${scope.ownerId}&item_id=eq.${of}&select=${UNIT_COLS}&order=created_at.desc&limit=2000`));
     return NextResponse.json({ units: units.map((u) => (msHas(access, "cost") ? u : { ...u, cost_paise: 0 })) });
   }
+  if (sp.get("instock") === "1") {
+    const units = list(await restAsService<{ imei1: string; item_id: string }[]>(`ms_units?owner_id=eq.${scope.ownerId}&status=eq.in_stock&select=imei1,item_id&limit=20000`));
+    return NextResponse.json({ units });
+  }
   const [items, units] = await Promise.all([itemsOf(scope.ownerId, sp.get("all") === "1"), unitCounts(scope.ownerId)]);
   return NextResponse.json({ items: items.map((i) => ({ ...hideCost(i, access), stock: i.serial ? units[i.id] ?? 0 : i.qty })), access, setup: c.setup });
 }
@@ -50,6 +54,20 @@ export async function POST(request: Request) {
     const r = await restAsService<ItemRow[]>(`ms_items?id=eq.${it.id}&owner_id=eq.${o}&select=${ITEM_COLS}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ qty, updated_at: now }) });
     const next = list(r)[0];
     return next ? NextResponse.json({ item: { ...hideCost(next, access), stock: next.qty } }) : NextResponse.json({ error: "Could not save." }, { status: 500 });
+  }
+  if (b.action === "stocktake") {
+    // The shelf was counted: set the count of each counted item (only those sent; nothing else is touched).
+    const counts = (Array.isArray(b.counts) ? b.counts : []).slice(0, 2000).map((c) => (c && typeof c === "object" ? (c as Record<string, unknown>) : {})).filter((c) => isUuid(c.id) && Number.isFinite(Number(c.qty)) && Number(c.qty) >= 0 && Number(c.qty) <= 1e6);
+    if (!counts.length) return NextResponse.json({ error: "Nothing was counted." }, { status: 400 });
+    const rows = list(await restAsService<ItemRow[]>(`ms_items?owner_id=eq.${o}&serial=is.false&id=in.(${counts.map((c) => c.id).join(",")})&select=${ITEM_COLS}`));
+    let changed = 0;
+    for (const it of rows) {
+      const qty = Math.round(Number(counts.find((c) => c.id === it.id)?.qty));
+      if (qty === it.qty) continue;
+      const r = await restAsService(`ms_items?id=eq.${it.id}&owner_id=eq.${o}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ qty, updated_at: now }) });
+      if (r.ok) changed += 1;
+    }
+    return NextResponse.json({ ok: true, changed });
   }
   if (b.action === "barcode") {
     // Give our own barcode to items that have none, so a label can be printed and scanned at the counter.
