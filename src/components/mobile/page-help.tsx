@@ -25,6 +25,7 @@ const HELP: Record<string, Help> = {
     ["Send on WhatsApp / Copy link for the customer.", "WhatsApp पर भेजें / ग्राहक के लिए लिंक कॉपी।"],
     ["Money left? Take payment when it comes.", "पैसा बाकी? आने पर Take payment।"],
     ["Mistake? Cancel with a reason — the stock comes back.", "गलती? वजह लिखकर रद्द करें — स्टॉक वापस आ जाएगा।"],
+    ["Customer brought something back? Return items — type how many; the stock goes back and the bill stays as it was.", "ग्राहक कुछ वापस लाया? सामान वापसी — कितने पीस लिखें; स्टॉक वापस चढ़ता है और बिल जैसा था वैसा रहता है।"],
   ] },
   items: { en: "Items and stock", hi: "Items और स्टॉक", steps: [
     ["Add item: name, category, selling price. 'Fits' = the phones it is for.", "Item जोड़ें: नाम, category, बेचने का दाम। 'किस फ़ोन का' = जिन फ़ोन में लगता है।"],
@@ -56,6 +57,17 @@ const HELP: Record<string, Help> = {
     ["In the shop: every phone you have now. Ready: done but not collected. Late: past the promised day.", "दुकान में: अभी जो फ़ोन आपके पास हैं। तैयार: बन गए पर ले नहीं गए। देर: वादे का दिन निकल गया।"],
     ["Search by name, mobile, job number, model or IMEI.", "नाम, मोबाइल, job नंबर, model या IMEI से खोजें।"],
     ["Tap a job to open it.", "job खोलने के लिए उसे दबाएँ।"],
+  ] },
+  reports: { en: "Reports", hi: "रिपोर्ट", steps: [
+    ["Pick the period: today, this month, or your own dates.", "अवधि चुनें: आज, ये महीना, या अपनी तारीख़ें।"],
+    ["Sale is after returns. Money in is what really came — cash, UPI, card and EMI apart.", "बिक्री वापसी घटाकर है। आए पैसे = जो सच में आया — cash, UPI, card और EMI अलग।"],
+    ["Send the summary to yourself or your partner on WhatsApp.", "सार खुद को या partner को WhatsApp पर भेजें।"],
+    ["Download: files open in Excel. Give the sales register and HSN summary to your CA.", "डाउनलोड: फ़ाइलें Excel में खुलती हैं। बिक्री रजिस्टर और HSN सार अपने CA को दें।"],
+  ] },
+  labels: { en: "Barcode labels", hi: "Barcode label", steps: [
+    ["Search an item and tap it. Type how many stickers you want.", "item खोजकर दबाएँ। कितने sticker चाहिए लिखें।"],
+    ["No barcode on the item? Tap 'Give them a barcode' — we make one.", "item पर barcode नहीं? 'इन्हें barcode दें' दबाएँ — हम बना देते हैं।"],
+    ["Print: 50×25 mm stickers. On the bill, scan the sticker and the item is added.", "Print: 50×25 mm sticker। बिल पर sticker scan करते ही item जुड़ जाता है।"],
   ] },
   settings: { en: "Settings", hi: "Settings", steps: [
     ["Shop name, address, phone — printed on every bill.", "दुकान का नाम, पता, फ़ोन — हर बिल पर छपते हैं।"],

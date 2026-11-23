@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const mine = all ? "" : `&created_by=eq.${scope.userId}`;
   const seeJobs = all || msHas(access, "repair");
   const [touched, recent, due, items, units, shop, jobRows] = await Promise.all([
-    restAsService<BillRow[]>(`ms_bills?owner_id=eq.${scope.ownerId}&kind=eq.sale&updated_at=gte.${from}${mine}&select=${BILL_COLS}&limit=5000`),
+    restAsService<BillRow[]>(`ms_bills?owner_id=eq.${scope.ownerId}&kind=in.(sale,return)&updated_at=gte.${from}${mine}&select=${BILL_COLS}&limit=5000`),
     restAsService<BillRow[]>(`ms_bills?owner_id=eq.${scope.ownerId}${mine}&select=${BILL_COLS}&order=created_at.desc&limit=15`),
     all ? restAsService<{ balance_paise: number }[]>(`ms_bills?owner_id=eq.${scope.ownerId}&kind=eq.sale&status=eq.open&balance_paise=gt.0&select=balance_paise&limit=5000`) : Promise.resolve({ data: [] as { balance_paise: number }[] }),
     itemsOf(scope.ownerId), unitCounts(scope.ownerId), shopOf(scope.ownerId, setup),

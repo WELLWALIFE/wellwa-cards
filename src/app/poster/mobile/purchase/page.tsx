@@ -35,6 +35,7 @@ export default function PurchasePage() {
   const [sup, setSup] = useState({ name: "", phone: "", bill_no: "", bill_date: "", paid: "" });
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; t: string } | null>(null);
+  const [pay, setPay] = useState<{ id: string; amount: string }>({ id: "", amount: "" });
 
   const load = useCallback(async () => {
     try {
@@ -66,6 +67,19 @@ export default function PurchasePage() {
       setNote({ ok: true, t: T("✅ Saved. The stock has gone up.", "✅ Save हो गया। स्टॉक बढ़ गया।") }); void load();
     } catch { setBusy(false); setNote({ ok: false, t: T("No internet.", "इंटरनेट नहीं है।") }); }
   }
+
+  async function paySupplier() {
+    setBusy(true); setNote(null);
+    try {
+      const r = await api<{ ok?: boolean; error?: string }>("/api/mobile/purchases", { method: "PATCH", json: { as: ws.as || undefined, id: pay.id, paise: paiseOf(pay.amount) } });
+      setBusy(false);
+      if (!r.ok) { setNote({ ok: false, t: r.data?.error || T("Could not save.", "Save नहीं हुआ।") }); return; }
+      setPay({ id: "", amount: "" }); setNote({ ok: true, t: T("✅ Payment noted.", "✅ पेमेंट दर्ज हो गया।") }); void load();
+    } catch { setBusy(false); setNote({ ok: false, t: T("No internet.", "इंटरनेट नहीं है।") }); }
+  }
+  // What the shop owes, supplier by supplier.
+  const owed = new Map<string, number>();
+  for (const p of past) { const due = p.total_paise - p.paid_paise; if (due > 0) owed.set(p.supplier_name || "—", (owed.get(p.supplier_name || "—") ?? 0) + due); }
 
   if (err) return <p className="py-16 text-center font-semibold">{err}</p>;
   if (!d) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
@@ -113,6 +127,12 @@ export default function PurchasePage() {
         </div>
       )}
 
+      {can("cost") && owed.size > 0 && (
+        <section className="rounded-2xl border border-amber-300 bg-amber-50/60 p-3">
+          <p className="text-sm font-bold text-amber-900">{T("To pay suppliers", "सप्लायर को देना बाकी")}: {inr([...owed.values()].reduce((a, b) => a + b, 0))}</p>
+          <ul className="mt-1 text-[13px]">{[...owed.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => <li key={n} className="flex justify-between"><span>{n === "—" ? T("No name", "बिना नाम") : n}</span><b className="tabular-nums">{inr(v)}</b></li>)}</ul>
+        </section>
+      )}
       {past.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-bold">{T("Past purchases", "पिछली ख़रीद")}</h2>
@@ -120,6 +140,9 @@ export default function PurchasePage() {
             <div key={p.id} className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm">
               <p className="flex justify-between gap-2"><span className="truncate font-semibold">{p.supplier_name || T("Supplier", "सप्लायर")}{p.bill_no ? ` · ${p.bill_no}` : ""}</span>{can("cost") && <b className="shrink-0 tabular-nums">{inr(p.total_paise)}</b>}</p>
               <p className="truncate text-[11px] text-muted">{new Date(p.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} · {(p.lines ?? []).map((l) => `${l.name} ×${l.qty}`).join(", ")}{can("cost") && p.total_paise > p.paid_paise ? ` · ${T("to pay", "देना बाकी")} ${inr(p.total_paise - p.paid_paise)}` : ""}</p>
+              {can("cost") && p.total_paise > p.paid_paise && (pay.id === p.id
+                ? <span className="mt-1 flex flex-wrap items-center gap-1.5"><input autoFocus className={`${small} w-28`} inputMode="decimal" placeholder="₹" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} /><button type="button" disabled={busy || !paiseOf(pay.amount)} onClick={() => void paySupplier()} className="rounded-lg grad-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{T("Paid", "दे दिया")}</button><button type="button" onClick={() => setPay({ id: "", amount: "" })} className="text-xs text-muted">{T("Close", "बंद")}</button></span>
+                : <button type="button" onClick={() => setPay({ id: p.id, amount: String((p.total_paise - p.paid_paise) / 100) })} className="mt-1 text-xs font-semibold text-brand-ink">{T("Note a payment to the supplier →", "सप्लायर को दिया पैसा दर्ज करें →")}</button>)}
             </div>
           ))}
         </section>

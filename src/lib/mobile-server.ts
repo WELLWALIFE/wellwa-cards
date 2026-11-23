@@ -91,7 +91,7 @@ export async function qtyAdd(ownerId: string, itemId: string, delta: number, cos
 
 /* ---------------- bills ---------------- */
 
-export type NewBill = Pick<BillRow, "customer_name" | "customer_phone" | "customer_gstin" | "customer_state" | "lines" | "payments" | "discount_paise" | "notes" | "due_date" | "client_id" | "created_by" | "created_by_name">;
+export type NewBill = Partial<Pick<BillRow, "ref_bill_id">> & Pick<BillRow, "customer_name" | "customer_phone" | "customer_gstin" | "customer_state" | "lines" | "payments" | "discount_paise" | "notes" | "due_date" | "client_id" | "created_by" | "created_by_name">;
 
 /**
  * The bill's lines made true against the stock: cost, HSN, GST rate and warranty always come from the item (never from the app);
@@ -126,19 +126,21 @@ export async function createBill(scope: Scope, setup: MsSetup, kind: BillKind, f
   }
   const t = billTotals(billInputOf(f), setup);
   const fy = finYear(new Date(`${istDay()}T12:00:00`));
-  const prefix = kind === "sale" ? setup.billPrefix : setup.estimatePrefix;
+  const prefix = kind === "sale" ? setup.billPrefix : kind === "return" ? "CN" : setup.estimatePrefix;
   for (let tries = 0; tries < 4; tries++) {
     const last = list(await restAsService<{ number: number }[]>(`ms_bills?owner_id=eq.${scope.ownerId}&kind=eq.${kind}&fin_year=eq.${fy}&select=number&order=number.desc&limit=1`))[0];
     const number = (last?.number ?? 0) + 1;
     const row = {
       ...f, owner_id: scope.ownerId, kind, number, fin_year: fy, code: `${prefix}/${fy}/${number}`, gst_on: setup.gstOn,
-      status: kind === "sale" && t.balance <= 0 ? "paid" : "open", total_paise: t.total, gst_paise: t.gst, balance_paise: t.balance, profit_paise: t.profit,
+      // A return is settled as it is made: its payments are the money given back.
+      status: kind === "return" || (kind === "sale" && t.balance <= 0) ? "paid" : "open", total_paise: t.total, gst_paise: t.gst, balance_paise: kind === "return" ? 0 : t.balance, profit_paise: t.profit,
     };
     const r = await restAsService<BillRow[]>(`ms_bills?select=${BILL_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
     if (r.ok) {
       const bill = list(r)[0] ?? null;
       if (bill && kind === "sale" && !noStock) await moveStock(scope.ownerId, bill, -1).catch((e) => console.error("[mobile] stock out", e));
-      if (bill?.customer_phone) await linkCustomerPhone(scope.ownerId, bill.customer_phone, bill.customer_name, `📱 ${kind === "sale" ? "Bill" : "Estimate"} ${bill.code} · ₹${Math.round(bill.total_paise / 100).toLocaleString("en-IN")}`, kind === "sale" ? "converted" : "interested", kind === "sale" ? bill.total_paise : 0).catch(() => undefined);
+      if (bill && kind === "return") await moveStock(scope.ownerId, bill, 1).catch((e) => console.error("[mobile] stock back", e));
+      if (bill?.customer_phone && kind !== "return") await linkCustomerPhone(scope.ownerId, bill.customer_phone, bill.customer_name, `📱 ${kind === "sale" ? "Bill" : "Estimate"} ${bill.code} · ₹${Math.round(bill.total_paise / 100).toLocaleString("en-IN")}`, kind === "sale" ? "converted" : "interested", kind === "sale" ? bill.total_paise : 0).catch(() => undefined);
       return bill;
     }
     if (r.status !== 409 && !/duplicate key/i.test(r.text)) { console.error("[mobile] bill save", r.status, r.text.slice(0, 200)); return null; }
@@ -160,7 +162,7 @@ export async function moveStock(ownerId: string, bill: BillRow, dir: 1 | -1): Pr
 
 export function withTotals(b: BillRow, gstOn: boolean, stateCode: string): Pick<BillRow, "total_paise" | "gst_paise" | "balance_paise" | "profit_paise" | "status"> {
   const t = billTotals(billInputOf(b), { gstOn, stateCode });
-  const status = b.status === "cancelled" || b.status === "converted" ? b.status : b.kind === "sale" && t.balance <= 0 ? "paid" : "open";
+  const status = b.status === "cancelled" || b.status === "converted" ? b.status : b.kind === "return" || (b.kind === "sale" && t.balance <= 0) ? "paid" : "open";
   return { total_paise: t.total, gst_paise: t.gst, balance_paise: t.balance, profit_paise: t.profit, status };
 }
 export async function billById(ownerId: string, id: string): Promise<BillRow | null> {

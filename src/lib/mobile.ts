@@ -161,6 +161,8 @@ export type BillLine = {
   imei: string; unitId: string; warrantyMonths: number;
   /** what one cost the shop (kept on the line for profit; never shown to the customer) */
   cost: number;
+  /** on a return (credit note): which line of the original bill this is */
+  ref?: number;
 };
 export type LineAmounts = { gross: number; net: number; taxable: number; gst: number };
 /** One line: qty × price − discount is what the customer pays; the tax sits inside it when GST is on. */
@@ -210,16 +212,16 @@ export function cleanLine(v: unknown): BillLine {
   };
 }
 
-export type BillKind = "sale" | "estimate";
+export type BillKind = "sale" | "estimate" | "return";
 export type BillStatus = "open" | "paid" | "cancelled" | "converted";
 export type BillRow = {
   id: string; owner_id: string; kind: BillKind; number: number; fin_year: string; code: string; status: BillStatus;
   customer_name: string; customer_phone: string; customer_gstin: string; customer_state: string;
   lines: BillLine[]; payments: Payment[]; discount_paise: number; total_paise: number; gst_paise: number; balance_paise: number; profit_paise: number;
-  gst_on: boolean; notes: string; due_date: string | null; token: string; client_id: string | null;
+  gst_on: boolean; notes: string; due_date: string | null; token: string; client_id: string | null; ref_bill_id: string | null;
   created_by: string | null; created_by_name: string; cancel_reason: string; created_at: string; updated_at: string;
 };
-export const BILL_COLS = "id,owner_id,kind,number,fin_year,code,status,customer_name,customer_phone,customer_gstin,customer_state,lines,payments,discount_paise,total_paise,gst_paise,balance_paise,profit_paise,gst_on,notes,due_date,token,client_id,created_by,created_by_name,cancel_reason,created_at,updated_at";
+export const BILL_COLS = "id,owner_id,kind,number,fin_year,code,status,customer_name,customer_phone,customer_gstin,customer_state,lines,payments,discount_paise,total_paise,gst_paise,balance_paise,profit_paise,gst_on,notes,due_date,token,client_id,ref_bill_id,created_by,created_by_name,cancel_reason,created_at,updated_at";
 export const billInputOf = (b: Pick<BillRow, "lines" | "payments" | "discount_paise" | "customer_state">): BillInput => ({ lines: b.lines ?? [], payments: b.payments ?? [], discountPaise: b.discount_paise ?? 0, customerState: b.customer_state ?? "" });
 
 /** The bill without what the customer must not see (cost, profit) — for the public bill link. */
@@ -230,10 +232,39 @@ export function publicBill<T extends Pick<BillRow, "lines" | "profit_paise">>(b:
 export function billMessage(b: Pick<BillRow, "kind" | "code" | "customer_name" | "total_paise" | "balance_paise">, shop: string, link: string, hi = true): string {
   const rs = (p: number) => `₹${Math.round(p / 100).toLocaleString("en-IN")}`;
   const name = b.customer_name?.trim() ? (hi ? `${b.customer_name.trim()} जी` : b.customer_name.trim()) : "";
+  if (b.kind === "return") return hi ? [`नमस्ते ${name} 🙏`, `${shop}: वापसी ${b.code} — ${rs(b.total_paise)}`, `देखें: ${link}`].join("\n") : [`Hello ${name} 🙏`, `${shop}: return ${b.code} — ${rs(b.total_paise)}`, `See it: ${link}`].join("\n");
   if (b.kind === "estimate") return hi ? [`नमस्ते ${name} 🙏`, `${shop} से आपका estimate ${b.code}: ${rs(b.total_paise)}`, `देखें: ${link}`].join("\n") : [`Hello ${name} 🙏`, `Your estimate ${b.code} from ${shop}: ${rs(b.total_paise)}`, `See it: ${link}`].join("\n");
   const due = b.balance_paise > 0 ? (hi ? `बाकी: ${rs(b.balance_paise)}` : `Balance due: ${rs(b.balance_paise)}`) : (hi ? "पूरा भुगतान मिल गया ✅" : "Fully paid ✅");
   return hi ? [`नमस्ते ${name} 🙏`, `${shop} से खरीदारी के लिए धन्यवाद।`, `बिल ${b.code}: ${rs(b.total_paise)}`, due, `बिल / वारंटी देखें: ${link}`].join("\n")
     : [`Hello ${name} 🙏`, `Thank you for shopping at ${shop}.`, `Bill ${b.code}: ${rs(b.total_paise)}`, due, `Bill / warranty: ${link}`].join("\n");
+}
+
+/* ---------------- returns (credit notes) ---------------- */
+
+/** A payment put on a bill because goods came back (it cleared udhaar; no money came in). */
+export const isReturnAdjust = (p: Pick<Payment, "ref">) => /^Return /.test(p.ref || "");
+/** How many of each line of a bill have already come back. */
+export function returnedQty(bill: Pick<BillRow, "lines">, returns: Pick<BillRow, "lines" | "status">[]): number[] {
+  const out = (bill.lines ?? []).map(() => 0);
+  for (const r of returns) if (r.status !== "cancelled") for (const l of r.lines ?? []) if (typeof l.ref === "number" && l.ref >= 0 && l.ref < out.length) out[l.ref] += l.qty;
+  return out;
+}
+/**
+ * The lines of a return: `want[i]` pieces of line i come back, at what the customer really paid for them (the line's own
+ * discount and its share of the bill discount taken off, piece by piece). Null when nothing valid is asked.
+ */
+export function returnLines(bill: Pick<BillRow, "lines" | "payments" | "discount_paise" | "customer_state" | "gst_on">, already: number[], want: number[]): BillLine[] | null {
+  const t = billTotals(billInputOf(bill), { gstOn: bill.gst_on, stateCode: "" });
+  const out: BillLine[] = [];
+  (bill.lines ?? []).forEach((l, i) => {
+    const q = Math.round(Number(want[i]) || 0);
+    if (q <= 0) return;
+    if (q > l.qty - (already[i] ?? 0)) { out.push({ ...l, qty: -1 }); return; }
+    const paid = Math.round((t.lines[i].net * q) / l.qty);   // what these pieces cost the customer
+    out.push({ ...l, qty: q, discount: Math.max(0, q * l.price - paid), ref: i });
+  });
+  if (!out.length || out.some((l) => l.qty < 0)) return null;
+  return out;
 }
 
 /* ---------------- purchases ---------------- */
@@ -256,12 +287,20 @@ const istDate = (iso: string) => new Date(new Date(iso).getTime() + 330 * 60_000
 export function dayClose(bills: BillRow[], day: string): DayClose {
   const out: DayClose = { bills: 0, sale: 0, gst: 0, profit: 0, money: { cash: 0, upi: 0, card: 0, bank: 0, cheque: 0, other: 0 }, moneyTotal: 0, udhaarGiven: 0, qty: 0 };
   for (const b of bills) {
-    if (b.kind !== "sale" || b.status === "cancelled") continue;
+    if (b.status === "cancelled") continue;
+    if (b.kind === "return") {
+      // Goods that came back today come off today's sale; the money given back comes off the drawer.
+      if (istDate(b.created_at) !== day) continue;
+      out.sale -= b.total_paise; out.gst -= b.gst_paise; out.profit -= b.profit_paise || 0; out.qty -= (b.lines ?? []).reduce((a, l) => a + l.qty, 0);
+      for (const p of b.payments ?? []) if (p.paise > 0) { out.money[p.mode] = (out.money[p.mode] ?? 0) - p.paise; out.moneyTotal -= p.paise; }
+      continue;
+    }
+    if (b.kind !== "sale") continue;
     if (istDate(b.created_at) === day) {
       out.bills += 1; out.sale += b.total_paise; out.gst += b.gst_paise; out.profit += b.profit_paise || 0; out.udhaarGiven += Math.max(0, b.balance_paise);
       out.qty += (b.lines ?? []).reduce((a, l) => a + l.qty, 0);
     }
-    for (const p of b.payments ?? []) if (p.at && istDate(p.at) === day && p.paise > 0) { out.money[p.mode] = (out.money[p.mode] ?? 0) + p.paise; out.moneyTotal += p.paise; }
+    for (const p of b.payments ?? []) if (p.at && istDate(p.at) === day && p.paise > 0 && !isReturnAdjust(p)) { out.money[p.mode] = (out.money[p.mode] ?? 0) + p.paise; out.moneyTotal += p.paise; }
   }
   return out;
 }

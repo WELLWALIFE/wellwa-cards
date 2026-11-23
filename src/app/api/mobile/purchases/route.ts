@@ -18,6 +18,25 @@ export async function GET(request: Request) {
   return NextResponse.json({ purchases: list(r) });
 }
 
+/** Money paid to a supplier against one purchase: { id, paise }. */
+export async function PATCH(request: Request) {
+  const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!b) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  const c = await msCtx(request, typeof b.as === "string" ? b.as : null);
+  if (!c.ok) return c.res;
+  if (!msHas(c.access, "stock") || !msHas(c.access, "cost")) return msDenied("pay suppliers");
+  const o = c.scope.ownerId;
+  const id = typeof b.id === "string" && /^[0-9a-f-]{36}$/i.test(b.id) ? b.id : "";
+  const row = id ? list(await restAsService<{ id: string; total_paise: number; paid_paise: number; notes: string }[]>(`ms_purchases?id=eq.${id}&owner_id=eq.${o}&select=id,total_paise,paid_paise,notes&limit=1`))[0] : null;
+  if (!row) return NextResponse.json({ error: "Purchase not found." }, { status: 404 });
+  const paise = Math.round(Number(b.paise) || 0);
+  const due = row.total_paise - row.paid_paise;
+  if (paise <= 0 || paise > due) return NextResponse.json({ error: `Type an amount up to ₹${Math.round(due / 100).toLocaleString("en-IN")}.` }, { status: 400 });
+  const day = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  const r = await restAsService(`ms_purchases?id=eq.${row.id}&owner_id=eq.${o}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ paid_paise: row.paid_paise + paise, notes: `${row.notes ? `${row.notes} · ` : ""}Paid ₹${Math.round(paise / 100)} on ${day} (${c.access.name})`.slice(-300) }) });
+  return r.ok ? NextResponse.json({ ok: true, paid_paise: row.paid_paise + paise }) : NextResponse.json({ error: "Could not save." }, { status: 500 });
+}
+
 export async function POST(request: Request) {
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b) return NextResponse.json({ error: "Bad request." }, { status: 400 });

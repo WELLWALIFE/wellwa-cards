@@ -3,10 +3,11 @@
 import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { cleanPayment } from "@/lib/jewellery";
-import { BILL_COLS, type BillRow } from "@/lib/mobile";
+import { BILL_COLS, billTotals, returnLines, returnedQty, type BillRow } from "@/lib/mobile";
 import { billById, billLink, createBill, hideBillCost, moveStock, msCtx, msDenied, msHas, sendBill, shopOf, trueLines, withTotals } from "@/lib/mobile-server";
 
 type Ctx = { params: Promise<{ id: string }> };
+const returnsOf = async (ownerId: string, billId: string) => (await restAsService<BillRow[]>(`ms_bills?owner_id=eq.${ownerId}&kind=eq.return&ref_bill_id=eq.${billId}&status=neq.cancelled&select=${BILL_COLS}&limit=100`)).data ?? [];
 
 export async function GET(request: Request, { params }: Ctx) {
   const { id } = await params;
@@ -14,7 +15,10 @@ export async function GET(request: Request, { params }: Ctx) {
   if (!c.ok) return c.res;
   const bill = await billById(c.scope.ownerId, id);
   if (!bill || (!msHas(c.access, "reports") && bill.created_by !== c.scope.userId)) return NextResponse.json({ error: "Bill not found." }, { status: 404 });
-  return NextResponse.json({ bill: hideBillCost(bill, c.access), setup: c.setup, access: c.access, shop: await shopOf(c.scope.ownerId, c.setup), link: billLink(bill) });
+  const returns = bill.kind === "sale" ? await returnsOf(c.scope.ownerId, bill.id) : [];
+  const from = bill.ref_bill_id ? await billById(c.scope.ownerId, bill.ref_bill_id) : null;
+  return NextResponse.json({ returned: returnedQty(bill, returns), returns: returns.map((r) => ({ id: r.id, code: r.code, total_paise: r.total_paise })), from: from ? { id: from.id, code: from.code } : null,
+    bill: hideBillCost(bill, c.access), setup: c.setup, access: c.access, shop: await shopOf(c.scope.ownerId, c.setup), link: billLink(bill) });
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {
@@ -44,6 +48,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
     case "cancel": {
       if (!msHas(access, "cancel")) return msDenied("cancel bills");
       if (bill.status === "cancelled") return NextResponse.json({ error: "Already cancelled." }, { status: 400 });
+      if (bill.kind === "return") return NextResponse.json({ error: "A return is not cancelled. If it was a mistake, make a new bill for those items." }, { status: 400 });
+      if (bill.kind === "sale" && (await returnsOf(scope.ownerId, bill.id)).length) return NextResponse.json({ error: "Items of this bill were already returned, so it cannot be cancelled. Return the rest instead." }, { status: 400 });
       const reason = String(b.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
       if (!reason) return NextResponse.json({ error: "Write why it is cancelled." }, { status: 400 });
       const next = await save({ status: "cancelled", cancel_reason: `${reason} — ${access.name}` });
@@ -54,6 +60,27 @@ export async function PATCH(request: Request, { params }: Ctx) {
         else await moveStock(scope.ownerId, bill, 1).catch(() => undefined);
       }
       return out(next);
+    }
+    case "return": {
+      // Goods come back: a credit note for those pieces at what was really paid. It first clears this bill's udhaar; the rest
+      // is given back in cash / UPI. Stock goes back in. The original bill is not changed (only a payment line is added).
+      if (!msHas(access, "cancel")) return msDenied("take returns");
+      if (bill.kind !== "sale" || bill.status === "cancelled") return NextResponse.json({ error: "Returns are taken on a live bill." }, { status: 400 });
+      const job = (await restAsService<{ id: string }[]>(`ms_jobs?owner_id=eq.${scope.ownerId}&bill_id=eq.${bill.id}&select=id&limit=1`)).data?.[0];
+      if (job) return NextResponse.json({ error: "This is a repair bill. Cancel the bill instead — the job opens again." }, { status: 400 });
+      const want = Array.isArray(b.qty) ? b.qty.map((x) => Math.round(Number(x) || 0)) : [];
+      const lines = returnLines(bill, returnedQty(bill, await returnsOf(scope.ownerId, bill.id)), want);
+      if (!lines) return NextResponse.json({ error: "Type how many pieces came back (not more than were sold)." }, { status: 400 });
+      const total = billTotals({ lines, payments: [], discountPaise: 0, customerState: bill.customer_state }, { gstOn: bill.gst_on, stateCode: setup.stateCode }).total;
+      const adjust = Math.min(total, Math.max(0, bill.balance_paise)), refund = total - adjust;
+      const mode = (["cash", "upi", "card", "bank"] as const).find((m) => m === b.mode) ?? "cash";
+      const now = new Date().toISOString();
+      const note = String(b.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 150);
+      const cn = await createBill(scope, { ...setup, gstOn: bill.gst_on }, "return", { customer_name: bill.customer_name, customer_phone: bill.customer_phone, customer_gstin: bill.customer_gstin, customer_state: bill.customer_state, lines,
+        payments: refund > 0 ? [{ mode, paise: refund, ref: "Refund", at: now }] : [], discount_paise: 0, notes: [`Return against ${bill.code}`, note].filter(Boolean).join(" · "), due_date: null, client_id: null, ref_bill_id: bill.id, created_by: scope.userId, created_by_name: access.name });
+      if (!cn) return NextResponse.json({ error: "Could not save the return." }, { status: 500 });
+      if (adjust > 0) await save({ payments: [...(bill.payments ?? []), { mode: "other", paise: adjust, ref: `Return ${cn.code}`, at: now }] });
+      return NextResponse.json({ bill: hideBillCost(cn, access), refund, adjust });
     }
     case "send":
       return NextResponse.json(await sendBill(scope, setup, bill));

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   if (!all) p.push(`created_by=eq.${c.scope.userId}`);
   const view = u.get("view");
   if (view === "due") p.push("kind=eq.sale", "status=eq.open", "balance_paise=gt.0");
-  else p.push(`kind=eq.${view === "estimates" ? "estimate" : "sale"}`);
+  else p.push(`kind=eq.${view === "estimates" ? "estimate" : view === "returns" ? "return" : "sale"}`);
   const q = (u.get("q") ?? "").replace(/[^A-Za-z0-9 ऀ-ॿ/]/g, "").trim().slice(0, 30);
   if (q) p.push(`or=(customer_name.ilike.*${encodeURIComponent(q)}*,customer_phone.ilike.*${encodeURIComponent(q.replace(/\D/g, "") || q)}*,code.ilike.*${encodeURIComponent(q)}*)`);
   const r = await restAsService<BillRow[]>(`ms_bills?${p.join("&")}`);

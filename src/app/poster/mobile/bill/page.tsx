@@ -21,7 +21,7 @@ import { enqueue, keepItems, keptItems, newClientId } from "@/lib/mobile-offline
 type Item = ItemRow & { stock: number };
 type Loaded = { items: Item[]; setup: MsSetup; access: MsAccess; error?: string };
 type CL = { key: string; itemId: string; name: string; qty: number; price: string; disc: string; imei: string; serial: boolean; gstBp: number; stock: number | null };
-type PayMode = "cash" | "upi" | "card" | "part";
+type PayMode = "cash" | "upi" | "card" | "emi" | "part";
 
 let seq = 0;
 const lineOf = (c: CL): BillLine => ({ itemId: c.itemId, name: c.name.trim(), hsn: "", qty: Math.max(1, c.qty), price: paiseOf(c.price), discount: paiseOf(c.disc), gstBp: c.gstBp, imei: cleanCode(c.imei, 20), unitId: "", warrantyMonths: 0, cost: 0 });
@@ -43,6 +43,7 @@ function NewBill() {
   const [mode, setMode] = useState<PayMode>("cash");
   const [part, setPart] = useState({ amount: "", mode: "cash" as Payment["mode"] });
   const [disc, setDisc] = useState("");
+  const [emi, setEmi] = useState("");
   const [notes, setNotes] = useState("");
   const [custom, setCustom] = useState({ open: false, name: "", price: "" });
   const [busy, setBusy] = useState("");
@@ -113,7 +114,7 @@ function NewBill() {
     const noImei = cart.find((c) => c.serial && !cleanCode(c.imei, 20)); if (noImei) { setNote(T(`Scan or type the IMEI of ${noImei.name}.`, `${noImei.name} का IMEI scan करें या लिखें।`)); return; }
     const phone = cust.phone.replace(/\D/g, "").slice(-10);
     if (cust.phone.trim() && phone.length !== 10) { setNote(T("The mobile number needs 10 digits.", "मोबाइल नंबर 10 अंकों का चाहिए।")); return; }
-    const payments = kind === "estimate" ? [] : mode === "part" ? (paiseOf(part.amount) ? [{ mode: part.mode, paise: paiseOf(part.amount), ref: "" }] : []) : totals.total ? [{ mode, paise: totals.total, ref: "" }] : [];
+    const payments = kind === "estimate" ? [] : mode === "part" ? (paiseOf(part.amount) ? [{ mode: part.mode, paise: paiseOf(part.amount), ref: "" }] : []) : mode === "emi" ? (totals.total ? [{ mode: "other" as const, paise: totals.total, ref: `EMI ${emi.trim()}`.trim().slice(0, 40) }] : []) : totals.total ? [{ mode, paise: totals.total, ref: "" }] : [];
     const paid = payments.reduce((a, p) => a + p.paise, 0);
     if (paid > totals.total) { setNote(T("The money received is more than the bill.", "मिले पैसे बिल से ज़्यादा हैं।")); return; }
     if (kind === "sale" && paid < totals.total && phone.length !== 10) { setNote(T("For udhaar (money left), type the customer's mobile.", "उधार (बाकी पैसे) के लिए ग्राहक का मोबाइल लिखें।")); return; }
@@ -134,13 +135,13 @@ function NewBill() {
       const next = { ...d, items: d.items.map((i) => { const n = cart.filter((c) => c.itemId === i.id).reduce((a, c) => a + c.qty, 0); return n && kind === "sale" ? { ...i, stock: i.stock - n, qty: i.serial ? i.qty : i.qty - n } : i; }) };
       keepItems(ws.as, next); setD(next);
       setOfflineBill({ id: clientId.current, owner_id: "", kind, number: 0, fin_year: "", code: T("OFFLINE (number comes after sync)", "OFFLINE (नंबर sync के बाद)"), status: "open", customer_name: body.customer_name, customer_phone: phone, customer_gstin: "", customer_state: "",
-        lines, payments: payments.map((p) => ({ ...p, at: now })), discount_paise: body.discount_paise, total_paise: totals.total, gst_paise: totals.gst, balance_paise: totals.total - paid, profit_paise: 0, gst_on: setup.gstOn, notes: body.notes, due_date: null, token: "", client_id: clientId.current, created_by: null, created_by_name: "", cancel_reason: "", created_at: now, updated_at: now });
+        lines, payments: payments.map((p) => ({ ...p, at: now })), discount_paise: body.discount_paise, total_paise: totals.total, gst_paise: totals.gst, balance_paise: totals.total - paid, profit_paise: 0, gst_on: setup.gstOn, notes: body.notes, due_date: null, token: "", client_id: clientId.current, ref_bill_id: null, created_by: null, created_by_name: "", cancel_reason: "", created_at: now, updated_at: now });
       setTick((t) => t + 1);
     }
   }
   function fresh() {
     clientId.current = newClientId();
-    setCart([]); setCust({ name: "", phone: "" }); setMode("cash"); setPart({ amount: "", mode: "cash" }); setDisc(""); setNotes(""); setNote(""); setOfflineBill(null);
+    setCart([]); setCust({ name: "", phone: "" }); setMode("cash"); setEmi(""); setPart({ amount: "", mode: "cash" }); setDisc(""); setNotes(""); setNote(""); setOfflineBill(null);
   }
 
   if (err) return <div className="space-y-3 py-16 text-center"><p className="font-semibold">{err}</p><Link href={`/poster/mobile${asQ}`} className="text-sm font-semibold text-brand-ink">← {T("Mobile shop", "मोबाइल दुकान")}</Link></div>;
@@ -235,8 +236,10 @@ function NewBill() {
                 <button type="button" onClick={() => setMode("cash")} className={chip(mode === "cash")}>Cash</button>
                 <button type="button" onClick={() => setMode("upi")} className={chip(mode === "upi")}>UPI</button>
                 <button type="button" onClick={() => setMode("card")} className={chip(mode === "card")}>Card</button>
+                <button type="button" onClick={() => setMode("emi")} className={chip(mode === "emi")}>EMI</button>
                 <button type="button" onClick={() => setMode("part")} className={chip(mode === "part")}>{T("Part / udhaar", "कुछ / उधार")}</button>
               </div>
+              {mode === "emi" && <label className="flex flex-wrap items-center gap-2 text-sm">{T("Finance company", "Finance कंपनी")}<FieldTip lang={lang} en="The whole bill is paid by the finance company (Bajaj, HDB, TVS…). It shows as EMI in your day's money, apart from cash and UPI. A down payment in cash? Use Part / udhaar and take the rest when the finance money comes." hi="पूरा बिल finance कंपनी (Bajaj, HDB, TVS…) से चुकता है। दिन के पैसों में ये EMI में अलग दिखता है, cash और UPI से अलग। Down payment cash में हो? कुछ / उधार चुनें और finance का पैसा आने पर बाकी लें।" /><input className={`${small} w-40`} value={emi} onChange={(e) => setEmi(e.target.value)} placeholder="Bajaj Finserv" /></label>}
               {mode === "part" && (
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span>{T("Received now ₹", "अभी मिला ₹")}</span>

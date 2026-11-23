@@ -11,7 +11,7 @@ import { inr } from "@/lib/jewellery";
 import type { BillRow } from "@/lib/mobile";
 import { BillLink } from "@/components/mobile/bill-link";
 
-type View = "sale" | "estimates" | "due";
+type View = "sale" | "estimates" | "due" | "returns";
 
 function Bills() {
   const router = useRouter();
@@ -20,7 +20,7 @@ function Bills() {
   const T = (en: string, h: string) => (hi ? h : en);
   const ws = useWorkspace();
   const asQ = ws.q ? `?${ws.q}` : "";
-  const [view, setView] = useState<View>(sp.get("view") === "due" ? "due" : sp.get("view") === "estimates" ? "estimates" : "sale");
+  const [view, setView] = useState<View>(sp.get("view") === "due" ? "due" : sp.get("view") === "estimates" ? "estimates" : sp.get("view") === "returns" ? "returns" : "sale");
   const [q, setQ] = useState("");
   const [bills, setBills] = useState<BillRow[] | null>(null);
   const [err, setErr] = useState("");
@@ -41,7 +41,7 @@ function Bills() {
     <div className="space-y-3">
       <Link href={`/poster/mobile${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Mobile shop", "मोबाइल दुकान")}</Link>
       <h1 className="text-lg font-bold">{T("Bills", "बिल")}</h1>
-      <div className="flex flex-wrap gap-2">{tab("sale", T("Bills", "बिल"))}{tab("due", T("Udhaar", "उधार"))}{tab("estimates", "Estimates")}</div>
+      <div className="flex flex-wrap gap-2">{tab("sale", T("Bills", "बिल"))}{tab("due", T("Udhaar", "उधार"))}{tab("estimates", "Estimates")}{tab("returns", T("Returns", "वापसी"))}</div>
       <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" /><input className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder={T("Name, mobile or bill number", "नाम, मोबाइल या बिल नंबर")} /></div>
       {view === "due" && bills && bills.length > 0 && <p className="text-sm font-semibold">{T("Total udhaar", "कुल उधार")}: <span className="text-danger">{inr(due)}</span> · {bills.length} {T("bills", "बिल")}</p>}
       {err && <p className="py-8 text-center font-semibold">{err}</p>}

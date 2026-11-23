@@ -51,6 +51,21 @@ export async function POST(request: Request) {
     const next = list(r)[0];
     return next ? NextResponse.json({ item: { ...hideCost(next, access), stock: next.qty } }) : NextResponse.json({ error: "Could not save." }, { status: 500 });
   }
+  if (b.action === "barcode") {
+    // Give our own barcode to items that have none, so a label can be printed and scanned at the counter.
+    const ids = (Array.isArray(b.ids) ? b.ids : []).filter((x): x is string => isUuid(x)).slice(0, 200);
+    const rows = ids.length ? list(await restAsService<ItemRow[]>(`ms_items?owner_id=eq.${o}&id=in.(${ids.join(",")})&select=${ITEM_COLS}`)) : [];
+    const out: Record<string, string> = {};
+    for (const it of rows) {
+      if (it.barcode) { out[it.id] = it.barcode; continue; }
+      for (let tries = 0; tries < 5; tries++) {
+        const code = `S${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`;
+        const r = await restAsService(`ms_items?id=eq.${it.id}&owner_id=eq.${o}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ barcode: code, updated_at: now }) });
+        if (r.ok) { out[it.id] = code; break; }
+      }
+    }
+    return NextResponse.json({ barcodes: out });
+  }
   if (b.action === "units") {
     const it = isUuid(b.id) ? await one(b.id) : null;
     if (!it || !it.serial) return NextResponse.json({ error: "Pick an IMEI item." }, { status: 400 });

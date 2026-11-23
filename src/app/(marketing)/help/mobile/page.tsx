@@ -30,15 +30,18 @@ const STEPS: [string, string][] = [
   ["Repair job card", "Phone repair ke liye aaya: grahak ka mobile, model, kharabi, phone ki haalat (kharonch, SIM andar…), andaaz kharch, advance. Grahak ko parchi aur WhatsApp par link milta hai jahan wo status dekh sakta hai. Lage parts stock se ghatte hain. 'Taiyaar' dabate hi grahak ko WhatsApp; phone dete waqt bill apne aap banta hai, advance ghata hua, repair warranty ke saath."],
   ["Estimate", "Grahak ko daam ka estimate dein; pasand aaye to ek tap mein bill."],
   ["Bina internet", "Network chala jaaye to bhi bill bante rehte hain — phone mein rakhe jaate hain aur network aate hi account mein chadh jaate hain. Bill number tab milta hai; WhatsApp bhejna aur IMEI khojna network aane par."],
+  ["Saaman wapsi", "Grahak kuch wapas laaye to bill khol kar 'Return items' — kitne piece likhein. Stock wapas chadh jaata hai, bill par udhaar ho to pehle wo ghatta hai, baaki paisa lautaya jaata hai. Asli bill nahi badalta; wapsi ki alag parchi (credit note) banti hai."],
+  ["Report aur Excel", "Aaj / kal / mahina / vitt varsh: bikri (wapsi ghata kar), aaye paise (cash, UPI, card, EMI alag), munafa, GST HSN ke hisaab se, sabse zyada bika item, repair ka kaam. Saar WhatsApp par; bikri register, HSN, item-wise aur stock list Excel (CSV) mein — CA ko dene ke liye."],
+  ["Barcode label aur supplier", "Kisi bhi item ka 50×25 mm barcode sticker print karein (barcode na ho to hum bana dete hain). Khareed par supplier ko kitna diya, kitna baaki — supplier-wise dikhta hai."],
+  ["EMI / finance", "Bill par 'EMI' chunein aur finance company ka naam likhein — din ke paison mein EMI alag dikhta hai."],
   ["Din ka hisaab", "Home par aaj ki bikri, cash aur UPI alag, munafa (sirf maalik ko), udhaar aur kam stock ki list."],
   ["Staff", "Har staff ka alag login. Kaun bill banaye, kaun stock chadhaye, kaun laagat/munafa dekhe, kitni chhoot de — sab aap tay karte hain. Bill kabhi delete nahi hota, sirf karan likhkar radd."],
 ];
 
 const COMING = [
-  "Warranty aur return ka hisaab, supplier ka khata",
-  "Barcode label print, stock milaan",
-  "Report: mahine ki bikri, GST (HSN), sabse zyada bikne wale item, Excel export",
-  "Purana phone lena-bechna (exchange), EMI/finance ka note",
+  "Stock milaan (poori dukaan scanner se ginna)",
+  "Purana phone exchange mein lena (abhi: use Khareed se chadha kar bechein)",
+  "GST e-invoice, Tally ki seedhi file",
 ];
 
 export default function MobileGuide() {
