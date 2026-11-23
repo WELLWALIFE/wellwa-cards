@@ -4,7 +4,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Ban, Check, FileCheck2, LoaderCircle, MessageCircle, Printer, Wallet } from "lucide-react";
+import { ArrowLeft, Ban, Check, FileCheck2, Link2, LoaderCircle, MessageCircle, Printer, Wallet } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
@@ -23,7 +23,7 @@ function BillView() {
   const ws = useWorkspace();
   const [d, setD] = useState<Ans | null>(null);
   const [err, setErr] = useState("");
-  const [note, setNote] = useState<{ ok: boolean; t: string; link?: string } | null>(sp.get("new") ? { ok: true, t: T("✅ Saved.", "✅ Save हो गया।") } : null);
+  const [note, setNote] = useState<{ ok: boolean; t: string; link?: string; open?: string } | null>(sp.get("new") ? { ok: true, t: T("✅ Saved.", "✅ Save हो गया।") } : null);
   const [busy, setBusy] = useState("");
   const [pay, setPay] = useState({ mode: "cash" as Payment["mode"], amount: "", ref: "" });
   const [cancelling, setCancelling] = useState(false);
@@ -68,11 +68,12 @@ function BillView() {
 
       <div className="flex flex-wrap gap-2 print:hidden">
         <button type="button" disabled={!!busy || !bill.customer_phone} onClick={() => void act("send")} className={`${btn} !border-[#25D366] !text-[#128C7E]`}>{busy === "send" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} {T("Send on WhatsApp", "WhatsApp पर भेजें")}</button>
+        <button type="button" onClick={() => { void navigator.clipboard?.writeText(d.link).catch(() => {}); setNote({ ok: true, t: T("✅ Customer link copied.", "✅ ग्राहक का लिंक कॉपी हो गया।"), open: d.link }); }} className={btn}><Link2 className="h-4 w-4" /> {T("Copy link", "लिंक कॉपी")}</button>
         <button type="button" onClick={() => window.print()} className={btn}><Printer className="h-4 w-4" /> {T("Print / PDF", "Print / PDF")}</button>
         {bill.kind === "estimate" && open && can("bill") && <button type="button" disabled={!!busy} onClick={() => void act("convert")} className={`${btn} grad-brand !border-transparent text-white`}><FileCheck2 className="h-4 w-4" /> {T("Make the bill", "बिल बनाएँ")}</button>}
         {bill.status !== "cancelled" && can("cancel") && <button type="button" onClick={() => setCancelling(!cancelling)} className={`${btn} text-danger`}><Ban className="h-4 w-4" /> {T("Cancel", "रद्द करें")}</button>}
       </div>
-      {note && <p className={`text-sm font-semibold print:hidden ${note.ok ? "text-good" : "text-danger"}`}>{note.t} {note.link && <a href={note.link} target="_blank" rel="noreferrer" className="underline">{T("Send it yourself →", "खुद भेजें →")}</a>}</p>}
+      {note && <p className={`text-sm font-semibold print:hidden ${note.ok ? "text-good" : "text-danger"}`}>{note.t} {note.link && <a href={note.link} target="_blank" rel="noreferrer" className="underline">{T("Send it yourself →", "खुद भेजें →")}</a>}{note.open && <a href={note.open} target="_blank" rel="noreferrer" className="underline">{T("Open →", "खोलें →")}</a>}</p>}
 
       {cancelling && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/40 bg-danger/5 p-3 print:hidden">

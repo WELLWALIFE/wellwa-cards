@@ -22,7 +22,7 @@ export function Invoice({ bill, setup, shop }: { bill: BillRow; setup: JwSetup; 
           <p>{[setup.phone && `Ph: ${setup.phone}`, setup.gstin && `GSTIN: ${setup.gstin}`, setup.bis && `BIS: ${setup.bis}`].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-base font-bold uppercase">{est ? "Estimate" : setup.gstin ? "Tax Invoice" : "Bill of Supply"}</p>
+          <p className="text-base font-bold uppercase">{est ? "Estimate" : setup.gstBp > 0 || setup.gstMakingBp > 0 ? "Tax Invoice" : "Bill of Supply"}</p>
           <p><b>{bill.code}</b></p>
           <p>{day}</p>
           {est && bill.valid_till && <p>Valid till {new Date(`${bill.valid_till}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</p>}

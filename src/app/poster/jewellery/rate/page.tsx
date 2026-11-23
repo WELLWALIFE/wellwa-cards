@@ -28,8 +28,8 @@ export default function RatePage() {
     setD(r.data);
     // Today's own rate, or yesterday's as a start (typed fresh each morning).
     const src = r.data.rate?.sell ?? {};
-    setSell(Object.fromEntries(Object.entries(src).map(([k, v]) => [k, String((v * 10) / 100)])));
-    setBuy(Object.fromEntries(Object.entries(r.data.rate?.buy ?? {}).map(([k, v]) => [k, String((v * 10) / 100)])));
+    setSell(Object.fromEntries(Object.entries(src).map(([k, v]) => [k, String(Math.round((v * 10) / 100))])));
+    setBuy(Object.fromEntries(Object.entries(r.data.rate?.buy ?? {}).map(([k, v]) => [k, String(Math.round((v * 10) / 100))])));
   }, [ws.q]);
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(location.pathname)}`); return; } void load(); })(); }, [router, load]);
 

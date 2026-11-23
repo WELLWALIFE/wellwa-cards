@@ -71,13 +71,13 @@ function BillBuilder() {
     const pur = purities.find((p) => p.key === "g22") ?? purities[0];
     const r = setup && pur ? sellRate(rate, setup, pur.key) : 0;
     return {
-      itemType: it?.key ?? "", desc: "", purity: pur?.key ?? "", pieces: "1", gross: "", stone: "", net: "", rate: r ? String((r * 10) / 100) : "",
+      itemType: it?.key ?? "", desc: "", purity: pur?.key ?? "", pieces: "1", gross: "", stone: "", net: "", rate: r ? String(Math.round((r * 10) / 100)) : "",
       wastage: it ? String(it.wastageBp / 100) : "0", making: it?.making ?? "per_g", makingValue: it ? String(it.making === "pct" ? it.makingValue / 100 : it.makingValue / 100) : "0",
       stoneRs: "", otherRs: "", huid: "", tag: "",
     };
   }, [setup, rate, purities]);
   useEffect(() => { if (setup && !lines.length) setLines([blankLine()]); }, [setup, lines.length, blankLine]);
-  const blankOld = useCallback((): OldDraft => ({ desc: hi ? "पुराना सोना" : "Old gold", metal: "gold", gross: "", less: "", touch: "91.6", rate: setup ? String((fineBuyRate(rate, setup, "gold") * 10) / 100) : "" }), [setup, rate, hi]);
+  const blankOld = useCallback((): OldDraft => ({ desc: hi ? "पुराना सोना" : "Old gold", metal: "gold", gross: "", less: "", touch: "91.6", rate: setup ? String(Math.round((fineBuyRate(rate, setup, "gold") * 10) / 100)) : "" }), [setup, rate, hi]);
 
   const input = useMemo(() => setup ? {
     lines: lines.map((l) => toLine(l, setup)), old: olds.map(toOld),
@@ -115,6 +115,7 @@ function BillBuilder() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{kind === "estimate" ? T("New estimate", "नया estimate") : T("New bill", "नया बिल")}</h1>
+      {!setup.gstin && (setup.gstBp > 0 || setup.gstMakingBp > 0) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("GST is added to bills but your GSTIN is not set. Add it, or set GST to 0 if your shop is not GST-registered. ", "बिल में GST जुड़ रहा है पर आपका GSTIN नहीं डला। GSTIN डालें, या दुकान GST में registered नहीं है तो GST 0 करें। ")}<Link href={`/poster/jewellery/settings${q}`} className="underline">{T("Settings", "सेटिंग")}</Link></p>}
       {noRate && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("Today's rate is not set — the rate box of each item is filled from the last rate. ", "आज का रेट नहीं डला — हर item में पिछला रेट भरा है। ")}<Link href={`/poster/jewellery/rate${q}`} className="underline">{T("Set it", "डालें")}</Link></p>}
 
       {/* Customer */}
@@ -151,7 +152,7 @@ function BillBuilder() {
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <label><span className={lab}>{T("Purity", "शुद्धता")}</span>
-                <select className={inp} value={l.purity} onChange={(e) => { const r = sellRate(rate, setup, e.target.value); setL(i, { purity: e.target.value, rate: r ? String((r * 10) / 100) : l.rate }); }}>
+                <select className={inp} value={l.purity} onChange={(e) => { const r = sellRate(rate, setup, e.target.value); setL(i, { purity: e.target.value, rate: r ? String(Math.round((r * 10) / 100)) : l.rate }); }}>
                   {purities.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
                 </select></label>
               <label><span className={lab}>{T("Rate ₹ / 10 g", "रेट ₹ / 10 ग्राम")}</span><input className={inp} inputMode="decimal" value={l.rate} onChange={(e) => setL(i, { rate: e.target.value })} /></label>
@@ -186,7 +187,7 @@ function BillBuilder() {
           <div key={i} className="space-y-1.5 rounded-xl bg-surface2/50 p-2">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
               <label className="col-span-2"><span className={lab}>{T("What", "क्या")}</span><input className={inp} value={o.desc} onChange={(e) => setO(i, { desc: e.target.value })} /></label>
-              <label><span className={lab}>{T("Metal", "धातु")}</span><select className={inp} value={o.metal} onChange={(e) => { const m = e.target.value as Metal; setO(i, { metal: m, touch: m === "silver" ? "80" : "91.6", rate: String((fineBuyRate(rate, setup, m) * 10) / 100) }); }}><option value="gold">{T("Gold", "सोना")}</option><option value="silver">{T("Silver", "चाँदी")}</option></select></label>
+              <label><span className={lab}>{T("Metal", "धातु")}</span><select className={inp} value={o.metal} onChange={(e) => { const m = e.target.value as Metal; setO(i, { metal: m, touch: m === "silver" ? "80" : "91.6", rate: String(Math.round((fineBuyRate(rate, setup, m) * 10) / 100)) }); }}><option value="gold">{T("Gold", "सोना")}</option><option value="silver">{T("Silver", "चाँदी")}</option></select></label>
               <label><span className={lab}>{T("Gross (g)", "कुल (g)")}</span><input className={inp} inputMode="decimal" value={o.gross} onChange={(e) => setO(i, { gross: e.target.value })} /></label>
               <label><span className={lab}>{T("Less (g)", "कम (g)")}</span><input className={inp} inputMode="decimal" value={o.less} onChange={(e) => setO(i, { less: e.target.value })} /></label>
               <label><span className={lab}>{T("Touch %", "टच %")}</span><input className={inp} inputMode="decimal" value={o.touch} onChange={(e) => setO(i, { touch: e.target.value })} /></label>
