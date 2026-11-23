@@ -73,9 +73,9 @@ export default function JewelleryHome() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-surface p-3"><p className="text-[11px] text-muted">{T("Today's sale", "आज की बिक्री")}</p><p className="text-lg font-bold tabular-nums">{inr(stats.todayPaise)}</p><p className="text-[11px] text-muted">{stats.todaySales} {T("bills", "बिल")} · {stats.todayEstimates} {T("estimates", "estimate")}</p></div>
+        <div className="rounded-2xl border border-border bg-surface p-3"><p className="text-[11px] text-muted">{T("Today's sale", "आज की बिक्री")}</p><p className="text-lg font-bold tabular-nums">{inr(stats.todayPaise)}</p><p className="text-[11px] text-muted">{stats.todaySales} {stats.todaySales === 1 ? T("bill", "बिल") : T("bills", "बिल")} · {stats.todayEstimates} {stats.todayEstimates === 1 ? T("estimate", "estimate") : T("estimates", "estimate")}</p></div>
         {can("reports") && (
-          <Link href={`/poster/jewellery/bills${q ? `${q}&` : "?"}view=due`} className="rounded-2xl border border-border bg-surface p-3"><p className="flex items-center gap-1 text-[11px] text-muted"><IndianRupee className="h-3 w-3" /> {T("Money due (udhaar)", "बाकी पैसे (उधार)")}</p><p className="text-lg font-bold tabular-nums text-danger">{inr(stats.duePaise)}</p><p className="text-[11px] text-muted">{stats.dueCount} {T("customers", "ग्राहक")} →</p></Link>
+          <Link href={`/poster/jewellery/bills${q ? `${q}&` : "?"}view=due`} className="rounded-2xl border border-border bg-surface p-3"><p className="flex items-center gap-1 text-[11px] text-muted"><IndianRupee className="h-3 w-3" /> {T("Money due (udhaar)", "बाकी पैसे (उधार)")}</p><p className="text-lg font-bold tabular-nums text-danger">{inr(stats.duePaise)}</p><p className="text-[11px] text-muted">{stats.dueCount} {stats.dueCount === 1 ? T("customer", "ग्राहक") : T("customers", "ग्राहक")} →</p></Link>
         )}
         <Link href={`/poster/jewellery/bills${q}`} className="col-span-2 flex items-center justify-between rounded-2xl border border-border bg-surface p-3 sm:col-span-1"><span><p className="text-[11px] text-muted">{T("All bills", "सारे बिल")}</p><p className="text-sm font-bold">{T("Search, print, send", "खोजें, print, भेजें")}</p></span><ChevronRight className="h-4 w-4 text-muted" /></Link>
       </div>

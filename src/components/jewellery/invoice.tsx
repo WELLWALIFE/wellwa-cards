@@ -12,7 +12,7 @@ export function Invoice({ bill, setup, shop }: { bill: BillRow; setup: JwSetup; 
   const day = new Date(bill.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   const th = "border-b border-black/30 px-1.5 py-1 text-left font-semibold";
   const td = "border-b border-black/10 px-1.5 py-1 align-top";
-  const r = "text-right tabular-nums";
+  const r = "text-right tabular-nums sm:whitespace-nowrap print:whitespace-nowrap";
   return (
     <article className="jw-invoice mx-auto w-full max-w-[800px] bg-white p-6 text-[12px] leading-snug text-black print:p-0">
       <header className="flex items-start justify-between gap-4 border-b-2 border-black pb-3">

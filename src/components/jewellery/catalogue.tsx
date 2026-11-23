@@ -51,7 +51,7 @@ export function CatalogueStrip({ card, hi, compact = false }: { card: Card; hi: 
   return (
     <section aria-label={hi ? "हमारा कलेक्शन" : "Our collection"} className="space-y-2">
       <div className="flex items-end justify-between gap-2">
-        <p className="text-base font-bold">{hi ? "हमारा कलेक्शन" : "Our collection"} <span className="text-xs font-normal opacity-70">· {c.count} {hi ? "पीस" : "pieces"}</span></p>
+        <p className="text-base font-bold">{hi ? "हमारा कलेक्शन" : "Our collection"} <span className="text-xs font-normal opacity-70">· {c.count} {hi ? "पीस" : c.count === 1 ? "piece" : "pieces"}</span></p>
         <a href={`/jc/${encodeURIComponent(card.username)}`} className="text-xs font-semibold underline" style={{ color: accent }}>{hi ? "सब देखें →" : "See all →"}</a>
       </div>
       <div className={`grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>{shown.map((p) => <PieceCard key={p.id} p={p} wa={wa} hi={hi} accent={accent} />)}</div>

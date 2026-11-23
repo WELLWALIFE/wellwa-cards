@@ -46,7 +46,7 @@ export default async function Collection({ params, searchParams }: P) {
         <div className="mx-auto max-w-5xl">
           <Link href={`/c/${encodeURIComponent(username)}`} className="text-xs opacity-90">← {name}</Link>
           <h1 className="mt-1 text-2xl font-extrabold">{hi ? "हमारा कलेक्शन" : "Our collection"}</h1>
-          <p className="text-sm opacity-90">{cat.count} {hi ? "पीस स्टॉक में" : "pieces in stock"}{cat.priced ? (hi ? " · आज के रेट से दाम" : " · prices at today's rate") : ""}</p>
+          <p className="text-sm opacity-90">{cat.count} {hi ? "पीस स्टॉक में" : cat.count === 1 ? "piece in stock" : "pieces in stock"}{cat.priced ? (hi ? " · आज के रेट से दाम" : " · prices at today's rate") : ""}</p>
         </div>
       </header>
       <div className="mx-auto max-w-5xl space-y-4 px-4 py-4">

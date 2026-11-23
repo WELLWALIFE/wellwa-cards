@@ -78,10 +78,10 @@ export default function Reports() {
         <div className={`space-y-4 ${busy ? "opacity-60" : ""}`}>
           {d.capped && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("Very many bills — pick fewer days for exact totals.", "बहुत ज़्यादा बिल — सही जोड़ के लिए कम दिन चुनें।")}</p>}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className={card}><p className="text-[11px] text-muted">{T("Sale", "बिक्री")}</p><p className="text-lg font-bold tabular-nums">{inr(r.total)}</p><p className="text-[11px] text-muted">{r.bills} {T("bills", "बिल")}</p></div>
+            <div className={card}><p className="text-[11px] text-muted">{T("Sale", "बिक्री")}</p><p className="text-lg font-bold tabular-nums">{inr(r.total)}</p><p className="text-[11px] text-muted">{r.bills} {r.bills === 1 ? T("bill", "बिल") : T("bills", "बिल")}</p></div>
             <div className={card}><p className="text-[11px] text-muted">GST</p><p className="text-lg font-bold tabular-nums">{inr(r.gst)}</p><p className="text-[11px] text-muted">{T("taxable", "taxable")} {inr(r.taxable)}</p></div>
             <div className={card}><p className="text-[11px] text-muted">{T("Money in", "आए पैसे")}</p><p className="text-lg font-bold tabular-nums text-good">{inr(r.moneyTotal)}</p><p className="text-[11px] text-muted">{T("orders", "ऑर्डर")} {inr(r.fromOrders)}</p></div>
-            <div className={card}><p className="text-[11px] text-muted">{T("Udhaar (all bills)", "उधार (सारे बिल)")}</p><p className="text-lg font-bold tabular-nums text-danger">{inr(d.due.paise)}</p><p className="text-[11px] text-muted">{d.due.count} {T("bills", "बिल")}</p></div>
+            <div className={card}><p className="text-[11px] text-muted">{T("Udhaar (all bills)", "उधार (सारे बिल)")}</p><p className="text-lg font-bold tabular-nums text-danger">{inr(d.due.paise)}</p><p className="text-[11px] text-muted">{d.due.count} {d.due.count === 1 ? T("bill", "बिल") : T("bills", "बिल")}</p></div>
           </div>
 
           <section className={`${card} space-y-2`}>

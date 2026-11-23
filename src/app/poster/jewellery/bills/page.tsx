@@ -50,7 +50,7 @@ function BillsList() {
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
       {!bills ? <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div> : (
         <>
-          <p className="text-sm"><b>{live.length}</b> {tab === "due" ? T("customers owe", "ग्राहकों पर बाकी") : T("shown, total", "दिख रहे, कुल")} <b className="tabular-nums">{inr(sum)}</b></p>
+          <p className="text-sm"><b>{live.length}</b> {tab === "due" ? (live.length === 1 ? T("customer owes", "ग्राहक पर बाकी") : T("customers owe", "ग्राहकों पर बाकी")) : T("shown, total", "दिख रहे, कुल")} <b className="tabular-nums">{inr(sum)}</b></p>
           {bills.length === 0 && <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted">{T("Nothing here.", "यहाँ कुछ नहीं।")}</p>}
           <div className="space-y-2">{bills.map((b) => <BillRowLink key={b.id} b={b} hi={hi} q={asQ} />)}</div>
         </>
