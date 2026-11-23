@@ -126,7 +126,7 @@ function JobView() {
       {open && (
         <section className={card}>
           <p className="text-sm font-bold">{T("Where is it now?", "अभी कहाँ तक पहुँचा?")}<FieldTip lang={lang} en="Tap the step the phone is at. 'Ready' sends the customer a WhatsApp (if ticked) with the amount to pay." hi="फ़ोन जिस step पर है वो दबाएँ। 'तैयार' दबाने पर (tick हो तो) ग्राहक को WhatsApp जाता है, देने वाली रक़म के साथ।" /></p>
-          <div className="flex flex-wrap gap-2">{JOB_STATUSES.filter((s) => jobOpen(s.key)).map((s) => <button key={s.key} type="button" disabled={!!busy || job.status === s.key} onClick={() => void act("status", { to: s.key as JobStatus, notify: s.key === "ready" && tell })} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${job.status === s.key ? "border-brand bg-brand text-white" : "border-border bg-surface"}`}>{hi ? s.hi : s.en}</button>)}</div>
+          <div className="flex flex-wrap gap-2">{JOB_STATUSES.filter((s) => jobOpen(s.key)).map((s) => <button key={s.key} type="button" disabled={!!busy || job.status === s.key} onClick={() => void act("status", { to: s.key as JobStatus, notify: s.key === "ready" && tell, labour_paise: paiseOf(labour) })} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${job.status === s.key ? "border-brand bg-brand text-white" : "border-border bg-surface"}`}>{hi ? s.hi : s.en}</button>)}</div>
           <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={tell} onChange={(e) => setTell(e.target.checked)} /> {T("On “Ready”, tell the customer on WhatsApp", "“तैयार” पर ग्राहक को WhatsApp से बताएँ")}</label>
         </section>
       )}
@@ -151,7 +151,8 @@ function JobView() {
         <div className="space-y-0.5 border-t border-border pt-2 text-sm">
           <p className="flex justify-between"><span>{T("Total", "कुल")}</span><b className="tabular-nums">{inr(t.total)}</b></p>
           <p className="flex justify-between"><span>Advance</span><b className="tabular-nums text-good">{inr(t.paid)}</b></p>
-          {open && <p className="flex justify-between"><span>{T("To take", "लेना बाकी")}</span><b className="tabular-nums text-danger">{inr(Math.max(0, t.due))}</b></p>}
+          {open && t.due >= 0 && <p className="flex justify-between"><span>{T("To take", "लेना बाकी")}</span><b className="tabular-nums text-danger">{inr(t.due)}</b></p>}
+          {open && t.due < 0 && <p className="flex justify-between"><span>{T("Advance is more — give back to the customer", "Advance ज़्यादा है — ग्राहक को लौटाएँ")}</span><b className="tabular-nums text-amber-700">{inr(-t.due)}</b></p>}
           {can("cost") && t.cost > 0 && <p className="text-[12px] text-muted">{T("Cost of parts", "parts की लागत")}: {inr(t.cost)} · {T("only you see this", "ये सिर्फ़ आपको दिखता है")}</p>}
         </div>
         {open && <div className="flex flex-wrap items-center gap-1.5 text-sm">
@@ -166,7 +167,7 @@ function JobView() {
       {open && can("bill") && (
         <section className="space-y-2 rounded-2xl border-2 border-brand/40 bg-surface p-3 print:hidden">
           {!give.open ? <button type="button" onClick={() => setGive({ open: true, amount: String(Math.max(0, t.due) / 100), mode: "cash" })} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-bold text-white"><Check className="h-4 w-4" /> {T("Give the phone back & make the bill", "फ़ोन दें और बिल बनाएँ")}</button> : <>
-            <p className="text-sm font-bold">{T("Bill", "बिल")}: {inr(t.total)} · Advance {inr(t.paid)} · {T("to take", "लेना")} <span className="text-danger">{inr(Math.max(0, t.due))}</span></p>
+            <p className="text-sm font-bold">{T("Bill", "बिल")}: {inr(t.total)} · Advance {inr(t.paid)} · {t.due < 0 ? <span className="text-amber-700">{T("give back", "लौटाएँ")} {inr(-t.due)}</span> : <>{T("to take", "लेना")} <span className="text-danger">{inr(t.due)}</span></>}</p>
             <div className="flex flex-wrap items-center gap-1.5 text-sm">
               <span>{T("Received now ₹", "अभी मिला ₹")}</span><FieldTip lang={lang} en="What the customer pays now. Less than the amount to take = the rest becomes udhaar on the bill." hi="ग्राहक अभी जो दे रहा है। लेने वाली रक़म से कम = बाकी बिल पर उधार बन जाएगा।" />
               <input className={`${inp} w-28`} inputMode="decimal" value={give.amount} onChange={(e) => setGive({ ...give, amount: e.target.value })} />

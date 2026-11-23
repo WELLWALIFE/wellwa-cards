@@ -23,7 +23,7 @@ export function Receipt({ bill, setup, shop }: { bill: BillRow; setup: MsSetup; 
       {(bill.customer_name || bill.customer_phone) && <p>{[bill.customer_name, bill.customer_phone, bill.customer_gstin && `GSTIN ${bill.customer_gstin}`].filter(Boolean).join(" · ")}</p>}
       {bill.status === "cancelled" && <p className="border border-black text-center font-bold">CANCELLED</p>}
       <table className="mt-1 w-full border-collapse">
-        <thead><tr className="border-y border-black text-left"><th className="py-0.5">Item</th><th className="text-right">Qty</th><th className="text-right">Rate</th><th className="text-right">Amt</th></tr></thead>
+        <thead><tr className="border-y border-black text-left"><th className="py-0.5">Item</th><th className="pl-2 text-right">Qty</th><th className="pl-2 text-right">Rate</th><th className="pl-2 text-right">Amt</th></tr></thead>
         <tbody>
           {(bill.lines ?? []).map((l, i) => (
             <tr key={i} className="border-b border-dashed border-neutral-400 align-top">
@@ -31,7 +31,7 @@ export function Receipt({ bill, setup, shop }: { bill: BillRow; setup: MsSetup; 
                 {l.imei && <span className="block">IMEI {l.imei}</span>}
                 {l.warrantyMonths > 0 && <span className="block opacity-80">Warranty {l.warrantyMonths} months</span>}
                 {l.discount > 0 && <span className="block opacity-80">Disc − {inr(l.discount)}</span>}</td>
-              <td className="text-right">{l.qty}</td><td className="whitespace-nowrap text-right">{inr(l.price)}</td><td className="whitespace-nowrap text-right font-semibold">{inr(lineAmounts(l, false).net)}</td>
+              <td className="pl-2 text-right">{l.qty}</td><td className="whitespace-nowrap pl-2 text-right">{inr(l.price)}</td><td className="whitespace-nowrap pl-2 text-right font-semibold">{inr(lineAmounts(l, false).net)}</td>
             </tr>
           ))}
         </tbody>

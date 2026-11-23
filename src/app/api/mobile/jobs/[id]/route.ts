@@ -61,7 +61,9 @@ export async function PATCH(request: Request, { params }: Ctx) {
       if (!open) return closed();
       const to = (["received", "repairing", "waiting", "ready"] as JobStatus[]).find((s) => s === b.to);
       if (!to) return NextResponse.json({ error: "Unknown status." }, { status: 400 });
-      const next = await saveJob(o, job.id, { status: to, events: ev(`${jobStatus(to).en}${typeof b.note === "string" && b.note.trim() ? ` — ${b.note.trim().slice(0, 120)}` : ""}`) });
+      // The charge typed on the screen is saved with the step, so the "ready" message carries the right amount.
+      const charge = b.labour_paise !== undefined ? { labour_paise: Math.max(0, Math.min(1e10, Math.round(Number(b.labour_paise) || 0))) } : {};
+      const next = await saveJob(o, job.id, { ...charge, status: to, events: ev(`${jobStatus(to).en}${typeof b.note === "string" && b.note.trim() ? ` — ${b.note.trim().slice(0, 120)}` : ""}`) });
       const sent = next && to === "ready" && b.notify === true ? await sendJob(scope, setup, next, "ready") : null;
       return out(next, { sent });
     }
@@ -119,13 +121,18 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const lines = tl.lines.map((l, i) => (l.itemId ? { ...l, cost: job.parts[i]?.cost ?? l.cost } : { ...l, hsn: "9987" }));
       const now = new Date().toISOString();
       const fresh = (Array.isArray(b.payments) ? b.payments : []).slice(0, 5).map(cleanPayment).filter((x): x is Payment => !!x).map((p) => ({ ...p, at: now }));
-      const payments = [...(job.payments ?? []), ...fresh];
+      // An advance bigger than the final bill: the bill takes only what it needs; the rest goes back to the customer.
+      let room = billTotals({ lines, payments: [], discountPaise: 0, customerState: "" }, setup).total;
+      const kept: Payment[] = [];
+      for (const p of job.payments ?? []) { const take = Math.min(p.paise, room); if (take > 0) kept.push({ ...p, paise: take }); room -= take; }
+      const excess = jobTotals(job).paid - kept.reduce((a, p) => a + p.paise, 0);
+      const payments = [...kept, ...fresh];
       const t = billTotals({ lines, payments, discountPaise: 0, customerState: "" }, setup);
       if (t.paid > t.total) return NextResponse.json({ error: `The money received is more than the bill (${rs(t.total)}, advance ${rs(jobTotals(job).paid)}).` }, { status: 400 });
       const notes = [`Repair job ${job.code}`, job.device, job.imei && `IMEI ${job.imei}`, job.warranty_days > 0 && `Repair warranty ${job.warranty_days} days`].filter(Boolean).join(" · ");
       const bill = await createBill(scope, setup, "sale", { customer_name: job.customer_name, customer_phone: job.customer_phone, customer_gstin: "", customer_state: "", lines, payments, discount_paise: 0, notes: notes.slice(0, 300), due_date: null, client_id: `job-${job.id}-${(job.events ?? []).length}`, created_by: scope.userId, created_by_name: access.name }, true);
       if (!bill) return NextResponse.json({ error: "Could not make the bill. Please try again." }, { status: 500 });
-      const next = await saveJob(o, job.id, { status: "delivered", labour_paise: labour, bill_id: bill.id, delivered_at: now, events: ev(`Given back · bill ${bill.code} ${rs(bill.total_paise)}`) });
+      const next = await saveJob(o, job.id, { status: "delivered", labour_paise: labour, bill_id: bill.id, delivered_at: now, events: ev(`Given back · bill ${bill.code} ${rs(bill.total_paise)}${excess > 0 ? ` · ${rs(excess)} of the advance returned` : ""}`) });
       return out(next, { billId: bill.id });
     }
     default:
