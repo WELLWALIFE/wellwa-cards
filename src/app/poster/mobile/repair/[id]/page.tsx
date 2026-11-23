@@ -132,7 +132,7 @@ function JobView() {
       )}
 
       <section className={card}>
-        <p className="text-sm font-bold">{T("Parts used and charge", "लगे parts और charge")}</p>
+        <p className="text-sm font-bold">{T("Parts used and charge", "लगे parts और charge")}<FieldTip lang={lang} en="Search a part from your Items and tap it — it is put on this job and leaves your stock at once. Wrong part? Tap the bin; it goes back to stock." hi="अपने Items से part खोजकर दबाएँ — वो इस job पर चढ़ता है और स्टॉक से तुरंत घटता है। गलत part? डिब्बा दबाएँ; वो स्टॉक में लौट आता है।" /></p>
         {(job.parts ?? []).map((p, i) => (
           <div key={`${p.itemId}${i}`} className="flex items-center justify-between gap-2 text-sm"><span className="min-w-0 truncate">{p.name} ×{p.qty}</span><span className="flex shrink-0 items-center gap-2"><b className="tabular-nums">{inr(p.qty * p.price)}</b>{open && <button type="button" aria-label="Remove" disabled={!!busy} onClick={() => void act("part_remove", { index: i })} className="p-1 text-muted"><Trash2 className="h-4 w-4" /></button>}</span></div>
         ))}
@@ -156,7 +156,7 @@ function JobView() {
           {can("cost") && t.cost > 0 && <p className="text-[12px] text-muted">{T("Cost of parts", "parts की लागत")}: {inr(t.cost)} · {T("only you see this", "ये सिर्फ़ आपको दिखता है")}</p>}
         </div>
         {open && <div className="flex flex-wrap items-center gap-1.5 text-sm">
-          <span className="text-muted">{T("More advance", "और advance")}:</span>
+          <span className="text-muted">{T("More advance", "और advance")}<FieldTip lang={lang} en="If the customer gives more money before the phone is ready. All advances come off the final bill." hi="अगर ग्राहक फ़ोन तैयार होने से पहले और पैसा दे। सारे advance आख़िरी बिल से घट जाते हैं।" />:</span>
           <input className={`${inp} w-24`} inputMode="decimal" placeholder="₹" value={adv.amount} onChange={(e) => setAdv({ ...adv, amount: e.target.value })} />
           <select className={inp} value={adv.mode} onChange={(e) => setAdv({ ...adv, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select>
           <button type="button" disabled={!paiseOf(adv.amount) || !!busy} onClick={async () => { if (await act("advance", { payment: { mode: adv.mode, paise: paiseOf(adv.amount), ref: "" } })) setAdv({ amount: "", mode: "cash" }); }} className="rounded-lg border border-border px-2 py-2 text-xs font-semibold disabled:opacity-50">{T("Take", "लें")}</button>
@@ -196,7 +196,7 @@ function JobView() {
       )}
 
       <section className={card}>
-        <p className="text-sm font-bold">{T("History", "अब तक")}</p>
+        <p className="text-sm font-bold">{T("History", "अब तक")}<FieldTip lang={lang} en="Everything done on this job, with the time and who did it. Only your staff see this." hi="इस job पर जो-जो हुआ, समय और किसने किया उसके साथ। ये सिर्फ़ आपके staff को दिखता है।" /></p>
         <ul className="space-y-0.5 text-[12px] text-muted">{[...(job.events ?? [])].reverse().map((e, i) => <li key={i}>{new Date(e.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} · {e.text}{e.by ? ` · ${e.by}` : ""}</li>)}</ul>
       </section>
 

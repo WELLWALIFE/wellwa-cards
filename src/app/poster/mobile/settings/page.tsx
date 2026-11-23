@@ -64,12 +64,12 @@ export default function MobileSettings() {
         <h2 className="text-sm font-bold">{T("On the bill", "बिल पर")}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={lab}>{T("Shop name", "दुकान का नाम")}{tip("Printed big at the top of every bill. Empty = the name on your Shubhora card.", "हर बिल के ऊपर बड़ा छपता है। खाली = आपके Shubhora card का नाम।")}<input className={inp} value={s.shopName} onChange={(e) => set({ shopName: e.target.value })} /></label>
-          <label className={lab}>{T("Phone", "फ़ोन")}<input className={inp} value={s.phone} onChange={(e) => set({ phone: e.target.value })} /></label>
+          <label className={lab}>{T("Phone", "फ़ोन")}{tip("The shop's number, printed on bills and shown on the customer's repair link.", "दुकान का नंबर, बिल पर छपता है और ग्राहक के रिपेयर लिंक पर दिखता है।")}<input className={inp} value={s.phone} onChange={(e) => set({ phone: e.target.value })} /></label>
           <label className={`${lab} sm:col-span-2`}>{T("Address", "पता")}<textarea className={inp} rows={2} value={s.address} onChange={(e) => set({ address: e.target.value })} /></label>
           <label className={lab}>UPI ID <span className="font-normal">(optional)</span>{tip("Printed on the bill so the customer can pay you, e.g. shopname@okaxis.", "बिल पर छपती है ताकि ग्राहक पेमेंट कर सके, जैसे shopname@okaxis।")}<input className={inp} value={s.upi} onChange={(e) => set({ upi: e.target.value })} /></label>
           <label className={lab}>{T("Paper", "Paper")}{tip("58 mm or 80 mm = a thermal roll printer. A5 / A4 = a normal printer.", "58 mm या 80 mm = थर्मल roll printer। A5 / A4 = सामान्य printer।")}
             <select className={inp} value={s.paper} onChange={(e) => set({ paper: e.target.value as MsSetup["paper"] })}><option value="58">58 mm thermal</option><option value="80">80 mm thermal</option><option value="a5">A5</option><option value="a4">A4</option></select></label>
-          <label className={`${lab} sm:col-span-2`}>{T("Terms (bottom of the bill)", "शर्तें (बिल के नीचे)")}<textarea className={inp} rows={2} value={s.terms} onChange={(e) => set({ terms: e.target.value })} /></label>
+          <label className={`${lab} sm:col-span-2`}>{T("Terms (bottom of the bill)", "शर्तें (बिल के नीचे)")}{tip("Your rules in one or two lines — returns, warranty. Printed at the bottom of every bill.", "आपके नियम एक-दो line में — वापसी, वारंटी। हर बिल के नीचे छपते हैं।")}<textarea className={inp} rows={2} value={s.terms} onChange={(e) => set({ terms: e.target.value })} /></label>
         </div>
       </section>
 
@@ -83,7 +83,7 @@ export default function MobileSettings() {
         <h2 className="text-sm font-bold">{T("Numbers and limits", "नंबर और limit")}</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <label className={lab}>{T("Bill prefix", "बिल prefix")}{tip("Letters before the bill number, e.g. MB → MB/2026-27/1.", "बिल नंबर के पहले के अक्षर, जैसे MB → MB/2026-27/1।")}<input className={inp} value={s.billPrefix} onChange={(e) => set({ billPrefix: e.target.value })} /></label>
-          <label className={lab}>{T("Estimate prefix", "Estimate prefix")}<input className={inp} value={s.estimatePrefix} onChange={(e) => set({ estimatePrefix: e.target.value })} /></label>
+          <label className={lab}>{T("Estimate prefix", "Estimate prefix")}{tip("Letters before an estimate's number, e.g. ME → ME/2026-27/1.", "estimate नंबर के पहले के अक्षर, जैसे ME → ME/2026-27/1।")}<input className={inp} value={s.estimatePrefix} onChange={(e) => set({ estimatePrefix: e.target.value })} /></label>
           <label className={lab}>{T("Staff discount limit %", "Staff की छूट limit %")}{tip("The most discount a staff login can give on a bill by itself. More needs the owner (or the 'discount' right).", "Staff login खुद से बिल पर ज़्यादा-से-ज़्यादा इतनी छूट दे सकता है। इससे ज़्यादा के लिए मालिक (या 'छूट' का हक़) चाहिए।")}<input className={inp} inputMode="decimal" value={s.counterDiscountBp / 100} onChange={(e) => set({ counterDiscountBp: Math.max(0, Math.min(100, Number(e.target.value) || 0)) * 100 })} /></label>
         </div>
       </section>

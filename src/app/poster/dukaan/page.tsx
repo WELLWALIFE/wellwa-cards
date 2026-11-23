@@ -138,7 +138,7 @@ export default function Dukaan() {
           </div>
           <p className="text-xs font-semibold text-muted">{T("Start here", "यहाँ से शुरू करें")} · {msSteps.filter((s) => s.done).length}/{msSteps.filter((s) => !s.optional).length} {T("done", "पूरे")}</p>
           <Steps steps={msSteps} hi={hi} />
-          <HowTo rows={MS_USE} hi={hi} guide="/help/mobile" />
+          <HowTo rows={MS_USE} hi={hi} guide="/poster/mobile/guide" />
         </section>
       )}
 

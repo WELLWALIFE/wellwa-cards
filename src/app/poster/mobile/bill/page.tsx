@@ -182,6 +182,7 @@ function NewBill() {
           placeholder={T("Search item / phone model, or scan barcode / IMEI", "item / फ़ोन model खोजें, या barcode / IMEI scan करें")} />
         <span className="absolute right-3 top-2.5 text-muted">{busy === "scan" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ScanLine className="h-5 w-5" />}</span>
       </div>
+      <p className="text-[11px] text-muted">{T("How to search", "कैसे खोजें")}<FieldTip lang={lang} en="Type part of the name, the brand, or the phone it fits — like 'cover redmi 13'. With a scanner: click this box and scan; the item is added by itself. For a phone, scan its IMEI." hi="नाम का हिस्सा, brand, या किस फ़ोन का है लिखें — जैसे 'cover redmi 13'। Scanner हो तो: इस box पर click करके scan करें; item अपने-आप जुड़ जाता है। फ़ोन के लिए उसका IMEI scan करें।" /></p>
       {q.trim() && (
         <div className="max-h-72 space-y-1 overflow-y-auto rounded-2xl border border-border bg-surface p-1.5">
           {found.map((i) => (
@@ -202,7 +203,7 @@ function NewBill() {
               {c.itemId ? <p className="text-sm font-semibold">{c.name}</p> : <input className={`${small} flex-1`} value={c.name} onChange={(e) => change(c.key, { name: e.target.value })} placeholder={T("Item / work", "item / काम")} />}
               <button type="button" aria-label="Remove" onClick={() => setCart((x) => x.filter((y) => y.key !== c.key))} className="p-1 text-muted"><Trash2 className="h-4 w-4" /></button>
             </div>
-            {c.serial && <input className={`${small} w-full font-mono`} value={c.imei} onChange={(e) => change(c.key, { imei: e.target.value })} placeholder="IMEI" inputMode="numeric" />}
+            {c.serial && <label className="block text-[11px] text-muted">IMEI<FieldTip lang={lang} en="The IMEI of the exact phone you are handing over. Scan it from the box, or dial *#06# on the phone. It must be one that is in your stock." hi="जो फ़ोन आप दे रहे हैं ठीक उसी का IMEI। डिब्बे से scan करें, या फ़ोन पर *#06# दबाएँ। ये आपके स्टॉक में होना चाहिए।" /><input className={`${small} mt-0.5 w-full font-mono`} value={c.imei} onChange={(e) => change(c.key, { imei: e.target.value })} placeholder="IMEI" inputMode="numeric" /></label>}
             <div className="flex flex-wrap items-center gap-2">
               {!c.serial && <span className="inline-flex items-center rounded-lg border border-border">
                 <button type="button" aria-label="Less" onClick={() => change(c.key, { qty: Math.max(1, c.qty - 1) })} className="p-2"><Minus className="h-3.5 w-3.5" /></button>
@@ -210,7 +211,7 @@ function NewBill() {
                 <button type="button" aria-label="More" onClick={() => change(c.key, { qty: c.qty + 1 })} className="p-2"><Plus className="h-3.5 w-3.5" /></button>
               </span>}
               <label className="flex items-center gap-1 text-[11px] text-muted">₹ <input className={`${small} w-24`} inputMode="decimal" value={c.price} onChange={(e) => change(c.key, { price: e.target.value })} /></label>
-              <label className="flex items-center gap-1 text-[11px] text-muted">{T("Disc ₹", "छूट ₹")} <input className={`${small} w-20`} inputMode="decimal" value={c.disc} onChange={(e) => change(c.key, { disc: e.target.value })} /></label>
+              <label className="flex items-center gap-1 text-[11px] text-muted">{T("Disc ₹", "छूट ₹")}<FieldTip lang={lang} en="Rupees off this one line (for all its pieces together). For a discount on the whole bill, use the box below." hi="सिर्फ़ इस line पर रुपयों की छूट (सारे पीस मिलाकर)। पूरे बिल पर छूट के लिए नीचे का box इस्तेमाल करें।" /> <input className={`${small} w-20`} inputMode="decimal" value={c.disc} onChange={(e) => change(c.key, { disc: e.target.value })} /></label>
               <span className="ml-auto text-sm font-bold tabular-nums">{inr(Math.max(0, c.qty * paiseOf(c.price) - paiseOf(c.disc)))}</span>
             </div>
             {kind === "sale" && c.stock !== null && c.qty > c.stock && <p className="text-[11px] font-semibold text-amber-700">{T(`Stock shows only ${c.stock}. The bill will still save.`, `स्टॉक में सिर्फ़ ${c.stock} दिख रहे हैं। बिल फिर भी बन जाएगा।`)}</p>}
@@ -273,6 +274,7 @@ function NewBill() {
             <p className="flex items-baseline justify-between"><span className="text-sm font-semibold">{T("Total", "कुल")} · {totals.qty} {T("pcs", "पीस")}</span><span className="text-2xl font-bold tabular-nums">{inr(totals.total)}</span></p>
             {kind === "sale" && ex.open && paiseOf(ex.value) > 0 && <p className="flex justify-between text-sm"><span>{T("Old phone", "पुराना फ़ोन")} − {inr(paiseOf(ex.value))}</span><span className="font-bold">{T("Customer pays", "ग्राहक देगा")} {inr(Math.max(0, totals.total - paiseOf(ex.value)))}</span></p>}
             {note && <p className="text-sm font-semibold text-danger">{note}</p>}
+            <p className="text-[11px] text-muted">{T("Save or Save & WhatsApp?", "Save या Save & WhatsApp?")}<FieldTip lang={lang} en="Save = the bill is made; print it on the next screen. Save & WhatsApp = it is also sent to the customer's mobile (type the mobile above). The stock reduces either way." hi="Save = बिल बन जाता है; अगली screen पर print करें। Save & WhatsApp = साथ में ग्राहक के मोबाइल पर भी जाता है (ऊपर मोबाइल लिखें)। दोनों में स्टॉक घटता है।" /></p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={!!busy} onClick={() => void save(false)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-bold disabled:opacity-50">{busy === "save" && <LoaderCircle className="h-4 w-4 animate-spin" />} Save</button>
               <button type="button" disabled={!!busy} onClick={() => void save(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-3 text-sm font-bold text-white disabled:opacity-50">{busy === "send" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} Save &amp; WhatsApp</button>

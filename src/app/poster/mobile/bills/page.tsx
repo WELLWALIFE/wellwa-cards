@@ -10,6 +10,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { inr } from "@/lib/jewellery";
 import type { BillRow } from "@/lib/mobile";
 import { BillLink } from "@/components/mobile/bill-link";
+import { MsHelp } from "@/components/mobile/page-help";
 
 type View = "sale" | "estimates" | "due" | "returns";
 
@@ -41,6 +42,7 @@ function Bills() {
     <div className="space-y-3">
       <Link href={`/poster/mobile${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Mobile shop", "मोबाइल दुकान")}</Link>
       <h1 className="text-lg font-bold">{T("Bills", "बिल")}</h1>
+      <MsHelp k="bills" />
       <div className="flex flex-wrap gap-2">{tab("sale", T("Bills", "बिल"))}{tab("due", T("Udhaar", "उधार"))}{tab("estimates", "Estimates")}{tab("returns", T("Returns", "वापसी"))}</div>
       <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" /><input className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder={T("Name, mobile or bill number", "नाम, मोबाइल या बिल नंबर")} /></div>
       {view === "due" && bills && bills.length > 0 && <p className="text-sm font-semibold">{T("Total udhaar", "कुल उधार")}: <span className="text-danger">{inr(due)}</span> · {bills.length} {T("bills", "बिल")}</p>}

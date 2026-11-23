@@ -12,6 +12,8 @@ import { inr } from "@/lib/jewellery";
 import type { BillRow, DayClose, MsSetup } from "@/lib/mobile";
 import type { MsAccess } from "@/lib/mobile-types";
 import { MsHelp } from "@/components/mobile/page-help";
+import { FieldTip } from "@/components/field-tip";
+import { BookOpen } from "lucide-react";
 import { BillLink } from "@/components/mobile/bill-link";
 import { OfflineBar } from "@/components/mobile/offline-bar";
 
@@ -57,7 +59,7 @@ export default function MobileHome() {
           {can("setup") && <Link href={`/poster/mobile/settings${q}`} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold"><Settings2 className="h-4 w-4" /> Settings</Link>}
         </div>
       </div>
-      <MsHelp k="home" />
+      <div className="flex flex-wrap items-center gap-2"><MsHelp k="home" /><Link href={`/poster/mobile/guide${q}`} className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-ink"><BookOpen className="h-3.5 w-3.5" /> {T("Full guide: how to use", "पूरी guide: कैसे चलाएँ")}</Link></div>
       <OfflineBar as={ws.as} onSynced={() => void load()} />
       {d.items === 0 && can("stock") && <Link href={`/poster/mobile/items${q}`} className="block rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900">{T("Start here: add the items you sell (name and price) →", "यहाँ से शुरू करें: जो बेचते हैं वो items जोड़ें (नाम और दाम) →")}</Link>}
 
@@ -69,16 +71,16 @@ export default function MobileHome() {
       {d.seeJobs && d.jobs && (
         <div className="grid grid-cols-2 gap-3">
           {can("repair") && <Link href={`/poster/mobile/repair${q}`} className="flex items-center gap-2 rounded-2xl border-2 border-brand/40 bg-surface px-3 py-3 shadow-card"><Wrench className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{T("New repair job", "नया रिपेयर job")}</span><span className="block text-[11px] text-muted">{T("A phone came for repair", "फ़ोन रिपेयर के लिए आया")}</span></span></Link>}
-          <Link href={`/poster/mobile/repairs${q}`} className={`${tile} ${can("repair") ? "" : "col-span-2"}`}><p className="text-[11px] text-muted">{T("Repair jobs in the shop", "दुकान में रिपेयर jobs")}</p><p className="text-lg font-bold tabular-nums">{d.jobs.open}</p>
+          <Link href={`/poster/mobile/repairs${q}`} className={`${tile} ${can("repair") ? "" : "col-span-2"}`}><p className="text-[11px] text-muted">{T("Repair jobs in the shop", "दुकान में रिपेयर jobs")}<FieldTip lang={lang} en="Phones that are with you for repair right now. Ready = repaired but not collected. Late = the promised day has passed." hi="जो फ़ोन अभी रिपेयर के लिए आपके पास हैं। तैयार = बन गए पर ले नहीं गए। देर = वादे का दिन निकल गया।" /></p><p className="text-lg font-bold tabular-nums">{d.jobs.open}</p>
             <p className="text-[11px]"><span className="font-semibold text-good">{d.jobs.ready} {T("ready", "तैयार")}</span>{d.jobs.late > 0 && <span className="font-semibold text-danger"> · {d.jobs.late} {T("late", "देर")}</span>} →</p></Link>
         </div>
       )}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className={tile}><p className="text-[11px] text-muted">{T("Today's sale", "आज की बिक्री")}</p><p className="text-lg font-bold tabular-nums">{inr(close.sale)}</p><p className="text-[11px] text-muted">{close.bills} {close.bills === 1 ? T("bill", "बिल") : T("bills", "बिल")} · {close.qty} {T("pcs", "पीस")}</p></div>
-        <div className={tile}><p className="text-[11px] text-muted">{T("Money in today", "आज आए पैसे")}</p><p className="text-lg font-bold tabular-nums text-good">{inr(close.moneyTotal)}</p><p className="text-[11px] text-muted">Cash {inr(close.money.cash)} · UPI {inr(close.money.upi)}{close.money.card ? ` · Card ${inr(close.money.card)}` : ""}{close.money.other ? ` · EMI/Other ${inr(close.money.other)}` : ""}</p></div>
-        {can("cost") && <div className={tile}><p className="text-[11px] text-muted">{T("Today's profit", "आज का मुनाफ़ा")}</p><p className="text-lg font-bold tabular-nums">{inr(close.profit)}</p><p className="text-[11px] text-muted">{T("sale − cost of goods", "बिक्री − माल की लागत")}</p></div>}
-        {can("reports") && <Link href={`/poster/mobile/bills${amp}view=due`} className={tile}><p className="flex items-center gap-1 text-[11px] text-muted"><IndianRupee className="h-3 w-3" /> {T("Udhaar", "उधार")}</p><p className="text-lg font-bold tabular-nums text-danger">{inr(d.due.paise)}</p><p className="text-[11px] text-muted">{d.due.count} {T("bills", "बिल")} →</p></Link>}
+        <div className={tile}><p className="text-[11px] text-muted">{T("Today's sale", "आज की बिक्री")}<FieldTip lang={lang} en="The total of today's bills, after anything returned today. Cancelled bills are not counted." hi="आज के बिलों का जोड़, आज की वापसी घटाकर। रद्द बिल नहीं गिने जाते।" /></p><p className="text-lg font-bold tabular-nums">{inr(close.sale)}</p><p className="text-[11px] text-muted">{close.bills} {close.bills === 1 ? T("bill", "बिल") : T("bills", "बिल")} · {close.qty} {T("pcs", "पीस")}</p></div>
+        <div className={tile}><p className="text-[11px] text-muted">{T("Money in today", "आज आए पैसे")}<FieldTip lang={lang} en="Money that really came today: on today's bills, old udhaar paid today, and repair advances. Udhaar not yet paid is not here." hi="आज सच में आया पैसा: आज के बिलों का, पुराना उधार जो आज चुका, और रिपेयर के advance। जो उधार अभी नहीं आया वो इसमें नहीं है।" /></p><p className="text-lg font-bold tabular-nums text-good">{inr(close.moneyTotal)}</p><p className="text-[11px] text-muted">Cash {inr(close.money.cash)} · UPI {inr(close.money.upi)}{close.money.card ? ` · Card ${inr(close.money.card)}` : ""}{close.money.other ? ` · EMI/Other ${inr(close.money.other)}` : ""}</p></div>
+        {can("cost") && <div className={tile}><p className="text-[11px] text-muted">{T("Today's profit", "आज का मुनाफ़ा")}<FieldTip lang={lang} en="Sale minus what the goods cost you. It is right only if you typed the cost on your items. Only you see it." hi="बिक्री में से माल की लागत घटाकर। ये तभी सही है जब items पर लागत लिखी हो। ये सिर्फ़ आपको दिखता है।" /></p><p className="text-lg font-bold tabular-nums">{inr(close.profit)}</p><p className="text-[11px] text-muted">{T("sale − cost of goods", "बिक्री − माल की लागत")}</p></div>}
+        {can("reports") && <Link href={`/poster/mobile/bills${amp}view=due`} className={tile}><p className="flex items-center gap-1 text-[11px] text-muted"><IndianRupee className="h-3 w-3" /> {T("Udhaar", "उधार")}<FieldTip lang={lang} en="All the money customers still owe you, on every bill. Tap to see the bills." hi="ग्राहकों पर आपका कुल बाकी पैसा, सारे बिलों का। बिल देखने के लिए दबाएँ।" /></p><p className="text-lg font-bold tabular-nums text-danger">{inr(d.due.paise)}</p><p className="text-[11px] text-muted">{d.due.count} {T("bills", "बिल")} →</p></Link>}
       </section>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -90,7 +92,7 @@ export default function MobileHome() {
 
       {d.low.length > 0 && (
         <section className="rounded-2xl border border-amber-300 bg-amber-50/60 p-3">
-          <p className="flex items-center gap-1.5 text-sm font-bold text-amber-900"><AlertTriangle className="h-4 w-4" /> {T(`Low stock (${d.low.length})`, `कम स्टॉक (${d.low.length})`)}</p>
+          <p className="flex items-center gap-1.5 text-sm font-bold text-amber-900"><AlertTriangle className="h-4 w-4" /> {T(`Low stock (${d.low.length})`, `कम स्टॉक (${d.low.length})`)}<FieldTip lang={lang} en="Items that reached the 'Low stock at' number you set on them. Order these." hi="जो items आपके लिखे 'कम स्टॉक' नंबर तक पहुँच गए। इन्हें मँगवाएँ।" /></p>
           <ul className="mt-1 grid gap-x-4 text-[13px] sm:grid-cols-2">{d.low.slice(0, 12).map((l) => <li key={l.id} className="flex justify-between"><span className="truncate">{[l.brand, l.name, l.variant].filter(Boolean).join(" ")}</span><b className="tabular-nums">{l.stock}</b></li>)}</ul>
         </section>
       )}

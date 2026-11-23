@@ -58,6 +58,11 @@ const HELP: Record<string, Help> = {
     ["Search by name, mobile, job number, model or IMEI.", "नाम, मोबाइल, job नंबर, model या IMEI से खोजें।"],
     ["Tap a job to open it.", "job खोलने के लिए उसे दबाएँ।"],
   ] },
+  bills: { en: "Bills", hi: "बिल", steps: [
+    ["Bills = every bill. Udhaar = bills with money left. Estimates and Returns have their own tabs.", "बिल = सारे बिल। उधार = जिन पर पैसा बाकी है। Estimate और वापसी के अलग tab हैं।"],
+    ["Search by the customer's name, mobile or the bill number.", "ग्राहक के नाम, मोबाइल या बिल नंबर से खोजें।"],
+    ["Tap a bill to open it: print again, send on WhatsApp, take udhaar, return items or cancel.", "बिल दबाकर खोलें: दोबारा print, WhatsApp पर भेजना, उधार लेना, सामान वापसी या रद्द।"],
+  ] },
   reports: { en: "Reports", hi: "रिपोर्ट", steps: [
     ["Pick the period: today, this month, or your own dates.", "अवधि चुनें: आज, ये महीना, या अपनी तारीख़ें।"],
     ["Sale is after returns. Money in is what really came — cash, UPI, card and EMI apart.", "बिक्री वापसी घटाकर है। आए पैसे = जो सच में आया — cash, UPI, card और EMI अलग।"],

@@ -12,6 +12,7 @@ import { inr } from "@/lib/jewellery";
 import { itemMatches, itemTitle, type ItemRow, type MsSetup } from "@/lib/mobile";
 import { Barcode } from "@/components/jewellery/barcode";
 import { MsHelp } from "@/components/mobile/page-help";
+import { FieldTip } from "@/components/field-tip";
 
 type Item = ItemRow & { stock: number };
 type Row = { id: string; n: string };
@@ -68,6 +69,7 @@ export default function LabelsPage() {
           {found.map((i) => <button key={i.id} type="button" onClick={() => { setRows((x) => (x.some((y) => y.id === i.id) ? x : [...x, { id: i.id, n: String(Math.max(1, Math.min(50, i.stock))) }])); setQ(""); }} className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-bg"><span className="truncate font-semibold">{itemTitle(i)}</span><span className="shrink-0 text-[11px] text-muted">{T("Stock", "स्टॉक")} {i.stock}</span></button>)}
           {!found.length && <p className="px-2 py-2 text-sm text-muted">{T("Nothing found. (Phones are labelled by their own IMEI.)", "कुछ नहीं मिला। (फ़ोन का label उसका अपना IMEI है।)")}</p>}
         </div>}
+        {picked.length > 0 && <p className="text-[12px] text-muted">{T("The number is how many stickers to print.", "संख्या = कितने sticker छापने हैं।")}<FieldTip lang={lang} en="One sticker per piece on the shelf is usual. It starts at your stock count; change it as you like." hi="आम तौर पर shelf के हर पीस पर एक sticker। ये आपके स्टॉक जितना भरा आता है; जैसा चाहें बदलें।" /></p>}
         {picked.map(({ r, it }) => (
           <div key={it.id} className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-3 py-2 text-sm">
             <span className="min-w-0"><span className="block truncate font-semibold">{itemTitle(it)}</span><span className="block text-[11px] text-muted">{it.barcode || T("no barcode yet", "अभी barcode नहीं")} · {inr(it.price_paise)}</span></span>

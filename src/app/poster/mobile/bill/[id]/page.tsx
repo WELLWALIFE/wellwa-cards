@@ -10,6 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { Receipt } from "@/components/mobile/receipt";
 import { MsHelp } from "@/components/mobile/page-help";
+import { FieldTip } from "@/components/field-tip";
 import { inr, paiseOf, type Payment } from "@/lib/jewellery";
 import type { BillRow, MsSetup } from "@/lib/mobile";
 import type { MsAccess } from "@/lib/mobile-types";
@@ -96,6 +97,7 @@ function BillView() {
 
       {cancelling && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/40 bg-danger/5 p-3 print:hidden">
+          <p className="w-full text-[12px] text-muted">{T("Cancel is for a bill made by mistake.", "रद्द करना गलती से बने बिल के लिए है।")}<FieldTip lang={lang} en="The whole bill is cancelled, all its stock comes back, and it leaves today's sale. The bill stays in the list marked Cancelled, with your reason and name." hi="पूरा बिल रद्द होता है, उसका सारा स्टॉक वापस आता है, और वो आज की बिक्री से हट जाता है। बिल list में 'रद्द' लिखा रहता है, आपकी वजह और नाम के साथ।" /></p>
           <input className={`${inp} flex-1`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={T("Why is it cancelled?", "क्यों रद्द कर रहे हैं?")} />
           <button type="button" disabled={!reason.trim() || !!busy} onClick={() => void act("cancel", { reason })} className="rounded-lg bg-danger px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{T("Cancel this bill", "ये बिल रद्द करें")}</button>
         </div>
@@ -105,7 +107,7 @@ function BillView() {
       {(d.returns ?? []).length > 0 && <p className="text-sm print:hidden">{T("Returned", "वापस आया")}: {d.returns!.map((x) => <Link key={x.id} href={`/poster/mobile/bill/${x.id}${asQ}`} className="mr-2 font-semibold text-brand-ink">{x.code} ({inr(x.total_paise)}) →</Link>)}</p>}
       {ret.open && bill.kind === "sale" && (
         <section className="space-y-2 rounded-xl border border-border bg-surface p-3 print:hidden">
-          <p className="text-sm font-bold">{T("What came back?", "क्या वापस आया?")}</p>
+          <p className="text-sm font-bold">{T("What came back?", "क्या वापस आया?")}<FieldTip lang={lang} en="Use this when the customer brings back some items of a correct bill. If the whole bill was made by mistake, use Cancel instead." hi="ये तब इस्तेमाल करें जब सही बने बिल का कुछ सामान ग्राहक वापस लाए। पूरा बिल ही गलती से बना हो तो 'रद्द करें' इस्तेमाल करें।" /></p>
           <p className="text-[12px] text-muted">{T("Type how many pieces of each. The stock goes back in. If this bill has udhaar, the return first clears it; the rest is given back to the customer.", "हर item के कितने पीस वापस आए लिखें। स्टॉक वापस चढ़ जाएगा। इस बिल पर उधार हो तो वापसी पहले उधार घटाती है; बाकी ग्राहक को लौटाना है।")}</p>
           {(bill.lines ?? []).map((l, i) => { const left = l.qty - (d.returned?.[i] ?? 0); return (
             <label key={i} className="flex items-center justify-between gap-2 text-sm"><span className="min-w-0 truncate">{l.name}{l.imei ? ` · ${l.imei}` : ""} <span className="text-muted">({T("can return", "वापस हो सकते हैं")} {left})</span></span>
@@ -122,7 +124,7 @@ function BillView() {
 
       {bill.kind === "sale" && open && bill.balance_paise > 0 && (
         <section className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50/60 p-3 print:hidden">
-          <p className="flex items-center gap-1.5 text-sm font-bold"><Wallet className="h-4 w-4" /> {T("Udhaar left", "उधार बाकी")}: <span className="text-danger">{inr(bill.balance_paise)}</span></p>
+          <p className="flex items-center gap-1.5 text-sm font-bold"><Wallet className="h-4 w-4" /> {T("Udhaar left", "उधार बाकी")}: <span className="text-danger">{inr(bill.balance_paise)}</span><FieldTip lang={lang} en="When the customer pays: pick how (Cash / UPI…), type the amount (or tap Full) and tap Take payment. Part payments are fine." hi="ग्राहक पैसा दे तब: कैसे दिया (Cash / UPI…) चुनें, रक़म लिखें (या 'पूरा' दबाएँ) और Take payment दबाएँ। थोड़ा-थोड़ा भी ले सकते हैं।" /></p>
           <div className="flex flex-wrap items-center gap-1.5">
             <select className={inp} value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="bank">Bank</option></select>
             <input className={`${inp} w-32`} inputMode="decimal" placeholder="₹" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />

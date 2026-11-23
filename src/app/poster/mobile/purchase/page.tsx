@@ -94,7 +94,7 @@ export default function PurchasePage() {
       <MsHelp k="purchase" />
       <section className="grid gap-3 rounded-2xl border border-border bg-surface p-3 sm:grid-cols-2">
         <label className={lab}>{T("Supplier", "सप्लायर")} <span className="font-normal">(optional)</span><input className={inp} value={sup.name} onChange={(e) => setSup({ ...sup, name: e.target.value })} /></label>
-        <label className={lab}>{T("Supplier's bill no.", "सप्लायर का बिल नंबर")} <span className="font-normal">(optional)</span><input className={inp} value={sup.bill_no} onChange={(e) => setSup({ ...sup, bill_no: e.target.value })} /></label>
+        <label className={lab}>{T("Supplier's bill no.", "सप्लायर का बिल नंबर")} <span className="font-normal">(optional)</span><FieldTip lang={lang} en="The number on the supplier's own bill, so you can match it later." hi="सप्लायर के अपने बिल का नंबर, ताकि बाद में मिला सकें।" /><input className={inp} value={sup.bill_no} onChange={(e) => setSup({ ...sup, bill_no: e.target.value })} /></label>
         <label className={lab}>{T("Bill date", "बिल की तारीख")} <span className="font-normal">(optional)</span><input type="date" className={inp} value={sup.bill_date} onChange={(e) => setSup({ ...sup, bill_date: e.target.value })} /></label>
         <label className={lab}>{T("Paid to supplier ₹", "सप्लायर को दिया ₹")}<FieldTip lang={lang} en="How much of this bill you have paid. It is kept as a note for you; the rest is what you owe." hi="इस बिल में से कितना चुका दिया। ये आपकी जानकारी के लिए है; बाकी आपकी देनदारी है।" /><input className={inp} inputMode="decimal" value={sup.paid} onChange={(e) => setSup({ ...sup, paid: e.target.value })} /></label>
       </section>
@@ -112,8 +112,8 @@ export default function PurchasePage() {
           <div key={l.key} className="space-y-1.5 rounded-2xl border border-border bg-surface p-2.5">
             <div className="flex items-start justify-between gap-2"><p className="text-sm font-semibold">{l.name}</p><button type="button" aria-label="Remove" onClick={() => setLines((x) => x.filter((y) => y.key !== l.key))} className="p-1 text-muted"><Trash2 className="h-4 w-4" /></button></div>
             <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted">
-              {!l.serial && <label className="flex items-center gap-1">{T("Qty", "गिनती")} <input className={`${small} w-20`} inputMode="numeric" value={l.qty} onChange={(e) => change(l.key, { qty: e.target.value })} /></label>}
-              {can("cost") && <label className="flex items-center gap-1">{T("Cost of one ₹", "एक की लागत ₹")} <input className={`${small} w-24`} inputMode="decimal" value={l.cost} onChange={(e) => change(l.key, { cost: e.target.value })} /></label>}
+              {!l.serial && <label className="flex items-center gap-1">{T("Qty", "गिनती")}<FieldTip lang={lang} en="How many pieces came now. This number is added to the stock." hi="अभी कितने पीस आए। ये संख्या स्टॉक में जुड़ जाती है।" /> <input className={`${small} w-20`} inputMode="numeric" value={l.qty} onChange={(e) => change(l.key, { qty: e.target.value })} /></label>}
+              {can("cost") && <label className="flex items-center gap-1">{T("Cost of one ₹", "एक की लागत ₹")}<FieldTip lang={lang} en="What you paid for one piece this time. It becomes the item's cost, and profit is worked out from it." hi="इस बार एक पीस कितने में पड़ा। यही item की लागत बन जाती है, और मुनाफ़ा इसी से निकलता है।" /> <input className={`${small} w-24`} inputMode="decimal" value={l.cost} onChange={(e) => change(l.key, { cost: e.target.value })} /></label>}
             </div>
             {l.serial && <label className={lab}>IMEI ({imeiList(l.imeis).length}) — {T("scan each, one per line", "हर एक scan करें, एक line में एक")}<textarea className={`${inp} font-mono`} rows={3} value={l.imeis} onChange={(e) => change(l.key, { imeis: e.target.value })} /></label>}
           </div>
@@ -129,7 +129,7 @@ export default function PurchasePage() {
 
       {can("cost") && owed.size > 0 && (
         <section className="rounded-2xl border border-amber-300 bg-amber-50/60 p-3">
-          <p className="text-sm font-bold text-amber-900">{T("To pay suppliers", "सप्लायर को देना बाकी")}: {inr([...owed.values()].reduce((a, b) => a + b, 0))}</p>
+          <p className="text-sm font-bold text-amber-900">{T("To pay suppliers", "सप्लायर को देना बाकी")}: {inr([...owed.values()].reduce((a, b) => a + b, 0))}<FieldTip lang={lang} en="Purchases you have not fully paid for. When you pay, tap 'Note a payment to the supplier' on that purchase below." hi="जिन ख़रीद का पूरा पैसा नहीं दिया। पैसा दें तो नीचे उसी ख़रीद पर 'सप्लायर को दिया पैसा दर्ज करें' दबाएँ।" /></p>
           <ul className="mt-1 text-[13px]">{[...owed.entries()].sort((a, b) => b[1] - a[1]).map(([n, v]) => <li key={n} className="flex justify-between"><span>{n === "—" ? T("No name", "बिना नाम") : n}</span><b className="tabular-nums">{inr(v)}</b></li>)}</ul>
         </section>
       )}
