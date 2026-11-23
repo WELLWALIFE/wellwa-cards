@@ -11,6 +11,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { fineBuyRate, grams, inr, mgOf, paiseOf, type JwSetup, type Metal, type RateBook } from "@/lib/jewellery";
 import type { GirviRow } from "@/lib/jewellery-finance";
 import { JwTip } from "@/components/jewellery/jw-tip";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Home = { setup: JwSetup; rate: RateBook | null; error?: string };
 type ItemDraft = { desc: string; metal: Metal; gross: string; net: string; touch: string; pieces: string };
@@ -65,6 +66,7 @@ export default function NewGirvi() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery/girvi${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Girvi", "गिरवी")}</Link>
       <h1 className="text-lg font-bold">{T("New girvi loan", "नया गिरवी लोन")}</h1>
+      <PageHelp k="girviNew" />
       <section className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-surface p-3">
         <label><span className={lab}>{T("Name", "नाम")}<JwTip k="Name" /></span><input className={inp} value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} /></label>
         <label><span className={lab}>{T("Mobile", "मोबाइल")}<JwTip k="Mobile" /></span><input className={inp} inputMode="tel" value={c.phone} onChange={(e) => setC({ ...c, phone: e.target.value })} /></label>

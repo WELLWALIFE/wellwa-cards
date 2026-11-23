@@ -12,6 +12,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, mgOf, paiseOf, sellRate, type JwSetup, type Payment, type RateBook } from "@/lib/jewellery";
 import type { Karigar, OrderRow } from "@/lib/jewellery-orders";
 import { JwTip } from "@/components/jewellery/jw-tip";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Home = { setup: JwSetup; rate: RateBook | null; today: string; error?: string };
 type ItemDraft = { itemType: string; desc: string; purity: string; weight: string; size: string; work: string; pieces: string };
@@ -83,6 +84,7 @@ function OrderForm() {
     <div className="space-y-4 pb-4">
       <Link href={`/poster/jewellery/orders${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Orders & repairs", "ऑर्डर और रिपेयर")}</Link>
       <h1 className="text-lg font-bold">{repair ? T("New repair", "नया रिपेयर") : T("New order", "नया ऑर्डर")}</h1>
+      <PageHelp k="orderNew" />
 
       <section className="grid grid-cols-2 gap-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
         <label><span className={lab}>{T("Customer name", "ग्राहक का नाम")}<JwTip k="Customer name" /></span><input className={inp} value={cust.name} onChange={(e) => setCust({ ...cust, name: e.target.value })} /></label>

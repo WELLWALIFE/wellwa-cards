@@ -11,6 +11,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, paiseOf, type JwSetup, type Payment } from "@/lib/jewellery";
 import type { GirviRow, GirviState } from "@/lib/jewellery-finance";
 import { GirviReceipt } from "@/components/jewellery/finance-docs";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { girvi: GirviRow; state: GirviState; today: string; link: string; shop: string; licence: string; error?: string };
 
@@ -60,6 +61,7 @@ function Loan() {
     <div className="space-y-3">
       <style>{`@media print { body * { visibility: hidden !important; } .jw-doc, .jw-doc * { visibility: visible !important; } .jw-doc { position: absolute; left: 0; top: 0; width: 100%; } @page { margin: 10mm; } }`}</style>
       <Link href={`/poster/jewellery/girvi${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted print:hidden"><ArrowLeft className="h-4 w-4" /> {T("Girvi", "गिरवी")}</Link>
+      <PageHelp k="girviView" />
       {open && (
         <section className={`grid grid-cols-3 gap-2 rounded-2xl border p-3 print:hidden ${st.overdue ? "border-danger/50 bg-red-50/50" : "border-border bg-surface"}`}>
           <p><span className="block text-[11px] text-muted">{T("Principal", "मूल")}</span><b className="tabular-nums">{inr(st.principal, true)}</b></p>

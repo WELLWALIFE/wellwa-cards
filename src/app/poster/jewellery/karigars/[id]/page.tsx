@@ -12,6 +12,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { grams, inr, mgOf, paiseOf, type JwSetup, type Metal } from "@/lib/jewellery";
 import { TXN_KINDS, fineOf, type Karigar, type KarigarBalance, type KarigarTxn, type OrderRow, type TxnKind } from "@/lib/jewellery-orders";
 import { JwTip } from "@/components/jewellery/jw-tip";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { karigar: Karigar; txns: KarigarTxn[]; balance: KarigarBalance; orders: OrderRow[]; today: string; setup: JwSetup; error?: string };
 
@@ -95,6 +96,7 @@ function Ledger() {
           <button type="button" onClick={() => void setActive(!k.active)} className="rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted">{k.active ? T("Stop (old karigar)", "बंद करें") : T("Make active", "चालू करें")}</button>
         </div>
       </div>
+      <PageHelp k="karigar" />
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <div className="rounded-2xl border border-[#c9a227]/40 bg-[#fffaf0] p-3"><p className="text-[11px] text-muted">{T("Gold they hold (fine)", "उनके पास सोना (fine)")}</p><p className="text-xl font-bold tabular-nums">{grams(b.fine.gold)}</p><p className="text-[10px] text-muted">{T("given", "दिया")} {grams(b.issued.gold)} · {T("back", "आया")} {grams(b.received.gold)} · {T("wastage", "वेस्टेज")} {grams(b.wastage.gold)}</p></div>

@@ -11,6 +11,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { Invoice } from "@/components/jewellery/invoice";
 import { inr, paiseOf, type BillRow, type JwSetup, type Payment } from "@/lib/jewellery";
 import type { JwAccess } from "@/lib/jewellery-types";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { bill: BillRow; setup: JwSetup; access: JwAccess; shop: string; link: string; error?: string };
 
@@ -65,6 +66,7 @@ function BillView() {
       {/* Only the bill goes to paper. */}
       <style>{`@media print { body * { visibility: hidden !important; } .jw-invoice, .jw-invoice * { visibility: visible !important; } .jw-invoice { position: absolute; left: 0; top: 0; width: 100%; } @page { margin: 10mm; } }`}</style>
       <Link href={`/poster/jewellery${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted print:hidden"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
+      <PageHelp k="billView" />
 
       <div className="flex flex-wrap gap-2 print:hidden">
         <button type="button" disabled={!!busy || !bill.customer_phone} onClick={() => void act("send")} className={`${btn} !border-[#25D366] !text-[#128C7E]`}>{busy === "send" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} {T("Send on WhatsApp", "WhatsApp पर भेजें")}</button>

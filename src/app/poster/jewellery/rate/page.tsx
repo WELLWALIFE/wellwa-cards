@@ -9,6 +9,7 @@ import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, paiseOf, rateMessage, sellRate, type JwSetup, type RateBook } from "@/lib/jewellery";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { rate: RateBook | null; history: { day: string; sell: Record<string, number>; set_by_name: string; updated_at: string }[]; today: string; setup: JwSetup; username?: string; error?: string };
 
@@ -59,6 +60,7 @@ export default function RatePage() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{T("Today's rate", "आज का रेट")} <span className="text-sm font-normal text-muted">· {d.today}</span></h1>
+      <PageHelp k="rate" />
       <p className="text-xs text-muted">{T("Type the rate per 10 grams. Leave 22K / 18K empty and they are worked out from 24K by purity.", "रेट 10 ग्राम का डालें। 22K / 18K खाली छोड़ें तो 24K से purity के हिसाब से अपने-आप बनेंगे।")}</p>
 
       <section className="space-y-2 rounded-2xl border border-border bg-surface p-4 shadow-card">

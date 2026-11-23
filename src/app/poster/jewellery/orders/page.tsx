@@ -9,6 +9,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { OrderRowLink } from "@/components/jewellery/order-row";
 import type { Karigar, OrderRow } from "@/lib/jewellery-orders";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { orders: OrderRow[]; karigars: Karigar[]; today: string; error?: string };
 
@@ -43,6 +44,7 @@ function OrdersList() {
     <div className="space-y-3">
       <Link href={`/poster/jewellery${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{T("Orders & repairs", "ऑर्डर और रिपेयर")}</h1>
+      <PageHelp k="orders" />
       <div className="grid grid-cols-2 gap-2">
         <Link href={`/poster/jewellery/order${asQ}`} className="flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-3 text-sm font-bold text-white"><Plus className="h-4 w-4" /> {T("New order", "नया ऑर्डर")}</Link>
         <Link href={`/poster/jewellery/order${amp}kind=repair`} className="flex items-center justify-center gap-1.5 rounded-xl border-2 border-brand/40 bg-surface px-3 py-3 text-sm font-bold"><Wrench className="h-4 w-4 text-brand" /> {T("New repair", "नया रिपेयर")}</Link>

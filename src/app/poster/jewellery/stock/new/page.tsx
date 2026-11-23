@@ -12,6 +12,7 @@ import { StockForm, bodyOf, draftOf, type StockDraft } from "@/components/jewell
 import { grams, type JwSetup } from "@/lib/jewellery";
 import type { JwAccess } from "@/lib/jewellery-types";
 import type { StockRow } from "@/lib/jewellery-stock";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Home = { setup: JwSetup; access: JwAccess; error?: string };
 
@@ -51,6 +52,7 @@ export default function NewStock() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery/stock${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Stock", "स्टॉक")}</Link>
       <h1 className="text-lg font-bold">{T("Add stock", "स्टॉक चढ़ाएँ")}</h1>
+      <PageHelp k="stockNew" />
       <section className="space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-card">
         <StockForm d={d} set={(p) => setDraft({ ...d, ...p })} setup={h.setup} owner={h.access.owner} hi={hi} />
         <button type="button" disabled={busy} onClick={() => void save()} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {T("Save and add the next", "Save करें और अगला")}</button>

@@ -10,6 +10,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, paiseOf, type Payment } from "@/lib/jewellery";
 import type { SchemePlan, SchemeRow, SchemeState } from "@/lib/jewellery-finance";
 import { JwTip } from "@/components/jewellery/jw-tip";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Row = SchemeRow & { state: SchemeState };
 type Ans = { schemes: Row[]; plans: SchemePlan[]; today: string; error?: string };
@@ -55,6 +56,7 @@ export default function Schemes() {
         <h1 className="text-lg font-bold">{T("Gold scheme", "गोल्ड स्कीम")}</h1>
         {d && d.plans.length > 0 && !form && <button type="button" onClick={() => setForm({ plan: d.plans[0].key, name: "", phone: "", address: "", nominee: "", mode: "cash", amount: String(d.plans[0].monthlyPaise / 100), send: true })} className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> {T("New member", "नया मेंबर")}</button>}
       </div>
+      <PageHelp k="schemes" />
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
       {form && d && (
         <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 shadow-card">

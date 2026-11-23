@@ -10,6 +10,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, paiseOf, type JwSetup, type Payment } from "@/lib/jewellery";
 import type { SchemeRow, SchemeState } from "@/lib/jewellery-finance";
 import { SchemePassbook } from "@/components/jewellery/finance-docs";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { scheme: SchemeRow; state: SchemeState; today: string; link: string; shop: string; error?: string };
 
@@ -58,6 +59,7 @@ function Member() {
     <div className="space-y-3">
       <style>{`@media print { body * { visibility: hidden !important; } .jw-doc, .jw-doc * { visibility: visible !important; } .jw-doc { position: absolute; left: 0; top: 0; width: 100%; } @page { margin: 10mm; } }`}</style>
       <Link href={`/poster/jewellery/schemes${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted print:hidden"><ArrowLeft className="h-4 w-4" /> {T("Gold scheme", "गोल्ड स्कीम")}</Link>
+      <PageHelp k="scheme" />
       <div className="flex flex-wrap gap-2 print:hidden">
         <button type="button" disabled={!!busy} onClick={() => void act("send")} className={`${btn} !border-[#25D366] !text-[#128C7E]`}><MessageCircle className="h-4 w-4" /> {T("Send passbook", "पासबुक भेजें")}</button>
         <button type="button" onClick={() => window.print()} className={btn}><Printer className="h-4 w-4" /> {T("Print", "Print")}</button>

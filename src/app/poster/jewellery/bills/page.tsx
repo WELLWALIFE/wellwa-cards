@@ -9,6 +9,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { BillRowLink } from "@/components/jewellery/bill-row";
 import { inr, type BillRow } from "@/lib/jewellery";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 function BillsList() {
   const router = useRouter();
@@ -42,6 +43,7 @@ function BillsList() {
   return (
     <div className="space-y-3">
       <Link href={`/poster/jewellery${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
+      <PageHelp k="bills" />
       <div className="flex gap-1 rounded-xl border border-border bg-surface2/50 p-1">
         {tabs.map(([k, l]) => <button key={k} type="button" onClick={() => setTab(k)} className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${tab === k ? "bg-surface shadow-card" : "text-muted"}`}>{l}</button>)}
       </div>

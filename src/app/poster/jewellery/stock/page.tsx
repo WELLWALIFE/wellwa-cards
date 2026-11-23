@@ -10,6 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { grams, type JwSetup } from "@/lib/jewellery";
 import { STOCK_STATUSES, type StockRow, type StockStatus } from "@/lib/jewellery-stock";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { items: StockRow[]; summary: { purity: string; label: string; pieces: number; gross: number; net: number; fine: number }[]; count: number; setup: JwSetup; error?: string };
 
@@ -52,6 +53,7 @@ function StockList() {
         <h1 className="text-lg font-bold">{T("Stock", "स्टॉक")}</h1>
         <Link href={`/poster/jewellery/stock/new${asQ}`} className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> {T("Add stock", "स्टॉक चढ़ाएँ")}</Link>
       </div>
+      <PageHelp k="stock" />
       {d && d.summary.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {d.summary.map((s) => (

@@ -13,6 +13,7 @@ import { grams, inr, paiseOf, type JwSetup, type Payment } from "@/lib/jewellery
 import { ORDER_STATUSES, TXN_KINDS, orderPaid, overdue, type Karigar, type KarigarTxn, type OrderRow } from "@/lib/jewellery-orders";
 import type { JwAccess } from "@/lib/jewellery-types";
 import { OrderReceipt } from "@/components/jewellery/order-receipt";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { order: OrderRow; karigars: Karigar[]; txns: KarigarTxn[]; setup: JwSetup; access: JwAccess; shop: string; link: string; error?: string };
 const STEPS = ["booked", "karigar", "ready", "delivered"] as const;
@@ -89,6 +90,7 @@ function OrderView() {
         )}
         {overdue(o, today) && <p className="mt-1 text-xs font-bold text-danger">{T("Late — the customer was promised ", "देर — ग्राहक को तारीख़ दी थी ")}{o.due_date}</p>}
       </div>
+      <PageHelp k="orderView" />
 
       <div className="flex flex-wrap gap-2 print:hidden">
         <button type="button" disabled={!!busy || !o.customer_phone} onClick={() => void act("send")} className={`${btn} !border-[#25D366] !text-[#128C7E]`}><MessageCircle className="h-4 w-4" /> {T("Send on WhatsApp", "WhatsApp पर भेजें")}</button>

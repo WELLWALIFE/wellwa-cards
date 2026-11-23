@@ -11,6 +11,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { JW_RIGHTS, METALS, paiseOf, type JwRight, type JwSetup, type MakingKind, type Metal } from "@/lib/jewellery";
 import type { JwAccess } from "@/lib/jewellery-types";
 import { JwTip } from "@/components/jewellery/jw-tip";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { setup: JwSetup; access: JwAccess; staff: { id: string; name: string; phone: string; role: string }[]; error?: string };
 
@@ -51,6 +52,7 @@ export default function JewellerySettings() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{T("Jewellery settings", "ज्वेलरी settings")}</h1>
+      <PageHelp k="settings" />
 
       <section className={box}>
         <h2 className="text-sm font-bold">{T("Your shop on the bill", "बिल पर आपकी दुकान")}</h2>

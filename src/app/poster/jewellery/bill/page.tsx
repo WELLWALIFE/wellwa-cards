@@ -13,6 +13,7 @@ import { orderPaid, type OrderRow } from "@/lib/jewellery-orders";
 import { lineFromStock, type StockRow } from "@/lib/jewellery-stock";
 import type { SchemeRow, SchemeState } from "@/lib/jewellery-finance";
 import { JwTip } from "@/components/jewellery/jw-tip";
+import { PageHelp } from "@/components/jewellery/page-help";
 import {
   billTotals, fineBuyRate, grams, inr, mgOf, paiseOf, sellRate,
   type BillLine, type BillRow, type MakingKind, type Metal, type OldGoldLine, type Payment, type JwSetup, type RateBook,
@@ -179,6 +180,7 @@ function BillBuilder() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{kind === "estimate" ? T("New estimate", "नया estimate") : T("New bill", "नया बिल")}</h1>
+      <PageHelp k="bill" />
       {!setup.gstin && (setup.gstBp > 0 || setup.gstMakingBp > 0) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{T("GST is added to bills but your GSTIN is not set. Add it, or set GST to 0 if your shop is not GST-registered. ", "बिल में GST जुड़ रहा है पर आपका GSTIN नहीं डला। GSTIN डालें, या दुकान GST में registered नहीं है तो GST 0 करें। ")}<Link href={`/poster/jewellery/settings${q}`} className="underline">{T("Settings", "सेटिंग")}</Link></p>}
       {scheme && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">{T(`Gold scheme ${scheme.row.code} (${scheme.row.customer_name}): deposits ${inr(scheme.state.paid)} are counted as paid${bonus ? `, and the shop's bonus ${inr(bonus)} comes off as a discount` : scheme.state.complete ? "" : " — not complete, so no bonus"}. Saving the bill uses the scheme.`, `गोल्ड स्कीम ${scheme.row.code} (${scheme.row.customer_name}): जमा ${inr(scheme.state.paid)} पहले से मिला गिना गया${bonus ? `, दुकान का बोनस ${inr(bonus)} छूट में` : scheme.state.complete ? "" : " — स्कीम पूरी नहीं, इसलिए बोनस नहीं"}। बिल Save होते ही स्कीम इस्तेमाल हो जाएगी।`)}</p>}
       {order && <p className="rounded-xl bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-800">{T(`Bill for order ${order.code}: type the actual weight. The advance ${inr(orderPaid(order))} is counted${order.rate_lock ? ", and the locked rate is filled in" : ""}; saving delivers the order.`, `ऑर्डर ${order.code} का बिल: असली वज़न डालें। एडवांस ${inr(orderPaid(order))} जुड़ गया${order.rate_lock ? ", lock किया रेट भरा है" : ""}; save करते ही ऑर्डर डिलीवर हो जाएगा।`)}</p>}

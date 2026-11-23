@@ -11,6 +11,7 @@ import { WorkspaceSwitch, useWorkspace } from "@/components/orders/orders-common
 import { inr, sellRate, type BillRow, type JwSetup, type RateBook } from "@/lib/jewellery";
 import type { JwAccess } from "@/lib/jewellery-types";
 import { BillRowLink } from "@/components/jewellery/bill-row";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Home = { shop: string; setup: JwSetup; access: JwAccess; rate: RateBook | null; today: string; stats: { todaySales: number; todayPaise: number; todayEstimates: number; dueCount: number; duePaise: number; ordersOpen?: number; ordersReady?: number; ordersLate?: number }; recent: BillRow[]; error?: string };
 
@@ -46,6 +47,7 @@ export default function JewelleryHome() {
           {can("setup") && <Link href={`/poster/jewellery/settings${q}`} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold"><Settings2 className="h-4 w-4" /> {T("Settings", "Settings")}</Link>}
         </div>
       </div>
+      <PageHelp k="home" />
 
       {/* Today's rate: the first thing every morning. */}
       <section className={`rounded-2xl border p-4 shadow-card ${stale ? "border-amber-400 bg-amber-50/60" : "border-[#c9a227]/40 bg-gradient-to-br from-[#fffaf0] to-surface"}`}>

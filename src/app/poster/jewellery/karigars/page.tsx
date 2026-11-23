@@ -10,6 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { grams, inr } from "@/lib/jewellery";
 import type { Karigar, KarigarBalance } from "@/lib/jewellery-orders";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { karigars: Karigar[]; balances: Record<string, KarigarBalance>; open: Record<string, number>; error?: string };
 
@@ -49,6 +50,7 @@ export default function KarigarsPage() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery/orders${q}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Orders & repairs", "ऑर्डर और रिपेयर")}</Link>
       <h1 className="text-lg font-bold">👷 {T("Karigars", "कारीगर")}</h1>
+      <PageHelp k="karigars" />
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-2xl border border-[#c9a227]/40 bg-[#fffaf0] p-3"><p className="text-[11px] text-muted">{T("Gold with karigars (fine)", "कारीगरों के पास सोना (fine)")}</p><p className="text-lg font-bold tabular-nums">{grams(totalGold)}</p></div>
         <div className="rounded-2xl border border-border bg-surface p-3"><p className="text-[11px] text-muted">{T("Labour to pay", "मज़दूरी देनी है")}</p><p className="text-lg font-bold tabular-nums">{inr(totalMoney)}</p></div>

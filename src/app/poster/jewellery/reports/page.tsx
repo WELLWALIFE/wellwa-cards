@@ -10,6 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { grams, inr } from "@/lib/jewellery";
 import { b2bCsv, dayCloseText, dayCsv, hsnCsv, istDate, salesCsv, type Report } from "@/lib/jewellery-reports";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { report: Report; today: string; shop: string; stateCode: string; gstin: string; due: { count: number; paise: number }; capped: boolean; error?: string };
 
@@ -63,6 +64,7 @@ export default function Reports() {
     <div className="space-y-4">
       <Link href={`/poster/jewellery${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><ArrowLeft className="h-4 w-4" /> {T("Jewellery", "ज्वेलरी")}</Link>
       <h1 className="text-lg font-bold">{T("Reports", "रिपोर्ट")}</h1>
+      <PageHelp k="reports" />
       <div className="flex flex-wrap gap-1.5">
         {([["today", T("Today", "आज")], ["yesterday", T("Yesterday", "कल")], ["month", T("This month", "इस महीने")], ["last", T("Last month", "पिछला महीना")], ["fy", T("This financial year", "इस वित्त वर्ष")]] as [string, string][]).map(([k, l]) => (
           <button key={k} type="button" onClick={() => pick(k)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${preset === k ? "border-brand bg-brand/10 text-brand-ink" : "border-border"}`}>{l}</button>

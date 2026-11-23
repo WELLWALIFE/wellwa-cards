@@ -12,6 +12,7 @@ import { StockLabel } from "@/components/jewellery/stock-label";
 import { grams, inr, type JwSetup } from "@/lib/jewellery";
 import type { JwAccess } from "@/lib/jewellery-types";
 import { STOCK_STATUSES, type StockRow, type StockStatus } from "@/lib/jewellery-stock";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { item: StockRow; bill: { id: string; code: string; customer_name: string } | null; setup: JwSetup; access: JwAccess; error?: string };
 
@@ -64,6 +65,7 @@ export default function StockPiece() {
         <h1 className="text-lg font-bold">{s.tag} <span className="text-sm font-normal text-muted">· {it ? (hi ? it.hi : it.en) : s.item_type} {purity}</span></h1>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${s.status === "sold" ? "bg-good/15 text-good" : s.status === "in_stock" ? "bg-brand/10 text-brand-ink" : "bg-amber-100 text-amber-800"}`}>{st ? (hi ? st.hi : st.en) : s.status}</span>
       </div>
+      <PageHelp k="stockPiece" />
       {s.status === "sold" && d.bill && <p className="text-sm">{T("Sold on", "बिका —")} <Link href={`/poster/jewellery/bill/${d.bill.id}${asQ}`} className="font-semibold text-brand-ink">{d.bill.code}</Link>{d.bill.customer_name ? ` · ${d.bill.customer_name}` : ""}</p>}
       {s.status_note && <p className="text-xs text-muted">{s.status_note}</p>}
 

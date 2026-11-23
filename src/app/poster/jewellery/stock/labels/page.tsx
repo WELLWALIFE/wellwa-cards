@@ -11,6 +11,7 @@ import { useWorkspace } from "@/components/orders/orders-common";
 import { StockLabel, type LabelSize } from "@/components/jewellery/stock-label";
 import type { JwSetup } from "@/lib/jewellery";
 import type { StockRow } from "@/lib/jewellery-stock";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Ans = { items: StockRow[]; setup: JwSetup; shop: string; error?: string };
 const KEY = "jw-label-size";
@@ -49,6 +50,7 @@ function Labels() {
       <Link href={`/poster/jewellery/stock${asQ}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted print:hidden"><ArrowLeft className="h-4 w-4" /> {T("Stock", "स्टॉक")}</Link>
       <div className="space-y-3 rounded-2xl border border-border bg-surface p-3 print:hidden">
         <h1 className="text-lg font-bold">{T(`Labels (${items.length})`, `लेबल (${items.length})`)}</h1>
+        <PageHelp k="labels" />
         <div className="flex flex-wrap gap-2">
           {([["tag", T("Jewellery tag 95 × 12 mm", "ज्वेलरी टैग 95 × 12 mm")], ["sticker", T("Sticker 50 × 25 mm", "स्टिकर 50 × 25 mm")]] as [LabelSize, string][]).map(([k, l]) => (
             <button key={k} type="button" onClick={() => pick(k)} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${size === k ? "border-brand bg-brand/10 text-brand-ink" : "border-border"}`}>{l}</button>

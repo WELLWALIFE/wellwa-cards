@@ -9,6 +9,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { grams, inr } from "@/lib/jewellery";
 import type { GirviRow, GirviState } from "@/lib/jewellery-finance";
+import { PageHelp } from "@/components/jewellery/page-help";
 
 type Row = GirviRow & { state: GirviState };
 type Ans = { loans: Row[]; today: string; totals: { count: number; principal: number; interest: number; overdue: number }; error?: string };
@@ -39,6 +40,7 @@ export default function Girvi() {
         <h1 className="text-lg font-bold">{T("Girvi", "गिरवी")}</h1>
         <Link href={`/poster/jewellery/girvi/new${asQ}`} className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> {T("New loan", "नया लोन")}</Link>
       </div>
+      <PageHelp k="girvi" />
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
       {d && (
         <div className="grid grid-cols-3 gap-2">
