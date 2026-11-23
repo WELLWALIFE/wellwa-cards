@@ -15,6 +15,11 @@ export const istDate = (iso: string) => new Date(new Date(iso).getTime() + 330 *
 export const inRange = (day: string, r: Range) => day >= r.from && day <= r.to;
 
 type OrderLike = { code: string; status: string; payments: Payment[] };
+/** Gold scheme instalments and girvi money (phase 5): money in on its own day; a girvi loan given is money out on its day. */
+export type FinanceLike = {
+  schemes?: { status: string; payments: Payment[] }[];
+  girvi?: { status: string; loan_paise: number; start_day: string; payments: (Payment & { interest?: number; principal?: number })[] }[];
+};
 type Money = Record<Payment["mode"], number>;
 const zeroMoney = (): Money => ({ cash: 0, upi: 0, card: 0, bank: 0, cheque: 0, other: 0 });
 
@@ -25,6 +30,7 @@ export type Report = {
   bills: number; total: number; taxable: number; making: number; discount: number; cgst: number; sgst: number; igst: number; gst: number; roundOff: number;
   oldValue: number; oldFine: Record<Metal, number>;
   money: Money; moneyTotal: number; fromBills: number; fromOrders: number;
+  fromSchemes: number; girviInterest: number; girviPrincipal: number; girviGiven: number;
   byDay: { day: string; bills: number; total: number; gst: number; money: number }[];
   byPurity: { purity: string; label: string; pieces: number; netMg: number; fineMg: number; amount: number }[];
   hsn: HsnRow[]; b2b: B2bRow[];
@@ -40,12 +46,13 @@ export function split(amount: number, weights: number[]): number[] {
   return weights.map((w, i) => { if (i === weights.length - 1) return left; const x = Math.round((amount * w) / sum); left -= x; return x; });
 }
 
-export function buildReport(allBills: BillRow[], orders: OrderLike[], setup: Pick<JwSetup, "gstBp" | "gstMakingBp" | "stateCode" | "roundTo" | "purities">, range: Range): Report {
+export function buildReport(allBills: BillRow[], orders: OrderLike[], setup: Pick<JwSetup, "gstBp" | "gstMakingBp" | "stateCode" | "roundTo" | "purities">, range: Range, finance: FinanceLike = {}): Report {
   const live = allBills.filter((b) => b.kind === "sale" && b.status !== "cancelled");
   const sales = live.filter((b) => inRange(istDate(b.created_at), range)).sort((a, b) => a.created_at.localeCompare(b.created_at));
   const rep: Report = {
     range, bills: sales.length, total: 0, taxable: 0, making: 0, discount: 0, cgst: 0, sgst: 0, igst: 0, gst: 0, roundOff: 0,
     oldValue: 0, oldFine: { gold: 0, silver: 0, platinum: 0 }, money: zeroMoney(), moneyTotal: 0, fromBills: 0, fromOrders: 0,
+    fromSchemes: 0, girviInterest: 0, girviPrincipal: 0, girviGiven: 0,
     byDay: [], byPurity: [], hsn: [], b2b: [], b2c: [], sales: [],
   };
   const days = new Map<string, { day: string; bills: number; total: number; gst: number; money: number }>();
@@ -82,16 +89,23 @@ export function buildReport(allBills: BillRow[], orders: OrderLike[], setup: Pic
   }
 
   // Money in, on the day it came: bill payments (any live sale bill) and order / repair payments (not cancelled orders).
-  const take = (p: Payment, from: "bill" | "order") => {
-    if (!p?.at || !(p.paise > 0)) return;
+  const take = (p: Payment, from: "bill" | "order" | "scheme" | "girvi"): boolean => {
+    if (!p?.at || !(p.paise > 0)) return false;
     const d = istDate(p.at);
-    if (!inRange(d, range)) return;
+    if (!inRange(d, range)) return false;
     rep.money[p.mode] = (rep.money[p.mode] ?? 0) + p.paise; rep.moneyTotal += p.paise;
-    if (from === "bill") rep.fromBills += p.paise; else rep.fromOrders += p.paise;
+    if (from === "bill") rep.fromBills += p.paise; else if (from === "order") rep.fromOrders += p.paise; else if (from === "scheme") rep.fromSchemes += p.paise;
     dayRow(d).money += p.paise;
+    return true;
   };
   for (const b of live) for (const p of b.payments ?? []) take(p, "bill");
   for (const o of orders) if (o.status !== "cancelled") for (const p of o.payments ?? []) take(p, "order");
+  // Scheme instalments stay counted even when the scheme was later used on a bill (the bill counts them as its advance, not as money).
+  for (const s of finance.schemes ?? []) for (const p of s.payments ?? []) take(p, "scheme");
+  for (const g of finance.girvi ?? []) {
+    for (const p of g.payments ?? []) if (take(p, "girvi")) { rep.girviInterest += p.interest ?? 0; rep.girviPrincipal += p.principal ?? 0; }
+    if (inRange(g.start_day, range)) rep.girviGiven += g.loan_paise;
+  }
 
   rep.byDay = [...days.values()].sort((a, b) => a.day.localeCompare(b.day));
   rep.byPurity = [...pur.values()].sort((a, b) => b.netMg - a.netMg);
@@ -146,6 +160,9 @@ export function dayCloseText(r: Report, shop: string, dueTotal: number): string 
     `📒 ${shop} — Day close ${day}`,
     `Bills: ${r.bills} · Sale ${inr(r.total)} (GST ${inr(r.gst)})`,
     `Money in: ${inr(r.moneyTotal)}${modes.length ? ` (${modes.join(", ")})` : ""}`,
+    r.fromSchemes ? `  of which gold scheme: ${inr(r.fromSchemes)}` : "",
+    r.girviInterest || r.girviPrincipal ? `  of which girvi: interest ${inr(r.girviInterest)}, principal ${inr(r.girviPrincipal)}` : "",
+    r.girviGiven ? `Girvi loans given (money out): ${inr(r.girviGiven)}` : "",
     r.oldValue ? `Old gold taken: ${(r.oldFine.gold / 1000).toFixed(3)} g fine · ${inr(r.oldValue)}` : "",
     `Udhaar outstanding (all bills): ${inr(dueTotal)}`,
   ].filter(Boolean).join("\n");

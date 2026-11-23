@@ -28,14 +28,17 @@ export async function GET(request: Request) {
   const a = startOf(from), b = startOf(nextDay(to));
   const o = scope.ownerId;
   // Sale bills made in the range, and any bill touched since (a payment taken later counts on its own day).
-  const [bills, orders, due, shop] = await Promise.all([
+  const [bills, orders, due, shop, schemes, girvi] = await Promise.all([
     restAsService<BillRow[]>(`jw_bills?owner_id=eq.${o}&kind=eq.sale&or=(and(created_at.gte.${a},created_at.lt.${b}),updated_at.gte.${a})&select=${BILL_COLS}&order=created_at&limit=10000`),
     restAsService<{ code: string; status: string; payments: Payment[] }[]>(`jw_orders?owner_id=eq.${o}&or=(created_at.gte.${a},updated_at.gte.${a})&select=code,status,payments&limit=10000`),
     restAsService<{ balance_paise: number }[]>(`jw_bills?owner_id=eq.${o}&kind=eq.sale&status=eq.open&balance_paise=gt.0&select=balance_paise&limit=20000`),
     shopName(o),
+    // Gold scheme instalments and girvi money (phase 5); an empty list when those tables are not there yet.
+    restAsService<{ status: string; payments: Payment[] }[]>(`jw_schemes?owner_id=eq.${o}&or=(created_at.gte.${a},updated_at.gte.${a})&select=status,payments&limit=10000`).catch(() => ({ data: [] })),
+    restAsService<{ status: string; loan_paise: number; start_day: string; payments: (Payment & { interest?: number; principal?: number })[] }[]>(`jw_girvi?owner_id=eq.${o}&or=(created_at.gte.${a},updated_at.gte.${a})&select=status,loan_paise,start_day,payments&limit=10000`).catch(() => ({ data: [] })),
   ]);
   if (!bills.ok) return NextResponse.json({ error: "Could not load the bills." }, { status: 500 });
-  const report = buildReport(list(bills), list(orders), setup, { from, to });
+  const report = buildReport(list(bills), list(orders), setup, { from, to }, { schemes: list(schemes as { data: { status: string; payments: Payment[] }[] | null }), girvi: list(girvi as { data: { status: string; loan_paise: number; start_day: string; payments: (Payment & { interest?: number; principal?: number })[] }[] | null }) });
   const dueRows = list(due);
   return NextResponse.json({
     report, today, shop: setup.shopName || shop, stateCode: setup.stateCode, gstin: setup.gstin,

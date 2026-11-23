@@ -10,6 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 import { balanceOf, can, cleanPhone, daysFor, fieldsFor, flowFor, fmtDay, isDueToday, isLate, isoPlus, nextStep, receiptMessage, rupees, stepLabel, toPaise, workFor, type JobRow, type JobSetup, type Karigar, type Measurement } from "@/lib/jobs";
 import { StartList } from "@/components/orders/start-list";
 import { Fold, JobPhotos, MeasureEditor, MeasurementView, PickChips, StatusBadge, WorkspaceSwitch, blankDraft, draftFilled, draftFrom, useJobSetup, useWorkspace, type MeasureDraft, type Me, type Member } from "@/components/orders/orders-common";
+import { SilaiTip } from "@/components/orders/silai-tip";
 
 type ListAnswer = { jobs: JobRow[]; role: "owner" | "manager" | "agent"; me: Me; karigars: Karigar[]; team: Member[]; counts: Record<string, number>; setup: JobSetup; error?: string };
 type Customer = { name: string; orders: number; last: string; lastAt: string; pendingPaise: number } | null;
@@ -320,10 +321,10 @@ function NewOrder({ hi, q, data, onClose, onSaved }: { hi: boolean; q: string; d
       <Fold hi={hi} icon={icon(UserRound)} title={T("1 · Customer", "1 · ग्राहक")} open={open.customer} onToggle={() => setOpen({ ...open, customer: !open.customer })}
         summary={[name, ten.length === 10 ? ten : ""].filter(Boolean).join(" · ") || T("Name and mobile", "नाम और मोबाइल")}>
         <div className="grid gap-2 sm:grid-cols-2">
-          <label className={label}>{T("Mobile", "मोबाइल")}
+          <label className={label}>{T("Mobile", "मोबाइल")}<SilaiTip k="Mobile" />
             <span className="relative block"><input autoFocus className={`${field} ${phoneBad ? "border-danger" : ""}`} inputMode="numeric" autoComplete="off" placeholder="98xxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value)} />{looking && <LoaderCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted" />}</span>
           </label>
-          <label className={label}>{T("Name", "नाम")}<input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder={ten.length === 10 && !customer && !looking ? T("New customer — write the name", "नया ग्राहक — नाम लिखें") : ""} /></label>
+          <label className={label}>{T("Name", "नाम")}<SilaiTip k="Name" /><input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder={ten.length === 10 && !customer && !looking ? T("New customer — write the name", "नया ग्राहक — नाम लिखें") : ""} /></label>
         </div>
         {customer ? (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
@@ -388,10 +389,10 @@ function NewOrder({ hi, q, data, onClose, onSaved }: { hi: boolean; q: string; d
             </div>
             <textarea className={field} rows={2} placeholder={T("Details — colour, design, lining…", "Detail — रंग, design, lining…")} value={it.details} onChange={(e) => set(it.key, { details: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
-              {money && <label className={label}>{T("Charge ₹", "Charge ₹")}<input className={field} inputMode="decimal" value={it.amount} onChange={(e) => set(it.key, { amount: e.target.value })} /></label>}
-              <label className={label}>{T("Pieces", "Pieces")}<input className={field} inputMode="numeric" value={it.qty} onChange={(e) => set(it.key, { qty: e.target.value })} /></label>
+              {money && <label className={label}>{T("Charge ₹", "Charge ₹")}<SilaiTip k="Charge ₹" /><input className={field} inputMode="decimal" value={it.amount} onChange={(e) => set(it.key, { amount: e.target.value })} /></label>}
+              <label className={label}>{T("Pieces", "Pieces")}<SilaiTip k="Pieces" /><input className={field} inputMode="numeric" value={it.qty} onChange={(e) => set(it.key, { qty: e.target.value })} /></label>
               {assign && (
-                <label className={label}>{T("Karigar", "कारीगर")}
+                <label className={label}>{T("Karigar", "कारीगर")}<SilaiTip k="Karigar" />
                   <select className={field} value={it.karigar_id} onChange={(e) => set(it.key, { karigar_id: e.target.value })}>
                     <option value="">{T("Later", "बाद में")}</option>
                     {data.karigars.filter((k) => k.active).map((k) => <option key={k.id} value={k.id}>{k.name}{k.skill ? ` · ${k.skill}` : ""}</option>)}
@@ -399,7 +400,7 @@ function NewOrder({ hi, q, data, onClose, onSaved }: { hi: boolean; q: string; d
                 </label>
               )}
               {assign && data.team.length > 0 && (
-                <label className={label}>{T("Tailor in the app", "App वाला tailor")}
+                <label className={label}>{T("Tailor in the app", "App वाला tailor")}<SilaiTip k="Tailor in the app" />
                   <select className={field} value={it.assigned_to} onChange={(e) => set(it.key, { assigned_to: e.target.value })}>
                     <option value="">{T("Later", "बाद में")}</option>
                     {data.team.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -417,12 +418,12 @@ function NewOrder({ hi, q, data, onClose, onSaved }: { hi: boolean; q: string; d
       <Fold hi={hi} icon={icon(CalendarDays)} title={T(`${items.length + 2} · Delivery & payment`, `${items.length + 2} · Delivery और पैसे`)} open={open.money} onToggle={() => setOpen({ ...open, money: !open.money })}
         summary={[due ? fmtDay(due) : "", total ? `${T("Total", "कुल")} ${rupees(total)}` : "", adv ? `${T("Advance", "Advance")} ${rupees(adv)}` : ""].filter(Boolean).join(" · ") || T("Date and advance", "तारीख और advance")}>
         <div className="grid gap-2 sm:grid-cols-2">
-          <label className={label}>{T("Delivery date", "देने की तारीख")}
+          <label className={label}>{T("Delivery date", "देने की तारीख")}<SilaiTip k="Delivery date" />
             <input type="date" className={field} value={due} min={isoPlus(0)} onChange={(e) => { setDue(e.target.value); setDueByHand(true); }} />
             <span className="mt-1.5 flex flex-wrap gap-1.5">{[...new Set([2, 3, 5, 7, 10, 15, setup.setup.dueDays || 0].filter(Boolean))].sort((a, b) => a - b).map((d) => <button key={d} type="button" onClick={() => { setDue(isoPlus(d)); setDueByHand(true); }} className={`rounded-full border px-2.5 py-1 text-[11px] ${due === isoPlus(d) ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border bg-surface"}`}>{d} {T("days", "दिन")}</button>)}</span>
             {due && !dueByHand && <span className="mt-1 block text-[11px] text-muted">{T("Your usual time (Setup) — change if needed.", "आपका आम समय (Setup) — ज़रूरत हो तो बदलें।")}</span>}
           </label>
-          {money && <label className={label}>{T("Advance received ₹", "Advance मिला ₹")}<input inputMode="decimal" className={field} value={advance} onChange={(e) => setAdvance(e.target.value)} /></label>}
+          {money && <label className={label}>{T("Advance received ₹", "Advance मिला ₹")}<SilaiTip k="Advance received ₹" /><input inputMode="decimal" className={field} value={advance} onChange={(e) => setAdvance(e.target.value)} /></label>}
         </div>
         {total > 0 && (
           <div className="grid grid-cols-3 gap-2 rounded-xl bg-bg p-3 text-center text-sm">

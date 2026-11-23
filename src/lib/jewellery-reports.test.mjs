@@ -55,3 +55,15 @@ test("CSV: quoted where needed, a formula is never run, Excel's BOM first", () =
   assert.match(R.hsnCsv(r), /7113,Articles of jewellery,GMS,1,5\.000,36000\.00/);
   assert.match(R.dayCloseText(r, "Shop", 0), /Sale ₹37,080/);
 });
+
+test("scheme instalments and girvi money count on their day; a girvi loan given is money out", () => {
+  const fin = {
+    schemes: [{ status: "redeemed", payments: [{ mode: "cash", paise: 200000, ref: "", at: "2026-11-23T05:00:00Z" }, { mode: "upi", paise: 200000, ref: "", at: "2026-10-23T05:00:00Z" }] }],
+    girvi: [{ status: "closed", loan_paise: 4500000, start_day: "2026-11-23", payments: [{ mode: "cash", paise: 4566575, ref: "", at: "2026-11-23T09:00:00Z", interest: 66575, principal: 4500000 }] }],
+  };
+  const r = R.buildReport([], [], setup, { from: "2026-11-23", to: "2026-11-23" }, fin);
+  assert.equal(r.fromSchemes, 200000);
+  assert.equal(r.girviInterest, 66575); assert.equal(r.girviPrincipal, 4500000); assert.equal(r.girviGiven, 4500000);
+  assert.equal(r.money.cash, 200000 + 4566575); assert.equal(r.moneyTotal, 4766575);
+  assert.match(R.dayCloseText(r, "Shop", 0), /Girvi loans given \(money out\): ₹45,000/);
+});

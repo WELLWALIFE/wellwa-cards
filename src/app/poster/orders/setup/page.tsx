@@ -7,6 +7,7 @@ import { ArrowDown, ArrowUp, ChevronLeft, GitBranch, LoaderCircle, Plus, RotateC
 import { useT } from "@/lib/poster-i18n";
 import { DEFAULT_SETUP, stepKey, stepLabel, type JobSetup } from "@/lib/jobs";
 import { Fold, useJobSetup, useWorkspace } from "@/components/orders/orders-common";
+import { SilaiTip } from "@/components/orders/silai-tip";
 
 export default function OrdersSetupPage() {
   const { lang } = useT(); const hi = lang !== "en";
@@ -64,7 +65,7 @@ export default function OrdersSetupPage() {
                 <button type="button" className={small} disabled={i === s.steps.length - 1} onClick={() => change({ ...s, steps: move(s.steps, i, 1) })} aria-label="Down"><ArrowDown className="h-3.5 w-3.5" /></button>
                 <button type="button" className={small} onClick={() => { if (confirm(T(`Remove the step “${st.name}”? Jobs on it stay there.`, `“${st.name}” step हटाएँ? जो job उस पर हैं वहीं रहेंगे।`))) change({ ...s, steps: s.steps.filter((x) => x.key !== st.key), items: s.items.map((it) => (it.steps ? { ...it, steps: it.steps.filter((k) => k !== st.key) } : it)) }); }} aria-label="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
-              <label className="flex items-center gap-2 pl-6 text-[11px] font-semibold text-muted">{T("Whose work", "किसका काम")}
+              <label className="flex items-center gap-2 pl-6 text-[11px] font-semibold text-muted">{T("Whose work", "किसका काम")}<SilaiTip k="Whose work" />
                 <select className={`${field} py-1.5 text-xs`} value={st.who} onChange={(e) => change({ ...s, steps: s.steps.map((x) => (x.key === st.key ? { ...x, who: e.target.value } : x)) })}>
                   <option value="">{T("Nobody fixed — give per job", "कोई तय नहीं — हर job पर दें")}</option>
                   {staff.length > 0 && <optgroup label={T("Staff (app login)", "Staff (app login)")}>{staff.map((p) => <option key={p.who} value={p.who}>{p.name}{p.title ? ` · ${p.title}` : ""}{p.joined ? "" : T(" (not joined yet)", " (अभी जुड़े नहीं)")}</option>)}</optgroup>}
@@ -104,13 +105,13 @@ export default function OrdersSetupPage() {
                 <button type="button" className={small} disabled={i === s.items.length - 1} onClick={() => change({ ...s, items: move(s.items, i, 1) })} aria-label="Down"><ArrowDown className="h-3.5 w-3.5" /></button>
               </span>}>
               <div className="grid grid-cols-[1fr_auto] gap-2">
-                <label className="block text-[11px] font-semibold text-muted">{T("Usual work (picked by itself)", "आम काम (अपने-आप चुना जाएगा)")}
+                <label className="block text-[11px] font-semibold text-muted">{T("Usual work (picked by itself)", "आम काम (अपने-आप चुना जाएगा)")}<SilaiTip k="Usual work (picked by itself)" />
                   <select className={field} value={it.work ?? ""} onChange={(e) => setItem(it.name, { work: e.target.value })}>
                     <option value="">—</option>
                     {s.works.map((w) => <option key={w} value={w}>{w}</option>)}
                   </select>
                 </label>
-                <label className="block text-[11px] font-semibold text-muted">{T("Days", "दिन")}
+                <label className="block text-[11px] font-semibold text-muted">{T("Days", "दिन")}<SilaiTip k="Days" />
                   <input className={`${field} w-20 text-center`} inputMode="numeric" placeholder={String(s.dueDays || "")} value={it.days || ""} onChange={(e) => setItem(it.name, { days: Math.max(0, Math.min(90, Math.round(Number(e.target.value) || 0))) })} />
                 </label>
               </div>

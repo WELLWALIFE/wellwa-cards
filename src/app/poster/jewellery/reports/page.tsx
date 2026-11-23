@@ -91,6 +91,9 @@ export default function Reports() {
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
               {(Object.entries(r.money) as [string, number][]).filter(([, v]) => v > 0).map(([k, v]) => <p key={k} className="flex justify-between"><span className="text-muted">{modeName[k] ?? k}</span><b className="tabular-nums">{inr(v)}</b></p>)}
+              {r.fromSchemes > 0 && <p className="flex justify-between"><span className="text-muted">{T("of it: gold scheme", "इनमें: गोल्ड स्कीम")}</span><span className="tabular-nums">{inr(r.fromSchemes)}</span></p>}
+              {(r.girviInterest > 0 || r.girviPrincipal > 0) && <p className="flex justify-between"><span className="text-muted">{T("of it: girvi (interest / principal)", "इनमें: गिरवी (ब्याज / मूल)")}</span><span className="tabular-nums">{inr(r.girviInterest)} / {inr(r.girviPrincipal)}</span></p>}
+              {r.girviGiven > 0 && <p className="flex justify-between"><span className="text-muted">{T("Girvi loans given (out)", "गिरवी लोन दिए (बाहर)")}</span><span className="tabular-nums text-danger">− {inr(r.girviGiven)}</span></p>}
               <p className="flex justify-between"><span className="text-muted">CGST</span><span className="tabular-nums">{inr(r.cgst)}</span></p>
               <p className="flex justify-between"><span className="text-muted">SGST</span><span className="tabular-nums">{inr(r.sgst)}</span></p>
               <p className="flex justify-between"><span className="text-muted">IGST</span><span className="tabular-nums">{inr(r.igst)}</span></p>
