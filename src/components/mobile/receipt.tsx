@@ -1,7 +1,7 @@
 // The printable mobile-shop bill: a 58 / 80 mm thermal slip or an A5 / A4 sheet (Settings → paper). The same component draws the
 // shop's copy and the customer's link (/mb). Cost and profit are never drawn.
 import { inr, inWords } from "@/lib/jewellery";
-import { billInputOf, billTotals, type BillRow, type MsSetup } from "@/lib/mobile";
+import { billInputOf, billTotals, lineAmounts, type BillRow, type MsSetup } from "@/lib/mobile";
 
 const day = (d: string) => new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const MODE: Record<string, string> = { cash: "Cash", upi: "UPI", card: "Card", bank: "Bank", cheque: "Cheque", other: "Other" };
@@ -31,7 +31,7 @@ export function Receipt({ bill, setup, shop }: { bill: BillRow; setup: MsSetup; 
                 {l.imei && <span className="block">IMEI {l.imei}</span>}
                 {l.warrantyMonths > 0 && <span className="block opacity-80">Warranty {l.warrantyMonths} months</span>}
                 {l.discount > 0 && <span className="block opacity-80">Disc − {inr(l.discount)}</span>}</td>
-              <td className="text-right">{l.qty}</td><td className="whitespace-nowrap text-right">{inr(l.price)}</td><td className="whitespace-nowrap text-right font-semibold">{inr(t.lines[i]?.net ?? 0)}</td>
+              <td className="text-right">{l.qty}</td><td className="whitespace-nowrap text-right">{inr(l.price)}</td><td className="whitespace-nowrap text-right font-semibold">{inr(lineAmounts(l, false).net)}</td>
             </tr>
           ))}
         </tbody>
