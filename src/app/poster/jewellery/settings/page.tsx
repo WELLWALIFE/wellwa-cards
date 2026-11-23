@@ -80,6 +80,12 @@ export default function JewellerySettings() {
         <p className="text-[11px] text-muted">{T("Confirm the GST on making with your CA. A finished-jewellery sale is usually one supply at 3%.", "मेकिंग पर GST अपने CA से confirm करें। तैयार ज्वेलरी की बिक्री आमतौर पर पूरी 3% पर होती है।")}</p>
       </section>
 
+      <label className={`${box} flex cursor-pointer items-start gap-3`}>
+        <input type="checkbox" checked={s.showRate} onChange={(e) => set({ showRate: e.target.checked })} className="mt-0.5 h-4 w-4" />
+        <span><span className="block text-sm font-bold">{T("Show today's rate on my website and V-Card", "आज का रेट मेरी वेबसाइट और V-Card पर दिखाएँ")}</span>
+          <span className="block text-xs text-muted">{T("The purities switched on below, gold per 10 g and silver per 1 kg. A rate older than 3 days is not shown.", "नीचे चालू purity — सोना 10 g, चाँदी 1 kg के हिसाब से। 3 दिन से पुराना रेट नहीं दिखता।")}</span></span>
+      </label>
+
       <section className={box}>
         <div className="flex items-center justify-between"><h2 className="text-sm font-bold">{T("Purities you sell", "आप कौन-सी purity बेचते हैं")}</h2>
           <button type="button" onClick={() => set({ purities: [...s.purities, { key: `c${Date.now().toString(36)}`, metal: "gold", label: "22K KDM", fine: 916, on: true }] })} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" /> {T("Add", "जोड़ें")}</button></div>

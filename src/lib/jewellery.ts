@@ -91,12 +91,14 @@ export type JwSetup = {
   phone: string;
   /** Staff rights by team row id (crm_agents.id). */
   staff: Record<string, { title: string; rights: JwRight[] }>;
+  /** Today's rate is shown on the shop's website and V-Card (and the rate poster can be shared). */
+  showRate: boolean;
 };
 export const DEFAULT_TERMS = "Goods once sold can be exchanged as per shop policy. Weights and purity as per the bill. Subject to local jurisdiction.";
 export const DEFAULT_JW_SETUP: JwSetup = {
   purities: DEFAULT_PURITIES, items: DEFAULT_ITEM_TYPES, gstBp: 300, gstMakingBp: 300, stateCode: "", gstin: "", bis: "",
   billPrefix: "INV", estimatePrefix: "EST", roundTo: 1, counterDiscountBp: 1000, panAbovePaise: 20000000, oldGoldDeductBp: 200,
-  terms: DEFAULT_TERMS, bank: "", shopName: "", address: "", phone: "", staff: {},
+  terms: DEFAULT_TERMS, bank: "", shopName: "", address: "", phone: "", staff: {}, showRate: true,
 };
 
 const int = (v: unknown, min: number, max: number, d: number) => {
@@ -144,6 +146,7 @@ export function cleanJwSetup(v: unknown): JwSetup {
     bank: String(s.bank ?? "").slice(0, 300),
     shopName: txt(s.shopName, 80), address: String(s.address ?? "").slice(0, 300), phone: txt(s.phone, 30),
     staff,
+    showRate: s.showRate !== false,
   };
 }
 
@@ -366,8 +369,19 @@ export function billMessage(b: Pick<BillRow, "kind" | "code" | "customer_name" |
 }
 
 /** "Today's rate" for WhatsApp, the card and the poster. */
+/** The rate as the public sees it (website, V-Card, poster): the shop's switched-on purities that have a rate, gold and platinum
+ *  per 10 g, silver per 1 kg (how shops quote it). At most 6 rows. */
+export type PublicRate = { day: string; rows: { label: string; metal: Metal; paise: number; unit: "10 g" | "1 kg" }[] };
+export function publicRate(book: RateBook | null, setup: JwSetup): PublicRate | null {
+  if (!book) return null;
+  const rows = setup.purities.filter((p) => p.on).map((p) => {
+    const g = sellRate(book, setup, p.key);
+    return { label: p.label, metal: p.metal, paise: p.metal === "silver" ? g * 1000 : g * 10, unit: (p.metal === "silver" ? "1 kg" : "10 g") as "10 g" | "1 kg" };
+  }).filter((x) => x.paise > 0).slice(0, 6);
+  return rows.length ? { day: book.day, rows } : null;
+}
+
 export function rateMessage(book: RateBook, setup: JwSetup, shop: string): string {
-  const shown = setup.purities.filter((p) => p.on && sellRate(book, setup, p.key) > 0);
-  const lines = shown.map((p) => `${p.label}: ${inr(sellRate(book, setup, p.key) * 10)} / 10 g`);
+  const lines = (publicRate(book, setup)?.rows ?? []).map((r) => `${r.label}: ${inr(r.paise)} / ${r.unit}`);
   return [`✨ ${shop} — आज का रेट (${new Date(`${book.day}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})`, ...lines, "GST अलग।"].join("\n");
 }

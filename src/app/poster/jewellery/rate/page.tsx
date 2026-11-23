@@ -4,13 +4,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, LoaderCircle, MessageCircle } from "lucide-react";
+import { ArrowLeft, Check, ImageDown, LoaderCircle, MessageCircle } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { inr, paiseOf, rateMessage, sellRate, type JwSetup, type RateBook } from "@/lib/jewellery";
 
-type Ans = { rate: RateBook | null; history: { day: string; sell: Record<string, number>; set_by_name: string; updated_at: string }[]; today: string; setup: JwSetup; error?: string };
+type Ans = { rate: RateBook | null; history: { day: string; sell: Record<string, number>; set_by_name: string; updated_at: string }[]; today: string; setup: JwSetup; username?: string; error?: string };
 
 export default function RatePage() {
   const router = useRouter();
@@ -83,6 +83,7 @@ export default function RatePage() {
         </details>
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <button type="button" disabled={busy} onClick={() => void save()} className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {T("Save today's rate", "आज का रेट Save करें")}</button>
+          {d.username && d.rate?.day === d.today && <a href={`/api/jewellery/rate-poster/${encodeURIComponent(d.username)}?v=${encodeURIComponent(d.history[0]?.updated_at ?? d.today)}`} target="_blank" rel="noreferrer" download={`rate-${d.today}.png`} className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold"><ImageDown className="h-4 w-4 text-brand-ink" /> {T("Rate poster", "रेट पोस्टर")}</a>}
           <a href={`https://wa.me/?text=${encodeURIComponent(share)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold"><MessageCircle className="h-4 w-4 text-[#25D366]" /> {T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
         </div>
         {msg && <p className={`text-sm font-semibold ${msg.ok ? "text-good" : "text-danger"}`}>{msg.t}</p>}

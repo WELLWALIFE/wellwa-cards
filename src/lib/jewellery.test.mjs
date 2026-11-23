@@ -6,7 +6,7 @@ import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url, { alias: { "@": new URL("../", import.meta.url).pathname } });
 const J = await jiti.import("./jewellery.ts");
-const { billTotals, lineAmounts, oldAmounts, sellRate, fineBuyRate, inWords, grams, mgOf, inr, finYear, cleanJwSetup, cleanLine, DEFAULT_JW_SETUP } = J;
+const { billTotals, lineAmounts, oldAmounts, sellRate, fineBuyRate, publicRate, rateMessage, inWords, grams, mgOf, inr, finYear, cleanJwSetup, cleanLine, DEFAULT_JW_SETUP } = J;
 
 const setup = { ...DEFAULT_JW_SETUP, stateCode: "06" };
 const ring = (o = {}) => cleanLine({ desc: "Ring", itemType: "ring", purity: "g22", pieces: 1, grossMg: 5200, stoneMg: 200, rate: 650000, making: "per_g", makingValue: 50000, stonePaise: 100000, ...o });
@@ -97,4 +97,17 @@ test("a saved setup is cleaned: numbers in range, defaults kept", () => {
   assert.equal(cleanJwSetup(null).items.length > 5, true);
   const l = cleanLine({ grossMg: -5, huid: "ab-12 cd", making: "evil" });
   assert.equal(l.grossMg, 0); assert.equal(l.huid, "AB12CD"); assert.equal(l.making, "per_g");
+});
+
+test("public rate: switched-on purities, gold per 10 g, silver per kg; shown by default", () => {
+  assert.equal(cleanJwSetup(null).showRate, true);
+  assert.equal(cleanJwSetup({ showRate: false }).showRate, false);
+  const r = publicRate({ day: "2026-11-23", sell: { g24: 720000, s999: 9000 }, buy: {} }, setup);
+  const by = Object.fromEntries(r.rows.map((x) => [x.label, x]));
+  assert.equal(r.rows.length <= 6, true);
+  assert.equal(by["24K (999)"]?.paise ?? r.rows[0].paise, 7200000);   // ₹72,000 / 10 g
+  const silver = r.rows.find((x) => x.metal === "silver");
+  assert.equal(silver.unit, "1 kg"); assert.equal(silver.paise, 9000000); // ₹90,000 / kg
+  assert.equal(publicRate(null, setup), null);
+  assert.match(rateMessage({ day: "2026-11-23", sell: { g24: 720000 }, buy: {} }, setup, "Shop"), /₹72,000 \/ 10 g/);
 });

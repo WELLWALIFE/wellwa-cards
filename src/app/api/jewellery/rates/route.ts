@@ -6,8 +6,11 @@ import { istDay, jwCtx, jwDenied, jwHas, rateHistory, rateOf } from "@/lib/jewel
 export async function GET(request: Request) {
   const c = await jwCtx(request, new URL(request.url).searchParams.get("as"));
   if (!c.ok) return c.res;
-  const [rate, history] = await Promise.all([rateOf(c.scope.ownerId), rateHistory(c.scope.ownerId, 30)]);
-  return NextResponse.json({ rate, history, today: istDay(), setup: c.setup });
+  const [rate, history, card] = await Promise.all([rateOf(c.scope.ownerId), rateHistory(c.scope.ownerId, 30),
+    restAsService<{ username: string }[]>(`cards?owner_id=eq.${c.scope.ownerId}&select=username&order=created_at&limit=1`).catch(() => null)]);
+  // The shop's card name, for the rate poster's address (/api/jewellery/rate-poster/<username>).
+  const username = Array.isArray(card?.data) ? card.data[0]?.username ?? "" : "";
+  return NextResponse.json({ rate, history, today: istDay(), setup: c.setup, username });
 }
 
 const clean = (v: unknown, keys: Set<string>) => {

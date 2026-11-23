@@ -9,6 +9,7 @@
 // photos, reviews, FAQ and the map that live on the other pages, each linking to its page. The design — palette,
 // fonts, hero layout, corners — comes from card.site.style (src/lib/site-style.ts), with the card's colour and
 // look as the fallback, so a website that never chose a style still wears its brand colour.
+import { TodayRate } from "@/components/jewellery/today-rate";
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { firstSentence } from "@/lib/first-sentence";
 import { X, Download, Check, FileText, Copy, Play, UserPlus, CalendarClock, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
@@ -545,6 +546,8 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
 
         {isHome && (
           <>
+            {/* ---- today's gold / silver rate of a Shubhora Jewellery shop (card.jewelRate, this request only) ---- */}
+            {card.jewelRate && <div className="mx-auto max-w-6xl px-5 md:px-6 pt-6"><TodayRate rate={card.jewelRate} accent={card.themeColor} hi={hiNow} /></div>}
             {/* ---- "good to know" (§4.1): the facilities in one quiet line, hairlines above and below ---- */}
             {pills.length >= 2 && (
               <section className="mx-auto max-w-6xl px-5 md:px-6 pt-6">

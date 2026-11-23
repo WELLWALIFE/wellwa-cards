@@ -300,6 +300,9 @@ export interface Card {
   /** A Shubhora seller who switched the partner programme off (AI Training): the assistant sells software and websites only and never
    *  speaks of the income plan (bridge/shubhora-agent.mjs partnerOff). Unset = on. */
   partnerPlan?: boolean;
+  /** Today's gold / silver rate of a Shubhora Jewellery shop (lib/jewellery-server.ts publicRateFor). Put on the card for each request
+   *  only (c/[username]/render.tsx), never saved; drawn as the "Today's rate" strip on the V-Card and the website. */
+  jewelRate?: { day: string; rows: { label: string; metal: string; paise: number; unit: string }[] } | null;
   /** Set by the builder when the card was written from the owner's OWN website: the site is the truth, so a
    *  merge into an older card must not keep that card's search title, website / email links or brand art. */
   builtFrom?: "own-site";

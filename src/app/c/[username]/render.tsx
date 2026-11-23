@@ -26,6 +26,7 @@ import { activeAdvanced, advancedItemStubs, findAdvancedItem, homeSlugOf, withAd
 import { publicCard, sitePending } from "@/lib/site-ready";
 import { restAsService } from "@/lib/poster-server";
 import { addonOn } from "@/lib/addons-server";
+import { publicRateFor } from "@/lib/jewellery-server";
 import { packageOf, premiumTier } from "@/lib/site-tier";
 import { withQuality } from "@/lib/site-quality";
 import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutFreeCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
@@ -170,7 +171,12 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // A Premium website (lib/site-tier.ts) carries its Premium features (Get our app, the AI chat) whichever design it wears; for this request only, like staffLogin.
   const appOn = premiumTier(stored0.site, username, await packageOf(ownerId).catch(() => null));
   // Always written here (true or false), so a value saved on the card itself is never what decides.
-  const stored: Card = stored0.site ? { ...stored0, site: { ...stored0.site, staffLogin: ordersOn, premiumOn: appOn } as Card["site"] } : stored0;
+  // A shop with Shubhora Jewellery shows today's rate (Jewellery → Settings → "Show today's rate"); for this request only, like staffLogin.
+  const jewelRate = await (async () => {
+    try { return ownerId && (await addonOn(ownerId, "jewellery")) ? await publicRateFor(ownerId) : null; } catch { return null; }
+  })();
+  const stored1: Card = stored0.site ? { ...stored0, site: { ...stored0.site, staffLogin: ordersOn, premiumOn: appOn } as Card["site"] } : stored0;
+  const stored: Card = { ...stored1, jewelRate };
   // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
   // card gets it here, for this request only, hidden from the tab row (owner's call, 2 Oct 2026).
   const shPage = hasShubhoraPage(stored) ? null : shubhoraPage({ visible: false });

@@ -9,6 +9,7 @@
 // Rendered by SiteView (site-view.tsx) in place of the blueprint, on EVERY page of a card whose `site.advanced` spec is valid.
 // SiteView has already counted the visit, saved the introducer and owns which page is open (`page`) and how a page is opened
 // (`goto`, which also pushes the address), so none of that is repeated here.
+import { TodayRate } from "@/components/jewellery/today-rate";
 import { Fragment, createElement, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { firstSentence } from "@/lib/first-sentence";
 import { HeroSlides } from "@/components/site-adv/hero-slides";
@@ -289,6 +290,7 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
               <>
                 {slot("hero", 0)}
                 <div ref={heroEnd} aria-hidden="true" style={{ height: 1, marginTop: -1 }} />
+                {card.jewelRate && <div className="mx-auto max-w-6xl px-5 pt-6 md:px-6"><TodayRate rate={card.jewelRate} accent={card.themeColor} hi={hi} /></div>}
                 {has("trust") && slot("trust", 1)}
                 {homePage && <FlowSections card={card} page={homePage} c={c} spec={spec} x={x} chrome={chrome} lang={L.lang} hasContact={hasContact} slotWith={slotWith} items={items} home after={(k, cc) => (k === "services" && cc.offerings && cc.offerings.total > cc.offerings.items.length ? seeMore(k) : null)} start={2} />}
                 {has("cta") && slot("cta", 40)}

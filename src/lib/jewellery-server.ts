@@ -9,8 +9,8 @@ import { resolveScope, type Scope } from "@/lib/crm-server";
 import { shopName, shopSend } from "@/lib/jobs-server";
 import { SITE_URL } from "@/lib/site-url";
 import {
-  BILL_COLS, DEFAULT_JW_SETUP, JW_ALL_RIGHTS, billInputOf, billMessage, billTotals, cleanJwSetup, finYear,
-  type BillKind, type BillRow, type JwRight, type JwSetup, type RateBook,
+  BILL_COLS, DEFAULT_JW_SETUP, JW_ALL_RIGHTS, billInputOf, billMessage, billTotals, cleanJwSetup, finYear, inr, publicRate,
+  type BillKind, type BillRow, type PublicRate, type JwRight, type JwSetup, type RateBook,
 } from "@/lib/jewellery";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -77,6 +77,15 @@ export async function rateOf(ownerId: string, day?: string): Promise<RateBook | 
   const r = list(await restAsService<{ day: string; sell: Record<string, number>; buy: Record<string, number> }[]>(`jw_rates?owner_id=eq.${ownerId}${q}&select=day,sell,buy&limit=1`))[0];
   return r ? { day: r.day, sell: r.sell ?? {}, buy: r.buy ?? {} } : null;
 }
+/** The rate for the shop's website, V-Card and poster: only when Settings → "Show today's rate" is on and the last rate is at most
+ *  3 days old (an old rate on a website misleads more than none). */
+export async function publicRateFor(ownerId: string): Promise<PublicRate | null> {
+  const setup = await jwSetup(ownerId);
+  if (!setup.showRate) return null;
+  const book = await rateOf(ownerId);
+  if (!book || Date.parse(`${istDay()}T00:00:00Z`) - Date.parse(`${book.day}T00:00:00Z`) > 3 * 86400_000) return null;
+  return publicRate(book, setup);
+}
 export async function rateHistory(ownerId: string, days = 30) {
   return list(await restAsService<{ day: string; sell: Record<string, number>; buy: Record<string, number>; set_by_name: string; updated_at: string }[]>(`jw_rates?owner_id=eq.${ownerId}&select=day,sell,buy,set_by_name,updated_at&order=day.desc&limit=${days}`));
 }
@@ -103,10 +112,43 @@ export async function createBill(scope: Scope, setup: JwSetup, kind: BillKind, f
       total_paise: t.total, gst_paise: t.gst, balance_paise: t.balance,
     };
     const r = await restAsService<BillRow[]>(`jw_bills?select=${BILL_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
-    if (r.ok) return list(r)[0] ?? null;
+    if (r.ok) { const bill = list(r)[0] ?? null; if (bill) await linkCustomer(scope.ownerId, bill).catch((e) => console.error("[jewellery] crm link", e)); return bill; }
     if (r.status !== 409 && !/duplicate key/i.test(r.text)) { console.error("[jewellery] bill save", r.status, r.text.slice(0, 200)); return null; }
   }
   return null;
+}
+
+/** Every bill with a mobile lands in the CRM (Customers): the same number is found in any of the ways the CRM keeps it
+ *  ("+919876543210", "919876543210", "9876543210"), else a new customer is added. A sale marks the customer won and adds the bill
+ *  to their value; an estimate marks a new enquiry interested. A line goes on the customer's timeline either way. */
+export async function linkCustomer(ownerId: string, b: BillRow): Promise<void> {
+  const d = (b.customer_phone || "").replace(/\D/g, "");
+  if (d.length < 10) return;
+  const ten = d.slice(-10);
+  const phone = d.length === 10 || (d.length === 12 && d.startsWith("91")) ? `+91${ten}` : `+${d}`;
+  const forms = [...new Set([phone, phone.slice(1), ten, `0${ten}`])].map((v) => `"${v}"`).join(",");
+  const sale = b.kind === "sale";
+  type Lead = { id: string; name: string; status: string; value_paise: number | null };
+  let lead = list(await restAsService<Lead[]>(`leads?owner_id=eq.${ownerId}&phone=in.(${encodeURIComponent(forms)})&select=id,name,status,value_paise&order=created_at&limit=1`))[0];
+  const now = new Date().toISOString();
+  if (!lead) {
+    const card = list(await restAsService<{ id: string }[]>(`cards?owner_id=eq.${ownerId}&select=id&order=created_at&limit=1`))[0];
+    if (!card) return;
+    const r = await restAsService<Lead[]>("leads?select=id,name,status,value_paise", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({
+      card_id: card.id, owner_id: ownerId, name: b.customer_name || "", phone, source: "jewellery", message: `${sale ? "Bill" : "Estimate"} ${b.code}`,
+      status: sale ? "converted" : "interested", value_paise: sale ? b.total_paise : 0, city: "", updated_at: now,
+    }) });
+    lead = list(r)[0];
+    if (!lead) return;
+  } else {
+    const patch: Record<string, unknown> = { updated_at: now };
+    if (!lead.name && b.customer_name) patch.name = b.customer_name;
+    if (sale) { patch.value_paise = (lead.value_paise || 0) + b.total_paise; if (!["converted", "won"].includes(lead.status)) patch.status = "converted"; }
+    else if (["new", "contacted"].includes(lead.status)) patch.status = "interested";
+    await restAsService(`leads?id=eq.${lead.id}&owner_id=eq.${ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
+  }
+  const text = `💍 ${sale ? "Bill" : "Estimate"} ${b.code} · ${inr(b.total_paise)}${sale && b.balance_paise > 0 ? ` · baaki ${inr(b.balance_paise)}` : ""}`;
+  await restAsService("lead_events", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: ownerId, lead_id: lead.id, kind: "note", text }) });
 }
 
 /** Re-works a saved bill's totals after its payments or status change. */
