@@ -159,6 +159,11 @@ function applyChecks(card: Card, checks: WebCheck[], off: string[]): Card {
 const Img = (p: { src: string; alt?: string; className?: string }) => <img src={p.src} alt={p.alt ?? ""} className={p.className} />;
 
 /** The blueprint's shape in a few CSS boxes (bento: four tiles; cinematic: a wide frame; story: a phone with its dots). */
+// The six basic looks are no longer offered here (owner, 24 Nov 2026: "seedhe naya design"): the website goes live straight on the
+// first of its twelve new designs (POST /api/card/advanced { first }), and Card & Website → Ready designs changes it. The picker's
+// code stays behind this switch for a card that still wears a basic look.
+const PICK_BASIC = false;
+
 function LookGlyph({ k, ink }: { k: LookKey; ink: string }) {
   if (k === "bento") return <span className="grid h-6 w-7 grid-cols-2 gap-[3px]">{[0, 1, 2, 3].map((i) => <span key={i} className="rounded-[2px]" style={{ background: ink, opacity: 0.85 }} />)}</span>;
   if (k === "cinematic") return <span className="relative block h-5 w-8 rounded-[3px] border-2" style={{ borderColor: ink, opacity: 0.85 }}><span className="absolute bottom-0.5 left-0.5 h-[3px] w-3 rounded-full" style={{ background: ink }} /></span>;
@@ -1003,6 +1008,17 @@ export default function BuildCard() {
     finally { setBusy(""); }
   }
 
+  /** A website that has just gone live gets the first of its twelve new designs (PICK_BASIC above). Answers the live card as it is
+   *  after that; on any failure the card is answered unchanged — it stays live on what it wears, and Ready designs can change it. */
+  async function putFirstDesign(row: Card): Promise<Card> {
+    if (PICK_BASIC || !row.id || row.site?.enabled !== true || row.site?.advanced) return row;
+    try {
+      const r = await api<{ ok?: boolean }>("/api/card/advanced", { method: "POST", json: { first: true, cardId: row.id } });
+      if (!r.ok) return row;
+      return (await fetchMyCardsStrict()).find((c) => c.id === row.id) ?? row;
+    } catch { return row; }
+  }
+
   /** The first card goes live on its own. A failure just leaves the "Make it live" button, nothing is lost. */
   async function goLive(full: Card, me: string, also = alsoShubhora) {
     // Marked like publish(): a look tapped meanwhile waits in pendingPublish (never a second publish alongside this
@@ -1031,8 +1047,10 @@ export default function BuildCard() {
       setTab("site");
       try {
         const cards = await fetchMyCardsStrict();
-        const row = cards.find((c) => c.username === (r.username || out.username));
+        const row0 = cards.find((c) => c.username === (r.username || out.username));
+        const row = row0 ? await putFirstDesign(row0) : undefined;
         if (row) {
+          if (row !== row0 && !pendingPublish.current) setCard((c) => (c ? { ...c, site: row.site } : c));
           setExisting(row); setLiveSig(cardSig(row));
           await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
           // Final (docs/website-looks-v2.md §7): the AI banner is painted now, in the look that went live.
@@ -1143,8 +1161,10 @@ export default function BuildCard() {
       if (uid) { dropKey(draftKey(uid)); dropKey(formKey(uid)); }
       try {
         const cards = await fetchMyCardsStrict();
-        const row = cards.find((c) => c.username === r.username);
+        const row0 = cards.find((c) => c.username === r.username);
+        const row = row0 ? await putFirstDesign(row0) : undefined;
         if (row) {
+          if (row !== row0) out = { ...out, site: row.site };
           // The live card is this one now: the draft kept here matches it, so a reload shows this preview, live.
           setExisting(row); setLiveSig(cardSig(row));
           await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
@@ -1623,7 +1643,7 @@ export default function BuildCard() {
       <div className="sticky bottom-20 lg:bottom-4 z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-float">
         {/* The error sits INSIDE the bar, right above Save and next / the designs it belongs to — the page behind is long, so a line in the page flow was often off-screen. */}
         {err && <p ref={errRef} role="alert" className="border-b border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-        {designOpen && looks.length > 0 && shown.site && (
+        {PICK_BASIC && designOpen && looks.length > 0 && shown.site && (
           <div className="max-h-[58dvh] space-y-3 overflow-y-auto border-b border-border p-3">
             <div className="flex items-start gap-2.5">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-white">6</span>
@@ -1696,7 +1716,7 @@ export default function BuildCard() {
           </div>
           {/* Previous / Next through the six designs right on the preview, instead of the pop-up (owner, 24 Oct 2026: "pasand nahi aaye,
               next dabaye to next web site ka view aa jaye"), then "Yes, select this design". */}
-          {looks.length > 1 && (() => {
+          {PICK_BASIC && looks.length > 1 && (() => {
             const at = Math.max(0, looks.findIndex((l) => l.key === activeLook));
             const cur = looks[at];
             const stepTo = (d: number) => { const n = looks[(at + d + looks.length) % looks.length]; if (n) pickLook(n.key); };
@@ -1724,8 +1744,8 @@ export default function BuildCard() {
           // (replace: Back from there must not return to this finished screen); in the first flow it is Next, on to the congratulations.
           <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=site&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab(cardOnly ? "phone" : "site"); setState(cardOnly ? "domain" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
-          <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Yes, select this design", "हाँ, यही design चुनें")}
+          <button type="button" onClick={() => { if (PICK_BASIC && viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
+            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {PICK_BASIC ? T("Yes, select this design", "हाँ, यही design चुनें") : T("Make it live", "Live करें")}
           </button>
         )}
         {liveUser && <button type="button" onClick={() => { setMoreMsg(""); setMore(true); }} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>}

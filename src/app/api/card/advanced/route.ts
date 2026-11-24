@@ -108,6 +108,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, current: advancedState(next), username: row.username });
   }
 
+  // { first: true }: a new website goes live straight on the first of its twelve designs (owner, 24 Nov 2026: the card build no
+  // longer asks to pick one of six basic looks — "seedhe naya design"). A library design: no AI, no try spent, nothing to pay.
+  // Only for a website that is on and has no new design yet; one that has a design is answered as it is, never replaced.
+  if (b.first === true) {
+    if (data.site?.advanced) return NextResponse.json({ ok: true, current: advancedState(data), username: row.username });
+    if (data.site?.enabled !== true) return NextResponse.json({ error: "Turn your website on first." }, { status: 400 });
+    await fillDesigns(me.id, row).catch((e) => console.log("[advanced] first design: fill failed:", e instanceof Error ? e.message : e));
+    const items = await tradeItems(me.id, row);
+    const fixed = items.filter((x) => String((x.spec as AdvancedSpec | undefined)?.seed ?? "").includes("|fix:"));
+    const pick = (fixed.length ? fixed : items)[0] as Obj | undefined;
+    const fresh = (await myCard(me.id, row.id))?.data ?? data;
+    if (fresh.site?.advanced) return NextResponse.json({ ok: true, current: advancedState(fresh), username: row.username });
+    const clean = pick ? cleanResult(pick, fresh) : null;
+    if (!clean) return NextResponse.json({ error: "No design could be made for this website yet." }, { status: 500 });
+    let next = withSlides(applyAdvanced(fresh, clean), Array.isArray(pick?.slides) ? pick.slides as HeroSlide[] : null);
+    // A website still in its first wait (lib/site-ready.ts) shows its design when the website itself shows — the same rule as `accept`.
+    const at = sitePending(fresh.site)?.toISOString() ?? null;
+    if (next.site) next = { ...next, site: { ...next.site, ...(at ? { advancedReadyAt: at } : {}), ...({ designChosenAt: new Date().toISOString() } as object) } };
+    const r = await save(row.id, me.id, next);
+    if (!r.ok) return NextResponse.json({ error: "Could not put the design on your website. Please try again." }, { status: 500 });
+    return NextResponse.json({ ok: true, current: advancedState(next), username: row.username });
+  }
+
   const access = await isAdvancedAllowed(me.id);
   // Every design for every paid website (owner, 15 Nov 2026: "koi Standard nahi, koi Premium nahi"): with a running package (Standard or
   // Premium) the six library designs can be seen and put live. A new AI-made design (below) stays with the Premium payment.
