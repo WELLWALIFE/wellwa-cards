@@ -3,12 +3,12 @@
 // sections (order, show/hide, trust facts) and the pages shown — with a live desktop preview above the controls.
 // Everything here changes card.site.* only; the phone card, the pages and their text are untouched (those are
 // edited in the full editor). One Save writes it all through PATCH /api/site/status.
-import { SiteCheck } from "@/components/site-check";
-import { SiteLink } from "@/components/poster/card-sheet";
+import { checkSite } from "@/lib/site-quality";
+import { isShubhoraSellerCard, withoutFreeCard } from "@/lib/shubhora-page";
 import { Children, Fragment, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings, Smartphone, Monitor, QrCode, Copy, MessageCircle, X, Wand2, LayoutGrid } from "lucide-react";
+import { LoaderCircle, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings,  QrCode, Copy, MessageCircle, X, LayoutGrid, ChevronLeft, Undo2, Redo2, RotateCcw, Pencil, Plus, Maximize2, Minimize2, Info } from "lucide-react";
 import QRCode from "qrcode";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
@@ -28,11 +28,10 @@ import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { EmbedPane } from "@/components/poster/embed-pane";
 import { EditFocus } from "@/components/poster/edit-focus";
-import { WindowBar, seeCls } from "@/components/poster/save-overlay";
-import { partFor, partState } from "@/lib/edit-status";
+import { completeness, partFor, partState } from "@/lib/edit-status";
 import { editHref, partParam, rememberEdit } from "@/lib/edit-nav";
 import { useEditHistory } from "@/lib/use-edit-history";
-import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
+import { PartHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
 import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
@@ -44,10 +43,74 @@ type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" |
 type Group = "design" | "content" | "photos" | "contact" | "settings";
 /** Off: nothing in the editor goes live by itself any more — Save puts it on the website (owner, 24 Nov 2026). */
 const AUTO_SAVE = false as boolean;
+/** The layout pickers of the Premium sections live on each section (its sheet), not in Colour, font & background. */
+const LAYOUTS_IN_LOOK = false as boolean;
 /** Which group each part sits in (the list's GROUPS, for a part opened from the preview). */
+/** The editor's names (final review, 24 Nov 2026 — https://claude.ai/artifact/HkXgzpjpzf9AgS5oP1bp8h): short, in English, one name per thing. */
+const LABEL: Record<string, [string, string]> = {
+  hero: ["Top section", "Heading, banner photo and its layout"],
+  look: ["Colour, font & background", "Colour, font, background, corners and section layouts"],
+  text: ["Pages & text", "Every page's text; add or remove a section or a page"],
+  photos: ["Photos", "Banner photos and the photo gallery"],
+  products: ["Products", "Products, prices and their photos"],
+  about: ["About us", "Your story and your logo"],
+  details: ["Services & highlights", "What you offer and why people choose you"],
+  reviews: ["Reviews", "Customer reviews and your Google review link"],
+  you: ["Phone, WhatsApp & photo", "Also shown on your posters"],
+  where: ["Address & hours", "Address, map pin and opening hours"],
+  links: ["Payments & social", "UPI and social media links"],
+  buttons: ["Contact buttons", "Call, WhatsApp, Email, Map — add, remove, reorder"],
+  trade: ["Name & category", "Your business name and what you do"],
+  offer: ["Announcement bar", "A line on top or a pop-up, e.g. “Diwali 20% off”"],
+  website: ["Website on / off", "Show or hide the website; Premium features"],
+  home: ["Section order", "Order and visibility of the home page sections"],
+  pages: ["Pages shown", "Which pages appear in the website menu"],
+  seo: ["Google search (SEO)", "Be found on Google in your city"],
+  domain: ["Custom domain", "Your own address, like www.yourshop.com"],
+};
+/** The four tabs of the editor: every job in exactly one of them. */
+const RTABS = [["sections", "Sections"], ["design", "Design"], ["info", "Business info"], ["settings", "Settings"]] as const;
+type RTab = (typeof RTABS)[number][0];
+/** A row of a list in the editor: a name, one line under it, and what can be done to it on the right. */
+function EdRow({ Icon, title, sub, onClick, badge, children, dim = false }: { Icon?: typeof Palette; title: string; sub?: string; onClick?: () => void; badge?: React.ReactNode; children?: React.ReactNode; dim?: boolean }) {
+  return (
+    <div className={`flex items-center gap-2.5 px-3 py-2.5 transition hover:bg-surface2/60 ${dim ? "opacity-50" : ""}`}>
+      {Icon && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><Icon className="h-4 w-4" /></span>}
+      <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-sm font-semibold text-ink">{title}</span>
+        {sub && <span className="block truncate text-[12px] text-muted">{sub}</span>}
+      </button>
+      {badge}
+      {children}
+    </div>
+  );
+}
+/** Two or three choices side by side (Card | Website, Computer | Phone). */
+function Seg<T extends string>({ value, options, onChange, label }: { value: T; options: readonly (readonly [T, string])[]; onChange: (v: T) => void; label: string }) {
+  return (
+    <span role="group" aria-label={label} className="inline-flex shrink-0 rounded-lg bg-surface2 p-0.5">
+      {options.map(([v, l]) => <button key={v} type="button" aria-pressed={value === v} onClick={() => v !== value && onChange(v)} className={`h-8 rounded-md px-3 text-[12px] font-semibold transition ${value === v ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{l}</button>)}
+    </span>
+  );
+}
+/** "Saved" / an error under the top bar; "Saved" goes by itself after a moment, an error stays longer. */
+function SaveToast({ note }: { note: { text: string; bad: boolean } | null }) {
+  const [shown, setShown] = useState<{ text: string; bad: boolean } | null>(null);
+  useEffect(() => {
+    setShown(note);
+    if (!note) return;
+    const t = setTimeout(() => setShown(null), note.bad ? 7000 : 2800);
+    return () => clearTimeout(t);
+  }, [note]);
+  return shown ? <p role={shown.bad ? "alert" : "status"} className={`absolute inset-x-3 top-[calc(100%+6px)] z-40 rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-card ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p> : null;
+}
+const TB = "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-ink hover:bg-surface2 disabled:opacity-35";
+const TBW = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-semibold text-ink hover:bg-surface2 disabled:opacity-35";
+const IB = "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface2 hover:text-ink disabled:opacity-30";
+const BOX = "divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card";
 const TAB_GROUP: Record<string, Group> = {
-  look: "design", hero: "design", home: "content", text: "content", products: "content", about: "content", details: "content", reviews: "content",
-  photos: "photos", you: "contact", where: "contact", links: "contact", buttons: "contact", trade: "contact",
+  look: "design", hero: "content", home: "content", text: "content", products: "content", about: "content", details: "content", reviews: "content",
+  photos: "content", you: "contact", where: "contact", links: "contact", buttons: "contact", trade: "contact",
   offer: "settings", website: "settings", pages: "settings", seo: "settings", domain: "settings",
 };
 /** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
@@ -164,6 +227,11 @@ export default function WebsiteEditPage() {
   // One part of the home page, tapped in the window (or reached by "check my website"): its own sheet with everything that can be
   // changed about it — layout, words, photo — in one place (owner, 24 Nov 2026: "kuch chhupa na rahe"; master list #6, #11).
   const [sheet, setSheet] = useState<{ id: string } | null>(null);
+  const [rtab, setRtab] = useState<RTab>("sections");
+  const [healthOpen, setHealthOpen] = useState(false);
+  // The top bar's height: the preview sits right under it while the page scrolls.
+  const topBar = useRef<HTMLDivElement>(null);
+  const [barH, setBarH] = useState(56);
   /** Where the window stays while a sheet is open (that part of the home page). */
   const sheetFocus = useRef<{ top?: boolean; sec?: string; blk?: string } | null>(null);
   const homeRowsRef = useRef<HomeRow[]>([]);
@@ -323,6 +391,14 @@ export default function WebsiteEditPage() {
     return rows;
   }, [adv, storeDesign, card, advRows, hi]);
   useEffect(() => { homeRowsRef.current = homeRows; }, [homeRows]);
+  const haveCard = !!card;
+  useEffect(() => {
+    const el = topBar.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBarH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [haveCard]);
   /** The Home page's sections the owner hid: listed so each can be shown again. */
   const hiddenHome = useMemo(() => {
     if (!adv || storeDesign || !card) return [] as { id: string; name: string }[];
@@ -663,14 +739,13 @@ export default function WebsiteEditPage() {
   ];
   // Five plain groups (master list #29, 24 Nov 2026 — https://claude.ai/artifact/UJXzJBJjKAssCmCsQGGB3u): the parts are the same,
   // only sorted by what a shop owner looks for: the design, the sections and their words, the photos, the shop's details, settings.
-  const allTabs = RAW_GROUPS.flatMap((g) => g.tabs);
+  const allTabs = RAW_GROUPS.flatMap((g) => g.tabs).map((t) => (LABEL[t.key] ? { ...t, label: LABEL[t.key][0], sub: LABEL[t.key][1] } : t));
   const tabsOf = (...ks: Tab[]) => ks.map((k) => allTabs.find((t) => t.key === k)).filter((t): t is TabDef => !!t);
   const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: TabDef[] }[] = [
-    { key: "design", label: hi ? "डिज़ाइन" : "Design", Icon: Paintbrush, tabs: tabsOf("look", "hero") },
-    { key: "content", label: hi ? "हिस्से और शब्द" : "Sections & words", Icon: ListOrdered, tabs: tabsOf("home", "text", "products", "about", "details", "reviews") },
-    { key: "photos", label: hi ? "फ़ोटो" : "Photos", Icon: Camera, tabs: tabsOf("photos") },
-    { key: "contact", label: hi ? "दुकान की जानकारी" : "Shop details", Icon: Store, tabs: tabsOf("you", "where", "links", "buttons", "trade") },
-    { key: "settings", label: hi ? "Settings" : "Settings", Icon: Settings, tabs: tabsOf("offer", "website", "pages", "seo", "domain") },
+    { key: "content", label: "Sections", Icon: ListOrdered, tabs: tabsOf("hero", "text", "products", "about", "details", "reviews", "photos", "home") },
+    { key: "design", label: "Design", Icon: Paintbrush, tabs: tabsOf("look") },
+    { key: "contact", label: "Business info", Icon: Store, tabs: tabsOf("trade", "you", "where", "links", "buttons") },
+    { key: "settings", label: "Settings", Icon: Settings, tabs: tabsOf("offer", "pages", "seo", "domain", "website") },
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setSync(null); setTab(t); };
@@ -729,10 +804,67 @@ export default function WebsiteEditPage() {
     if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;
     setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
   };
+  const unsaved = dirty || embedDirty;
+  const liveUrl = `${s.url}?view=site`;
+  const doSave = () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); };
+  const doBack = () => {
+    if (open) { toList(); return; }
+    if (sheet) { sheetClose(); return; }
+    if (unsaved && !window.confirm("Your changes are not saved. Leave without saving?")) return;
+    goBack(router, "/poster/site");
+  };
+  const doSwitch = (to: "card" | "site") => {
+    if (to === "site") return;
+    if (unsaved && !window.confirm("Your changes are not saved. Leave them?")) return;
+    rememberEdit(to); router.replace(editHref(to, open ? tab : ""));
+  };
   return (
     // Computer (lg): the live preview stays on the left, tall and sticky; the controls on the right (app shell, 1 Nov 2026).
     <div className="space-y-3 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-6 lg:space-y-0">
       <EditFocus />
+      {/* ---- Top bar (final review, 24 Nov 2026): where you are, whether it is live, the view, Undo / Redo and one Save — always here. ---- */}
+      <div ref={topBar} className="sticky z-30 -mx-4 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur lg:col-span-2 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:shadow-card" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
+          <div className="min-w-0 flex-1 lg:flex-none lg:pr-2">
+            <p className="text-sm font-bold leading-tight text-ink">Website</p>
+            <a href={liveUrl} target="_blank" rel="noreferrer" className={`flex min-w-0 items-center gap-1 text-[11px] font-semibold ${siteOn ? "text-good" : "text-muted"}`}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${siteOn ? "bg-good" : "bg-muted"}`} /><span className="truncate">{siteOn ? "Live" : "Off"} · {liveUrl.replace(/^https?:\/\//, "").replace(/\?view=site$/, "")}</span></a>
+          </div>
+          <div className="order-last flex w-full items-center gap-2 overflow-x-auto sm:order-none sm:w-auto">
+            <Seg value={"site" as "card" | "site"} options={[["card", "Card"], ["site", "Website"]] as const} onChange={doSwitch} label="Card or website" />
+            <Seg value={phoneView ? "phone" : "computer"} options={[["computer", "Computer"], ["phone", "Phone"]] as const} onChange={(v) => setPhoneView(v === "phone")} label="Preview size" />
+            <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={`${TBW} sm:hidden`}><ExternalLink className="h-3.5 w-3.5" /> View site</a>
+          </div>
+          <span className="hidden flex-1 lg:block" />
+          <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={TB}><Undo2 className="h-4 w-4" /></button>
+          <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={TB}><Redo2 className="h-4 w-4" /></button>
+          <span className={`hidden whitespace-nowrap text-[12px] font-medium md:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
+          {undo && !unsaved && <button type="button" onClick={() => void save(undo)} className={TBW} title="Put back the website as it was before the last Save"><RotateCcw className="h-3.5 w-3.5" /> Undo save</button>}
+          <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={`${TBW} hidden sm:inline-flex`}><ExternalLink className="h-3.5 w-3.5" /> View site</a>
+          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
+        </div>
+        <SaveToast note={note?.k === "save" ? { text: note.text, bad: note.bad } : null} />
+      </div>
+
+      {/* ---- Preview: the page chips above it, the real website renderer scaled to fit ---- */}
+      <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-2 lg:col-start-1 lg:row-span-[40] lg:mx-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0" style={{ top: `calc(env(safe-area-inset-top) + var(--help-banner, 0px) + ${barH + 8}px)` }}>
+        {!open && visiblePages.length > 1 && (
+          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5" role="tablist" aria-label="Pages">
+            {visiblePages.map((p) => { const home = p.slug === "home"; const on = home ? !viewPage : viewPage === p.slug; return <button key={p.slug} type="button" role="tab" aria-selected={on} onClick={() => { sheetFocus.current = null; setSheet(null); setViewPage(home ? "" : p.slug); }} className={`h-8 shrink-0 rounded-full border px-3 text-[12px] font-semibold transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted hover:text-ink"}`}>{p.label || p.slug}</button>; })}
+            <button type="button" onClick={() => openPart("text")} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3 text-[12px] font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" /> Page</button>
+          </div>
+        )}
+        <div className="relative overflow-clip rounded-2xl border border-border bg-surface shadow-card">
+          <div ref={box} className={`pv-box overflow-hidden ${phoneView ? "bg-surface2" : "bg-white"} transition-[height] duration-300`} style={{ height: `var(--pv-h, ${big ? "68svh" : "32svh"})` }}>
+            <div className="relative mx-auto" style={{ width: Math.round(pvW * pvScale), height: boxH }}>
+              <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: pvW, height: frameH, border: 0, transform: `scale(${pvScale})` }} />
+            </div>
+          </div>
+          <button type="button" onClick={() => setBig((b) => !b)} className="absolute bottom-2 right-2 z-10 inline-flex h-8 items-center gap-1 rounded-lg bg-black/60 px-2.5 text-[11px] font-semibold text-white backdrop-blur lg:hidden">{big ? <><Minimize2 className="h-3.5 w-3.5" /> Smaller</> : <><Maximize2 className="h-3.5 w-3.5" /> Full screen</>}</button>
+        </div>
+      </div>
+
+      <div className={`space-y-3 lg:col-start-2 lg:min-w-0 ${!open && !sheet ? "pb-20 lg:pb-0" : ""}`}>
       {s.cards.length > 1 && (
         <div className="space-y-1.5">
           <select value={s.cardId} onChange={(e) => { setNote(null); void load(e.target.value); }} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
@@ -742,35 +874,6 @@ export default function WebsiteEditPage() {
         </div>
       )}
 
-      {/* ---- live preview (the real website renderer, scaled to fit), with the colours right under it (owner, 23 Oct 2026: "colour
-          wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
-      <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1 lg:top-6! lg:col-start-1 lg:row-start-1 lg:row-span-[40] lg:mx-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
-        <div className="relative overflow-clip rounded-2xl border border-border shadow-card">
-          <div className="absolute left-2 top-2 z-10 inline-flex rounded-full border border-border bg-surface/95 p-0.5 shadow-sm" role="group" aria-label={hi ? "Phone या computer पर कैसी दिखेगी" : "How it looks on a phone or a computer"}>
-            <button type="button" onClick={() => setPhoneView(false)} aria-pressed={!phoneView} title={hi ? "Computer पर" : "On a computer"} className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${!phoneView ? "bg-brand text-white" : "text-muted"}`}><Monitor className="h-3.5 w-3.5" /><span className="hidden sm:inline">{hi ? "Computer" : "Computer"}</span></button>
-            <button type="button" onClick={() => setPhoneView(true)} aria-pressed={phoneView} title={hi ? "Phone पर" : "On a phone"} className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${phoneView ? "bg-brand text-white" : "text-muted"}`}><Smartphone className="h-3.5 w-3.5" /><span className="hidden sm:inline">{hi ? "Phone" : "Phone"}</span></button>
-          </div>
-          <div ref={box} className={`pv-box overflow-hidden ${phoneView ? "bg-surface2" : "bg-white"} transition-[height] duration-300`} style={{ height: `var(--pv-h, ${big ? "68svh" : "32svh"})` }}>
-            <div className="relative mx-auto" style={{ width: Math.round(pvW * pvScale), height: boxH }}>
-              <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: pvW, height: frameH, border: 0, transform: `scale(${pvScale})` }} />
-            </div>
-          </div>
-          <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)}
-            history={history}
-            switcher={{ at: "site", site: true, onSwitch: (to) => {
-              if ((dirty || embedDirty) && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
-              rememberEdit(to); router.replace(editHref(to, open ? tab : ""));
-            } }} onBack={() => {
-              if (open) { toList(); return; }
-              if ((dirty || embedDirty) && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए निकलें?" : "Your change is not saved. Leave without saving?")) return;
-              goBack(router, "/poster/site");
-            }}
-            see={dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className={seeCls}><ExternalLink className="h-4 w-4" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className={seeCls}><ExternalLink className="h-4 w-4" /></SiteLink>}
-            save={{ show: (open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy === "save", note: note?.k === "save" ? note : null, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }, undo: undo ? () => void save(undo) : undefined }} />
-        </div>
-      </div>
-
-      <div className="space-y-3 lg:col-start-2 lg:min-w-0">
       {liveBox && !dirty && !embedDirty && (() => { const link = `${s.url}?view=site`; return (
         <section className="space-y-2 rounded-2xl border border-good/40 bg-good/10 p-3">
           <div className="flex items-start justify-between gap-2"><p className="text-sm font-bold text-good">{hi ? "✅ आपकी website live है" : "✅ Your website is live"}</p><button type="button" aria-label={hi ? "बंद" : "Close"} onClick={() => setLiveBox(false)} className="text-muted"><X className="h-4 w-4" /></button></div>
@@ -784,6 +887,8 @@ export default function WebsiteEditPage() {
           {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL made on this phone */}
           {liveQr && <img src={liveQr} alt="QR" className="h-40 w-40 rounded-lg border border-border bg-white p-1" />}
         </section>); })()}
+
+      {/* ---- One section of the home page: edit its text and photo, pick its layout, move or hide it ---- */}
       {!open && sheet && adv && card && (() => {
         const i = homeRows.findIndex((r) => r.id === sheet.id); const row = homeRows[i]; if (!row) return null;
         const sec = row.sec;
@@ -793,81 +898,140 @@ export default function WebsiteEditPage() {
         const ids: readonly string[] = !sec ? [] : isHero ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[sec] ?? [];
         const cur = isHero ? String(adv.hero ?? "") : sec ? (adv.sections as Record<string, string> | undefined)?.[sec] ?? ids[0] : "";
         const own = homeRows.filter((r) => r.blk), at = own.findIndex((r) => r.id === row.id);
-        const big = "flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold hover:bg-surface2";
-        const small = "inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-30";
+        const BIG = "flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold text-ink hover:bg-surface2";
         return (
-        <section className="space-y-3 rounded-2xl border-2 border-brand bg-surface p-3 shadow-card">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0"><p className="text-[11px] font-semibold text-muted">{hi ? `हिस्सा ${i + 1} / ${homeRows.length} — बाईं तरफ़ website में यही दिख रहा है` : `Part ${i + 1} of ${homeRows.length} — this is what the window on the left shows`}</p><p className="truncate text-base font-bold">{row.name}</p></div>
-            <button type="button" aria-label={hi ? "बंद" : "Close"} onClick={sheetClose} className="rounded-lg p-1 text-muted"><X className="h-4 w-4" /></button>
-          </div>
-          <div className={`grid gap-2 ${ph && ph !== w.key ? "sm:grid-cols-2" : ""}`}>
-            <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={big}>{ph === w.key ? (sec === "gallery" ? (hi ? "📷 फ़ोटो बदलें" : "📷 Change the photos") : (hi ? "✍️ शब्द और 📷 फ़ोटो बदलें" : "✍️ Change the words and 📷 photo")) : (hi ? "✍️ शब्द बदलें" : "✍️ Change the words")}</button>
-            {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={big}>{hi ? "📷 फ़ोटो बदलें" : "📷 Change the photo"}</button>}
-          </div>
-          {sec && ids.length > 1 && <div>
-            <p className="text-[13px] font-semibold">{hi ? "🎨 इस हिस्से का रूप (layout)" : "🎨 The layout of this part"}</p>
-            <p className="text-[11px] text-muted">{hi ? "जो पसंद आए वो दबाएँ — बाईं तरफ़ तुरंत दिखेगा। पक्का करने के लिए नीचे “Save” दबाएँ।" : "Tap one — it shows on the left at once. Press “Save” under the window to keep it."}</p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {/* eslint-disable-next-line react-hooks/refs -- sheetLayout runs on the tap, never while drawing */}
-              {ids.map((id) => { const ok = mixAllow(sec, id) || cur === id; return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => sheetLayout(sec, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[hi ? 1 : 0] : variantName(sec, id, hi)}</button>; })}
-            </div>
-          </div>}
-          {row.blk
-            ? <div>
-                <p className="text-[13px] font-semibold">{hi ? "↕️ इस हिस्से की जगह" : "↕️ Where this part sits"}</p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                  {/* eslint-disable-next-line react-hooks/refs -- moveHomeBlock runs on the tap, never while drawing */}
-                  <button type="button" disabled={at <= 0} onClick={() => moveHomeBlock(row.blk!, -1)} className={small}><ChevronUp className="h-4 w-4" /> {hi ? "ऊपर ले जाएँ" : "Move up"}</button>
-                  <button type="button" disabled={at < 0 || at >= own.length - 1} onClick={() => moveHomeBlock(row.blk!, 1)} className={small}><ChevronDown className="h-4 w-4" /> {hi ? "नीचे ले जाएँ" : "Move down"}</button>
-                  <button type="button" onClick={() => hideHomeBlock(row.blk!, true)} className={small}><EyeOff className="h-4 w-4" /> {hi ? "छुपाएँ" : "Hide"}</button>
-                </div>
-                <p className="mt-1.5 text-[11px] text-muted">{hi ? "छुपाया हुआ हिस्सा मिटता नहीं — ऊपर “छुपे हुए हिस्से” से कभी भी वापस दिखा सकते हैं। पक्का करने के लिए Save दबाएँ।" : "A hidden part is not deleted — show it again any time from “Hidden parts” above. Press Save to keep the change."}</p>
-                <div>
-                </div>
-              </div>
-            : <p className="text-[11px] text-muted">{hi ? "यह हिस्सा हर website में अपनी तय जगह पर रहता है — इसे ऊपर-नीचे नहीं किया जाता।" : "This part has a fixed place on every website — it is not moved up or down."}</p>}
-          <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
-            <button type="button" disabled={i === 0} onClick={() => sheetGo(i - 1)} className="rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-30">{hi ? "← पिछला हिस्सा" : "← Previous part"}</button>
+        <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+          <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
+            <button type="button" aria-label="Back to sections" title="Back to sections" onClick={sheetClose} className={IB}><ChevronLeft className="h-5 w-5" /></button>
+            <div className="min-w-0 flex-1"><p className="text-[11px] text-muted">Section {i + 1} of {homeRows.length}</p><p className="truncate text-sm font-bold text-ink">{row.name}</p></div>
+            <button type="button" disabled={i === 0} onClick={() => sheetGo(i - 1)} className={TBW}>Previous</button>
             {i < homeRows.length - 1
-              ? <button type="button" onClick={() => sheetGo(i + 1)} className="rounded-xl grad-brand px-3 py-2 text-xs font-semibold text-white">{hi ? "ठीक है, अगला हिस्सा →" : "Looks good, next part →"}</button>
-              : <button type="button" onClick={sheetClose} className="rounded-xl bg-good px-3 py-2 text-xs font-semibold text-white">{hi ? "✅ पूरी website देख ली" : "✅ Whole website checked"}</button>}
+              ? <button type="button" onClick={() => sheetGo(i + 1)} className={TBW}>Next</button>
+              : <button type="button" onClick={sheetClose} className={TBW}><Check className="h-3.5 w-3.5" /> Done</button>}
+          </div>
+          <div className="space-y-4 p-3">
+            <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
+              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : "Edit text"}</button>
+              {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
+            </div>
+            {sec && ids.length > 1 && <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Layout</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {/* eslint-disable-next-line react-hooks/refs -- sheetLayout runs on the tap, never while drawing */}
+                {ids.map((id) => { const ok = mixAllow(sec, id) || cur === id; return <button key={id} type="button" disabled={!ok} title={ok ? undefined : "Needs more photos or items"} onClick={() => sheetLayout(sec, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(sec, id, false)}</button>; })}
+              </div>
+            </div>}
+            {row.blk
+              ? <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Position</p>
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {/* eslint-disable-next-line react-hooks/refs -- moveHomeBlock runs on the tap, never while drawing */}
+                    <button type="button" disabled={at <= 0} onClick={() => moveHomeBlock(row.blk!, -1)} className={TBW}><ChevronUp className="h-4 w-4" /> Move up</button>
+                    <button type="button" disabled={at < 0 || at >= own.length - 1} onClick={() => moveHomeBlock(row.blk!, 1)} className={TBW}><ChevronDown className="h-4 w-4" /> Move down</button>
+                    <button type="button" onClick={() => hideHomeBlock(row.blk!, true)} className={TBW}><EyeOff className="h-4 w-4" /> Hide</button>
+                  </div>
+                </div>
+              : <p className="flex items-center gap-1.5 text-[12px] text-muted"><Info className="h-3.5 w-3.5" /> This section has a fixed position on every website.</p>}
           </div>
         </section>); })()}
-      {!open && (
-        <section className="space-y-2 rounded-2xl border border-brand/30 bg-brand-soft/40 p-3">
-          <p className="text-sm font-bold">{hi ? "🎨 Design — website कैसी दिखे" : "🎨 Design — how the website looks"}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Link href="/poster/site/choose" className="flex items-center gap-2.5 rounded-xl grad-brand px-3 py-3 text-white shadow-card"><LayoutGrid className="h-5 w-5 shrink-0" /><span><span className="block text-sm font-bold">{hi ? "तैयार design चुनें" : "Choose a ready design"}</span><span className="block text-[11px] opacity-90">{hi ? "पूरी website एक बार में बदलें" : "Change the whole website in one go"}</span></span></Link>
-            {adv && !storeDesign
-              ? <button type="button" onClick={() => { openPart("look"); setMixJump(true); }} className="flex items-center gap-2.5 rounded-xl border-2 border-brand/40 bg-surface px-3 py-3 text-left shadow-card"><Wand2 className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "हर हिस्से का रूप अलग चुनें" : "Pick the layout of each part"}</span></span></button>
-              : <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-border bg-surface px-3 py-3"><Wand2 className="h-5 w-5 shrink-0 text-muted" /><span><span className="block text-sm font-bold text-muted">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "पहले बाईं तरफ़ से एक तैयार design चुनें, फिर ये खुलेगा।" : "First choose a ready design; then this opens."}</span></span></div>}
+
+      {/* ---- The list: the health line, then four tabs — every job in exactly one of them ---- */}
+      {!open && !sheet && (<>
+        {(() => {
+          const comp = completeness(card, true);
+          const todo = checkSite(isShubhoraSellerCard(card) ? withoutFreeCard(card, true) : card).filter((n) => n.level === "todo");
+          const toFix = comp.empty.length + todo.length;
+          const FIX = "shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-semibold text-brand-ink hover:bg-surface2";
+          return (
+            <section className="rounded-2xl border border-border bg-surface shadow-card">
+              <button type="button" onClick={() => toFix && setHealthOpen((o) => !o)} aria-expanded={healthOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+                <span className="text-sm font-bold text-ink">{comp.pct}% ready</span>
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface2"><span className="block h-full rounded-full bg-brand" style={{ width: `${comp.pct}%` }} /></span>
+                <span className={`whitespace-nowrap text-[12px] font-semibold ${toFix ? "text-[#b45309]" : "text-good"}`}>{toFix ? `${toFix} to fix` : "All good"}</span>
+                {toFix > 0 && <ChevronDown className={`h-4 w-4 text-muted transition-transform ${healthOpen ? "rotate-180" : ""}`} />}
+              </button>
+              {healthOpen && toFix > 0 && (
+                <ul className="space-y-2 border-t border-border px-3.5 py-3">
+                  {comp.empty.map((k) => <li key={k} className="flex items-center gap-2 text-[13px]"><span className="min-w-0 flex-1"><span className="font-semibold">{LABEL[k]?.[0] ?? k}</span> is empty</span><button type="button" onClick={() => openPart(k)} className={FIX}>Fix</button></li>)}
+                  {todo.map((n, j) => <li key={j} className="flex items-start gap-2 text-[13px]"><span className="min-w-0 flex-1"><span className="font-semibold">{n.page}:</span> {n.en}</span>{(n.blockId || n.part) && <button type="button" onClick={() => { if (n.blockId) sheetOpen("text", n.blockId); else if (n.part) openPart(n.part); }} className={FIX}>Fix</button>}</li>)}
+                </ul>
+              )}
+            </section>
+          );
+        })()}
+
+        <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:static lg:max-w-none lg:translate-x-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+          <div role="tablist" aria-label="Editor" className="flex rounded-xl bg-surface2 p-1">
+            {RTABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={rtab === k} onClick={() => setRtab(k)} className={`flex-1 rounded-lg px-1 py-2 text-[12.5px] font-semibold transition ${rtab === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{k === "info" ? <><span className="sm:hidden">Info</span><span className="hidden sm:inline">{l}</span></> : l}</button>)}
           </div>
-          {homeRows.length > 1 && <button type="button" onClick={() => sheetGo(0)} className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-left shadow-card"><Eye className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "मेरी website जाँचें" : "Check my website"}</span><span className="block text-[11px] text-muted">{hi ? "ऊपर से नीचे, हर हिस्सा एक-एक करके देखें और वहीं बदलें" : "Top to bottom, one part at a time — change anything right there"}</span></span></button>}
-          {hiddenHome.length > 0 && <div className="rounded-xl border border-dashed border-border bg-surface px-3 py-2">
-            <p className="text-[12px] font-semibold">{hi ? `छुपे हुए हिस्से (${hiddenHome.length})` : `Hidden parts (${hiddenHome.length})`}</p>
-            <ul className="mt-1 space-y-1">
-              {hiddenHome.map((x) => <li key={x.id} className="flex items-center justify-between gap-2 text-[12px]"><span className="min-w-0 truncate text-muted">{x.name}</span><button type="button" onClick={() => hideHomeBlock(x.id, false)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1 font-semibold"><Eye className="h-3.5 w-3.5" /> {hi ? "वापस दिखाएँ" : "Show again"}</button></li>)}
-            </ul>
-          </div>}
-          <p className="text-[11px] text-muted">{hi ? "रंग, अक्षर और कोने नीचे “Design” में हैं। यहाँ का कोई भी बदलाव पहले इस window में दिखता है; असली website पर तभी जाता है जब आप Save दबाते हैं।" : "Colours, letters and corners are under “Design” below. Any change here shows in this window first; it goes to the real website only when you press Save."}</p>
-        </section>)}
-      {!open && visiblePages.length > 1 && (
-        <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
-          <p className="text-sm font-bold">{hi ? "📄 Website के pages" : "📄 Pages of the website"}</p>
-          <p className="text-[11px] text-muted">{hi ? "किसी page को दबाएँ — बाईं तरफ़ वही page दिखेगा।" : "Tap a page — the window on the left shows that page."}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {visiblePages.map((p) => { const home = p.slug === "home"; const on = home ? !viewPage : viewPage === p.slug; return <button key={p.slug} type="button" onClick={() => { sheetFocus.current = null; setSheet(null); setViewPage(home ? "" : p.slug); }} className={`${chip(on)} !px-2.5 !py-1.5 !text-xs`}>{p.label || p.slug}</button>; })}
+        </div>
+
+        {rtab === "sections" && (homeRows.length > 0 ? <>
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[13px] font-semibold text-ink">Home page — top to bottom</p>
+            <button type="button" onClick={() => sheetGo(0)} className="text-[12px] font-semibold text-brand-ink hover:underline">Review one by one</button>
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            <button type="button" onClick={() => openPart("text")} className="text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "Page के शब्द बदलें / नया page जोड़ें →" : "Change a page's words / add a page →"}</button>
-            <button type="button" onClick={() => openPart("pages")} className="text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "कौन से pages दिखें →" : "Which pages show →"}</button>
+          <div className={BOX}>
+            {homeRows.map((r, i) => {
+              const own = homeRows.filter((x) => x.blk), at = own.findIndex((x) => x.id === r.id);
+              return (
+                <EdRow key={r.id} title={r.name} sub={r.blk ? undefined : "Fixed position"} onClick={() => sheetGo(i)}>
+                  {r.blk && <>
+                    <button type="button" aria-label="Move up" title="Move up" disabled={at <= 0} onClick={() => moveHomeBlock(r.blk!, -1)} className={IB}><ChevronUp className="h-4 w-4" /></button>
+                    <button type="button" aria-label="Move down" title="Move down" disabled={at >= own.length - 1} onClick={() => moveHomeBlock(r.blk!, 1)} className={IB}><ChevronDown className="h-4 w-4" /></button>
+                    <button type="button" aria-label="Hide" title="Hide" onClick={() => hideHomeBlock(r.blk!, true)} className={IB}><EyeOff className="h-4 w-4" /></button>
+                  </>}
+                  <button type="button" aria-label="Edit" title="Edit" onClick={() => sheetGo(i)} className={IB}><Pencil className="h-4 w-4" /></button>
+                </EdRow>
+              );
+            })}
           </div>
-        </section>)}
-      {!open && card && <SiteCheck card={card} hi={hi} onFix={(n) => { sheetFocus.current = null; setSheet(null); if (n.blockId) sheetOpen("text", n.blockId); else if (n.part) openPart(n.part); }} />}
-      {!open
-        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["settings"]} state={(k) => partState(card, k)} onPick={(_g, k) => { sheetFocus.current = null; setSheet(null); openPart(k); }} />
-        : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
+          {hiddenHome.length > 0 && <>
+            <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Hidden sections</p>
+            <div className={BOX}>
+              {hiddenHome.map((x) => <EdRow key={x.id} title={x.name} sub="Not shown on the website" dim><button type="button" onClick={() => hideHomeBlock(x.id, false)} className={TBW}><Eye className="h-3.5 w-3.5" /> Show</button></EdRow>)}
+            </div>
+          </>}
+          <button type="button" onClick={() => openPart("text")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
+        </> : <>
+          <p className="px-1 text-[13px] font-semibold text-ink">Home page — top to bottom</p>
+          <div className={BOX}>
+            <EdRow Icon={ImageIcon} title="Top section" sub="Fixed position" onClick={() => openPart("hero")}><button type="button" aria-label="Edit" onClick={() => openPart("hero")} className={IB}><Pencil className="h-4 w-4" /></button></EdRow>
+            {sections.map((sec, i) => {
+              const off = hiddenSections.has(sec.key);
+              const edit = () => { const p = sec.kind === "block" ? partFor(card, { kind: "block", blockId: sec.key }, true) : partFor(card, { kind: "text", text: secText(sec.key) }, true); sheetOpen(p.key, p.blockId); };
+              return (
+                <EdRow key={sec.key} title={sectionLabel(sec, "en")} dim={off} sub={off ? "Hidden" : undefined} onClick={edit}>
+                  <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(sec.key, -1)} className={IB}><ChevronUp className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Move down" disabled={i === sections.length - 1} onClick={() => move(sec.key, 1)} className={IB}><ChevronDown className="h-4 w-4" /></button>
+                  <button type="button" aria-label={off ? "Show" : "Hide"} onClick={() => toggleSection(sec.key)} className={IB}>{off ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}</button>
+                  <button type="button" aria-label="Edit" onClick={edit} className={IB}><Pencil className="h-4 w-4" /></button>
+                </EdRow>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => openPart("text")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
+        </>)}
+        {rtab === "sections" && <>
+          <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">All content</p>
+          <div className={BOX}>
+            {(["text", "products", "photos"] as const).map((k) => <EdRow key={k} Icon={k === "text" ? FileText : k === "products" ? Package : Camera} title={LABEL[k][0]} sub={LABEL[k][1]} onClick={() => openPart(k)} badge={partState(card, k) === "empty" ? <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">Empty</span> : undefined} />)}
+          </div>
+        </>}
+
+        {rtab === "design" && <div className={BOX}>
+          <Link href="/poster/site/choose" className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-surface2/60"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><LayoutGrid className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-ink">Ready designs</span><span className="block truncate text-[12px] text-muted">Change the whole website in one tap</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-muted" /></Link>
+          <EdRow Icon={Palette} title={LABEL.look[0]} sub={LABEL.look[1]} onClick={() => openPart("look")} />
+        </div>}
+
+        {(rtab === "info" || rtab === "settings") && <div className={BOX}>
+          {(rtab === "info" ? (["trade", "you", "where", "links", "buttons"] as const) : (["offer", "pages", "seo", "domain", "website"] as const)).map((k) => {
+            const t = allTabs.find((x) => x.key === k);
+            return <EdRow key={k} Icon={t?.Icon} title={LABEL[k][0]} sub={LABEL[k][1]} onClick={() => openPart(k)} badge={partState(card, k) === "empty" ? <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">Empty</span> : undefined} />;
+          })}
+        </div>}
+      </>)}
+      {open && (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={false} onBack={toList} /> : null; })()}
       {open && (<>
       {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
@@ -968,13 +1132,14 @@ export default function WebsiteEditPage() {
               </div>
             </div>
             {/* The two whole-store designs have one top of their own: the list changed nothing there (owner, 19 Nov 2026), so it is not offered. */}
-            {storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
+            {/* A section's layout is picked on that section (Sections tab), the top section included: one job, one place (final review, 24 Nov 2026). */}
+            {!LAYOUTS_IN_LOOK ? null : storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
               <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {HERO_IDS.map((h) => { const ok = mixAllow("hero", h) || adv.hero === h; const by = mixUsedBy("hero", h); return <button key={h} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए banner फ़ोटो चाहिए" : "This one needs a banner photo")} onClick={() => setAdv({ hero: h })} className={`${chip(adv.hero === h)} ${ok ? "" : "opacity-40"}`}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
               </div>
             </div>}
-            {!storeDesign && advRows.some((r) => r.key !== "hero") && <div ref={mixBox} className="scroll-mt-24 rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
+            {LAYOUTS_IN_LOOK && !storeDesign && advRows.some((r) => r.key !== "hero") && <div ref={mixBox} className="scroll-mt-24 rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
               <p className="text-sm font-bold">{hi ? "अपना design खुद बनाएँ — हर हिस्सा अलग चुनें" : "Build your own design — pick each part"}</p>
               <p className="mt-0.5 text-[11px] text-muted">{hi ? "हर हिस्से के नीचे उसके सारे रूप हैं। जो पसंद आए वो दबाएँ — बाईं तरफ़ website में तुरंत दिखेगा। D2, D5 = ये रूप Design 2 और 5 में है। रंग और अक्षर वही रहते हैं, इसलिए सब एक जैसा दिखता है। यहाँ का बदलाव अभी सिर्फ़ इस window में दिखता है — असली website पर तभी जाएगा जब आप “Save” दबाएँगे।" : "Under each part are all its layouts. Tap the one you like — it shows on the website at once. D2, D5 = Design 2 and 5 use this layout. Colours and letters stay the same, so everything still matches. A change here shows only in this window — it goes to the real website when you press “Save”."}</p>
               <div className="mt-2 space-y-3">
