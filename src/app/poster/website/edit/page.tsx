@@ -277,6 +277,11 @@ export default function WebsiteEditPage() {
     }).catch(() => { if (live) setMixDesigns([]); });
     return () => { live = false; };
   }, [tab, adv, storeDesign, mixDesigns, mixCardId]);
+  // A layout tried in "build your own" is only shown in the window: it goes live when the owner presses Save (owner, 24 Nov 2026:
+  // "save ka button laga do"), so trying ten layouts does not change the live website ten times. Everything else on this screen
+  // still saves by itself.
+  const [mixHeld, setMixHeld] = useState(false);
+  const mixHold = useRef(false);
   const mixAllow = useMemo(() => (card ? allowedByFit(fitOf(card)) : () => true), [card]);
   /** "D2, D5": the designs that wear this layout of this part. */
   const mixUsedBy = (k: SectionKey, id: string) => (mixDesigns ?? []).map((d, i) => ((k === "hero" ? d.hero : d.sections?.[k] ?? VARIANT_IDS[k][0]) === id ? `D${i + 1}` : "")).filter(Boolean).join(", ");
@@ -336,7 +341,7 @@ export default function WebsiteEditPage() {
   /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
   const setAdv = (patch: Record<string, unknown>) => { if (!adv) return; focus({ top: true }); set({ advanced: { ...adv, ...patch } as NonNullable<Card["site"]>["advanced"] }); };
   /** One part of the home page takes another layout; the window moves to that part so the change is seen. */
-  const setAdvSection = (k: SectionKey, id: string) => { if (!adv || k === "hero") return; set({ advanced: { ...adv, sections: { ...((adv.sections as Record<string, string> | undefined) ?? {}), [k]: id } } as NonNullable<Card["site"]>["advanced"] }); showAdv(k); };
+  const setAdvSection = (k: SectionKey, id: string) => { if (!adv || k === "hero") return; mixHold.current = true; setMixHeld(true); set({ advanced: { ...adv, sections: { ...((adv.sections as Record<string, string> | undefined) ?? {}), [k]: id } } as NonNullable<Card["site"]>["advanced"] }); showAdv(k); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
   function setTone(t: "light" | "dark") {
     if (!adv) return;
@@ -403,7 +408,7 @@ export default function WebsiteEditPage() {
         ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}), ...(Array.isArray(adv.order) ? { order: adv.order as string[] } : {}), ...(adv.sections && typeof adv.sections === "object" ? { sections: adv.sections as Record<string, string> } : {}) } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
-      setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1);
+      setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1); mixHold.current = false; setMixHeld(false);
       if (from) { setCard((cur) => (cur ? { ...cur, site: from.site } : from)); say("save", hi ? "↩️ पहले जैसा कर दिया।" : "↩️ Put back as it was.", false); }
       else { say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false); if (before) setUndo(before); }
     } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
@@ -420,7 +425,7 @@ export default function WebsiteEditPage() {
   const saveRef = useRef(save);
   useEffect(() => { saveRef.current = save; });
   useEffect(() => {
-    if (!dirty || !open || busy || !card || (tab !== "look" && tab !== "hero" && !(advOrderTouched.current && (tab === "text" || tab === "home"))) || autoTried.current === card) return;
+    if (!dirty || !open || busy || !card || mixHold.current || (tab !== "look" && tab !== "hero" && !(advOrderTouched.current && (tab === "text" || tab === "home"))) || autoTried.current === card) return;
     const t = setTimeout(() => { autoTried.current = card; void saveRef.current(); }, tab === "hero" ? 1800 : 900);
     return () => clearTimeout(t);
   }, [dirty, open, busy, card, tab]);
@@ -739,7 +744,7 @@ export default function WebsiteEditPage() {
             </div>}
             {!storeDesign && advRows.some((r) => r.key !== "hero") && <div className="rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
               <p className="text-sm font-bold">{hi ? "अपना design खुद बनाएँ — हर हिस्सा अलग चुनें" : "Build your own design — pick each part"}</p>
-              <p className="mt-0.5 text-[11px] text-muted">{hi ? "हर हिस्से के नीचे उसके सारे रूप हैं। जो पसंद आए वो दबाएँ — बाईं तरफ़ website में तुरंत दिखेगा। D2, D5 = ये रूप Design 2 और 5 में है। रंग और अक्षर वही रहते हैं, इसलिए सब एक जैसा दिखता है। पसंद आए तो Save दबाएँ।" : "Under each part are all its layouts. Tap the one you like — it shows on the website at once. D2, D5 = Design 2 and 5 use this layout. Colours and letters stay the same, so everything still matches. Press Save when you like it."}</p>
+              <p className="mt-0.5 text-[11px] text-muted">{hi ? "हर हिस्से के नीचे उसके सारे रूप हैं। जो पसंद आए वो दबाएँ — बाईं तरफ़ website में तुरंत दिखेगा। D2, D5 = ये रूप Design 2 और 5 में है। रंग और अक्षर वही रहते हैं, इसलिए सब एक जैसा दिखता है। यहाँ का बदलाव अभी सिर्फ़ इस window में दिखता है — असली website पर तभी जाएगा जब आप “Save” दबाएँगे।" : "Under each part are all its layouts. Tap the one you like — it shows on the website at once. D2, D5 = Design 2 and 5 use this layout. Colours and letters stay the same, so everything still matches. A change here shows only in this window — it goes to the real website when you press “Save”."}</p>
               <div className="mt-2 space-y-3">
                 {advRows.filter((r) => r.key !== "hero").map((r) => { const cur = (adv.sections as Record<string, string> | undefined)?.[r.key] ?? VARIANT_IDS[r.key][0]; return (
                   <div key={r.key}>
@@ -749,6 +754,11 @@ export default function WebsiteEditPage() {
                     </div>
                   </div>); })}
               </div>
+              {mixHeld && dirty && <div className="sticky bottom-2 z-10 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand bg-surface p-2.5 shadow-card">
+                <p className="min-w-0 flex-1 text-[12px] font-semibold">{hi ? "नया design अभी save नहीं हुआ है।" : "Your new design is not saved yet."}</p>
+                <button type="button" disabled={busy === "save"} onClick={() => { const back = lastSaved.current; if (!back) return; mixHold.current = false; setMixHeld(false); touched.current.clear(); setCard(back); setDirty(false); focus({ top: true }); }} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50">{hi ? "छोड़ दें (पुराना रखें)" : "Discard (keep the old one)"}</button>
+                <button type="button" disabled={busy === "save"} onClick={() => void save()} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{busy === "save" && <LoaderCircle className="h-4 w-4 animate-spin" />} {hi ? "Save करें — website पर लगाएँ" : "Save — put it on the website"}</button>
+              </div>}
               <p className="mt-2 text-[11px] text-muted">{hi ? "धुँधले रूप आपकी website पर अभी नहीं बन सकते (जैसे फ़ोटो कम हैं)। जो हिस्सा यहाँ नहीं दिख रहा, उसमें अभी कुछ भरा नहीं है — पहले “Text & pages” में भरें।" : "Faded layouts cannot be drawn on your website yet (for example, too few photos). A part that is missing here has nothing in it yet — fill it in “Text & pages” first."}</p>
             </div>}
             <div>
