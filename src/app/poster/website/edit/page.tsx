@@ -1092,6 +1092,17 @@ export default function WebsiteEditPage() {
 
         {/* A website still on one of the older looks (no Premium design): the same editor, but the section designs come with the new
             designs — said plainly, with the way there (owner, 24 Nov 2026: "Haryana wali id me kuch aur dikhta hai, Sunita wali me kuch aur"). */}
+        {/* The two whole-store designs (bridal couture house / lookbook) draw the page their own fixed way: no design per section. */}
+        {adv && storeDesign && (rtab === "sections" || rtab === "design") && (
+          <div className="flex items-start gap-3 rounded-2xl border border-brand/30 bg-brand-soft/40 px-3.5 py-3">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-ink" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-ink">This design has a fixed layout</p>
+              <p className="mt-0.5 text-[12px] text-muted">Text and photos can be edited here. To change the design of each section, pick another of your 12 designs.</p>
+            </div>
+            <Link href="/poster/site/choose" className="shrink-0 rounded-lg bg-brand px-3 py-2 text-[12px] font-bold text-white">Choose a design</Link>
+          </div>
+        )}
         {!adv && (rtab === "sections" || rtab === "design") && (
           <div className="flex items-start gap-3 rounded-2xl border border-brand/30 bg-brand-soft/40 px-3.5 py-3">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-ink" />
