@@ -20,7 +20,7 @@ import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type Site
 import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, VARIANT_IDS, homeSlugOf, repairOrder, type SectionKey } from "@/lib/site-advanced";
 import { variantName } from "@/lib/site-advanced-names";
 import { LayoutThumb } from "@/components/site-adv/layout-thumb";
-import { allowedByFit, fitOf, groupOf } from "@/lib/site-advanced-archetypes";
+import { allowedByFit, fitOf, groupOfCard, tradeAllows } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 import { flowParts } from "@/components/site-adv/flow";
@@ -104,12 +104,6 @@ function SaveToast({ note }: { note: { text: string; bad: boolean } | null }) {
   }, [note]);
   return shown ? <p role={shown.bad ? "alert" : "status"} className={`absolute inset-x-3 top-[calc(100%+6px)] z-40 rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)] ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p> : null;
 }
-/** Section designs made for another kind of business: offered only when the business's own designs use them (or one is in use). */
-const OTHER_TRADE: Record<string, string[]> = {
-  "services:menu-leaders": ["sweets", "dining"],
-  "services:rate-list": ["wholesale", "industry", "buildmat", "grocery", "farm", "pharmacy"],
-  "services:tiers": ["fitness", "tech", "coaching", "school", "playschool", "college", "advisory", "travel", "wellness", "beauty"],
-};
 /** What a design that does not fit yet needs, and where to add it. */
 function needOf(k: string, id: string): { text: string; part: string; btn: string } {
   if (k === "hero" && id === "product-spotlight") return { text: "This design needs at least 2 products with photos.", part: "products", btn: "Add products" };
@@ -619,8 +613,8 @@ export default function WebsiteEditPage() {
     const okOf = (id: string) => mixAllow(k, id) || cur === id || mixSeen.has(`${k}:${id}`);
     // A menu, a rate list or plans side by side belong to their own trades — even when one of this trade's 12 designs happens to use
     // one (a mobile shop was offered "Plans side by side" and "Trader's rate list", 24 Nov 2026).
-    const trade = groupOf(card?.seo?.categoryKey);
-    const otherTrade = (id: string) => { const g = OTHER_TRADE[`${k}:${id}`]; return !!g && !g.includes(trade) && cur !== id; };
+    const trade = card ? groupOfCard(card) : "general";
+    const otherTrade = (id: string) => !tradeAllows(trade, k, id) && cur !== id;
     const main = rec.size ? all.filter((id) => (rec.has(id) && !otherTrade(id)) || id === cur) : all.filter((id) => !otherTrade(id));
     const more = rec.size ? all.filter((id) => !main.includes(id) && !otherTrade(id)) : [];
     const open = !!moreOpen[k];

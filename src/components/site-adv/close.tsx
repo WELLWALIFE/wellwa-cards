@@ -827,7 +827,7 @@ function FtContact({ m, x, className = "" }: { m: FooterModel; x: AdvCtx; classN
       {m.contact.map((i) => (
         <li key={i.id}>
           {i.href
-            ? <a href={i.href} {...(i.ext ? { target: "_blank", rel: "noreferrer" } : {})} onClick={() => x.track(`footer-${i.type}`)}><LinkIcon type={i.type} className="h-4 w-4" /><span>{i.text}</span>{i.note && <small>· {i.note}</small>}</a>
+            ? <a href={i.href} {...(i.ext ? { target: "_blank", rel: "noreferrer" } : {})} onClick={() => x.track(`footer-${i.type}`)}><LinkIcon type={i.type} className="h-4 w-4" /><span className={i.type === "phone" || i.type === "whatsapp" ? "ft-nw" : undefined}>{i.text}</span>{i.note && <small>· {i.note}</small>}</a>
             : <span className="ft-plain"><LinkIcon type={i.type} className="h-4 w-4" /><span>{i.text}</span></span>}
         </li>
       ))}
@@ -1389,7 +1389,11 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-logo{display:block;height:40px;width:auto;max-width:180px;object-fit:contain;background:rgb(255 255 255/.92);border-radius:var(--r-img);padding:4px}
 .ft .ft-mark{font-size:19px}
 .ft-blurb{margin:var(--s4) 0 0;max-width:34rem;font-size:var(--t-meta);line-height:1.65;color:var(--hero-muted);text-wrap:pretty}
-.ft-small{margin:var(--s3) 0 0;font-size:12px;line-height:1.5;color:var(--hero-muted);word-break:break-all}
+/* overflow-wrap, not break-all: "Scan to open this site on yo|ur phone" broke inside a word (review, 24 Nov 2026) */
+.ft-small{margin:var(--s3) 0 0;font-size:12px;line-height:1.5;color:var(--hero-muted);overflow-wrap:anywhere}
+/* a phone number never breaks in two; its small note drops under it when the column is narrow */
+.ft-contact a{flex-wrap:wrap;row-gap:0}
+.ft-nw{white-space:nowrap}
 .ft-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--s1);font-size:var(--t-meta)}
 .ft-list a,.ft-plain{display:inline-flex;align-items:center;gap:var(--s2);max-width:100%;padding-block:.35rem;opacity:.88;overflow-wrap:anywhere;transition:opacity .15s}
 .ft-list a:hover{opacity:1;text-decoration:underline;text-underline-offset:.22em}
@@ -1431,10 +1435,12 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 /* ---- footer: mega ---- */
 .ft-mega{display:grid;gap:var(--s7) var(--s6);grid-template-columns:repeat(2,minmax(0,1fr))}
 .ft-brand{grid-column:1/-1;min-width:0}
-.ft-qr{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s5)}
+.ft-qr{display:flex;align-items:flex-start;gap:var(--s4);margin-top:var(--s5)}
+.ft-qr>div{min-width:0}
+.ft-qr .ft-small{margin-top:0}
 .ft-qrimg{flex:none;width:72px;height:72px;padding:5px;border-radius:var(--r-img);background:#fff}
 .ft-qr .adv-btn-row{margin-top:var(--s2)}
-@media (min-width:900px){.ft-mega{grid-template-columns:1.5fr .8fr 1.1fr 1.2fr}.ft-brand{grid-column:auto}}
+@media (min-width:900px){.ft-mega{grid-template-columns:1.45fr .7fr 1.25fr 1.2fr}.ft-brand{grid-column:auto}}
 @media (max-width:767px){.ft-mega{gap:var(--s6) var(--s5)}}
 @media (max-width:560px){.ft-mega>div:has(.ft-contact){grid-column:1/-1;order:1}}
 
@@ -1497,6 +1503,8 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .ft-lg .ft-t-pages ul{grid-template-columns:1fr 1fr;column-gap:var(--s5)}
 .ft-lg .ft-t-pages li a{border-bottom:0;padding:.4rem 0}
 .ft:has(.ft-lg){padding-top:clamp(2rem,4vw,3rem)}
+/* a quarter-width tile cut an e-mail address in two on a small laptop: the contact tiles take half the row there */
+@media (min-width:768px) and (max-width:1199px){.ft-lg .ft-t-contact{grid-column:span 2}}
 @media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);grid-auto-flow:row dense}.ft-t-brand{grid-column:span 2}.ft-t-pages{grid-column:span 2}.ft-t-visit{grid-column:span 2}}
 
 /* ---- open now pill (every variant that shows timings) ---- */

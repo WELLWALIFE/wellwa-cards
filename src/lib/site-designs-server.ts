@@ -4,7 +4,7 @@ import "server-only";
 import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import { libraryDesigns } from "@/lib/site-advanced-ai";
 import { parseAdvanced, type AdvancedSpec } from "@/lib/site-advanced";
-import { distinctTradeHeroes, fixedSpecs, tradeTint } from "@/lib/site-advanced-archetypes";
+import { distinctTradeHeroes, fixedSpecs, spreadSections, tradeTint } from "@/lib/site-advanced-archetypes";
 import type { Card } from "@/lib/types";
 
 type Obj = Record<string, unknown>;
@@ -18,7 +18,8 @@ export const seenItems = (uid: string, cardId: string) => advDesigns(uid, cardId
 export const tradeItems = async (uid: string, row: { id: string; data: Card }) => {
   const list = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
   const tinted = tradeTint(list.map((r) => ({ r, palette: (r.spec as AdvancedSpec).palette })), row.data);
-  return distinctTradeHeroes(list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } })), row.data);
+  // …and each with its own layouts: every section shared out over the designs (spreadSections), then one top each.
+  return distinctTradeHeroes(spreadSections(list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } })), row.data), row.data);
 };
 
 export const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> => (await seenItems(uid, cardId)).map((r) => r.spec as AdvancedSpec).filter(Boolean);

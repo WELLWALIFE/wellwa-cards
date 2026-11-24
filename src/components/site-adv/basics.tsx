@@ -394,8 +394,8 @@ export const BASICS_CSS = `
 .aft-logo{height:40px;width:auto;max-width:180px;object-fit:contain;background:rgb(255 255 255/.9);border-radius:var(--r-img);padding:4px;margin-bottom:var(--s4)}
 .aft .aft-mark{font-size:19px}
 .aft-blurb{margin:var(--s4) 0 0;max-width:34rem;line-height:1.6;color:var(--hero-muted)}
-.aft-small{margin:var(--s2) 0 0;font-size:12px;color:var(--hero-muted);word-break:break-all}
-.aft-qr{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s5)}
+.aft-small{margin:var(--s2) 0 0;font-size:12px;color:var(--hero-muted);overflow-wrap:anywhere}
+.aft-qr{display:flex;align-items:flex-start;gap:var(--s4);margin-top:var(--s5)}.aft-qr>div{min-width:0}
 .aft-qrimg{height:80px;width:80px;border-radius:var(--r-img);background:#fff;padding:6px}
 .aft-list{list-style:none;margin:var(--s4) 0 0;padding:0;display:grid;gap:var(--s3)}
 .aft-list a,.aft-list span{display:inline-flex;align-items:center;gap:var(--s2);color:inherit;text-decoration:none;opacity:.88;max-width:100%}.aft-list a:hover{opacity:1}

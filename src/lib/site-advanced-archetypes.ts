@@ -1274,6 +1274,67 @@ export function fixedSpecs(card: Card): AdvancedSpec[] {
 export const isFixedSeed = (seed: unknown): boolean => typeof seed === "string" && seed.includes("|fix:");
 
 const curatedName = (hex: string) => CURATED_PALETTES.find((x) => x.color === hex)?.name ?? "brand";
+/** Layouts that belong to their own trades only: a printed menu, a trader's rate list, plans side by side (a mobile shop was offered
+ *  "Plans side by side" and "Trader's rate list", 24 Nov 2026). The editor's picker and the twelve designs read the same list. */
+export const TRADE_ONLY: Record<string, string[]> = {
+  "services:menu-leaders": ["sweets", "dining"],
+  "services:rate-list": ["wholesale", "industry", "buildmat", "grocery", "farm", "pharmacy"],
+  "services:tiers": ["fitness", "tech", "coaching", "school", "playschool", "college", "advisory", "travel", "wellness", "beauty"],
+};
+export const tradeAllows = (group: string, key: string, id: string): boolean => { const g = TRADE_ONLY[`${key}:${id}`]; return !g || g.includes(group); };
+
+/** Twelve designs, twelve different pages (owner, 24 Nov 2026: "12 sections alag alag banne chahiye — change karne par lage ki haan,
+ *  kuch change hua"). Measured before this: of twelve designs for one shop, eight wore the same question-and-answer layout, seven the
+ *  same price list, and the twelve shared three footers. Here every section's layouts are shared out evenly over the designs: a layout
+ *  is worn by no more designs than it must be (twelve designs over seven footers: two at most), a design keeps the layout its
+ *  composition asked for while there is room, and the one moved takes the least-worn layout this card can carry — never the same as
+ *  the design just before it, so stepping to the next design changes every section. A layout of another trade is moved off too.
+ *  Finished templates (fixed seeds) are left exactly as written. The hero is distinctTradeHeroes' work. */
+export function spreadSections<T extends { spec?: unknown }>(items: T[], card: Card): T[] {
+  const allowed = allowedByFit(fitOf(card));
+  const group = groupOfCard(card);
+  const specs = items.map((item) => parseAdvanced(item.spec));
+  const live = specs.map((sp) => !!sp && !isFixedSeed(sp.seed));
+  const n = live.filter(Boolean).length;
+  if (n < 2) return items;
+  const next = specs.map((sp) => (sp ? { ...(sp.sections as Record<string, string>) } : {}));
+  for (const key of SECTION_KEYS) {
+    if (key === "hero") continue;
+    const pool = (VARIANT_IDS[key] as readonly string[]).filter((id) => allowed(key, id) && tradeAllows(group, key, id));
+    if (pool.length < 2) continue;
+    const cap = Math.ceil(n / pool.length);
+    const count = new Map<string, number>();
+    const keep: boolean[] = [];
+    // First the designs that keep what their composition asked for, in order, while that layout has room.
+    specs.forEach((sp, i) => {
+      if (!sp || !live[i]) { keep[i] = true; return; }
+      const cur = variantOf(sp, key);
+      const ok = pool.includes(cur) && (count.get(cur) ?? 0) < cap && !(i > 0 && live[i - 1] && keep[i - 1] && next[i - 1][key] === cur);
+      keep[i] = ok;
+      if (ok) { count.set(cur, (count.get(cur) ?? 0) + 1); next[i][key] = cur; }
+    });
+    // Then the ones that must move: the least-worn layout, not the neighbour's on either side; the seed breaks a tie.
+    specs.forEach((sp, i) => {
+      if (!sp || keep[i]) return;
+      const r = rng(`${sp.seed}|spread|${key}`);
+      const before = i > 0 && live[i - 1] ? next[i - 1][key] : "";
+      const after = i + 1 < specs.length && live[i + 1] && keep[i + 1] ? next[i + 1][key] : "";
+      const rank = pool.map((id) => ({ id, used: count.get(id) ?? 0, beside: id === before || id === after ? 1 : 0, tie: r() }))
+        .sort((a, b) => a.beside - b.beside || a.used - b.used || a.tie - b.tie);
+      const pick = rank[0].id;
+      count.set(pick, (count.get(pick) ?? 0) + 1);
+      next[i][key] = pick;
+    });
+  }
+  return items.map((item, i) => {
+    const sp = specs[i];
+    if (!sp || !live[i]) return item;
+    const was = sp.sections as Record<string, string>;
+    const changed = Object.keys(next[i]).some((k) => next[i][k] !== was[k]);
+    return changed ? { ...item, spec: { ...sp, sections: next[i] as AdvancedSpec["sections"] } } : item;
+  });
+}
+
 /** Keep the trade's own hero when it fits. Use another suitable hero only to repair repeats or missing media. */
 export function distinctTradeHeroes<T extends { spec?: unknown }>(items: T[], card: Card): T[] {
   const fit = fitOf(card);
