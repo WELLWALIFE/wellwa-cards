@@ -9,7 +9,7 @@
 // (preview focus), and the ✏️ on it opens exactly that section in the editor.
 import { Fragment, type ReactNode } from "react";
 import type { Card, CardBlock, CardPage } from "@/lib/types";
-import type { AdvItem, AdvancedSpec, SectionKey } from "@/lib/site-advanced";
+import { variantOf, type AdvItem, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
 import { isEmptyBlock } from "@/lib/site-home";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import type { SiteContent } from "@/components/site-adv/shared";
@@ -105,7 +105,7 @@ export function FlowSections({ card, page, c, spec, x, chrome, lang, hasContact,
         } else if (key) {
           body = <>{slotWith(key, i, cx)}{after?.(key, cx)}</>;
         } else {
-          body = <Block b={b} x={x} c={c} i={i} />;
+          body = <Block b={b} x={x} c={c} i={i} v={variantOf(spec, "trust")} />;
         }
         return <div key={b.id} data-blk={b.id} style={{ display: "contents" }}><Fragment>{body}</Fragment></div>;
       })}

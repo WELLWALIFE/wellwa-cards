@@ -1562,6 +1562,8 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .hl-qr p{max-width:15rem}
 @media (min-width:900px){.hl-top{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start}.hl-cols{grid-template-columns:1fr 1.3fr 1fr}}
 @media (max-width:560px){.hl-cols>div{grid-column:1/-1}}
+/* no timings to show: the page links take two columns and the QR sits at the far edge, not alone in the middle with a third of the row empty */
+@media (min-width:900px){.hl-qr{grid-column:-2;justify-self:end}.hl-cols:not(:has(.hl-hours))>div:first-child{grid-column:span 2}.hl-cols:not(:has(.hl-hours)) .hl-quick .ft-list{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--s6)}}
 
 /* ---- faq: spotlight ---- */
 .sp{display:grid;gap:var(--gap)}

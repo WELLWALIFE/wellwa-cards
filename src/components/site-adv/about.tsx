@@ -108,9 +108,11 @@ export function AboutEditorialSplit({ c, x, index }: VariantProps) {
           <hr className="adv-rule" />
           <H2 className="abe-title">{s.title}</H2>
           <Ticks items={c.highlights} x={x} className="abe-ticks" />
+          {/* No "good to know" list for this column: the opening line stands here, so the left half is not a title over nothing. */}
+          {!c.highlights.length && s.statement !== s.title && <p className="abe-lede abe-lede-side">{s.statement}</p>}
         </div>
         <div className="abe-main">
-          {s.statement !== s.title && <p className="abe-lede">{s.statement}</p>}
+          {c.highlights.length > 0 && s.statement !== s.title && <p className="abe-lede">{s.statement}</p>}
           {photo && <figure className="abe-fig"><Zoomable src={photo} list={[photo]} x={x} name={c.name} sizes="(min-width: 960px) 62vw, 100vw" /></figure>}
           {s.rest.length > 0 && <div className={`adv-body abe-text ${long ? "abe-cols" : ""}`}>{s.rest.map((p, i) => <p key={i}>{p}</p>)}</div>}
         </div>
@@ -443,11 +445,15 @@ export function ProcessStepAccordion({ c, x, index }: VariantProps) {
 /* ================= css ================= */
 
 /** The rail laid across: used from the width at which `n` steps still have room (4 steps from 860 px, 5-6 from 1180 px). */
+// `sel` is a LIST of selectors: " li" must follow every one of them. Written as `${sel} li` it followed only the last, so with two or
+// three steps the rail's rules (a 1px height, a gradient, 68px of padding) landed on the list itself: a thick band, and the steps'
+// words cut off under the next section (review of twelve designs, 24 Nov 2026).
+const each = (sel: string, tail: string) => sel.split(",").map((q) => `${q}${tail}`).join(",");
 const horizontal = (sel: string) => `
 ${sel}{grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:0 var(--gap)}
-${sel} li{padding:68px 0 0}
-${sel} li:not(:last-child)::after{left:60px;right:calc(-1 * var(--gap) + 12px);top:23.5px;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,var(--accent),var(--line))}
-${sel.split(",").map((q) => `${q} li>h3`).join(",")}{padding-top:0}`;
+${each(sel, " li")}{padding:68px 0 0}
+${each(sel, " li:not(:last-child)::after")}{left:60px;right:calc(-1 * var(--gap) + 12px);top:23.5px;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,var(--accent),var(--line))}
+${each(sel, " li>h3")}{padding-top:0}`;
 
 export const ABOUT_CSS = `
 .site[data-adv] .abx-zoom{position:absolute;inset:0;display:block;width:100%;height:100%;padding:0;border:0;background:var(--paper-2);cursor:zoom-in;overflow:hidden;border-radius:inherit;color:inherit}
@@ -467,6 +473,8 @@ export const ABOUT_CSS = `
 .abe-lede{margin:0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.35rem,2.7vw,2.1rem);line-height:1.3;letter-spacing:var(--display-tr);color:var(--ink);text-wrap:pretty}
 .abe-fig{position:relative;margin:clamp(1.5rem,4vw,2.5rem) 0;aspect-ratio:16/10;border-radius:var(--r-tile);overflow:hidden;background:var(--paper-2)}
 .abe-cols{column-gap:clamp(1.5rem,3vw,3rem)}
+.abe-lede-side{font-size:clamp(1.15rem,1.9vw,1.5rem);line-height:1.4;color:var(--muted)}
+.abe-main>.abe-fig:first-child{margin-top:0}
 .abe-text p:not(:only-child){break-inside:avoid-column}
 .site:lang(en) .abe-lede~.abe-text>p:first-child::first-letter,.site:lang(en) .abe-fig~.abe-text>p:first-child::first-letter{float:left;font-family:var(--font-display);font-size:3.5em;line-height:.8;padding:.07em .1em 0 0;color:var(--accent)}
 @media (min-width:960px){.abe{grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(3rem,6vw,6rem)}.abe-side{position:sticky;top:96px;align-self:start}.abe-cols{column-count:2}}

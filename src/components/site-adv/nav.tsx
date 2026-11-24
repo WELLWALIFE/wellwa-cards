@@ -299,6 +299,8 @@ export const NAV_CSS = `
 .nv-row{display:flex;align-items:center;gap:var(--s5);height:72px;transition:height .3s cubic-bezier(.2,.7,.2,1)}
 .nv-head[data-scrolled] .nv-row{height:58px}
 .nv-brand{display:flex;align-items:center;min-height:44px;min-width:0;max-width:260px;color:inherit;text-decoration:none;border-radius:var(--r-ctl);flex:none}
+/* a long name ("SSM - AL MOBILE SOLUTION WORLD") stays on one line on a wide screen instead of breaking in two */
+@media (min-width:1100px){.nv-brand{max-width:400px}}
 .nv-brand img{height:40px;width:auto;max-width:170px;object-fit:contain;transition:height .3s cubic-bezier(.2,.7,.2,1)}
 .nv-head[data-scrolled] .nv-brand img{height:32px}
 .nv-brand .hero-wordmark b{transition:font-size .3s}

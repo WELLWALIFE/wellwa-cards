@@ -989,6 +989,8 @@ export const CATALOG_CSS = `
 .ctb-panel{grid-area:1/1;visibility:hidden;opacity:0;transition:opacity .25s}
 .ctb-panel[data-on]{visibility:visible;opacity:1}
 .ctb-grid{display:grid;gap:var(--s3);grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));align-content:start}
+/* four cards: two and two, not three and one alone */
+@media (min-width:760px){.ctb-grid:has(>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}}
 .ctb-item{display:flex;align-items:stretch}
 .ctb-media{flex:none;width:112px;min-height:136px;align-self:stretch}
 .ctb-body{display:flex;flex-direction:column;gap:var(--s2);flex:1;min-width:0;padding:var(--s4)}

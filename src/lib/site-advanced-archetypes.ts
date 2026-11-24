@@ -1283,6 +1283,8 @@ const curatedName = (hex: string) => CURATED_PALETTES.find((x) => x.color === he
 export const TRADE_ONLY: Record<string, string[]> = {
   "services:menu-leaders": ["sweets", "dining"],
   "services:rate-list": ["wholesale", "industry", "buildmat", "grocery", "farm", "pharmacy"],
+  // "Book your appointment" on a photograph: for the trades people visit by appointment (a mobile shop wore it, 24 Nov 2026).
+  "process:atelier-band": ["bridal", "fashion", "jewellery", "beauty", "decor", "clinic", "wellness", "stay", "creative", "astro", "property", "advisory"],
   "services:tiers": ["fitness", "tech", "coaching", "school", "playschool", "college", "advisory", "travel", "wellness", "beauty"],
 };
 export const tradeAllows = (group: string, key: string, id: string): boolean => { const g = TRADE_ONLY[`${key}:${id}`]; return !g || g.includes(group); };

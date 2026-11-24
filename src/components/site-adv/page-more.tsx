@@ -341,12 +341,16 @@ function Story({ b, x, i, tone }: { b: Extract<CardBlock, { kind: "story" }>; x:
   );
 }
 
-export function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteContent; i: number }): ReactNode {
+/** How a list of key points is dressed, by the design's own facts layout (`v`, the spec's trust variant): ruled rows, cards or pills.
+ *  Before this the block was one narrow plain list in every one of the twelve designs, set a little inside the page's own edge. */
+const POINTS_LOOK: Record<string, "rule" | "cards" | "chips"> = { strip: "rule", hairline: "rule", "usp-bar": "rule", "icon-row": "cards", "split-cards": "cards", bento: "cards", ticker: "chips", counters: "chips" };
+
+export function Block({ b, x, c, i, v }: { b: CardBlock; x: AdvCtxPlus; c: SiteContent; i: number; v?: string }): ReactNode {
   const tone = i % 2 ? "alt" : "paper";
   const title = (s?: string) => (s ?? "").trim() ? x.t(s!.trim()) : "";
   switch (b.kind) {
     case "about": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><div className="adv-body gb-prose">{(b.body ?? "").split(/\n+/).filter(Boolean).map((p, k) => <p key={k}>{x.t(p)}</p>)}</div></Sec>;
-    case "highlights": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-ticks">{b.items.filter(Boolean).map((t, k) => <li key={k}><span aria-hidden="true"><Icon name="check" size={15} strokeWidth={2} /></span>{x.t(t.replace(/^[^\p{L}\p{N}]+/u, ""))}</li>)}</ul></Sec>;
+    case "highlights": return <Sec k={`b${i}`} tone={tone} wide className="gb-hl" label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-ticks" data-v={POINTS_LOOK[v ?? ""] ?? "rule"}>{b.items.filter(Boolean).map((t, k) => <li key={k}><span aria-hidden="true"><Icon name="check" size={15} strokeWidth={2} /></span>{x.t(t.replace(/^[^\p{L}\p{N}]+/u, ""))}</li>)}</ul></Sec>;
     case "services": {
       const steps = /^\s*1[.)]\s/.test(b.items[0]?.name ?? "");
       return (
@@ -559,6 +563,19 @@ export const MORE_CSS = `
 @media (min-width:760px){.gb-ticks{grid-template-columns:1fr 1fr;column-gap:var(--s7)}}
 .gb-ticks li{display:grid;grid-template-columns:auto 1fr;gap:var(--s3);font-size:var(--t-body);line-height:1.5}
 .gb-ticks li span{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent)}
+/* key points in the design's own dress, on the page's own grid: the heading on the left, the points beside it */
+.gb-hl .gb-ticks{max-width:none;align-content:start}
+.gb-hl .gb-ticks li{align-items:center}
+.gb-ticks[data-v=rule]{gap:0}
+.gb-ticks[data-v=rule] li{padding:var(--s4) 0;border-top:1px solid var(--line)}
+.gb-ticks[data-v=cards]{gap:var(--s3)}
+.gb-ticks[data-v=cards] li{padding:var(--s4) var(--s5);border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper)}
+.gb-ticks[data-v=chips]{display:flex;flex-wrap:wrap;gap:var(--s3)}
+.gb-ticks[data-v=chips] li{padding:.6rem 1.1rem .6rem .7rem;border-radius:999px;background:var(--accent-soft);font-size:var(--t-meta);font-weight:500}
+.gb-ticks[data-v=chips] li span{background:var(--paper)}
+@media (min-width:900px){.gb-hl>.adv-wrap{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(2rem,5vw,5rem);align-items:start}.gb-hl .gb-ticks[data-v=rule]{column-gap:var(--s7)}}
+/* four cards never leave one alone on a row of its own: two and two (or four across for the short ones) */
+@media (min-width:900px){.gb-cards:has(>:nth-child(4):last-child),.gb-show:has(>:nth-child(4):last-child){grid-template-columns:repeat(2,1fr)}.gb-steps:has(>:nth-child(4):last-child){grid-template-columns:repeat(4,1fr)}}
 .gb-steps,.gb-cards{display:grid;gap:var(--s4);margin:0;padding:0;list-style:none;counter-reset:g}
 @media (min-width:760px){.gb-steps,.gb-cards{grid-template-columns:repeat(3,1fr);gap:var(--s5)}}
 .gb-steps li,.gb-cards li{position:relative;padding:var(--s5);border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper);counter-increment:g}

@@ -179,6 +179,9 @@ const HEROES_BASE_CSS = `
 @media (min-width:900px){.ahs-grid{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}.ahs-art{justify-self:end}.ahs-inset{left:-12%}.ahs-stamp{right:-6%}}
 
 .ahb{position:relative;display:flex;align-items:flex-end;min-height:min(92svh,860px);isolation:isolate}
+/* the headline lies over the photograph itself: a bright shop interior washed it out (review, 24 Nov 2026) — a firmer veil under the words */
+.site .ahb .hero-scrim{--scrim-bot:color-mix(in srgb,var(--hero-ink) 90%,transparent)}
+@media (min-width:1024px){.site .ahb .hero-ph-wrap:not([data-side=center]) .hero-scrim::after{background:linear-gradient(to right,color-mix(in srgb,var(--hero-ink) 84%,transparent) 0%,color-mix(in srgb,var(--hero-ink) 58%,transparent) 38%,transparent 74%)}}
 .ahb>.ahb-photo{position:absolute;inset:0;z-index:0;background:var(--hero-ink)}
 .ahb-photo .hero-ph-wrap,.ahb-photo .mo-art{position:absolute;inset:0;width:100%;height:100%}
 .ahb-stamp{position:absolute;z-index:2;top:clamp(5rem,12vw,8.5rem);right:var(--gutter);--st:clamp(84px,9vw,128px);--rot:9deg}

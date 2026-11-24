@@ -339,7 +339,7 @@ export function AboutBannerColumns({ c, x, index }: VariantProps) {
             <SinceStamp c={c} x={x} className="abb-stamp" tone="paper" />
           </div>
         )}
-        <div className="abb-panel abx-rv" style={css({ "--i": 2 })}>
+        <div className={`abb-panel abx-rv ${list.length ? "" : "abb-nolist"}`} style={css({ "--i": 2 })}>
           <div className="abb-title">
             <Eyebrow>{s.eyebrow}</Eyebrow>
             <h2 className="adv-h2 mt-3 abb-h" data-t={tier(s.statement)}><Emph text={s.statement} /></h2>
@@ -381,7 +381,7 @@ export const ABOUTS_CSS = `
 .aba-statement{font-size:clamp(2rem,6vw,4.4rem);line-height:1.02;max-width:17ch;letter-spacing:var(--display-tr)}
 .aba-statement[data-t=m]{font-size:clamp(1.8rem,4.6vw,3.3rem);max-width:21ch}.aba-statement[data-t=l]{font-size:clamp(1.6rem,3.8vw,2.7rem);max-width:24ch;line-height:1.1}
 .site:lang(hi) .aba-statement{line-height:1.32;max-width:none}
-.aba-inset{position:relative;margin:var(--s3) 0 0;width:min(100%,320px);aspect-ratio:4/5;border-radius:999px 999px var(--r-tile) var(--r-tile);background:var(--paper-2)}
+.aba-inset{position:relative;margin:var(--s3) 0 0;width:min(100%,400px);aspect-ratio:4/5;border-radius:999px 999px var(--r-tile) var(--r-tile);background:var(--paper-2)}
 .site[data-shape=sharp] .aba-inset{border-radius:var(--r-tile) var(--r-tile) 0 0}
 .aba-stamp{position:absolute;right:var(--s3);bottom:var(--s3);--st:96px}
 .aba-body{padding-top:var(--s2)}
@@ -517,6 +517,8 @@ export const ABOUTS_CSS = `
 .abb-panel{margin:calc(-1 * clamp(4rem,9vw,8rem)) clamp(1.5rem,5vw,4.5rem) 0;grid-template-columns:minmax(0,5fr) minmax(0,4fr) minmax(0,3fr);gap:clamp(1.5rem,3.5vw,3.5rem);align-items:start}
 .abb-bare .abb-panel{margin:0}
 .abb-stamp{bottom:auto;top:var(--s5);left:auto;right:var(--s5)}
+/* no "good to know" list: the story takes the room of both columns, instead of a third of the panel standing empty */
+.abb-panel.abb-nolist{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}.abb-nolist .abb-text{column-count:2;column-gap:clamp(1.5rem,3vw,3rem)}
 }
 @media (min-width:900px) and (max-width:1179px){.abb-panel{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.abb-list{grid-column:1 / -1}}
 `;
