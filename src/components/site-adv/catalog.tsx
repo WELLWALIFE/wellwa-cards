@@ -824,7 +824,7 @@ export function ServicesEditTiles({ c, x }: VariantProps) {
   return (
     <Sec k="services" wide className="cet">
       <h2 className="st-h">{x.t(o.title)}</h2>
-      <ul className="cet-row" data-n={Math.min(o.items.length, 3)}>
+      <ul className="cet-row" data-n={Math.min(o.items.length, 3)} data-c={o.items.length}>
         {o.items.map((it, i) => <li key={i}><StoreTile it={it} x={x} i={i} sizes="(min-width: 1024px) 33vw, 50vw" over /></li>)}
       </ul>
       <More o={o} x={x} />
@@ -854,7 +854,7 @@ export const CATALOG_STORE_CSS = `
 .cet-label b{font-size:12.5px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;line-height:1.45}
 .cet-label small{font-size:12px;letter-spacing:.06em;opacity:.85}
 .site:lang(hi) .cet-label b{letter-spacing:0;font-size:15px}
-@media (min-width:1024px){.cet-row{grid-template-columns:repeat(3,1fr);gap:16px}.cet-row[data-n="2"]{grid-template-columns:repeat(2,1fr)}.cet-row[data-n="1"]{grid-template-columns:1fr;max-width:520px;margin-inline:auto}.cet-label b{font-size:14px}}
+@media (min-width:1024px){.cet-row{grid-template-columns:repeat(3,1fr);gap:16px}.cet-row[data-n="2"]{grid-template-columns:repeat(2,1fr)}.cet-row[data-n="1"]{grid-template-columns:1fr;max-width:520px;margin-inline:auto}/* four or eight tiles sit four across: three across left one tile alone on a row of its own */.cet-row[data-c="4"],.cet-row[data-c="8"]{grid-template-columns:repeat(4,1fr)}.cet-label b{font-size:14px}}
 `;
 
 export const CATALOG_CSS = `

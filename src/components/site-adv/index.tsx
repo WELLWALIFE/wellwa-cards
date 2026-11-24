@@ -42,6 +42,9 @@ import { SeeMore } from "@/components/site-adv/page-parts";
 import { shotsOf } from "@/components/site-adv/page-more";
 import { STORE1_CSS, Store1, isStore1, isStore2 } from "@/components/site-adv/store1";
 
+/** The layout of words a photo-led products layout gives way to when the list it draws has no photo (slotWith below). */
+const NO_PHOTO_LAYOUT: Record<string, string> = { "edit-tiles": "index-rows", lookbook: "price-list", magazine: "index-rows", scroller: "price-list", "feature-cards": "listing-rows", "shop-grid": "grid" };
+
 export type AdvancedSiteProps = {
   card: Card;
   spec: AdvancedSpec;
@@ -188,11 +191,15 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   // A section in the variant the spec names (createElement: the registry's component is looked up per section, not created).
   // The hero with 2–3 sliding banners when the owner set them (site.hero.slides), else the one hero.
   const slides = (card.site?.hero?.slides ?? []).filter((sl) => sl && sl.headline).slice(0, 3);
+  // A list with no photo at all (a services list beside a photographed catalogue) is never drawn as photo tiles: "Big photo tiles" over
+  // four services showed four tiles with one letter each (review of a mobile shop, 24 Nov 2026). It takes the layout of words that is
+  // nearest in spirit, so two designs still draw the same list differently.
+  const wordsFor = (cc: SiteContent, id: string) => (cc.offerings && cc.offerings.items.length > 0 && cc.offerings.items.every((o) => !o.images[0]) ? NO_PHOTO_LAYOUT[id] ?? id : id);
   const slotWith = (k: SectionKey, index: number, cc: SiteContent) => k === "hero" && slides.length >= 2
     ? createElement(HeroSlides, { c: cc, spec, x, index, slides, Hero: variantComponent(k, variantOf(spec, k)) as ComponentType<VariantProps> })
     : k === "gallery" && framesOf(cc, x).length < 3
       ? createElement(GallerySmall, { c: cc, spec, x, index })
-      : createElement(variantComponent(k, variantOf(spec, k)), { c: cc, spec, x, index });
+      : createElement(variantComponent(k, k === "services" ? wordsFor(cc, variantOf(spec, k)) : variantOf(spec, k)), { c: cc, spec, x, index });
   const slot = (k: SectionKey, index: number) => slotWith(k, index, c);
 
   // Section links of other files (`#adv-about` in a footer) become the real address of the page, so they open in a new tab and
