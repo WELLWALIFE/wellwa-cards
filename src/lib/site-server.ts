@@ -15,6 +15,7 @@ import { SITE_URL } from "@/lib/social-server";
 import { syncCardDomain } from "@/lib/own-domain";
 import type { SavedProduct } from "@/lib/card-facts";
 import type { Card, CardBlock, CardPage, ProductItem } from "@/lib/types";
+import { homeSlugOf } from "@/lib/site-advanced";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const abs = (u: string) => (u.startsWith("http") ? u : `${SITE_URL}${u}`);
@@ -389,6 +390,8 @@ export type SitePatch = {
   advancedPalette?: { key: string; color?: string; /** Picked by the owner (see AdvancedSpec.palette.own). */ own?: boolean };
   /** The Premium design's own letters, top and corners (website editor, 25 Oct 2026). Checked against the lists in lib/site-advanced.ts. */
   advancedLook?: { heading?: string; hero?: string; shape?: string; tone?: "light" | "dark"; corners?: boolean; order?: string[]; sections?: Record<string, string> };
+  /** The ids of the Home page's sections in the order the owner wants; a section not named keeps its place. */
+  homeBlocks?: string[];
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -450,7 +453,17 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
     const a4 = (site as { advanced: { palette?: Record<string, unknown> } & Record<string, unknown> }).advanced;
     if (L.corners && a4.palette) (site as Record<string, unknown>).advanced = { ...a4, palette: { ...a4.palette, corners: true } };
   }
-  const data = { ...row.data, site };
+  let pages = row.data.pages;
+  if (patch.homeBlocks?.length && Array.isArray(pages)) {
+    const slug = homeSlugOf(row.data), pos = new Map(patch.homeBlocks.map((id, n) => [id, n]));
+    pages = pages.map((p) => {
+      if (p.slug !== slug) return p;
+      const named = p.blocks.filter((b) => pos.has(b.id)).sort((x, y) => pos.get(x.id)! - pos.get(y.id)!);
+      let n = 0;
+      return { ...p, blocks: p.blocks.map((b) => (pos.has(b.id) ? named[n++] : b)) };
+    });
+  }
+  const data = { ...row.data, site, pages };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data }) });
   if (!r.ok) throw new Error(r.text.slice(0, 200) || "save failed");
   return site;

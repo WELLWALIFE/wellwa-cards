@@ -78,6 +78,9 @@ export async function PATCH(request: Request) {
   }
   if (b.float === "whatsapp" || b.float === "call" || b.float === "none") patch.float = b.float;
   const home = cleanHome(b.home); if (home) patch.home = home;
+  // The Home page's own sections in a new order (website editor → a part's sheet → Move up / down): ids only, the server re-orders
+  // the sections it already has — nothing is added, removed or rewritten.
+  if (Array.isArray(b.homeBlocks)) { const ids = (b.homeBlocks as unknown[]).filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 80).slice(0, 200); if (ids.length > 1) patch.homeBlocks = ids; }
   // "Make it look like this website": one public URL, read on the server (same safety rules as the AI builder).
   if (typeof b.reference === "string" && b.reference.trim()) patch.referenceUrl = b.reference.trim().slice(0, 300);
   try { return NextResponse.json({ ok: true, site: await patchSite(me.id, patch, typeof b.card_id === "string" ? b.card_id : undefined) }); }

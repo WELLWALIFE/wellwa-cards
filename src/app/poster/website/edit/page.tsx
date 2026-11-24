@@ -17,10 +17,11 @@ import { goBack } from "@/lib/nav-back";
 import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
-import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, VARIANT_IDS, repairOrder, type SectionKey } from "@/lib/site-advanced";
+import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, VARIANT_IDS, homeSlugOf, repairOrder, type SectionKey } from "@/lib/site-advanced";
 import { variantName } from "@/lib/site-advanced-names";
 import { allowedByFit, fitOf } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
+import { flowParts } from "@/components/site-adv/flow";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
@@ -66,6 +67,19 @@ const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
 };
 
 const field = "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
+/** One part of a Premium home page as the website draws it: a design section (`sec`), one of the Home page's own sections (`blk`), or both. */
+type HomeRow = { id: string; sec: SectionKey | null; blk?: string; name: string };
+const rowFocus = (r: HomeRow): { top?: boolean; sec?: string; blk?: string } => (r.sec === "hero" ? { top: true } : r.blk ? { blk: r.blk, ...(r.sec ? { sec: r.sec } : {}) } : { sec: r.sec ?? "" });
+/** The home page's sections put in the order of `ids`; a section the list does not name keeps its place. */
+function orderHome(pages: Card["pages"], slug: string, ids: string[]): Card["pages"] {
+  const pos = new Map(ids.map((id, n) => [id, n]));
+  return pages.map((p) => {
+    if (p.slug !== slug) return p;
+    const named = p.blocks.filter((b) => pos.has(b.id)).sort((x, y) => pos.get(x.id)! - pos.get(y.id)!);
+    let n = 0;
+    return { ...p, blocks: p.blocks.map((b) => (pos.has(b.id) ? named[n++] : b)) };
+  });
+}
 const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink hover:bg-surface2"}`;
 
 // eslint-disable-next-line @next/next/no-img-element
@@ -146,13 +160,13 @@ export default function WebsiteEditPage() {
   // Phone / computer view of the preview (master list #13): the same page in a 390 px wide window.
   const [phoneView, setPhoneView] = useState(false);
   const [boxW, setBoxW] = useState(0);
-  const focusAsk = useRef<{ top?: boolean; text?: string; sec?: string } | null>(null);
+  const focusAsk = useRef<{ top?: boolean; text?: string; sec?: string; blk?: string } | null>(null);
   // One part of the home page, tapped in the window (or reached by "check my website"): its own sheet with everything that can be
   // changed about it — layout, words, photo — in one place (owner, 24 Nov 2026: "kuch chhupa na rahe"; master list #6, #11).
-  const [sheet, setSheet] = useState<{ sec: SectionKey; key?: string; blockId?: string } | null>(null);
-  const sheetRef = useRef(sheet);
-  useEffect(() => { sheetRef.current = sheet; });
-  const advKeysRef = useRef<string[]>([]);
+  const [sheet, setSheet] = useState<{ id: string } | null>(null);
+  /** Where the window stays while a sheet is open (that part of the home page). */
+  const sheetFocus = useRef<{ top?: boolean; sec?: string; blk?: string } | null>(null);
+  const homeRowsRef = useRef<HomeRow[]>([]);
   /** Show this part in the window: the top of the website, or the section / line with this text. */
   const focus = (f: { top?: boolean; text?: string }) => { focusAsk.current = f; };
 
@@ -189,7 +203,7 @@ export default function WebsiteEditPage() {
   // A part opened: the window goes to the section it changes (back to the top on the list).
   useEffect(() => {
     // With the place the part's content sits at (partPlace → sync): the part's name alone sent the window to whatever heading matched a word.
-    const t = setTimeout(() => { const sy = syncRef.current; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? (sy ? (sy.text || sy.alt?.length || sy.sec || sy.blk ? { text: sy.text, alt: sy.alt, sec: sy.sec, blk: sy.blk, part: tab } : { top: true }) : { part: tab }) : sheetRef.current && sheetRef.current.sec !== "hero" ? { sec: sheetRef.current.sec } : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
+    const t = setTimeout(() => { const sy = syncRef.current; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? (sy ? (sy.text || sy.alt?.length || sy.sec || sy.blk ? { text: sy.text, alt: sy.alt, sec: sy.sec, blk: sy.blk, part: tab } : { top: true }) : { part: tab }) : sheetFocus.current ?? { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
     return () => clearTimeout(t);
   }, [open, tab]);
 
@@ -235,10 +249,11 @@ export default function WebsiteEditPage() {
       const key = p.key as Tab;
       if (now.embedDirty && !window.confirm(now.hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
       // A part of a Premium home page: its sheet (layout, words, photo) instead of going straight into one screen.
-      const sec = d.target.sec ?? "";
-      if (sec && advKeysRef.current.includes(sec)) {
+      const sec = d.target.sec ?? "", rows = homeRowsRef.current;
+      const row = (d.target.blockId ? rows.find((r) => r.blk === d.target!.blockId) : undefined) ?? (sec ? rows.find((r) => r.sec === sec && !r.blk) ?? rows.find((r) => r.sec === sec) : undefined);
+      if (row) {
         setEmbedDirty(false); setEmbedView(null); setOpen(false);
-        setSheet({ sec: sec as SectionKey, ...(p.blockId || p.key !== "text" ? { key: p.key, ...(p.blockId ? { blockId: p.blockId } : {}) } : {}) });
+        sheetFocus.current = rowFocus(row); setSheet({ id: row.id });
         window.scrollTo({ top: 0 });
         return;
       }
@@ -285,7 +300,24 @@ export default function WebsiteEditPage() {
   // "Build your own design" (owner, 24 Nov 2026): each part of the home page can wear any of its layouts, so the owner can take the
   // top of one design, the About of another, the footer of a third. The designs of the "choose" screen are read once, only to
   // say which design uses which layout ("Design 2").
-  useEffect(() => { advKeysRef.current = advRows.map((r) => r.key); }, [advRows]);
+  // The home page exactly as the website draws it (site-adv/index.tsx): the top, the key points, the Home page's own sections in the
+  // owner's order, the contact strip, the bottom. The sheet and "check my website" walk these.
+  const homeRows = useMemo(() => {
+    if (!adv || storeDesign || !card) return [] as HomeRow[];
+    const lang = card.language === "hi" ? "hi" : "en";
+    const c = buildContent(card, lang);
+    const hasContact = card.links.some((l) => l.type === "phone" || l.type === "whatsapp");
+    const nm = (k: SectionKey) => advRows.find((r) => r.key === k)?.name ?? k;
+    const rows: HomeRow[] = [{ id: "hero", sec: "hero", name: nm("hero") }];
+    if (sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust") });
+    const slug = homeSlugOf(card);
+    const hp = card.pages.find((p) => p.slug === slug);
+    if (hp) for (const p of flowParts(card, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, blk: p.b.id, name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
+    if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", name: nm("cta") });
+    rows.push({ id: "footer", sec: "footer", name: nm("footer") });
+    return rows;
+  }, [adv, storeDesign, card, advRows]);
+  useEffect(() => { homeRowsRef.current = homeRows; }, [homeRows]);
   const [mixDesigns, setMixDesigns] = useState<{ hero?: string; sections?: Record<string, string> }[] | null>(null);
   const mixCardId = s?.hasCard ? s.cardId : undefined;
   useEffect(() => {
@@ -389,7 +421,21 @@ export default function WebsiteEditPage() {
   };
   /** Which screen holds the photo of a part (none: the part has no photo of its own). */
   const SHEET_PHOTO: Partial<Record<SectionKey, string>> = { hero: "photos", about: "about", gallery: "photos", services: "products" };
-  const sheetGo = (i: number) => { const r = advRows[i]; if (!r) return; setSheet({ sec: r.key }); showAdv(r.key); window.scrollTo({ top: 0 }); };
+  const sheetGo = (i: number) => { const r = homeRows[i]; if (!r) return; const f = rowFocus(r); sheetFocus.current = f; setSheet({ id: r.id }); focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); window.scrollTo({ top: 0 }); };
+  const sheetClose = () => { sheetFocus.current = null; setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); };
+  /** One of the Home page's own sections changes place with the one above / below it; goes to the website with Save. */
+  function moveHomeBlock(id: string, dir: -1 | 1) {
+    if (!card) return;
+    const slug = homeSlugOf(card), hp = card.pages.find((p) => p.slug === slug);
+    const own = homeRows.filter((r) => r.blk), i = own.findIndex((r) => r.blk === id), other = own[i + dir];
+    if (!hp || i < 0 || !other) return;
+    const blocks = [...hp.blocks], a = blocks.findIndex((b) => b.id === id), b2 = blocks.findIndex((b) => b.id === other.blk);
+    if (a < 0 || b2 < 0) return;
+    [blocks[a], blocks[b2]] = [blocks[b2], blocks[a]];
+    touched.current.add("homeBlocks"); setNote((n) => (n?.k === "save" ? null : n));
+    const f = { blk: id }; sheetFocus.current = f; focusAsk.current = f; lastFocus.current = f;
+    setCard({ ...card, pages: card.pages.map((p) => (p === hp ? { ...hp, blocks } : p)) }); setDirty(true);
+  }
   const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") setAdv({ hero: id }); else setAdvSection(k, id); };
   const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
@@ -454,12 +500,14 @@ export default function WebsiteEditPage() {
         hidden: site.hidden ?? [],
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
+        // The order of the Home page's own sections (moved from a part's sheet); an Undo sends the earlier order back.
+        ...(from || touched.current.has("homeBlocks") ? { homeBlocks: ((from ?? card).pages.find((p) => p.slug === homeSlugOf(from ?? card))?.blocks ?? []).map((b) => b.id) } : {}),
         ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}), ...((adv.palette as { own?: boolean }).own ? { own: true } : {}) } } : {}),
         ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}), ...(Array.isArray(adv.order) ? { order: adv.order as string[] } : {}), ...(adv.sections && typeof adv.sections === "object" ? { sections: adv.sections as Record<string, string> } : {}) } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1); mixHold.current = false; setMixHeld(false);
-      if (from) { setCard((cur) => (cur ? { ...cur, site: from.site } : from)); say("save", hi ? "↩️ पहले जैसा कर दिया।" : "↩️ Put back as it was.", false); }
+      if (from) { setCard((cur) => (cur ? { ...cur, site: from.site, pages: orderHome(cur.pages, homeSlugOf(cur), (from.pages.find((p) => p.slug === homeSlugOf(from))?.blocks ?? []).map((b) => b.id)) } : from)); say("save", hi ? "↩️ पहले जैसा कर दिया।" : "↩️ Put back as it was.", false); }
       else { say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false); if (before) setUndo(before); setLiveBox(true); setLiveQr(""); setLiveCopied(false); }
     } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
@@ -712,38 +760,51 @@ export default function WebsiteEditPage() {
           {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL made on this phone */}
           {liveQr && <img src={liveQr} alt="QR" className="h-40 w-40 rounded-lg border border-border bg-white p-1" />}
         </section>); })()}
-      {!open && sheet && adv && (() => {
-        const i = advRows.findIndex((r) => r.key === sheet.sec); const row = advRows[i]; if (!row) return null;
-        const w = sheet.key ? { key: sheet.key, blockId: sheet.blockId } : sheetWords(row.key);
-        const ph = SHEET_PHOTO[row.key];
-        const isHero = row.key === "hero";
-        const ids: readonly string[] = isHero ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[row.key] ?? [];
-        const cur = isHero ? String(adv.hero ?? "") : (adv.sections as Record<string, string> | undefined)?.[row.key] ?? ids[0];
+      {!open && sheet && adv && card && (() => {
+        const i = homeRows.findIndex((r) => r.id === sheet.id); const row = homeRows[i]; if (!row) return null;
+        const sec = row.sec;
+        const w = row.blk ? partFor(card, { kind: "block", blockId: row.blk }, true) : sheetWords(sec ?? "hero");
+        const ph = sec ? SHEET_PHOTO[sec] : undefined;
+        const isHero = sec === "hero";
+        const ids: readonly string[] = !sec ? [] : isHero ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[sec] ?? [];
+        const cur = isHero ? String(adv.hero ?? "") : sec ? (adv.sections as Record<string, string> | undefined)?.[sec] ?? ids[0] : "";
+        const own = homeRows.filter((r) => r.blk), at = own.findIndex((r) => r.id === row.id);
         const big = "flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold hover:bg-surface2";
+        const small = "inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-30";
         return (
         <section className="space-y-3 rounded-2xl border-2 border-brand bg-surface p-3 shadow-card">
           <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0"><p className="text-[11px] font-semibold text-muted">{hi ? `हिस्सा ${i + 1} / ${advRows.length} — बाईं तरफ़ website में यही दिख रहा है` : `Part ${i + 1} of ${advRows.length} — this is what the window on the left shows`}</p><p className="truncate text-base font-bold">{row.name}</p></div>
-            <button type="button" aria-label={hi ? "बंद" : "Close"} onClick={() => { setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); }} className="rounded-lg p-1 text-muted"><X className="h-4 w-4" /></button>
+            <div className="min-w-0"><p className="text-[11px] font-semibold text-muted">{hi ? `हिस्सा ${i + 1} / ${homeRows.length} — बाईं तरफ़ website में यही दिख रहा है` : `Part ${i + 1} of ${homeRows.length} — this is what the window on the left shows`}</p><p className="truncate text-base font-bold">{row.name}</p></div>
+            <button type="button" aria-label={hi ? "बंद" : "Close"} onClick={sheetClose} className="rounded-lg p-1 text-muted"><X className="h-4 w-4" /></button>
           </div>
           <div className={`grid gap-2 ${ph && ph !== w.key ? "sm:grid-cols-2" : ""}`}>
-            <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={big}>{ph === w.key ? (row.key === "gallery" ? (hi ? "📷 फ़ोटो बदलें" : "📷 Change the photos") : (hi ? "✍️ शब्द और 📷 फ़ोटो बदलें" : "✍️ Change the words and 📷 photo")) : (hi ? "✍️ शब्द बदलें" : "✍️ Change the words")}</button>
+            <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={big}>{ph === w.key ? (sec === "gallery" ? (hi ? "📷 फ़ोटो बदलें" : "📷 Change the photos") : (hi ? "✍️ शब्द और 📷 फ़ोटो बदलें" : "✍️ Change the words and 📷 photo")) : (hi ? "✍️ शब्द बदलें" : "✍️ Change the words")}</button>
             {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={big}>{hi ? "📷 फ़ोटो बदलें" : "📷 Change the photo"}</button>}
           </div>
-          {ids.length > 1 && <div>
+          {sec && ids.length > 1 && <div>
             <p className="text-[13px] font-semibold">{hi ? "🎨 इस हिस्से का रूप (layout)" : "🎨 The layout of this part"}</p>
             <p className="text-[11px] text-muted">{hi ? "जो पसंद आए वो दबाएँ — बाईं तरफ़ तुरंत दिखेगा। पक्का करने के लिए नीचे “Save” दबाएँ।" : "Tap one — it shows on the left at once. Press “Save” under the window to keep it."}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {/* eslint-disable-next-line react-hooks/refs -- sheetLayout runs on the tap, never while drawing */}
-              {ids.map((id) => { const ok = mixAllow(row.key, id) || cur === id; return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => sheetLayout(row.key, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[hi ? 1 : 0] : variantName(row.key, id, hi)}</button>; })}
+              {ids.map((id) => { const ok = mixAllow(sec, id) || cur === id; return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => sheetLayout(sec, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[hi ? 1 : 0] : variantName(sec, id, hi)}</button>; })}
             </div>
           </div>}
-          <button type="button" onClick={() => sheetOpen("home")} className="text-left text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "इस हिस्से को ऊपर-नीचे करना या छुपाना है? “हिस्से (Sections)” खोलें →" : "Move this part up or down, or hide it? Open “Sections” →"}</button>
+          {row.blk
+            ? <div>
+                <p className="text-[13px] font-semibold">{hi ? "↕️ इस हिस्से की जगह" : "↕️ Where this part sits"}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {/* eslint-disable-next-line react-hooks/refs -- moveHomeBlock runs on the tap, never while drawing */}
+                  <button type="button" disabled={at <= 0} onClick={() => moveHomeBlock(row.blk!, -1)} className={small}><ChevronUp className="h-4 w-4" /> {hi ? "ऊपर ले जाएँ" : "Move up"}</button>
+                  <button type="button" disabled={at < 0 || at >= own.length - 1} onClick={() => moveHomeBlock(row.blk!, 1)} className={small}><ChevronDown className="h-4 w-4" /> {hi ? "नीचे ले जाएँ" : "Move down"}</button>
+                  <button type="button" onClick={() => sheetOpen("text", row.blk)} className="text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "हटाना है? “शब्द बदलें” में 🗑 दबाएँ →" : "Remove it? Press 🗑 in “Change the words” →"}</button>
+                </div>
+              </div>
+            : <p className="text-[11px] text-muted">{hi ? "यह हिस्सा हर website में अपनी तय जगह पर रहता है — इसे ऊपर-नीचे नहीं किया जाता।" : "This part has a fixed place on every website — it is not moved up or down."}</p>}
           <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
             <button type="button" disabled={i === 0} onClick={() => sheetGo(i - 1)} className="rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-30">{hi ? "← पिछला हिस्सा" : "← Previous part"}</button>
-            {i < advRows.length - 1
+            {i < homeRows.length - 1
               ? <button type="button" onClick={() => sheetGo(i + 1)} className="rounded-xl grad-brand px-3 py-2 text-xs font-semibold text-white">{hi ? "ठीक है, अगला हिस्सा →" : "Looks good, next part →"}</button>
-              : <button type="button" onClick={() => { setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); }} className="rounded-xl bg-good px-3 py-2 text-xs font-semibold text-white">{hi ? "✅ पूरी website देख ली" : "✅ Whole website checked"}</button>}
+              : <button type="button" onClick={sheetClose} className="rounded-xl bg-good px-3 py-2 text-xs font-semibold text-white">{hi ? "✅ पूरी website देख ली" : "✅ Whole website checked"}</button>}
           </div>
         </section>); })()}
       {!open && (
@@ -755,12 +816,12 @@ export default function WebsiteEditPage() {
               ? <button type="button" onClick={() => { openPart("look"); setMixJump(true); }} className="flex items-center gap-2.5 rounded-xl border-2 border-brand/40 bg-surface px-3 py-3 text-left shadow-card"><Wand2 className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "हर हिस्से का रूप अलग चुनें" : "Pick the layout of each part"}</span></span></button>
               : <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-border bg-surface px-3 py-3"><Wand2 className="h-5 w-5 shrink-0 text-muted" /><span><span className="block text-sm font-bold text-muted">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "पहले बाईं तरफ़ से एक तैयार design चुनें, फिर ये खुलेगा।" : "First choose a ready design; then this opens."}</span></span></div>}
           </div>
-          {advRows.length > 1 && <button type="button" onClick={() => sheetGo(0)} className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-left shadow-card"><Eye className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "मेरी website जाँचें" : "Check my website"}</span><span className="block text-[11px] text-muted">{hi ? "ऊपर से नीचे, हर हिस्सा एक-एक करके देखें और वहीं बदलें" : "Top to bottom, one part at a time — change anything right there"}</span></span></button>}
+          {homeRows.length > 1 && <button type="button" onClick={() => sheetGo(0)} className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-left shadow-card"><Eye className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "मेरी website जाँचें" : "Check my website"}</span><span className="block text-[11px] text-muted">{hi ? "ऊपर से नीचे, हर हिस्सा एक-एक करके देखें और वहीं बदलें" : "Top to bottom, one part at a time — change anything right there"}</span></span></button>}
           <p className="text-[11px] text-muted">{hi ? "रंग, अक्षर और कोने नीचे “Design” में हैं। यहाँ का कोई भी बदलाव पहले इस window में दिखता है; असली website पर तभी जाता है जब आप Save दबाते हैं।" : "Colours, letters and corners are under “Design” below. Any change here shows in this window first; it goes to the real website only when you press Save."}</p>
         </section>)}
       {!open && card && <SiteCheck card={card} hi={hi} />}
       {!open
-        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["settings"]} state={(k) => partState(card, k)} onPick={(_g, k) => { setSheet(null); openPart(k); }} />
+        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["settings"]} state={(k) => partState(card, k)} onPick={(_g, k) => { sheetFocus.current = null; setSheet(null); openPart(k); }} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
       {open && (<>
       {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">

@@ -393,6 +393,13 @@ export function Block({ b, x, c, i }: { b: CardBlock; x: AdvCtxPlus; c: SiteCont
     }
     case "cta": {
       const href = (b.joinUrl ?? "").trim();
+      // Only a button, no heading and no words: a slim line with the button in the middle — not a tall dark band that looks empty
+      // (seen on a live site, 24 Nov 2026: a lone "See all services" in a big black strip).
+      if (href && !(b.title ?? "").trim() && !(b.body ?? "").trim()) return (
+        <div data-reveal className="adv-wrap" style={{ paddingTop: 28, paddingBottom: 28, textAlign: "center" }}>
+          <Btn href={/^#/.test(href) ? (x.hrefFor?.(href.slice(1)) ?? href) : href} external={/^https?:/i.test(href)}>{x.t((b.joinLabel ?? "").trim() || x.ui("Open", "खोलें"))}</Btn>
+        </div>
+      );
       return (
         <Sec k={`b${i}`} tone="ink" label={title(b.title)}>
           <Head title={title(b.title)} lede={(b.body ?? "").trim() ? x.t(b.body!.trim()) : undefined} />
