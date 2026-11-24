@@ -1196,7 +1196,8 @@ function Onboard() {
   }, [editing]);
   useEffect(() => { if (editing && isEmbedded() && err) toParent({ type: "embed-error", text: err }); }, [err, editing]);
   useEffect(() => {
-    if (saveGo) void save();
+    // "About you" has its own save (name, numbers, email): the top bar's Save runs that one on that screen.
+    if (saveGo) void (step === "you" ? nextFromYou() : save());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveGo]);
   useEffect(() => {
@@ -2062,7 +2063,7 @@ function Onboard() {
           </div>
           {username === null && <ClaimUsername onDone={async () => { await bumpServerBase(true); return loadUsername(); }} />}
           {err && <p className="text-sm text-danger">{err}</p>}
-          <button type="button" onClick={nextFromYou} disabled={busy === "you"}
+          <button type="button" data-embed-hide onClick={nextFromYou} disabled={busy === "you"}
             className="w-full rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-card disabled:opacity-70">
             {busy === "you" ? T("Saving…", "Save हो रहा है…") : editing ? T("Save", "Save करें") : T("Next →", "आगे →")}
           </button>
