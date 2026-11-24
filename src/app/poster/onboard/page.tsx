@@ -2255,6 +2255,10 @@ function Onboard() {
       ) : step === "where" ? (
         <section className="space-y-3">
           {head(T("Where & when", "कहाँ और कब"), T("City, address, map and timings.", "शहर, पता, map और समय।"))}
+          {/* Inside the website editor each group is its own raised card with a small heading (ob-card / ob-cap, globals.css):
+              the look of the editor around it. In the first-time set-up nothing changes. */}
+          <div className="ob-card space-y-3">
+          <p className="ob-cap">{T("Address", "पता")}</p>
           {/* 3 — city */}
           <label className="block text-sm font-semibold">{T(`${org.En} city`, `${place} का शहर`)} <span className="text-danger">*</span><Help k="city" /><input id="ob-in-city" value={biz.city ?? ""} onChange={(e) => { touch("city"); clearFE("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder={T("e.g. Delhi", "जैसे Delhi")} className={`${cField} ${fe("city") ? "border-danger" : ""}`} /><FieldErr id="city" msg={fe("city")} /></label>
           <div className="space-y-3">
@@ -2288,7 +2292,8 @@ function Onboard() {
                 <button type="button" onClick={() => setMapPaste((m) => ({ ...m, open: true }))} className="text-xs font-semibold text-brand-ink underline underline-offset-2">{T("Or paste a Google Maps link", "या Google Maps link paste करें")}</button>
               ))}
           </div>
-          <div className="space-y-4">
+          </div>
+          <div className="ob-card space-y-4">
               {biz.role !== "personal" && (
                 <div>
                   <p className="text-sm font-semibold">{T("Where do you serve customers?", "आप कहाँ तक service देते हैं?")}<Help k="reach" /></p>
@@ -2306,7 +2311,10 @@ function Onboard() {
               )}
           </div>
           {/* The areas question is gone (owner's call, 7 Oct 2026): the city is asked right here, and "where you serve" above says how far. */}
+          <div className="ob-card space-y-3">
+          <p className="ob-cap">{T("Opening hours & delivery", "खुलने का समय और delivery")}</p>
           <FactsFields group="company" only={["q-hours", "q-delivery"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} />
+          </div>
           {nextBar(true)}
         </section>
       ) : step === "about" ? (
