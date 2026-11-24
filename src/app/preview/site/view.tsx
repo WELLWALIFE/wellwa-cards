@@ -9,7 +9,7 @@ import { CardView, type EditTarget } from "@/components/card-view";
 import { PlanProvider, usePlan } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
-import { isShubhoraSellerCard, sellerDrawsPremium, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { isShubhoraSellerCard, sellerDrawsPremium, withoutFreeCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 import { withQuality } from "@/lib/site-quality";
 import { activeAdvanced, advancedItemStubs, withAdvancedPages } from "@/lib/site-advanced";
 
@@ -104,7 +104,11 @@ function PreviewInner() {
     if (!card) return card;
     const seller = isShubhoraSellerCard(card);
     // The same rule as the public page (src/app/c/[username]/render.tsx): what the preview shows is what goes live.
-    const base = seller ? (card.site?.advanced && !sellerDrawsPremium(card.site) ? { ...card, site: { ...card.site, advancedOn: false } } : card) : withoutShubhoraLeaks(card);
+    // A partner's Shubhora site is redrawn when it goes live (the company's banners, headline and home order — lib/shubhora-page.ts
+    // withoutFreeCard). The editor's preview skipped that, so the partner saw his old home here and another on his domain
+    // (owner, 24 Nov 2026: "main website par home alag hai aur edit me kuch aur — same hona chahiye").
+    const drawn = withoutFreeCard(seller ? card : withoutShubhoraLeaks(card), seller);
+    const base = seller && drawn.site?.advanced && !sellerDrawsPremium(drawn.site) ? { ...drawn, site: { ...drawn.site, advancedOn: false } } : drawn;
     if (!activeAdvanced(base.site, base.username)) return base;
     const withPages = withAdvancedPages(base);
     return { ...withPages, pages: [...withPages.pages, ...advancedItemStubs(withPages)] };
