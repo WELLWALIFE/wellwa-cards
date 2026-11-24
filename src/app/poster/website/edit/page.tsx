@@ -21,6 +21,7 @@ import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, VARIANT_IDS, homeSlugO
 import { variantName } from "@/lib/site-advanced-names";
 import { allowedByFit, fitOf } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
+import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 import { flowParts } from "@/components/site-adv/flow";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
@@ -43,19 +44,17 @@ type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" |
 type Group = "design" | "content" | "photos" | "contact" | "settings";
 /** Off: nothing in the editor goes live by itself any more — Save puts it on the website (owner, 24 Nov 2026). */
 const AUTO_SAVE = false as boolean;
-/** The layout of every Premium section in one place too (owner, 24 Nov 2026: "look and letters wala option nahi mil raha"), beside each section's own sheet. */
-const LAYOUTS_IN_LOOK = true as boolean;
 /** Which group each part sits in (the list's GROUPS, for a part opened from the preview). */
 /** The editor's names (final review, 24 Nov 2026 — https://claude.ai/artifact/HkXgzpjpzf9AgS5oP1bp8h): short, in English, one name per thing. */
 const LABEL: Record<string, [string, string]> = {
   hero: ["Home banner", "The big heading and banner photos at the top of your home page"],
-  look: ["Look & layouts", "Colour, font, background, corners — and the layout of the banner and every section"],
-  text: ["Pages & text", "Every page's text; add or remove a section or a page"],
-  photos: ["Photos", "Banner photos and the photo gallery"],
+  look: ["Colours & fonts", "Colour, font, background and corners"],
+  text: ["All pages & text", "Every page's text; add, rename or remove a page"],
+  photos: ["Photo library", "Banner photos and the photo gallery"],
   products: ["Products", "Products, prices and their photos"],
   about: ["About us", "Your story and your logo"],
   details: ["Services & highlights", "What you offer and why people choose you"],
-  reviews: ["Reviews", "Customer reviews and your Google review link"],
+  reviews: ["Reviews & Google link", "Customer reviews and your Google review link"],
   you: ["Phone, WhatsApp & photo", "Also shown on your posters"],
   where: ["Address & hours", "Address, map pin and opening hours"],
   links: ["Payments & social", "UPI and social media links"],
@@ -74,8 +73,8 @@ type RTab = (typeof RTABS)[number][0];
 /** A row of a list in the editor: a name, one line under it, and what can be done to it on the right. */
 function EdRow({ Icon, title, sub, onClick, badge, children, dim = false }: { Icon?: typeof Palette; title: string; sub?: string; onClick?: () => void; badge?: React.ReactNode; children?: React.ReactNode; dim?: boolean }) {
   return (
-    <div className={`flex items-center gap-2.5 px-3 py-2.5 transition hover:bg-surface2/60 ${dim ? "opacity-50" : ""}`}>
-      {Icon && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><Icon className="h-4 w-4" /></span>}
+    <div className={`${ROW} ${dim ? "opacity-60" : ""}`}>
+      {Icon && <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-ink"><Icon className="h-[18px] w-[18px]" /></span>}
       <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
         <span className="block truncate text-sm font-semibold text-ink">{title}</span>
         {sub && <span className="block truncate text-[12px] text-muted">{sub}</span>}
@@ -102,7 +101,7 @@ function SaveToast({ note }: { note: { text: string; bad: boolean } | null }) {
     const t = setTimeout(() => setShown(null), note.bad ? 7000 : 2800);
     return () => clearTimeout(t);
   }, [note]);
-  return shown ? <p role={shown.bad ? "alert" : "status"} className={`absolute inset-x-3 top-[calc(100%+6px)] z-40 rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-card ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p> : null;
+  return shown ? <p role={shown.bad ? "alert" : "status"} className={`absolute inset-x-3 top-[calc(100%+6px)] z-40 rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)] ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p> : null;
 }
 /** Section designs made for another kind of business: offered only when the business's own designs use them (or one is in use). */
 const OTHER_TRADE = new Set(["services:menu-leaders", "services:rate-list", "services:tiers"]);
@@ -113,10 +112,12 @@ function needOf(k: string, id: string): { text: string; part: string; btn: strin
   if (id === "tiers") return { text: "This design needs at least 2 products or plans.", part: "products", btn: "Add products" };
   return { text: "This design needs products with photos.", part: "products", btn: "Add product photos" };
 }
-const TB = "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-ink hover:bg-surface2 disabled:opacity-35";
-const TBW = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-semibold text-ink hover:bg-surface2 disabled:opacity-35";
+const TB = "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-ink shadow-sm transition hover:-translate-y-px hover:shadow disabled:opacity-35 disabled:shadow-none";
+const TBW = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-semibold text-ink shadow-sm transition hover:-translate-y-px hover:shadow disabled:opacity-35 disabled:shadow-none";
 const IB = "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface2 hover:text-ink disabled:opacity-30";
-const BOX = "divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card";
+/** A list in the editor: every row its own raised card (owner, 24 Nov 2026: "sab cheez page par ubhri hui dikhni chahiye"). */
+const BOX = "space-y-2";
+const ROW = "flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_6px_16px_-8px_rgba(16,24,40,0.16)] transition hover:-translate-y-px hover:border-brand/40 hover:shadow-[0_2px_4px_rgba(16,24,40,0.08),0_12px_24px_-10px_rgba(16,24,40,0.22)]";
 const TAB_GROUP: Record<string, Group> = {
   look: "design", hero: "content", home: "content", text: "content", products: "content", about: "content", details: "content", reviews: "content",
   photos: "content", you: "contact", where: "contact", links: "contact", buttons: "contact", trade: "contact",
@@ -140,12 +141,17 @@ const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
 
 const field = "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
 /** One part of a Premium home page as the website draws it: a design section (`sec`), one of the Home page's own sections (`blk`), or both. */
-type HomeRow = { id: string; sec: SectionKey | null; blk?: string; name: string; /** What kind of section it is, and how many items ("Photos · 9"). */ kind?: string };
+type HomeRow = { id: string; sec: SectionKey | null; blk?: string; name: string; /** What the row is, for its icon. */ ic?: string; /** What kind of section it is, and how many items ("Photos · 9"). */ kind?: string };
 /** A section's kind in plain words, for the line under its name. */
 const KIND_NAME: Record<string, string> = {
   about: "About", highlights: "Key points", services: "Services", product: "Products", gallery: "Photos", image: "Photo", carousel: "Photos",
   video: "Video", testimonials: "Reviews", faq: "Questions", hours: "Timings", location: "Address", contact: "Contact form", form: "Form",
   cta: "Button", story: "Story", table: "Price list", showcase: "Showcase", compare: "Comparison", offer: "Offer", appointment: "Booking", pdf: "PDF",
+};
+const ROW_ICON: Record<string, typeof Palette> = {
+  hero: ImageIcon, masthead: Type, trust: ListOrdered, about: BookUser, highlights: ListChecks, services: ListChecks, product: Package, table: Package,
+  gallery: Camera, image: Camera, carousel: Camera, video: Camera, testimonials: Star, faq: FileText, hours: Clock, location: Clock,
+  contact: Phone, form: Phone, appointment: Clock, cta: MousePointerClick, offer: Megaphone, story: BookUser, showcase: LayoutGrid, footer: LayoutTemplate,
 };
 function kindLine(b: CardBlock): string {
   const n = "items" in b && Array.isArray(b.items) ? b.items.length : "images" in b && Array.isArray(b.images) ? b.images.length : 0;
@@ -254,6 +260,8 @@ export default function WebsiteEditPage() {
   // changed about it — layout, words, photo — in one place (owner, 24 Nov 2026: "kuch chhupa na rahe"; master list #6, #11).
   const [sheet, setSheet] = useState<{ id: string } | null>(null);
   const [rtab, setRtab] = useState<RTab>("sections");
+  /** Colours & fonts, or Section designs: two rows of the Design tab, one screen each. */
+  const [lookMode, setLookMode] = useState<"style" | "sections">("style");
   const [healthOpen, setHealthOpen] = useState(false);
   // The top bar's height: the preview sits right under it while the page scrolls.
   const topBar = useRef<HTMLDivElement>(null);
@@ -402,7 +410,7 @@ export default function WebsiteEditPage() {
       about: [titleOf("about") || "About", titleOf("about") || "हमारे बारे में"], services: [titleOf("services", "product") || "Services / products", titleOf("services", "product") || "Services / products"],
       gallery: [titleOf("gallery", "image", "carousel") || "Photos", titleOf("gallery", "image", "carousel") || "Photos"], proof: [titleOf("testimonials") || "Customer reviews", titleOf("testimonials") || "Customer reviews"],
       process: ["Step by step", "Step by step"], faq: [titleOf("faq") || "Questions", titleOf("faq") || "सवाल-जवाब"],
-      visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip (WhatsApp / Call)", "Contact पट्टी (WhatsApp / Call)"], footer: ["Footer", "सबसे नीचे"],
+      visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip", "Contact पट्टी (WhatsApp / Call)"], footer: ["Footer", "सबसे नीचे"],
     };
     return repairOrder(adv.order).filter((k) => sectionHasContent(k, c, hasContact)).map((k) => ({ key: k, name: (names[k] ?? [k, k])[hi ? 1 : 0], fixed: k === "hero" || k === "footer" }));
   }, [adv, storeDesign, card, hi]);
@@ -425,14 +433,14 @@ export default function WebsiteEditPage() {
     const onHome = slug === homeSl;
     const hp = dc.pages.find((p) => p.slug === slug);
     const rows: HomeRow[] = onHome
-      ? [{ id: "hero", sec: "hero", name: nm("hero"), kind: "Heading and photos · always on top" }]
-      : [{ id: "masthead", sec: null, name: "Page heading", kind: "Page name and photo · always on top" }];
-    if (onHome && sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust"), kind: "Key figures · fixed position" });
+      ? [{ id: "hero", sec: "hero", ic: "hero", name: nm("hero"), kind: "Heading and photos · always on top" }]
+      : [{ id: "masthead", sec: null, ic: "masthead", name: "Page heading", kind: "Page name and photo · always on top" }];
+    if (onHome && sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", ic: "trust", name: nm("trust"), kind: "Key figures · fixed position" });
     // A section the website adds by itself (the plans copy, the Google check) is not one of the owner's: fixed, no Move or Hide.
     const stored = new Set((card.pages.find((p) => p.slug === slug)?.blocks ?? []).map((b) => b.id));
-    if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, kind: kindLine(p.b), ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
-    if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", name: nm("cta"), kind: "WhatsApp and Call · fixed position" });
-    rows.push({ id: "footer", sec: "footer", name: nm("footer"), kind: "Address and links · always at the bottom" });
+    if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, ic: p.b.kind, kind: kindLine(p.b), ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
+    if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", ic: "cta", name: nm("cta"), kind: "WhatsApp and Call · fixed position" });
+    rows.push({ id: "footer", sec: "footer", ic: "footer", name: nm("footer"), kind: "Address and links · always at the bottom" });
     return rows;
   }, [adv, storeDesign, card, advRows, hi, viewPage]);
   /** The page whose sections the list shows, and its name. */
@@ -508,7 +516,7 @@ export default function WebsiteEditPage() {
   // The order of the home page is now the Home page's own sections (Text & pages → Home): this panel is not drawn any more.
   void showAdv;
   const advOrderPanel = advRows.length > 2 && (
-    <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+    <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
       <p className="text-sm font-semibold">{hi ? "Home page का क्रम — जैसा website पर है" : "Order of your home page — as it is on the website"}</p>
       <p className="mt-0.5 text-[11px] text-muted">{hi ? "नाम पर tap करें तो website का वही हिस्सा दिखेगा। खींचकर या तीर से ऊपर-नीचे करें — अपने-आप save होता है।" : "Tap a name to see that part on the website. Drag a row, or use the arrows, to move it — it saves by itself."}</p>
       <ul className="mt-2 space-y-1.5">
@@ -627,7 +635,7 @@ export default function WebsiteEditPage() {
     );
   };
   const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") pickHero(id); else setAdvSection(k, id); };
-  const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); };
+  const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); if (key === "text" && blockId === "__add") setSync({ text: "", page: curSlug }); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
   function setTone(t: "light" | "dark") {
     if (!adv) return;
@@ -835,7 +843,9 @@ export default function WebsiteEditPage() {
   ];
   // Five plain groups (master list #29, 24 Nov 2026 — https://claude.ai/artifact/UJXzJBJjKAssCmCsQGGB3u): the parts are the same,
   // only sorted by what a shop owner looks for: the design, the sections and their words, the photos, the shop's details, settings.
-  const allTabs = RAW_GROUPS.flatMap((g) => g.tabs).map((t) => (LABEL[t.key] ? { ...t, label: LABEL[t.key][0], sub: LABEL[t.key][1] } : t));
+  // The business's own word for what it sells ("Menu", "Treatments", "Products"), as its website says it.
+  const tradeWord = catalogLabel(recipeFor(card.seo?.categoryKey ?? "").catalog, "en");
+  const allTabs = RAW_GROUPS.flatMap((g) => g.tabs).map((t) => (LABEL[t.key] ? { ...t, label: t.key === "products" && tradeWord ? tradeWord.charAt(0).toUpperCase() + tradeWord.slice(1) : LABEL[t.key][0], sub: t.key === "products" ? "Items, prices and their photos" : LABEL[t.key][1] } : t));
   const tabsOf = (...ks: Tab[]) => ks.map((k) => allTabs.find((t) => t.key === k)).filter((t): t is TabDef => !!t);
   const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: TabDef[] }[] = [
     { key: "content", label: "Sections", Icon: ListOrdered, tabs: tabsOf("hero", "text", "products", "about", "details", "reviews", "photos", "home") },
@@ -930,7 +940,7 @@ export default function WebsiteEditPage() {
     <div className="space-y-3 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-6 lg:space-y-0">
       <EditFocus />
       {/* ---- Top bar (final review, 24 Nov 2026): where you are, whether it is live, the view, Undo / Redo and one Save — always here. ---- */}
-      <div ref={topBar} className="sticky z-30 -mx-4 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur lg:col-span-2 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:shadow-card" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
+      <div ref={topBar} className="sticky z-30 -mx-4 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur lg:col-span-2 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
           <div className="min-w-[120px] flex-1 lg:pr-2">
@@ -947,7 +957,7 @@ export default function WebsiteEditPage() {
           <span className={`hidden whitespace-nowrap text-[12px] font-medium xl:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
           {undo && !unsaved && <button type="button" onClick={() => void save(undo)} className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="Put back the website as it was before the last Save"><RotateCcw className="h-3.5 w-3.5" /> <span className="hidden xl:inline">Undo save</span></button>}
           <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="View site"><ExternalLink className="h-3.5 w-3.5" /> <span className="hidden xl:inline">View site</span></a>
-          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
+          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 shadow-[0_2px_6px_rgba(16,24,40,0.25)] disabled:opacity-40 disabled:shadow-none">{busy === "save" ? "Saving…" : "Save"}</button>
         </div>
         <SaveToast note={note?.k === "save" ? { text: note.text, bad: note.bad } : null} />
       </div>
@@ -956,11 +966,11 @@ export default function WebsiteEditPage() {
       <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-2 lg:col-start-1 lg:row-span-[40] lg:mx-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0" style={{ top: `calc(env(safe-area-inset-top) + var(--help-banner, 0px) + ${barH + 8}px)` }}>
         {!open && visiblePages.length > 1 && (
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5" role="tablist" aria-label="Pages">
-            {visiblePages.map((p) => { const home = p.slug === "home"; const on = home ? !viewPage : viewPage === p.slug; return <button key={p.slug} type="button" role="tab" aria-selected={on} onClick={() => { sheetFocus.current = null; setSheet(null); setViewPage(home ? "" : p.slug); }} className={`h-8 shrink-0 rounded-full border px-3 text-[12px] font-semibold transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted hover:text-ink"}`}>{p.label || p.slug}</button>; })}
+            {visiblePages.map((p) => { const home = p.slug === "home"; const on = home ? !viewPage : viewPage === p.slug; return <button key={p.slug} type="button" role="tab" aria-selected={on} onClick={() => { sheetFocus.current = null; setSheet(null); setViewPage(home ? "" : p.slug); }} className={`h-8 shrink-0 rounded-full border px-3 text-[12px] font-semibold shadow-sm transition ${on ? "border-brand bg-brand text-white" : "border-border bg-surface text-muted hover:text-ink"}`}>{p.label || p.slug}</button>; })}
             <button type="button" onClick={() => openPart("text")} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3 text-[12px] font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" /> Page</button>
           </div>
         )}
-        <div className="relative overflow-clip rounded-2xl border border-border bg-surface shadow-card">
+        <div className="relative overflow-clip rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <div ref={box} className={`pv-box overflow-hidden ${phoneView ? "bg-surface2" : "bg-white"} transition-[height] duration-300`} style={{ height: `var(--pv-h, ${big ? "68svh" : "32svh"})` }}>
             <div className="relative mx-auto" style={{ width: Math.round(pvW * pvScale), height: boxH }}>
               <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: pvW, height: frameH, border: 0, transform: `scale(${pvScale})` }} />
@@ -973,9 +983,9 @@ export default function WebsiteEditPage() {
       <div className="space-y-3 pb-20 lg:col-start-2 lg:min-w-0 lg:pb-0">
       {/* ---- The four tabs, always there whatever is open (owner, 24 Nov 2026); Back, Undo, Redo and Save are on the one top bar. On a
           computer the tabs stay at the top of this column while it scrolls; on a phone they sit at the foot of the screen. ---- */}
-      <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:sticky lg:bottom-auto lg:left-auto lg:top-[var(--bar-top)] lg:z-20 lg:max-w-none lg:translate-x-0 lg:rounded-2xl lg:border lg:p-2 lg:shadow-card" style={{ ["--bar-top" as string]: `${barH + 8}px` }}>
+      <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:sticky lg:bottom-auto lg:left-auto lg:top-[var(--bar-top)] lg:z-20 lg:max-w-none lg:translate-x-0 lg:rounded-2xl lg:border lg:p-2 lg:shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]" style={{ ["--bar-top" as string]: `${barH + 8}px` }}>
         <div role="tablist" aria-label="Editor" className="flex rounded-xl bg-surface2 p-1">
-          {RTABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={curTab === k} onClick={() => goTab(k)} className={`flex-1 rounded-lg px-1 py-2 text-[12.5px] font-semibold transition ${curTab === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{k === "info" ? <><span className="sm:hidden">Info</span><span className="hidden sm:inline">{l}</span></> : l}</button>)}
+          {RTABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={curTab === k} onClick={() => goTab(k)} className={`flex-1 rounded-lg px-1 py-2 text-[12.5px] font-semibold transition ${curTab === k ? "bg-brand text-white shadow-[0_2px_6px_rgba(16,24,40,0.25)]" : "text-muted hover:text-ink"}`}>{k === "info" ? <><span className="sm:hidden">Info</span><span className="hidden sm:inline">{l}</span></> : l}</button>)}
         </div>
       </div>
       {s.cards.length > 1 && (
@@ -1014,7 +1024,7 @@ export default function WebsiteEditPage() {
         const own = homeRows.filter((r) => r.blk), at = own.findIndex((r) => r.id === row.id);
         const BIG = "flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold text-ink hover:bg-surface2";
         return (
-        <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+        <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
             <div className="min-w-0 flex-1 pl-1"><p className="text-[11px] text-muted">Section {i + 1} of {homeRows.length}</p><p className="truncate text-sm font-bold text-ink">{row.name}</p></div>
             <button type="button" disabled={i === 0} onClick={() => sheetGo(i - 1)} className={TBW}>Previous</button>
@@ -1061,7 +1071,7 @@ export default function WebsiteEditPage() {
           const toFix = comp.empty.length + todo.length + bare.length;
           const FIX = "shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-semibold text-brand-ink hover:bg-surface2";
           return (
-            <section className="rounded-2xl border border-border bg-surface shadow-card">
+            <section className="rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
               <button type="button" onClick={() => toFix && setHealthOpen((o) => !o)} aria-expanded={healthOpen} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
                 <span className="text-sm font-bold text-ink">{comp.pct}% ready</span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface2"><span className="block h-full rounded-full bg-brand" style={{ width: `${comp.pct}%` }} /></span>
@@ -1099,7 +1109,7 @@ export default function WebsiteEditPage() {
           </div>
           <div className={BOX}>
             {homeRows.map((r, i) => (
-              <EdRow key={r.id} title={r.name} sub={r.kind && !r.name.toLowerCase().startsWith((r.kind.split(" · ")[0] ?? "").toLowerCase()) ? r.kind : r.kind?.includes(" · ") ? r.kind : undefined} onClick={() => sheetGo(i)}>
+              <EdRow key={r.id} Icon={ROW_ICON[r.ic ?? ""] ?? FileText} title={r.name} sub={r.kind && !r.name.toLowerCase().startsWith((r.kind.split(" · ")[0] ?? "").toLowerCase()) ? r.kind : r.kind?.includes(" · ") ? r.kind : undefined} onClick={() => sheetGo(i)}>
                 {r.blk
                   ? <button type="button" aria-label="Hide this section" title="Shown on the website — tap to hide" onClick={() => hideHomeBlock(r.blk!, true)} className={IB}><Eye className="h-4 w-4" /></button>
                   : <span className="w-8 shrink-0" aria-hidden />}
@@ -1137,16 +1147,16 @@ export default function WebsiteEditPage() {
           <button type="button" onClick={() => sheetOpen("text", "__add")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
         </>)}
         {rtab === "sections" && <>
-          <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">All content</p>
+          <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Library</p>
           <div className={BOX}>
-            {(["text", "products", "photos", "about", "details", "reviews", "home"] as const).map((k) => <EdRow key={k} Icon={({ text: FileText, products: Package, photos: Camera, about: BookUser, details: ListChecks, reviews: Star, home: ListOrdered } as const)[k]} title={LABEL[k][0]} sub={LABEL[k][1]} onClick={() => openPart(k)} badge={partState(card, k) === "empty" ? <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">Empty</span> : undefined} />)}
+            {((adv ? ["products", "photos", "reviews", "text"] : ["products", "photos", "reviews", "text", "home"]) as Tab[]).map((k) => { const t = allTabs.find((x) => x.key === k); return <EdRow key={k} Icon={t?.Icon} title={t?.label ?? k} sub={t?.sub} onClick={() => { openPart(k); if (k === "text") setSync({ text: "", page: curSlug }); }} badge={partState(card, k) === "empty" ? <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">Empty</span> : undefined} />; })}
           </div>
         </>}
 
         {rtab === "design" && <div className={BOX}>
-          <Link href="/poster/site/choose" className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-surface2/60"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><LayoutGrid className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-ink">Ready designs</span><span className="block truncate text-[12px] text-muted">Change the whole website in one tap</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-muted" /></Link>
-          <EdRow Icon={Palette} title={LABEL.look[0]} sub={LABEL.look[1]} onClick={() => openPart("look")} />
-          {adv && !storeDesign && <EdRow Icon={LayoutTemplate} title="Build your own design" sub="Pick the layout of the banner and of each section, from all 12 designs" onClick={() => { openPart("look"); setMixJump(true); }} />}
+          <Link href="/poster/site/choose" className={ROW}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-ink"><LayoutGrid className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-ink">Ready designs</span><span className="block truncate text-[12px] text-muted">Change the whole website in one tap</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-muted" /></Link>
+          <EdRow Icon={Palette} title={LABEL.look[0]} sub={LABEL.look[1]} onClick={() => { openPart("look"); setLookMode("style"); }} />
+          {adv && !storeDesign && <EdRow Icon={LayoutTemplate} title="Section designs" sub="The design of the home banner and of each section" onClick={() => { openPart("look"); setLookMode("sections"); }} />}
         </div>}
 
         {(rtab === "info" || rtab === "settings") && <div className={BOX}>
@@ -1160,13 +1170,13 @@ export default function WebsiteEditPage() {
       {open && (() => { const d = TABS.find((x) => x.key === tab); if (!d) return null; const I = d.Icon; return (
         <div className="flex items-center gap-2.5 px-1">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><I className="h-[18px] w-[18px]" /></span>
-          <div className="min-w-0"><p className="text-base font-bold leading-tight text-ink">{d.label}</p><p className="truncate text-[12px] text-muted">{d.sub}</p></div>
+          <div className="min-w-0"><p className="text-base font-bold leading-tight text-ink">{tab === "look" && lookMode === "sections" ? "Section designs" : d.label}</p><p className="truncate text-[12px] text-muted">{tab === "look" && lookMode === "sections" ? "The design of the home banner and of each section" : d.sub}</p></div>
         </div>); })()}
       {open && (<>
-      {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">
+      {tab === "look" && lookMode === "style" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
           <div className="flex items-center justify-between gap-2 px-1">
-            <p className="flex items-center gap-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Pick a colour"}</p>
+            <p className="flex items-center gap-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Colour"}</p>
             {/* Background light / dark, right next to the colours (owner, 25 Oct 2026): a small two-part switch. Premium designs only. */}
             {adv && !storeDesign && (() => {
               const pal = (adv.palette ?? {}) as { key?: string; tone?: string; luxe?: boolean };
@@ -1219,17 +1229,17 @@ export default function WebsiteEditPage() {
           onDone={(saved) => { setEmbedView(null); if (saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); } }} />
       )}
       {tab === "photos" && (
-        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <SitePhotos hi={hi} cardId={s.cardId} scope="site" onChanged={() => void refresh()} />
         </section>
       )}
       {tab === "offer" && (
-        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard((cur) => (cur ? keepTouched(c, cur, touched.current) : c))} />
         </section>
       )}
       {tab === "website" && (
-        <section className="space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-card">
+        <section className="space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <label className="flex items-center justify-between gap-3 rounded-xl bg-surface2 px-3 py-2.5">
             <span><span className="block text-sm font-semibold">{hi ? "Computer पर website" : "Website on computers"}</span>
               <span className="text-[11px] text-muted">{siteOn ? (hi ? "ON — computer पर website, phone पर card" : "ON — website on computers, card on phones") : (hi ? "OFF — हर जगह card दिखता है" : "OFF — the card shows everywhere")}</span></span>
@@ -1240,7 +1250,7 @@ export default function WebsiteEditPage() {
         </section>
       )}
       {tab === "domain" && (
-        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           {domainOk || customDomain
             ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={customDomain || undefined} />
             : <p className="text-sm text-muted">{hi ? "अपना web address (www.yourshop.com) Growth plan के साथ आता है।" : "Your own web address (www.yourshop.com) comes with the Growth plan."}</p>}
@@ -1248,31 +1258,31 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "look" && (
-        <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <FoldGroups prefix="look" is={foldIs} tap={foldTap}>
           {/* A Premium website's own design lives on the Premium page (owner, 25 Oct 2026: "premium hai to premium design par jaana chahiye"). */}
-          <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href="/poster/site/choose" className="font-semibold text-brand-ink">{hi ? "Website का design (12 में से चुनें)" : "Website design (choose from 12)"}</Link>.</p>
+          <p className={`text-[11px] text-muted ${lookMode === "style" ? "" : "hidden"}`}>{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href="/poster/site/choose" className="font-semibold text-brand-ink">{hi ? "Website का design (12 में से चुनें)" : "Ready designs"}</Link>.</p>
           {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
               site's choices below never reached it, so a tap changed nothing (owner, 25 Oct 2026). */}
           {adv ? (<>
-            <div>
-              <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
+            <div className={lookMode === "style" ? "" : "hidden"}>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Font"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {HEADING_FONTS.map((f) => <button key={f} type="button" onClick={() => setAdv({ fonts: { ...((adv.fonts as { heading?: string; body?: string }) ?? {}), heading: f } })} className={chip((adv.fonts as { heading?: string } | undefined)?.heading === f)} style={{ fontFamily: `"${f}", Inter, sans-serif` }}>{f}</button>)}
               </div>
             </div>
             {/* The two whole-store designs have one top of their own: the list changed nothing there (owner, 19 Nov 2026), so it is not offered. */}
             {/* A section's layout is picked on that section (Sections tab), the top section included: one job, one place (final review, 24 Nov 2026). */}
-            {!LAYOUTS_IN_LOOK ? null : storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
-              <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
+            {lookMode !== "sections" ? null : storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "Home banner design"}</p>
               <div className="mt-2">
                 {/* eslint-disable-next-line react-hooks/refs -- the pick runs on the tap, never while drawing */}
                 {layoutPicker("hero", String(adv.hero ?? ""), pickHero)}
               </div>
             </div>}
-            {LAYOUTS_IN_LOOK && !storeDesign && advRows.some((r) => r.key !== "hero") && <div ref={mixBox} className="scroll-mt-24 rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
-              <p className="text-sm font-bold">Build your own design — pick each part</p>
-              <p className="mt-0.5 text-[11px] text-muted">Each part of your home page, with the designs recommended for your business first. Tap one — the preview changes at once. Colours and letters stay the same, so everything matches. Press Save to put it on the website.</p>
+            {lookMode === "sections" && !storeDesign && advRows.some((r) => r.key !== "hero") && <div ref={mixBox} className="scroll-mt-24 rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
+              <p className="text-sm font-bold">Each section</p>
+              <p className="mt-0.5 text-[11px] text-muted">Each section of your home page, with the designs recommended for your business first. Tap one — the preview changes at once. Colours and letters stay the same, so everything matches. Press Save to put it on the website.</p>
               <div className="mt-2 space-y-3">
                 {/* eslint-disable-next-line react-hooks/refs -- the picks and moves run on the tap, never while drawing */}
                 {advRows.filter((r) => r.key !== "hero").map((r) => { const cur = (adv.sections as Record<string, string> | undefined)?.[r.key] ?? VARIANT_IDS[r.key][0]; return (
@@ -1283,29 +1293,29 @@ export default function WebsiteEditPage() {
                     </div>
                   </div>); })}
               </div>
-              {mixHeld && dirty && <div className="sticky bottom-2 z-10 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand bg-surface p-2.5 shadow-card">
+              {mixHeld && dirty && <div className="sticky bottom-2 z-10 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand bg-surface p-2.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
                 <p className="min-w-0 flex-1 text-[12px] font-semibold">{hi ? "नया design अभी save नहीं हुआ है।" : "Your new design is not saved yet."}</p>
                 <button type="button" disabled={busy === "save"} onClick={() => { const back = lastSaved.current; if (!back) return; mixHold.current = false; setMixHeld(false); touched.current.clear(); setCard(back); setDirty(false); focus({ top: true }); }} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50">{hi ? "छोड़ दें (पुराना रखें)" : "Discard (keep the old one)"}</button>
                 <button type="button" disabled={busy === "save"} onClick={() => void save()} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{busy === "save" && <LoaderCircle className="h-4 w-4 animate-spin" />} {hi ? "Save करें — website पर लगाएँ" : "Save — put it on the website"}</button>
               </div>}
               <p className="mt-2 text-[11px] text-muted">{hi ? "धुँधले रूप आपकी website पर अभी नहीं बन सकते (जैसे फ़ोटो कम हैं)। जो हिस्सा यहाँ नहीं दिख रहा, उसमें अभी कुछ भरा नहीं है — पहले “Text & pages” में भरें।" : "Faded layouts cannot be drawn on your website yet (for example, too few photos). A part that is missing here has nothing in it yet — fill it in “Text & pages” first."}</p>
             </div>}
-            <div>
-              <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
+            <div className={lookMode === "style" ? "" : "hidden"}>
+              <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setAdv({ shape: sh, palette: { ...(adv.palette ?? {}), corners: true } })} className={chip(adv.shape === sh)}>{sh === "sharp" ? (hi ? "शार्प" : "Sharp") : sh === "soft" ? (hi ? "सॉफ्ट" : "Soft") : (hi ? "राउंड" : "Round")}</button>)}
               </div>
             </div>
           </>) : (<>
           <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
+            <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Font"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {FONT_PAIRS.map((f) => <button key={f.key} type="button" onClick={() => setStyle({ font: f.key === "look" ? undefined : f.key })} className={chip((style.font ?? "look") === f.key)} title={f.blurb}>{hi ? f.hi : f.name}</button>)}
             </div>
             <p className="text-[11px] text-muted mt-1">{FONT_PAIRS.find((f) => f.key === (style.font ?? "look"))?.blurb}</p>
           </div>
           <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
+            <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "Home banner design"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => setStyle({ hero: undefined })} className={chip(!style.hero)}>{hi ? "अपने-आप" : "Automatic"}</button>
               {HERO_LAYOUTS.map((h) => <button key={h.key} type="button" onClick={() => setStyle({ hero: h.key, blueprint: undefined })} className={chip(style.hero === h.key)} title={h.blurb}>{hi ? h.hi : h.name}</button>)}
@@ -1313,7 +1323,7 @@ export default function WebsiteEditPage() {
             <p className="text-[11px] text-muted mt-1">{style.hero ? HERO_LAYOUTS.find((h) => h.key === style.hero)?.blurb : (hi ? "अपने-आप: product की photo हो तो शब्द + picture, banner हो तो बड़ी photo।" : "Automatic: words + picture when you have a product photo, a big photo when you have a banner.")}</p>
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
+            <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => setStyle({ radius: undefined })} className={chip(!style.radius)}>{hi ? "कार्ड जैसा" : "Same as the card"}</button>
               {RADII.map((r) => <button key={r.key} type="button" onClick={() => setStyle({ radius: r.key })} className={chip(style.radius === r.key)}>{hi ? r.hi : r.name}</button>)}
@@ -1335,7 +1345,7 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "hero" && (
-        <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           {/* One heading, its own boxes under it; one opens at a time (owner, 19 Nov 2026: "jo heading hai uski editing usi ke andar ho"). */}
           <Fold title={hi ? "बड़ी line और उसके नीचे के शब्द" : "Big line and the words under it"} open={foldIs("hero:0", true)} onToggle={() => foldTap("hero:0", true)}>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "सबसे ऊपर की बड़ी लाइन" : "Big line at the top"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
@@ -1389,7 +1399,7 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "home" && (
-        <section className="space-y-4 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="space-y-4 rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <div>
             <p className="text-sm font-semibold">{hi ? "पहले पेज के हिस्से" : "Sections of the first page"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "ऊपर-नीचे करें या छुपाएँ। शब्द बदलने के लिए पूरा editor खोलें।" : "Move up or down, or hide. To change the words, open the full editor."}</p>
@@ -1425,7 +1435,7 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "pages" && (
-        <section className="space-y-2 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+        <section className="space-y-2 rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <p className="text-sm font-semibold">{hi ? "वेबसाइट पर कौन से pages दिखें" : "Pages shown on the website"}</p>
           {s.pages.map((p) => {
             const h = new Set(site.hidden ?? []);
