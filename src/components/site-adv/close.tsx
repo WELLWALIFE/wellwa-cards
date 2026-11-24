@@ -1028,7 +1028,9 @@ function FitName({ text, className, style }: { text: string; className: string; 
       if (!inner || !el.clientWidth) return;
       el.style.fontSize = "100px";
       const w = inner.getBoundingClientRect().width;
-      if (w > 0) el.style.fontSize = `${Math.min(340, Math.max(28, (100 * el.clientWidth * 0.985) / w)).toFixed(1)}px`;
+      // The floor was 28px: on a phone a 29-letter name needs about 19px to fit, so it ran off the edge and was cut ("SSM - AL MOBILE
+      // SOLUTION W", review on a phone, 24 Nov 2026). It always fits its one line now; 14px is only a guard against a broken measure.
+      if (w > 0) el.style.fontSize = `${Math.min(340, Math.max(14, (100 * el.clientWidth * 0.985) / w)).toFixed(1)}px`;
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -1537,8 +1539,6 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .at-track li span{margin-inline:clamp(1.25rem,3vw,2.5rem);font-size:.6em;color:var(--accent)}
 @keyframes at-run{to{transform:translateX(-50%)}}
 .at-wm span,.ft-wm span{white-space:nowrap}
-/* on a phone a long name ("SSM - AL MOBILE SOLUTION WORLD") ran off the edge: the size has a floor, so there the name may take two lines */
-@media (max-width:640px){.at-wm span,.ft-wm span{white-space:normal}.at-wm,.ft-wm{text-wrap:balance;line-height:1}}
 .at-wm{display:block;margin:clamp(2rem,5vw,4rem) 0 0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.6rem,min(var(--wm,12vw),var(--wmx,190px)),16rem);line-height:.92;letter-spacing:-.045em;overflow-wrap:break-word;color:transparent;-webkit-text-stroke:1.5px var(--hero-text);transition:color .5s,-webkit-text-stroke-color .5s}
 .at-wm:hover{color:var(--hero-text)}
 @media (hover:none){.at-wm{color:var(--hero-text);-webkit-text-stroke:0}}

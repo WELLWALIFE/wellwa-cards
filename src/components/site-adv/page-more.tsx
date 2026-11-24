@@ -345,12 +345,17 @@ function Story({ b, x, i, tone }: { b: Extract<CardBlock, { kind: "story" }>; x:
  *  Before this the block was one narrow plain list in every one of the twelve designs, set a little inside the page's own edge. */
 const POINTS_LOOK: Record<string, "rule" | "cards" | "chips"> = { strip: "rule", hairline: "rule", "usp-bar": "rule", "icon-row": "cards", "split-cards": "cards", bento: "cards", ticker: "chips", counters: "chips" };
 
+/** Two lists of points one after the other ("Our commitment", then "Why choose us") do not wear the same dress: the one at an odd
+ *  place on the page takes the next look round, so they read as two sections and not as one list cut in two. */
+const POINTS_ORDER = ["rule", "cards", "chips"] as const;
+const pointsLook = (v: string | undefined, i: number) => POINTS_ORDER[(POINTS_ORDER.indexOf(POINTS_LOOK[v ?? ""] ?? "rule") + (i % 2)) % 3];
+
 export function Block({ b, x, c, i, v }: { b: CardBlock; x: AdvCtxPlus; c: SiteContent; i: number; v?: string }): ReactNode {
   const tone = i % 2 ? "alt" : "paper";
   const title = (s?: string) => (s ?? "").trim() ? x.t(s!.trim()) : "";
   switch (b.kind) {
     case "about": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><div className="adv-body gb-prose">{(b.body ?? "").split(/\n+/).filter(Boolean).map((p, k) => <p key={k}>{x.t(p)}</p>)}</div></Sec>;
-    case "highlights": return <Sec k={`b${i}`} tone={tone} wide className="gb-hl" label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-ticks" data-v={POINTS_LOOK[v ?? ""] ?? "rule"}>{b.items.filter(Boolean).map((t, k) => <li key={k}><span aria-hidden="true"><Icon name="check" size={15} strokeWidth={2} /></span>{x.t(t.replace(/^[^\p{L}\p{N}]+/u, ""))}</li>)}</ul></Sec>;
+    case "highlights": return <Sec k={`b${i}`} tone={tone} wide className="gb-hl" label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-ticks" data-v={pointsLook(v, i)}>{b.items.filter(Boolean).map((t, k) => <li key={k}><span aria-hidden="true"><Icon name="check" size={15} strokeWidth={2} /></span>{x.t(t.replace(/^[^\p{L}\p{N}]+/u, ""))}</li>)}</ul></Sec>;
     case "services": {
       const steps = /^\s*1[.)]\s/.test(b.items[0]?.name ?? "");
       return (
