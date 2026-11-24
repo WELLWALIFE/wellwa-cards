@@ -916,7 +916,7 @@ export default function WebsiteEditPage() {
       <div ref={topBar} className="sticky z-30 -mx-4 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur lg:col-span-2 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:shadow-card" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
-          <div className="min-w-0 flex-1 lg:pr-2">
+          <div className="min-w-[120px] flex-1 lg:pr-2">
             <p className="text-sm font-bold leading-tight text-ink">Website</p>
             <a href={liveUrl} target="_blank" rel="noreferrer" className={`flex min-w-0 items-center gap-1 text-[11px] font-semibold ${siteOn ? "text-good" : "text-muted"}`}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${siteOn ? "bg-good" : "bg-muted"}`} /><span className="truncate">{siteOn ? "Live" : "Off"} · {liveUrl.replace(/^https?:\/\//, "").replace(/\?view=site$/, "")}</span></a>
           </div>
@@ -927,7 +927,7 @@ export default function WebsiteEditPage() {
           </div>
           <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={TB}><Undo2 className="h-4 w-4" /></button>
           <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={TB}><Redo2 className="h-4 w-4" /></button>
-          <span className={`hidden whitespace-nowrap text-[12px] font-medium md:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
+          <span className={`hidden whitespace-nowrap text-[12px] font-medium xl:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
           {undo && !unsaved && <button type="button" onClick={() => void save(undo)} className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="Put back the website as it was before the last Save"><RotateCcw className="h-3.5 w-3.5" /> <span className="hidden xl:inline">Undo save</span></button>}
           <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="View site"><ExternalLink className="h-3.5 w-3.5" /> <span className="hidden xl:inline">View site</span></a>
           <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
@@ -1039,7 +1039,8 @@ export default function WebsiteEditPage() {
           const hidH = new Set(card.site?.home?.hidden ?? []);
           const bare = (card.pages.find((p) => p.slug === homeSlugOf(card))?.blocks ?? []).filter((b) => !hidH.has(b.id) && (
             (b.kind === "product" && b.items.length > 0 && !b.items.some((x) => x.imageUrl || x.images?.length)) ||
-            (!!adv && b.kind === "services" && b.items.length > 0 && !b.items.some((x) => x.imageUrl))));
+            // only a section the design draws as tiles: numbered steps ("How to shop") need no photo
+            (!!adv && b.kind === "services" && homeRows.find((r) => r.blk === b.id)?.sec === "services" && b.items.length > 0 && !b.items.some((x) => x.imageUrl))));
           const toFix = comp.empty.length + todo.length + bare.length;
           const FIX = "shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-semibold text-brand-ink hover:bg-surface2";
           return (
@@ -1081,7 +1082,7 @@ export default function WebsiteEditPage() {
           </div>
           <div className={BOX}>
             {homeRows.map((r, i) => (
-              <EdRow key={r.id} title={r.name} sub={r.kind} onClick={() => sheetGo(i)}>
+              <EdRow key={r.id} title={r.name} sub={r.kind && !r.name.toLowerCase().startsWith((r.kind.split(" · ")[0] ?? "").toLowerCase()) ? r.kind : r.kind?.includes(" · ") ? r.kind : undefined} onClick={() => sheetGo(i)}>
                 {r.blk
                   ? <button type="button" aria-label="Hide this section" title="Shown on the website — tap to hide" onClick={() => hideHomeBlock(r.blk!, true)} className={IB}><Eye className="h-4 w-4" /></button>
                   : <span className="w-8 shrink-0" aria-hidden />}
