@@ -434,6 +434,10 @@ export default function WebsiteEditPage() {
   // "save ka button laga do"), so trying ten layouts does not change the live website ten times. Everything else on this screen
   // still saves by itself.
   const [mixHeld, setMixHeld] = useState(false);
+  // A layout a part wore once (the saved one, or one tried) stays a choice when another is tried (owner, 24 Nov 2026: the first one
+  // went grey after picking a second, and there was no way back to it).
+  const [mixSeen, setMixSeen] = useState<Set<string>>(() => new Set());
+  const remember = (k: string, id: string) => { if (id) setMixSeen((s0) => (s0.has(`${k}:${id}`) ? s0 : new Set(s0).add(`${k}:${id}`))); };
   // After a Save: "your website is live" with its link, a QR and a WhatsApp share (master list #14).
   const [liveBox, setLiveBox] = useState(false);
   const [liveQr, setLiveQr] = useState("");
@@ -501,7 +505,7 @@ export default function WebsiteEditPage() {
   /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
   const setAdv = (patch: Record<string, unknown>) => { if (!adv) return; focus({ top: true }); set({ advanced: { ...adv, ...patch } as NonNullable<Card["site"]>["advanced"] }); };
   /** One part of the home page takes another layout; the window moves to that part so the change is seen. */
-  const setAdvSection = (k: SectionKey, id: string) => { if (!adv || k === "hero") return; mixHold.current = true; setMixHeld(true); set({ advanced: { ...adv, sections: { ...((adv.sections as Record<string, string> | undefined) ?? {}), [k]: id } } as NonNullable<Card["site"]>["advanced"] }); showAdv(k); };
+  const setAdvSection = (k: SectionKey, id: string) => { if (!adv || k === "hero") return; remember(k, (adv.sections as Record<string, string> | undefined)?.[k] ?? VARIANT_IDS[k][0]); mixHold.current = true; setMixHeld(true); set({ advanced: { ...adv, sections: { ...((adv.sections as Record<string, string> | undefined) ?? {}), [k]: id } } as NonNullable<Card["site"]>["advanced"] }); showAdv(k); };
   /** Which screen holds the words of a part of the home page (and the section inside "Text & pages", when it is one of those). */
   const sheetWords = (sec: SectionKey): { key: string; blockId?: string } => {
     const all = card ? card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).filter((b) => !isEmptyBlock(b)) : [];
@@ -551,7 +555,8 @@ export default function WebsiteEditPage() {
     setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 700);
     setCard({ ...card, site: { ...(card.site ?? { enabled: true }), homeOwnOrder: true } as Card["site"], pages: card.pages.map((p) => (p === hp ? { ...hp, blocks } : p)) }); setDirty(true);
   }
-  const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") setAdv({ hero: id }); else setAdvSection(k, id); };
+  const pickHero = (id: string) => { remember("hero", String(adv?.hero ?? "")); setAdv({ hero: id }); };
+  const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") pickHero(id); else setAdvSection(k, id); };
   const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
   function setTone(t: "light" | "dark") {
@@ -929,7 +934,7 @@ export default function WebsiteEditPage() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Design of this section</p><p className="text-[12px] text-muted">Tap a design — the preview changes at once; press Save to keep it.</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {/* eslint-disable-next-line react-hooks/refs -- sheetLayout runs on the tap, never while drawing */}
-                {ids.map((id) => { const ok = mixAllow(sec, id) || cur === id; return <button key={id} type="button" disabled={!ok} title={ok ? undefined : "Needs more photos or items"} onClick={() => sheetLayout(sec, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(sec, id, false)}</button>; })}
+                {ids.map((id) => { const ok = mixAllow(sec, id) || cur === id || mixSeen.has(`${sec}:${id}`); return <button key={id} type="button" disabled={!ok} title={ok ? undefined : "Needs more photos or items"} onClick={() => sheetLayout(sec, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(sec, id, false)}</button>; })}
               </div>
             </div>}
             <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
@@ -1158,7 +1163,7 @@ export default function WebsiteEditPage() {
             {!LAYOUTS_IN_LOOK ? null : storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
               <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {HERO_IDS.map((h) => { const ok = mixAllow("hero", h) || adv.hero === h; const by = mixUsedBy("hero", h); return <button key={h} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए banner फ़ोटो चाहिए" : "This one needs a banner photo")} onClick={() => setAdv({ hero: h })} className={`${chip(adv.hero === h)} ${ok ? "" : "opacity-40"}`}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
+                {HERO_IDS.map((h) => { const ok = mixAllow("hero", h) || adv.hero === h || mixSeen.has(`hero:${h}`); const by = mixUsedBy("hero", h); return <button key={h} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए banner फ़ोटो चाहिए" : "This one needs a banner photo")} onClick={() => pickHero(h)} className={`${chip(adv.hero === h)} ${ok ? "" : "opacity-40"}`}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
               </div>
             </div>}
             {LAYOUTS_IN_LOOK && !storeDesign && advRows.some((r) => r.key !== "hero") && <div ref={mixBox} className="scroll-mt-24 rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
@@ -1169,7 +1174,7 @@ export default function WebsiteEditPage() {
                   <div key={r.key}>
                     <button type="button" onClick={() => showAdv(r.key)} className="text-left text-[13px] font-semibold underline decoration-dotted underline-offset-2">{r.name}</button>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {VARIANT_IDS[r.key].map((id) => { const ok = mixAllow(r.key, id) || cur === id; const by = mixUsedBy(r.key, id); return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => setAdvSection(r.key, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{variantName(r.key, id, hi)}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
+                      {VARIANT_IDS[r.key].map((id) => { const ok = mixAllow(r.key, id) || cur === id || mixSeen.has(`${r.key}:${id}`); const by = mixUsedBy(r.key, id); return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => setAdvSection(r.key, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{variantName(r.key, id, hi)}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
                     </div>
                   </div>); })}
               </div>
