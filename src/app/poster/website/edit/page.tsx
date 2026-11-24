@@ -389,7 +389,7 @@ export default function WebsiteEditPage() {
   };
   /** Which screen holds the photo of a part (none: the part has no photo of its own). */
   const SHEET_PHOTO: Partial<Record<SectionKey, string>> = { hero: "photos", about: "about", gallery: "photos", services: "products" };
-  const sheetGo = (i: number) => { const r = advRows[i]; if (!r) return; setSheet({ sec: r.key }); showAdv(r.key); };
+  const sheetGo = (i: number) => { const r = advRows[i]; if (!r) return; setSheet({ sec: r.key }); showAdv(r.key); window.scrollTo({ top: 0 }); };
   const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") setAdv({ hero: id }); else setAdvSection(k, id); };
   const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
