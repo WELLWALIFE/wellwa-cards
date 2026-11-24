@@ -463,6 +463,8 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
       return { ...p, blocks: p.blocks.map((b) => (pos.has(b.id) ? named[n++] : b)) };
     });
   }
+  // Sections moved by the owner: his order is the page's from now on (a partner's home is no longer re-sorted when drawn).
+  if (patch.homeBlocks?.length) (site as Record<string, unknown>).homeOwnOrder = true;
   const data = { ...row.data, site, pages };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data }) });
   if (!r.ok) throw new Error(r.text.slice(0, 200) || "save failed");

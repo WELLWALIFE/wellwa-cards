@@ -31,7 +31,7 @@ import { EditFocus } from "@/components/poster/edit-focus";
 import { completeness, partFor, partState } from "@/lib/edit-status";
 import { editHref, partParam, rememberEdit } from "@/lib/edit-nav";
 import { useEditHistory } from "@/lib/use-edit-history";
-import { PartHead, type Scope } from "@/components/poster/edit-parts";
+import { type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
 import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
@@ -43,13 +43,13 @@ type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" |
 type Group = "design" | "content" | "photos" | "contact" | "settings";
 /** Off: nothing in the editor goes live by itself any more — Save puts it on the website (owner, 24 Nov 2026). */
 const AUTO_SAVE = false as boolean;
-/** The layout pickers of the Premium sections live on each section (its sheet), not in Colour, font & background. */
-const LAYOUTS_IN_LOOK = false as boolean;
+/** The layout of every Premium section in one place too (owner, 24 Nov 2026: "look and letters wala option nahi mil raha"), beside each section's own sheet. */
+const LAYOUTS_IN_LOOK = true as boolean;
 /** Which group each part sits in (the list's GROUPS, for a part opened from the preview). */
 /** The editor's names (final review, 24 Nov 2026 — https://claude.ai/artifact/HkXgzpjpzf9AgS5oP1bp8h): short, in English, one name per thing. */
 const LABEL: Record<string, [string, string]> = {
   hero: ["Top section", "Heading, banner photo and its layout"],
-  look: ["Colour, font & background", "Colour, font, background and corners"],
+  look: ["Look & layouts", "Colour, font, background, corners — and the layout of the banner and every section"],
   text: ["Pages & text", "Every page's text; add or remove a section or a page"],
   photos: ["Photos", "Banner photos and the photo gallery"],
   products: ["Products", "Products, prices and their photos"],
@@ -63,7 +63,7 @@ const LABEL: Record<string, [string, string]> = {
   trade: ["Name & category", "Your business name and what you do"],
   offer: ["Announcement bar", "A line on top or a pop-up, e.g. “Diwali 20% off”"],
   website: ["Website on / off", "Show or hide the website; Premium features"],
-  home: ["Section order", "Order and visibility of the home page sections"],
+  home: ["Key figures", "The trust numbers under the big line, and the section order"],
   pages: ["Pages shown", "Which pages appear in the website menu"],
   seo: ["Google search (SEO)", "Be found on Google in your city"],
   domain: ["Custom domain", "Your own address, like www.yourshop.com"],
@@ -384,14 +384,18 @@ export default function WebsiteEditPage() {
   const homeRows = useMemo(() => {
     if (!adv || storeDesign || !card) return [] as HomeRow[];
     const lang = card.language === "hi" ? "hi" : "en";
-    const c = buildContent(card, lang);
+    // A Shubhora partner's home is drawn with the company's sections, headings and order (lib/shubhora-page.ts): the list shows that.
+    const dc = isShubhoraSellerCard(card) ? withoutFreeCard(card, true) : card;
+    const c = buildContent(dc, lang);
     const hasContact = card.links.some((l) => l.type === "phone" || l.type === "whatsapp");
     const nm = (k: SectionKey) => advRows.find((r) => r.key === k)?.name ?? k;
     const rows: HomeRow[] = [{ id: "hero", sec: "hero", name: nm("hero") }];
     if (sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust") });
-    const slug = homeSlugOf(card);
-    const hp = card.pages.find((p) => p.slug === slug);
-    if (hp) for (const p of flowParts(card, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, blk: p.b.id, name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
+    const slug = homeSlugOf(dc);
+    const hp = dc.pages.find((p) => p.slug === slug);
+    // A section the website adds by itself (the plans copy, the Google check) is not one of the owner's: fixed, no Move or Hide.
+    const stored = new Set((card.pages.find((p) => p.slug === homeSlugOf(card))?.blocks ?? []).map((b) => b.id));
+    if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
     if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", name: nm("cta") });
     rows.push({ id: "footer", sec: "footer", name: nm("footer") });
     return rows;
@@ -509,7 +513,7 @@ export default function WebsiteEditPage() {
     if (sec === "proof") return { key: "reviews" };
     if (sec === "visit" || sec === "footer") return { key: "where" };
     if (sec === "cta") return { key: "buttons" };
-    if (sec === "trust") return { key: "details" };
+    if (sec === "trust") return { key: "home" };
     const b = sec === "faq" ? blk("faq") : undefined;
     return { key: "text", ...(b ? { blockId: b.id } : {}) };
   };
@@ -535,12 +539,17 @@ export default function WebsiteEditPage() {
     const slug = homeSlugOf(card), hp = card.pages.find((p) => p.slug === slug);
     const own = homeRows.filter((r) => r.blk), i = own.findIndex((r) => r.blk === id), other = own[i + dir];
     if (!hp || i < 0 || !other) return;
-    const blocks = [...hp.blocks], a = blocks.findIndex((b) => b.id === id), b2 = blocks.findIndex((b) => b.id === other.blk);
-    if (a < 0 || b2 < 0) return;
-    [blocks[a], blocks[b2]] = [blocks[b2], blocks[a]];
+    // The order as the website draws it, with the two swapped, becomes the page's order (a partner's home was re-sorted when drawn).
+    const ids = own.map((r) => r.blk!); [ids[i], ids[i + dir]] = [ids[i + dir], ids[i]];
+    const pos = new Map(ids.map((x, n) => [x, n]));
+    const named = hp.blocks.filter((b) => pos.has(b.id)).sort((x, y) => pos.get(x.id)! - pos.get(y.id)!);
+    const rest = hp.blocks.filter((b) => !pos.has(b.id));
+    const blocks = [...named, ...rest];
     touched.current.add("homeBlocks"); setNote((n) => (n?.k === "save" ? null : n));
     const f = { blk: id }; sheetFocus.current = f; focusAsk.current = f; lastFocus.current = f;
-    setCard({ ...card, pages: card.pages.map((p) => (p === hp ? { ...hp, blocks } : p)) }); setDirty(true);
+    // Asked again once the window has drawn the new order (the first ask can land before it).
+    setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 700);
+    setCard({ ...card, site: { ...(card.site ?? { enabled: true }), homeOwnOrder: true } as Card["site"], pages: card.pages.map((p) => (p === hp ? { ...hp, blocks } : p)) }); setDirty(true);
   }
   const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") setAdv({ hero: id }); else setAdvSection(k, id); };
   const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); };
@@ -755,7 +764,8 @@ export default function WebsiteEditPage() {
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setSync(null); setTab(t); };
-  const embedSrc = tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
+  // "+ Add section": the page editor opens with its "Add section" list already open (atBlock "__add").
+  const embedSrc = tab === "text" && atBlock === "__add" ? `${EMBED.text!(s.cardId)}&add=1` : tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
   const domainOk = tier === "growth" || tier === "pro";
   const siteOn = !!(s.site?.enabled ?? card.site?.enabled);
   async function setEnabled(on: boolean) {
@@ -997,7 +1007,7 @@ export default function WebsiteEditPage() {
               {hiddenHome.map((x) => <EdRow key={x.id} title={x.name} sub="Not shown on the website" dim><button type="button" onClick={() => hideHomeBlock(x.id, false)} className={TBW}><Eye className="h-3.5 w-3.5" /> Show</button></EdRow>)}
             </div>
           </>}
-          <button type="button" onClick={() => openPart("text")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
+          <button type="button" onClick={() => sheetOpen("text", "__add")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
         </> : <>
           <p className="px-1 text-[13px] font-semibold text-ink">Home page — top to bottom</p>
           <div className={BOX}>
@@ -1015,18 +1025,19 @@ export default function WebsiteEditPage() {
               );
             })}
           </div>
-          <button type="button" onClick={() => openPart("text")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
+          <button type="button" onClick={() => sheetOpen("text", "__add")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
         </>)}
         {rtab === "sections" && <>
           <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">All content</p>
           <div className={BOX}>
-            {(["text", "products", "photos"] as const).map((k) => <EdRow key={k} Icon={k === "text" ? FileText : k === "products" ? Package : Camera} title={LABEL[k][0]} sub={LABEL[k][1]} onClick={() => openPart(k)} badge={partState(card, k) === "empty" ? <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">Empty</span> : undefined} />)}
+            {(["text", "products", "photos", "about", "details", "reviews", "home"] as const).map((k) => <EdRow key={k} Icon={({ text: FileText, products: Package, photos: Camera, about: BookUser, details: ListChecks, reviews: Star, home: ListOrdered } as const)[k]} title={LABEL[k][0]} sub={LABEL[k][1]} onClick={() => openPart(k)} badge={partState(card, k) === "empty" ? <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">Empty</span> : undefined} />)}
           </div>
         </>}
 
         {rtab === "design" && <div className={BOX}>
           <Link href="/poster/site/choose" className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-surface2/60"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><LayoutGrid className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-ink">Ready designs</span><span className="block truncate text-[12px] text-muted">Change the whole website in one tap</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-muted" /></Link>
           <EdRow Icon={Palette} title={LABEL.look[0]} sub={LABEL.look[1]} onClick={() => openPart("look")} />
+          {adv && !storeDesign && <EdRow Icon={LayoutTemplate} title="Build your own design" sub="Pick the layout of the banner and of each section, from all 12 designs" onClick={() => { openPart("look"); setMixJump(true); }} />}
         </div>}
 
         {(rtab === "info" || rtab === "settings") && <div className={BOX}>
@@ -1036,7 +1047,12 @@ export default function WebsiteEditPage() {
           })}
         </div>}
       </>)}
-      {open && (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={false} onBack={toList} /> : null; })()}
+      {/* The open part's name and what it changes; Back is on the top bar (final review: no second Back, no "Website only" tag). */}
+      {open && (() => { const d = TABS.find((x) => x.key === tab); if (!d) return null; const I = d.Icon; return (
+        <div className="flex items-center gap-2.5 px-1">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><I className="h-[18px] w-[18px]" /></span>
+          <div className="min-w-0"><p className="text-base font-bold leading-tight text-ink">{d.label}</p><p className="truncate text-[12px] text-muted">{d.sub}</p></div>
+        </div>); })()}
       {open && (<>
       {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">

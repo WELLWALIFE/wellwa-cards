@@ -337,11 +337,12 @@ const PRODUCT_SHOTS: Record<string, string> = {
   crm: "/art/shubhora/brand-v3/product-crm.webp",
 };
 
-function sellerHomePage(p: CardPage): CardPage {
+function sellerHomePage(p: CardPage, own = false): CardPage {
   if (p.slug !== "home") return p;
   const seen = { flow: 0 };
   const ranked = p.blocks.map((b, i) => ({ b, i, r: sellerRank(b, seen) })).filter((x) => x.r !== null) as { b: CardBlock; i: number; r: number }[];
-  ranked.sort((x, y) => x.r - y.r || x.i - y.i);
+  // The partner moved his sections himself (website editor, 24 Nov 2026: "maine top par set kiya, site par niche hi hai"): his order wins.
+  if (!own) ranked.sort((x, y) => x.r - y.r || x.i - y.i);
   const blocks = ranked.map(({ b }) => {
     const t = "title" in b ? SELLER_HEADS[(b.title ?? "").trim().toLowerCase()] : undefined;
     let out = (t ? { ...b, title: t } : b) as CardBlock;
@@ -359,7 +360,8 @@ function sellerHomePage(p: CardPage): CardPage {
 
 /** The home's order as section keys: its own blocks, and the sections the website pulls in from other pages (the plans from the Plans
  *  page come in as "featured") placed by the same ranks, so a pulled section cannot jump to the top. */
-function sellerOrder(home: CardPage): string[] {
+function sellerOrder(home: CardPage, mine = false): string[] {
+  if (mine) return [...home.blocks.map((b) => b.id), "gallery", "featured", "reviews", "faq", "visit"];
   const seen = { flow: 0 };
   const own = home.blocks.map((b, i) => ({ k: b.id, r: sellerRank(b, seen) ?? 66, i }));
   const pulled = [["gallery", 62], ["featured", 70], ["reviews", 75], ["faq", 80], ["visit", 85]].map(([k, r], j) => ({ k: k as string, r: r as number, i: 1000 + j }));
@@ -382,7 +384,8 @@ const GOOGLE_CHECK: CardBlock = { id: "sh-google-check", kind: "cta", title: "Is
 function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
   if (!seller) return card;
   const c = card as T & { site?: Card["site"]; company?: string };
-  const pages = withPlansOnHome(card.pages).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p)));
+  const own = (c.site as { homeOwnOrder?: boolean } | undefined)?.homeOwnOrder === true;
+  const pages = withPlansOnHome(card.pages).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p), own));
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;
@@ -397,7 +400,7 @@ function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolea
     signupNav: true,
     hero: hero ? { ...hero, headline: fresh(hero.headline) ?? hero.headline, ...(slides ? { slides } : {}), ...(demo ? { cta2: { label: "Get a demo", labelHi: "डेमो देखें", slug: demo } } : {}) } : hero,
     // This order wins over the partner's saved one and the trade's own (which put the plans first): the company's page.
-    home: { ...(site.home ?? {}), order: home ? sellerOrder(home) : site.home?.order, hidden: [...new Set([...(site.home?.hidden ?? []), "updates", "ask-review"])] },
+    home: { ...(site.home ?? {}), order: home ? sellerOrder(home, own) : site.home?.order, hidden: [...new Set([...(site.home?.hidden ?? []), "updates", "ask-review"])] },
   } as Card["site"] : site;
   // "Shubhora Digital V-Card" was the first product name; the company sells a website first now.
   const company = c.company && /digital\s*v-?card/i.test(c.company) ? "Shubhora · Website, Digital Card & AI" : c.company;
