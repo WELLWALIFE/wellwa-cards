@@ -1505,6 +1505,8 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .ft:has(.ft-lg){padding-top:clamp(2rem,4vw,3rem)}
 /* a quarter-width tile cut an e-mail address in two on a small laptop: the contact tiles take half the row there */
 @media (min-width:768px) and (max-width:1199px){.ft-lg .ft-t-contact{grid-column:span 2}}
+/* …and on a phone each takes the whole row: half a phone broke the number and the e-mail address into three lines */
+@media (max-width:767px){.ft-lg .ft-t-contact{grid-column:1/-1}}
 @media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);grid-auto-flow:row dense}.ft-t-brand{grid-column:span 2}.ft-t-pages{grid-column:span 2}.ft-t-visit{grid-column:span 2}}
 
 /* ---- open now pill (every variant that shows timings) ---- */
@@ -1535,6 +1537,8 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .at-track li span{margin-inline:clamp(1.25rem,3vw,2.5rem);font-size:.6em;color:var(--accent)}
 @keyframes at-run{to{transform:translateX(-50%)}}
 .at-wm span,.ft-wm span{white-space:nowrap}
+/* on a phone a long name ("SSM - AL MOBILE SOLUTION WORLD") ran off the edge: the size has a floor, so there the name may take two lines */
+@media (max-width:640px){.at-wm span,.ft-wm span{white-space:normal}.at-wm,.ft-wm{text-wrap:balance;line-height:1}}
 .at-wm{display:block;margin:clamp(2rem,5vw,4rem) 0 0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.6rem,min(var(--wm,12vw),var(--wmx,190px)),16rem);line-height:.92;letter-spacing:-.045em;overflow-wrap:break-word;color:transparent;-webkit-text-stroke:1.5px var(--hero-text);transition:color .5s,-webkit-text-stroke-color .5s}
 .at-wm:hover{color:var(--hero-text)}
 @media (hover:none){.at-wm{color:var(--hero-text);-webkit-text-stroke:0}}
