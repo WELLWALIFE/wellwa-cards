@@ -554,7 +554,8 @@ export default function ProductsPage() {
           {!draft && <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="ml-auto inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
         </div>
       )}
-      {!setupMode && <Guide hi={copy.guideHi} en={copy.guide} />}
+      {/* Inside the website editor the list comes first: the tip and the "write again" note are not drawn there. */}
+      {!setupMode && <div data-embed-hide><Guide hi={copy.guideHi} en={copy.guide} /></div>}
       {!setupMode && !draft && !bulk && list && list.length > 0 && (
         <button type="button" disabled={locked} onClick={() => { setBulkMsg(""); setBulk(true); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand/50 bg-brand-soft/40 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60"><ClipboardList className="h-4 w-4" /> {C("Add many products at once", "बहुत से products एक साथ जोड़ें")}</button>
       )}
@@ -572,7 +573,7 @@ export default function ProductsPage() {
       {/* The truth about the live website (audit, 7 Oct 2026): the AI laid the products out at build time, so a product
           added here reaches the website through Write again — said here, with the button, instead of silently not. */}
       {!setupMode && hasLive && list.length > 0 && !draft && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
+        <div data-embed-hide className="flex flex-wrap items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
           <span className="min-w-0 flex-1">{C("Changes here show on your card, website and posters at once. Want the website's words written again around your products? That is optional.", "यहाँ के बदलाव card, website और poster पर तुरंत आ जाते हैं। Website के शब्द products के हिसाब से दोबारा लिखवाने हों तो — ये ज़रूरी नहीं।")}</span>
           <Link href="/poster/card/build?improve=1&ask=1" className="shrink-0 rounded-lg grad-brand px-2.5 py-1.5 font-semibold text-white">{C("Write website again", "Website दोबारा लिखवाएँ")}</Link>
         </div>
