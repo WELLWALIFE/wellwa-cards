@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ExternalLink, Globe, Pause, Play, Rocket } from "lucide-react";
 import { adminApi, fmtDate } from "@/lib/admin-client";
 import { Badge, Btn, Card, Empty, ErrorBox, PageHeader, Spinner, Table, Tabs, td, toast, useConfirm } from "@/components/admin/ui";
+import { SitesToNew } from "@/components/admin/sites-to-new";
 
 type Row = { id: string; username: string; business: string; owner: string; ownerId: string; readyAt: string | null; advancedReadyAt: string | null; liveAt: string | null; premium: boolean; status: "waiting" | "paused" | "live" };
 type TabKey = "waiting" | "paused" | "live" | "all";
@@ -53,6 +54,7 @@ export default function WebsitesPage() {
     <div className="space-y-5">
       {dialog}
       <PageHeader title="Websites" sub="New websites go live by themselves 24 hours after they are made. Make one live sooner, or pause one." />
+      <SitesToNew />
       {!pauseReady && <ErrorBox>Pause needs migration 0085 (cards.site_paused) in Supabase. Live now works without it.</ErrorBox>}
       <Tabs tabs={[{ key: "waiting", label: "Waiting", count: count("waiting") }, { key: "paused", label: "Paused", count: count("paused") }, { key: "live", label: "Live (7 days)", count: count("live") }, { key: "all", label: "All", count: count("all") }]} value={tab} onChange={setTab} />
       {err && <ErrorBox>{err}</ErrorBox>}

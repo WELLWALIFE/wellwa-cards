@@ -48,7 +48,7 @@ const LAYOUTS_IN_LOOK = true as boolean;
 /** Which group each part sits in (the list's GROUPS, for a part opened from the preview). */
 /** The editor's names (final review, 24 Nov 2026 — https://claude.ai/artifact/HkXgzpjpzf9AgS5oP1bp8h): short, in English, one name per thing. */
 const LABEL: Record<string, [string, string]> = {
-  hero: ["Top section", "Heading, banner photo and its layout"],
+  hero: ["Home banner", "The big heading and banner photos at the top of your home page"],
   look: ["Look & layouts", "Colour, font, background, corners — and the layout of the banner and every section"],
   text: ["Pages & text", "Every page's text; add or remove a section or a page"],
   photos: ["Photos", "Banner photos and the photo gallery"],
@@ -103,6 +103,15 @@ function SaveToast({ note }: { note: { text: string; bad: boolean } | null }) {
     return () => clearTimeout(t);
   }, [note]);
   return shown ? <p role={shown.bad ? "alert" : "status"} className={`absolute inset-x-3 top-[calc(100%+6px)] z-40 rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-card ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p> : null;
+}
+/** Section designs made for another kind of business: offered only when the business's own designs use them (or one is in use). */
+const OTHER_TRADE = new Set(["services:menu-leaders", "services:rate-list", "services:tiers"]);
+/** What a design that does not fit yet needs, and where to add it. */
+function needOf(k: string, id: string): { text: string; part: string; btn: string } {
+  if (k === "hero" && id === "product-spotlight") return { text: "This design needs at least 2 products with photos.", part: "products", btn: "Add products" };
+  if (k === "hero") return { text: "This design needs a banner photo.", part: "photos", btn: "Add a photo" };
+  if (id === "tiers") return { text: "This design needs at least 2 products or plans.", part: "products", btn: "Add products" };
+  return { text: "This design needs products with photos.", part: "products", btn: "Add product photos" };
 }
 const TB = "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-ink hover:bg-surface2 disabled:opacity-35";
 const TBW = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-semibold text-ink hover:bg-surface2 disabled:opacity-35";
@@ -378,11 +387,11 @@ export default function WebsiteEditPage() {
     const blocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
     const titleOf = (...kinds: string[]) => (blocks.find((b) => kinds.includes(b.kind) && (b.title ?? "").trim())?.title ?? "").trim();
     const names: Record<string, [string, string]> = {
-      hero: ["Top of the page (big line and banner)", "सबसे ऊपर (बड़ी line और banner)"], trust: ["Key points strip", "खास बातों की पट्टी"],
+      hero: ["Home banner (big heading and photo)", "Home banner (बड़ी heading और photo)"], trust: ["Key points strip", "खास बातों की पट्टी"],
       about: [titleOf("about") || "About", titleOf("about") || "हमारे बारे में"], services: [titleOf("services", "product") || "Services / products", titleOf("services", "product") || "Services / products"],
       gallery: [titleOf("gallery", "image", "carousel") || "Photos", titleOf("gallery", "image", "carousel") || "Photos"], proof: [titleOf("testimonials") || "Customer reviews", titleOf("testimonials") || "Customer reviews"],
       process: ["Step by step", "Step by step"], faq: [titleOf("faq") || "Questions", titleOf("faq") || "सवाल-जवाब"],
-      visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip (WhatsApp / Call)", "Contact पट्टी (WhatsApp / Call)"], footer: ["Bottom of the page", "सबसे नीचे"],
+      visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip (WhatsApp / Call)", "Contact पट्टी (WhatsApp / Call)"], footer: ["Footer (bottom of every page)", "सबसे नीचे"],
     };
     return repairOrder(adv.order).filter((k) => sectionHasContent(k, c, hasContact)).map((k) => ({ key: k, name: (names[k] ?? [k, k])[hi ? 1 : 0], fixed: k === "hero" || k === "footer" }));
   }, [adv, storeDesign, card, hi]);
@@ -429,7 +438,7 @@ export default function WebsiteEditPage() {
   const [mixDesigns, setMixDesigns] = useState<{ hero?: string; sections?: Record<string, string> }[] | null>(null);
   const mixCardId = s?.hasCard ? s.cardId : undefined;
   useEffect(() => {
-    if (tab !== "look" || !adv || storeDesign || mixDesigns || !mixCardId) return;
+    if ((tab !== "look" && !sheet) || !adv || storeDesign || mixDesigns || !mixCardId) return;
     let live = true;
     void api<{ designs?: { spec?: { seed?: string; hero?: string; sections?: Record<string, string> } }[] }>("/api/card/advanced", { method: "POST", json: { cardId: mixCardId, more: true } }).then((r) => {
       if (!live) return;
@@ -439,7 +448,7 @@ export default function WebsiteEditPage() {
       setMixDesigns((fixed.length ? fixed.slice(0, 12) : all.slice(0, 12)).map((d) => ({ hero: d.spec?.hero, sections: d.spec?.sections ?? {} })));
     }).catch(() => { if (live) setMixDesigns([]); });
     return () => { live = false; };
-  }, [tab, adv, storeDesign, mixDesigns, mixCardId]);
+  }, [tab, sheet, adv, storeDesign, mixDesigns, mixCardId]);
   // A layout tried in "build your own" is only shown in the window: it goes live when the owner presses Save (owner, 24 Nov 2026:
   // "save ka button laga do"), so trying ten layouts does not change the live website ten times. Everything else on this screen
   // still saves by itself.
@@ -447,6 +456,8 @@ export default function WebsiteEditPage() {
   // A layout a part wore once (the saved one, or one tried) stays a choice when another is tried (owner, 24 Nov 2026: the first one
   // went grey after picking a second, and there was no way back to it).
   const [mixSeen, setMixSeen] = useState<Set<string>>(() => new Set());
+  const [moreOpen, setMoreOpen] = useState<Record<string, boolean>>({});
+  const [need, setNeed] = useState<{ k: string; id: string } | null>(null);
   const remember = (k: string, id: string) => { if (id) setMixSeen((s0) => (s0.has(`${k}:${id}`) ? s0 : new Set(s0).add(`${k}:${id}`))); };
   // After a Save: "your website is live" with its link, a QR and a WhatsApp share (master list #14).
   const [liveBox, setLiveBox] = useState(false);
@@ -457,8 +468,6 @@ export default function WebsiteEditPage() {
   useEffect(() => { if (!mixJump || tab !== "look" || !open) return; const t = setTimeout(() => { mixBox.current?.scrollIntoView({ behavior: "smooth", block: "start" }); setMixJump(false); }, 500); return () => clearTimeout(t); }, [mixJump, tab, open]);
   const mixHold = useRef(false);
   const mixAllow = useMemo(() => (card ? allowedByFit(fitOf(card)) : () => true), [card]);
-  /** "D2, D5": the designs that wear this layout of this part. */
-  const mixUsedBy = (k: SectionKey, id: string) => (mixDesigns ?? []).map((d, i) => ((k === "hero" ? d.hero : d.sections?.[k] ?? VARIANT_IDS[k][0]) === id ? `D${i + 1}` : "")).filter(Boolean).join(", ");
   const [advDrag, setAdvDrag] = useState("");
   const [advOver, setAdvOver] = useState("");
   /** Moves one Premium section to another's place; shown in the window at once and saved by itself a moment later. */
@@ -566,6 +575,36 @@ export default function WebsiteEditPage() {
     setCard({ ...card, site: { ...(card.site ?? { enabled: true }), homeOwnOrder: true } as Card["site"], pages: card.pages.map((p) => (p === hp ? { ...hp, blocks } : p)) }); setDirty(true);
   }
   const pickHero = (id: string) => { remember("hero", String(adv?.hero ?? "")); setAdv({ hero: id }); };
+  /** The designs of one section, the way a professional editor offers them (owner, 24 Nov 2026: "har category me alag ho sakti hai"):
+   *  first the ones the business's own 12 designs use ("Recommended for your business"), the rest folded under "More designs", and the
+   *  few made for another kind of business (a menu, a rate list, plans) left out unless one is in use. A design that needs more (a banner
+   *  photo, product photos) says what and opens the place to add it, instead of sitting greyed out. */
+  const layoutPicker = (k: SectionKey, cur: string, onPick: (id: string) => void) => {
+    const all: readonly string[] = k === "hero" ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[k] ?? [];
+    const rec = new Set((mixDesigns ?? []).map((d) => (k === "hero" ? d.hero : d.sections?.[k] ?? all[0])).filter((x): x is string => !!x));
+    const okOf = (id: string) => mixAllow(k, id) || cur === id || mixSeen.has(`${k}:${id}`);
+    const otherTrade = (id: string) => OTHER_TRADE.has(`${k}:${id}`) && !rec.has(id) && cur !== id;
+    const main = rec.size ? all.filter((id) => rec.has(id) || id === cur) : all.filter((id) => !otherTrade(id));
+    const more = rec.size ? all.filter((id) => !main.includes(id) && !otherTrade(id)) : [];
+    const open = !!moreOpen[k];
+    const name = (id: string) => (k === "hero" ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(k, id, false));
+    const btn = (id: string) => {
+      const ok = okOf(id);
+      return <button key={id} type="button" aria-pressed={cur === id} title={ok ? undefined : "Needs a little more — tap to see"} onClick={() => { if (ok) { setNeed(null); onPick(id); } else setNeed({ k, id }); }}
+        className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${cur === id ? "border-brand bg-brand-soft text-brand-ink" : ok ? "border-border bg-surface text-ink hover:border-brand/50" : "border-dashed border-border bg-surface text-muted hover:text-ink"}`}>
+        {cur === id && <Check className="h-3.5 w-3.5" />}{name(id)}{!ok && <Plus className="h-3 w-3" />}</button>;
+    };
+    const nd = need && need.k === k ? needOf(k, need.id) : null;
+    return (
+      <div className="space-y-2">
+        {rec.size > 0 && <p className="text-[11px] font-semibold text-muted">Recommended for your business</p>}
+        <div className="flex flex-wrap gap-1.5">{main.map(btn)}</div>
+        {nd && <div className="flex items-center gap-2 rounded-lg border border-border bg-surface2 px-3 py-2"><span className="min-w-0 flex-1 text-[12px] text-muted">{nd.text}</span><button type="button" onClick={() => { setNeed(null); openPart(nd.part); }} className={TBW}><Plus className="h-3.5 w-3.5" /> {nd.btn}</button></div>}
+        {more.length > 0 && <button type="button" onClick={() => setMoreOpen((m) => ({ ...m, [k]: !m[k] }))} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-ink"><ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} /> {open ? "Fewer designs" : `More designs (${more.length})`}</button>}
+        {open && <div className="flex flex-wrap gap-1.5">{more.map(btn)}</div>}
+      </div>
+    );
+  };
   const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") pickHero(id); else setAdvSection(k, id); };
   const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
@@ -836,6 +875,16 @@ export default function WebsiteEditPage() {
     setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
   };
   const unsaved = dirty || embedDirty;
+  /** The tab that holds what is open (a part's own screen, a section's sheet), else the one picked. */
+  const curTab: RTab = open ? ({ content: "sections", design: "design", contact: "info", settings: "settings" } as Record<string, RTab>)[group] ?? rtab : sheet ? "sections" : rtab;
+  const goTab = (k: RTab) => {
+    if (open) {
+      if (embedDirty && !window.confirm("Your change is not saved. Go back without saving?")) return;
+      setEmbedDirty(false); setEmbedView(null); setOpen(false);
+    }
+    if (sheet) { sheetFocus.current = null; setSheet(null); }
+    setRtab(k); window.scrollTo({ top: 0 });
+  };
   const liveUrl = `${s.url}?view=site`;
   const doSave = () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); };
   const doBack = () => {
@@ -856,7 +905,7 @@ export default function WebsiteEditPage() {
       {/* ---- Top bar (final review, 24 Nov 2026): where you are, whether it is live, the view, Undo / Redo and one Save — always here. ---- */}
       <div ref={topBar} className="sticky z-30 -mx-4 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur lg:col-span-2 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:shadow-card" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={`${TB} lg:hidden`}><ChevronLeft className="h-5 w-5" /></button>
           <div className="min-w-0 flex-1 lg:pr-2">
             <p className="text-sm font-bold leading-tight text-ink">Website</p>
             <a href={liveUrl} target="_blank" rel="noreferrer" className={`flex min-w-0 items-center gap-1 text-[11px] font-semibold ${siteOn ? "text-good" : "text-muted"}`}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${siteOn ? "bg-good" : "bg-muted"}`} /><span className="truncate">{siteOn ? "Live" : "Off"} · {liveUrl.replace(/^https?:\/\//, "").replace(/\?view=site$/, "")}</span></a>
@@ -866,12 +915,12 @@ export default function WebsiteEditPage() {
             <Seg value={phoneView ? "phone" : "computer"} options={[["computer", "Computer"], ["phone", "Phone"]] as const} onChange={(v) => setPhoneView(v === "phone")} label="Preview size" />
             <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={`${TBW} sm:hidden`}><ExternalLink className="h-3.5 w-3.5" /> View site</a>
           </div>
-          <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={TB}><Undo2 className="h-4 w-4" /></button>
-          <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={TB}><Redo2 className="h-4 w-4" /></button>
-          <span className={`hidden whitespace-nowrap text-[12px] font-medium xl:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
+          <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={`${TB} lg:hidden`}><Undo2 className="h-4 w-4" /></button>
+          <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={`${TB} lg:hidden`}><Redo2 className="h-4 w-4" /></button>
+          <span className={`hidden whitespace-nowrap text-[12px] font-medium md:inline lg:hidden ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
           {undo && !unsaved && <button type="button" onClick={() => void save(undo)} className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="Put back the website as it was before the last Save"><RotateCcw className="h-3.5 w-3.5" /> <span className="hidden xl:inline">Undo save</span></button>}
           <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="View site"><ExternalLink className="h-3.5 w-3.5" /> <span className="hidden xl:inline">View site</span></a>
-          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
+          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand lg:hidden px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
         </div>
         <SaveToast note={note?.k === "save" ? { text: note.text, bad: note.bad } : null} />
       </div>
@@ -894,7 +943,21 @@ export default function WebsiteEditPage() {
         </div>
       </div>
 
-      <div className={`space-y-3 lg:col-start-2 lg:min-w-0 ${!open && !sheet ? "pb-20 lg:pb-0" : ""}`}>
+      <div className="space-y-3 pb-20 lg:col-start-2 lg:min-w-0 lg:pb-0">
+      {/* ---- The editor bar (owner, 24 Nov 2026: "Sections Design Business info Settings hamesha dikhte rahe; back, undo, redo aur save
+          bhi inke saath"): always there, whatever is open. On a computer it stays at the top of this column while it scrolls. ---- */}
+      <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:sticky lg:bottom-auto lg:left-auto lg:top-[var(--bar-top)] lg:z-20 lg:max-w-none lg:translate-x-0 lg:rounded-2xl lg:border lg:p-2 lg:shadow-card" style={{ ["--bar-top" as string]: `${barH + 8}px` }}>
+        <div className="mb-2 hidden items-center gap-2 lg:flex">
+          <button type="button" onClick={doBack} aria-label={open || sheet ? "Back to the list" : "Back"} title={open || sheet ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={TB}><Undo2 className="h-4 w-4" /></button>
+          <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={TB}><Redo2 className="h-4 w-4" /></button>
+          <span className={`min-w-0 flex-1 truncate text-right text-[12px] font-medium ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
+          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-5 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
+        </div>
+        <div role="tablist" aria-label="Editor" className="flex rounded-xl bg-surface2 p-1">
+          {RTABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={curTab === k} onClick={() => goTab(k)} className={`flex-1 rounded-lg px-1 py-2 text-[12.5px] font-semibold transition ${curTab === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{k === "info" ? <><span className="sm:hidden">Info</span><span className="hidden sm:inline">{l}</span></> : l}</button>)}
+        </div>
+      </div>
       {s.cards.length > 1 && (
         <div className="space-y-1.5">
           <select value={s.cardId} onChange={(e) => { setNote(null); void load(e.target.value); }} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
@@ -919,6 +982,7 @@ export default function WebsiteEditPage() {
         </section>); })()}
 
       {/* ---- One section of the home page: edit its text and photo, pick its layout, move or hide it ---- */}
+      {/* eslint-disable-next-line react-hooks/refs -- the picks and moves run on the tap, never while drawing */}
       {!open && sheet && adv && card && (() => {
         const i = homeRows.findIndex((r) => r.id === sheet.id); const row = homeRows[i]; if (!row) return null;
         const sec = row.sec;
@@ -942,9 +1006,8 @@ export default function WebsiteEditPage() {
           <div className="space-y-4 p-3">
             {sec && ids.length > 1 && <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Design of this section</p><p className="text-[12px] text-muted">Tap a design — the preview changes at once; press Save to keep it.</p>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {/* eslint-disable-next-line react-hooks/refs -- sheetLayout runs on the tap, never while drawing */}
-                {ids.map((id) => { const ok = mixAllow(sec, id) || cur === id || mixSeen.has(`${sec}:${id}`); return <button key={id} type="button" disabled={!ok} title={ok ? undefined : "Needs more photos or items"} onClick={() => sheetLayout(sec, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(sec, id, false)}</button>; })}
+              <div className="mt-2">
+                {layoutPicker(sec, cur, (id) => sheetLayout(sec, id))}
               </div>
             </div>}
             <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
@@ -955,7 +1018,6 @@ export default function WebsiteEditPage() {
               ? <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Position</p>
                   <div className="mt-1.5 flex flex-wrap gap-2">
-                    {/* eslint-disable-next-line react-hooks/refs -- moveHomeBlock runs on the tap, never while drawing */}
                     <button type="button" disabled={at <= 0} onClick={() => moveHomeBlock(row.blk!, -1)} className={TBW}><ChevronUp className="h-4 w-4" /> Move up</button>
                     <button type="button" disabled={at < 0 || at >= own.length - 1} onClick={() => moveHomeBlock(row.blk!, 1)} className={TBW}><ChevronDown className="h-4 w-4" /> Move down</button>
                     <button type="button" onClick={() => hideHomeBlock(row.blk!, true)} className={TBW}><EyeOff className="h-4 w-4" /> Hide</button>
@@ -990,11 +1052,6 @@ export default function WebsiteEditPage() {
           );
         })()}
 
-        <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:static lg:max-w-none lg:translate-x-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-          <div role="tablist" aria-label="Editor" className="flex rounded-xl bg-surface2 p-1">
-            {RTABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={rtab === k} onClick={() => setRtab(k)} className={`flex-1 rounded-lg px-1 py-2 text-[12.5px] font-semibold transition ${rtab === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{k === "info" ? <><span className="sm:hidden">Info</span><span className="hidden sm:inline">{l}</span></> : l}</button>)}
-          </div>
-        </div>
 
         {/* A website still on one of the older looks (no Premium design): the same editor, but the section designs come with the new
             designs — said plainly, with the way there (owner, 24 Nov 2026: "Haryana wali id me kuch aur dikhta hai, Sunita wali me kuch aur"). */}
@@ -1039,7 +1096,7 @@ export default function WebsiteEditPage() {
         </> : <>
           <p className="px-1 text-[13px] font-semibold text-ink">Home page — top to bottom</p>
           <div className={BOX}>
-            <EdRow Icon={ImageIcon} title="Top section" sub="Fixed position" onClick={() => openPart("hero")}><button type="button" aria-label="Edit" onClick={() => openPart("hero")} className={IB}><Pencil className="h-4 w-4" /></button></EdRow>
+            <EdRow Icon={ImageIcon} title="Home banner (big heading and photo)" sub="Fixed position" onClick={() => openPart("hero")}><button type="button" aria-label="Edit" onClick={() => openPart("hero")} className={IB}><Pencil className="h-4 w-4" /></button></EdRow>
             {sections.map((sec, i) => {
               const off = hiddenSections.has(sec.key);
               const edit = () => { const p = sec.kind === "block" ? partFor(card, { kind: "block", blockId: sec.key }, true) : partFor(card, { kind: "text", text: secText(sec.key) }, true); sheetOpen(p.key, p.blockId); };
@@ -1184,19 +1241,21 @@ export default function WebsiteEditPage() {
             {/* A section's layout is picked on that section (Sections tab), the top section included: one job, one place (final review, 24 Nov 2026). */}
             {!LAYOUTS_IN_LOOK ? null : storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
               <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {HERO_IDS.map((h) => { const ok = mixAllow("hero", h) || adv.hero === h || mixSeen.has(`hero:${h}`); const by = mixUsedBy("hero", h); return <button key={h} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए banner फ़ोटो चाहिए" : "This one needs a banner photo")} onClick={() => pickHero(h)} className={`${chip(adv.hero === h)} ${ok ? "" : "opacity-40"}`}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
+              <div className="mt-2">
+                {/* eslint-disable-next-line react-hooks/refs -- the pick runs on the tap, never while drawing */}
+                {layoutPicker("hero", String(adv.hero ?? ""), pickHero)}
               </div>
             </div>}
             {LAYOUTS_IN_LOOK && !storeDesign && advRows.some((r) => r.key !== "hero") && <div ref={mixBox} className="scroll-mt-24 rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
-              <p className="text-sm font-bold">{hi ? "अपना design खुद बनाएँ — हर हिस्सा अलग चुनें" : "Build your own design — pick each part"}</p>
-              <p className="mt-0.5 text-[11px] text-muted">{hi ? "हर हिस्से के नीचे उसके सारे रूप हैं। जो पसंद आए वो दबाएँ — बाईं तरफ़ website में तुरंत दिखेगा। D2, D5 = ये रूप Design 2 और 5 में है। रंग और अक्षर वही रहते हैं, इसलिए सब एक जैसा दिखता है। यहाँ का बदलाव अभी सिर्फ़ इस window में दिखता है — असली website पर तभी जाएगा जब आप “Save” दबाएँगे।" : "Under each part are all its layouts. Tap the one you like — it shows on the website at once. D2, D5 = Design 2 and 5 use this layout. Colours and letters stay the same, so everything still matches. A change here shows only in this window — it goes to the real website when you press “Save”."}</p>
+              <p className="text-sm font-bold">Build your own design — pick each part</p>
+              <p className="mt-0.5 text-[11px] text-muted">Each part of your home page, with the designs recommended for your business first. Tap one — the preview changes at once. Colours and letters stay the same, so everything matches. Press Save to put it on the website.</p>
               <div className="mt-2 space-y-3">
+                {/* eslint-disable-next-line react-hooks/refs -- the picks and moves run on the tap, never while drawing */}
                 {advRows.filter((r) => r.key !== "hero").map((r) => { const cur = (adv.sections as Record<string, string> | undefined)?.[r.key] ?? VARIANT_IDS[r.key][0]; return (
                   <div key={r.key}>
                     <button type="button" onClick={() => showAdv(r.key)} className="text-left text-[13px] font-semibold underline decoration-dotted underline-offset-2">{r.name}</button>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {VARIANT_IDS[r.key].map((id) => { const ok = mixAllow(r.key, id) || cur === id || mixSeen.has(`${r.key}:${id}`); const by = mixUsedBy(r.key, id); return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => setAdvSection(r.key, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{variantName(r.key, id, hi)}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
+                    <div className="mt-1.5">
+                      {layoutPicker(r.key, cur, (id) => setAdvSection(r.key, id))}
                     </div>
                   </div>); })}
               </div>
