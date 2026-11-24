@@ -388,7 +388,7 @@ export type SitePatch = {
    *  with a #rrggbb colour. Applied to site.advanced.palette when the card has a Premium design. */
   advancedPalette?: { key: string; color?: string; /** Picked by the owner (see AdvancedSpec.palette.own). */ own?: boolean };
   /** The Premium design's own letters, top and corners (website editor, 25 Oct 2026). Checked against the lists in lib/site-advanced.ts. */
-  advancedLook?: { heading?: string; hero?: string; shape?: string; tone?: "light" | "dark"; corners?: boolean; order?: string[] };
+  advancedLook?: { heading?: string; hero?: string; shape?: string; tone?: "light" | "dark"; corners?: boolean; order?: string[]; sections?: Record<string, string> };
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -437,6 +437,7 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
       ...(L.hero ? { hero: L.hero } : {}),
       ...(L.shape ? { shape: L.shape } : {}),
       ...(L.order ? { order: L.order } : {}),
+      ...(L.sections ? { sections: { ...((adv2.sections as Record<string, unknown>) ?? {}), ...L.sections } } : {}),
     };
     // Background light / dark (palette.tone). Ivory and pearl stay light; a dark page drops the luxe (ivory-paper) flag.
     const a3 = (site as { advanced: { palette?: Record<string, unknown> } & Record<string, unknown> }).advanced;

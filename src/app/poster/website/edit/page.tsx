@@ -16,7 +16,9 @@ import { goBack } from "@/lib/nav-back";
 import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
-import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, repairOrder, type SectionKey } from "@/lib/site-advanced";
+import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, VARIANT_IDS, repairOrder, type SectionKey } from "@/lib/site-advanced";
+import { variantName } from "@/lib/site-advanced-names";
+import { allowedByFit, fitOf } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
@@ -258,6 +260,26 @@ export default function WebsiteEditPage() {
     };
     return repairOrder(adv.order).filter((k) => sectionHasContent(k, c, hasContact)).map((k) => ({ key: k, name: (names[k] ?? [k, k])[hi ? 1 : 0], fixed: k === "hero" || k === "footer" }));
   }, [adv, storeDesign, card, hi]);
+  // "Build your own design" (owner, 24 Nov 2026): each part of the home page can wear any of its layouts, so the owner can take the
+  // top of one design, the About of another, the footer of a third. The designs of the "choose" screen are read once, only to
+  // say which design uses which layout ("Design 2").
+  const [mixDesigns, setMixDesigns] = useState<{ hero?: string; sections?: Record<string, string> }[] | null>(null);
+  const mixCardId = s?.hasCard ? s.cardId : undefined;
+  useEffect(() => {
+    if (tab !== "look" || !adv || storeDesign || mixDesigns || !mixCardId) return;
+    let live = true;
+    void api<{ designs?: { spec?: { seed?: string; hero?: string; sections?: Record<string, string> } }[] }>("/api/card/advanced", { method: "POST", json: { cardId: mixCardId, more: true } }).then((r) => {
+      if (!live) return;
+      const all = r.ok && r.data.designs?.length ? r.data.designs : [];
+      // The same twelve (a trade's finished templates) or six, in the same order, as the "choose a design" screen numbers them.
+      const fixed = all.filter((d) => String(d.spec?.seed ?? "").includes("|fix:"));
+      setMixDesigns((fixed.length ? fixed.slice(0, 12) : all.slice(0, 6)).map((d) => ({ hero: d.spec?.hero, sections: d.spec?.sections ?? {} })));
+    }).catch(() => { if (live) setMixDesigns([]); });
+    return () => { live = false; };
+  }, [tab, adv, storeDesign, mixDesigns, mixCardId]);
+  const mixAllow = useMemo(() => (card ? allowedByFit(fitOf(card)) : () => true), [card]);
+  /** "D2, D5": the designs that wear this layout of this part. */
+  const mixUsedBy = (k: SectionKey, id: string) => (mixDesigns ?? []).map((d, i) => ((k === "hero" ? d.hero : d.sections?.[k] ?? VARIANT_IDS[k][0]) === id ? `D${i + 1}` : "")).filter(Boolean).join(", ");
   const [advDrag, setAdvDrag] = useState("");
   const [advOver, setAdvOver] = useState("");
   /** Moves one Premium section to another's place; shown in the window at once and saved by itself a moment later. */
@@ -313,6 +335,8 @@ export default function WebsiteEditPage() {
     : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
   /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
   const setAdv = (patch: Record<string, unknown>) => { if (!adv) return; focus({ top: true }); set({ advanced: { ...adv, ...patch } as NonNullable<Card["site"]>["advanced"] }); };
+  /** One part of the home page takes another layout; the window moves to that part so the change is seen. */
+  const setAdvSection = (k: SectionKey, id: string) => { if (!adv || k === "hero") return; set({ advanced: { ...adv, sections: { ...((adv.sections as Record<string, string> | undefined) ?? {}), [k]: id } } as NonNullable<Card["site"]>["advanced"] }); showAdv(k); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
   function setTone(t: "light" | "dark") {
     if (!adv) return;
@@ -376,7 +400,7 @@ export default function WebsiteEditPage() {
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
         ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}), ...((adv.palette as { own?: boolean }).own ? { own: true } : {}) } } : {}),
-        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}), ...(Array.isArray(adv.order) ? { order: adv.order as string[] } : {}) } } : {}),
+        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}), ...(Array.isArray(adv.order) ? { order: adv.order as string[] } : {}), ...(adv.sections && typeof adv.sections === "object" ? { sections: adv.sections as Record<string, string> } : {}) } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1);
@@ -710,8 +734,22 @@ export default function WebsiteEditPage() {
             {storeDesign ? <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{hi ? "इस design का ऊपर का हिस्सा तय है। उसे बदलना हो तो Premium design में दूसरा design चुनें।" : "This design has its own top of the page. To change it, pick another design in Premium design."}</p> : <div>
               <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {HERO_IDS.map((h) => <button key={h} type="button" onClick={() => setAdv({ hero: h })} className={chip(adv.hero === h)}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}</button>)}
+                {HERO_IDS.map((h) => { const ok = mixAllow("hero", h) || adv.hero === h; const by = mixUsedBy("hero", h); return <button key={h} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए banner फ़ोटो चाहिए" : "This one needs a banner photo")} onClick={() => setAdv({ hero: h })} className={`${chip(adv.hero === h)} ${ok ? "" : "opacity-40"}`}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
               </div>
+            </div>}
+            {!storeDesign && advRows.some((r) => r.key !== "hero") && <div className="rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
+              <p className="text-sm font-bold">{hi ? "अपना design खुद बनाएँ — हर हिस्सा अलग चुनें" : "Build your own design — pick each part"}</p>
+              <p className="mt-0.5 text-[11px] text-muted">{hi ? "हर हिस्से के नीचे उसके सारे रूप हैं। जो पसंद आए वो दबाएँ — बाईं तरफ़ website में तुरंत दिखेगा। D2, D5 = ये रूप Design 2 और 5 में है। रंग और अक्षर वही रहते हैं, इसलिए सब एक जैसा दिखता है। पसंद आए तो Save दबाएँ।" : "Under each part are all its layouts. Tap the one you like — it shows on the website at once. D2, D5 = Design 2 and 5 use this layout. Colours and letters stay the same, so everything still matches. Press Save when you like it."}</p>
+              <div className="mt-2 space-y-3">
+                {advRows.filter((r) => r.key !== "hero").map((r) => { const cur = (adv.sections as Record<string, string> | undefined)?.[r.key] ?? VARIANT_IDS[r.key][0]; return (
+                  <div key={r.key}>
+                    <button type="button" onClick={() => showAdv(r.key)} className="text-left text-[13px] font-semibold underline decoration-dotted underline-offset-2">{r.name}</button>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {VARIANT_IDS[r.key].map((id) => { const ok = mixAllow(r.key, id) || cur === id; const by = mixUsedBy(r.key, id); return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => setAdvSection(r.key, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{variantName(r.key, id, hi)}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
+                    </div>
+                  </div>); })}
+              </div>
+              <p className="mt-2 text-[11px] text-muted">{hi ? "धुँधले रूप आपकी website पर अभी नहीं बन सकते (जैसे फ़ोटो कम हैं)। जो हिस्सा यहाँ नहीं दिख रहा, उसमें अभी कुछ भरा नहीं है — पहले “Text & pages” में भरें।" : "Faded layouts cannot be drawn on your website yet (for example, too few photos). A part that is missing here has nothing in it yet — fill it in “Text & pages” first."}</p>
             </div>}
             <div>
               <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
