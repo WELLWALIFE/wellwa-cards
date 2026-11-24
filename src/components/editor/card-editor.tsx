@@ -601,6 +601,8 @@ export function CardEditor({ id }: { id: string }) {
     // ?block=<id>: a ✏️ on that section in Card / Website edit's preview opens the editor right at it.
     const blk = q.get("block") ?? "";
     if (blk && card.pages.some((p) => p.blocks.some((b) => b.id === blk))) { focused.current = true; editFrom({ kind: "block", blockId: blk }); return; }
+    // ?add=1: the first page open, its "Add section" list showing (PageSections).
+    if (q.get("add") === "1" && card.pages[0]) { focused.current = true; setOpenPage(card.pages[0].id); return; }
     if (!f) return;
     focused.current = true;
     if (f === "photo" || f === "cover" || f === "tagline") { editFrom({ kind: "profile" }); return; }
@@ -1110,7 +1112,8 @@ function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlo
   page: CardPage; index: number; total: number; L: (en: string, hi: string) => string;
   onRename: (label: string) => void; onMove: (dir: -1 | 1) => void; onRemove: () => void; onBlocks: (blocks: CardBlock[]) => void; onFocus: () => void;
 }) {
-  const [adding, setAdding] = useState(false);
+  // ?add=1 (Website edit → "+ Add section"): the first page opens with its "Add section" list already showing.
+  const [adding, setAdding] = useState(() => index === 0 && typeof window !== "undefined" && new URLSearchParams(window.location.search).get("add") === "1");
   const dnd = useDragReorder(page.blocks, onBlocks);
   const update = (bid: string, b: CardBlock) => onBlocks(page.blocks.map((x) => (x.id === bid ? b : x)));
   const remove = (bid: string) => onBlocks(page.blocks.filter((x) => x.id !== bid));

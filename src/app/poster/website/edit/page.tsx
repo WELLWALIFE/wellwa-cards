@@ -925,17 +925,17 @@ export default function WebsiteEditPage() {
               : <button type="button" onClick={sheetClose} className={TBW}><Check className="h-3.5 w-3.5" /> Done</button>}
           </div>
           <div className="space-y-4 p-3">
-            <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
-              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : "Edit text"}</button>
-              {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
-            </div>
             {sec && ids.length > 1 && <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Layout</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Design of this section</p><p className="text-[12px] text-muted">Tap a design — the preview changes at once; press Save to keep it.</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {/* eslint-disable-next-line react-hooks/refs -- sheetLayout runs on the tap, never while drawing */}
                 {ids.map((id) => { const ok = mixAllow(sec, id) || cur === id; return <button key={id} type="button" disabled={!ok} title={ok ? undefined : "Needs more photos or items"} onClick={() => sheetLayout(sec, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(sec, id, false)}</button>; })}
               </div>
             </div>}
+            <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
+              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : "Edit text"}</button>
+              {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
+            </div>
             {row.blk
               ? <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Position</p>
@@ -994,8 +994,9 @@ export default function WebsiteEditPage() {
                   {r.blk && <>
                     <button type="button" aria-label="Move up" title="Move up" disabled={at <= 0} onClick={() => moveHomeBlock(r.blk!, -1)} className={IB}><ChevronUp className="h-4 w-4" /></button>
                     <button type="button" aria-label="Move down" title="Move down" disabled={at >= own.length - 1} onClick={() => moveHomeBlock(r.blk!, 1)} className={IB}><ChevronDown className="h-4 w-4" /></button>
-                    <button type="button" aria-label="Hide" title="Hide" onClick={() => hideHomeBlock(r.blk!, true)} className={IB}><EyeOff className="h-4 w-4" /></button>
+                    <button type="button" aria-label="Hide this section" title="Shown on the website — tap to hide" onClick={() => hideHomeBlock(r.blk!, true)} className={IB}><Eye className="h-4 w-4" /></button>
                   </>}
+                  {r.sec && ((r.sec === "hero" ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[r.sec] ?? []).length > 1) && <button type="button" aria-label="Change design" title="Change the design of this section" onClick={() => sheetGo(i)} className={IB}><LayoutTemplate className="h-4 w-4" /></button>}
                   <button type="button" aria-label="Edit" title="Edit" onClick={() => sheetGo(i)} className={IB}><Pencil className="h-4 w-4" /></button>
                 </EdRow>
               );
@@ -1004,7 +1005,7 @@ export default function WebsiteEditPage() {
           {hiddenHome.length > 0 && <>
             <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Hidden sections</p>
             <div className={BOX}>
-              {hiddenHome.map((x) => <EdRow key={x.id} title={x.name} sub="Not shown on the website" dim><button type="button" onClick={() => hideHomeBlock(x.id, false)} className={TBW}><Eye className="h-3.5 w-3.5" /> Show</button></EdRow>)}
+              {hiddenHome.map((x) => <EdRow key={x.id} title={x.name} sub="Hidden — not on the website" dim><button type="button" onClick={() => hideHomeBlock(x.id, false)} className={TBW}><EyeOff className="h-3.5 w-3.5" /> Show again</button></EdRow>)}
             </div>
           </>}
           <button type="button" onClick={() => sheetOpen("text", "__add")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
@@ -1019,7 +1020,7 @@ export default function WebsiteEditPage() {
                 <EdRow key={sec.key} title={sectionLabel(sec, "en")} dim={off} sub={off ? "Hidden" : undefined} onClick={edit}>
                   <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(sec.key, -1)} className={IB}><ChevronUp className="h-4 w-4" /></button>
                   <button type="button" aria-label="Move down" disabled={i === sections.length - 1} onClick={() => move(sec.key, 1)} className={IB}><ChevronDown className="h-4 w-4" /></button>
-                  <button type="button" aria-label={off ? "Show" : "Hide"} onClick={() => toggleSection(sec.key)} className={IB}>{off ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}</button>
+                  <button type="button" aria-label={off ? "Show this section" : "Hide this section"} title={off ? "Hidden — tap to show" : "Shown on the website — tap to hide"} onClick={() => toggleSection(sec.key)} className={IB}>{off ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                   <button type="button" aria-label="Edit" onClick={edit} className={IB}><Pencil className="h-4 w-4" /></button>
                 </EdRow>
               );
