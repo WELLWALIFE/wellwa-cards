@@ -1547,6 +1547,8 @@ function FoldGroups({ prefix, is, tap, children }: { prefix: string; is: (id: st
   let n = 0;
   return <>{flat.map((c, i) => {
     if (!isValidElement(c) || c.type !== "div") return <Fragment key={i}>{c}</Fragment>;
+    // A group switched off for this screen (className "hidden") is not drawn at all.
+    if (/(^|\s)hidden(\s|$)/.test(String((c.props as { className?: string }).className ?? ""))) return null;
     const kids = Children.toArray((c.props as { children?: React.ReactNode }).children);
     const head = kids[0];
     if (!isValidElement(head) || head.type !== "p" || !/font-semibold/.test(String((head.props as { className?: string }).className ?? ""))) return <Fragment key={i}>{c}</Fragment>;
