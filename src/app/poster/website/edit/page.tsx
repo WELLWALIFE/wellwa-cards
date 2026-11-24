@@ -19,6 +19,7 @@ import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
 import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, VARIANT_IDS, homeSlugOf, repairOrder, type SectionKey } from "@/lib/site-advanced";
 import { variantName } from "@/lib/site-advanced-names";
+import { LayoutThumb } from "@/components/site-adv/layout-thumb";
 import { allowedByFit, fitOf, groupOf } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
@@ -626,18 +627,22 @@ export default function WebsiteEditPage() {
     const name = (id: string) => (k === "hero" ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(k, id, false));
     const btn = (id: string) => {
       const ok = okOf(id);
-      return <button key={id} type="button" aria-pressed={cur === id} title={ok ? undefined : "Needs a little more — tap to see"} onClick={() => { if (ok) { setNeed(null); onPick(id); } else setNeed({ k, id }); }}
-        className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${cur === id ? "border-brand bg-brand-soft text-brand-ink" : ok ? "border-border bg-surface text-ink hover:border-brand/50" : "border-dashed border-border bg-surface text-muted hover:text-ink"}`}>
-        {cur === id && <Check className="h-3.5 w-3.5" />}{name(id)}{!ok && <Plus className="h-3 w-3" />}</button>;
+      // A sketch of the layout with its name under it (owner, 24 Nov 2026: a picture instead of a name).
+      return <button key={id} type="button" aria-pressed={cur === id} title={ok ? name(id) : "Needs a little more — tap to see"} onClick={() => { if (ok) { setNeed(null); onPick(id); } else setNeed({ k, id }); }}
+        className={`relative flex flex-col overflow-hidden rounded-xl border bg-surface text-left shadow-[0_1px_2px_rgba(16,24,40,0.06),0_6px_14px_-8px_rgba(16,24,40,0.18)] transition ${cur === id ? "border-brand ring-2 ring-brand/30" : ok ? "border-border hover:border-brand/50" : "border-dashed border-border opacity-60 hover:opacity-100"}`}>
+        <LayoutThumb k={k} id={id} />
+        {cur === id && <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-brand text-white"><Check className="h-3 w-3" /></span>}
+        {!ok && <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full border border-border bg-surface text-muted"><Plus className="h-3 w-3" /></span>}
+        <span className={`line-clamp-2 px-1.5 py-1 text-[10.5px] font-medium leading-tight ${cur === id ? "text-brand-ink" : "text-ink"}`}>{name(id)}</span></button>;
     };
     const nd = need && need.k === k ? needOf(k, need.id) : null;
     return (
       <div className="space-y-2">
         {rec.size > 0 && <p className="text-[11px] font-semibold text-muted">Recommended for your business</p>}
-        <div className="flex flex-wrap gap-1.5">{main.map(btn)}</div>
+        <div className="grid grid-cols-3 gap-2">{main.map(btn)}</div>
         {nd && <div className="flex items-center gap-2 rounded-lg border border-border bg-surface2 px-3 py-2"><span className="min-w-0 flex-1 text-[12px] text-muted">{nd.text}</span><button type="button" onClick={() => { setNeed(null); openPart(nd.part); }} className={TBW}><Plus className="h-3.5 w-3.5" /> {nd.btn}</button></div>}
         {more.length > 0 && <button type="button" onClick={() => setMoreOpen((m) => ({ ...m, [k]: !m[k] }))} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-ink"><ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} /> {open ? "Fewer designs" : `More designs (${more.length})`}</button>}
-        {open && <div className="flex flex-wrap gap-1.5">{more.map(btn)}</div>}
+        {open && <div className="grid grid-cols-3 gap-2">{more.map(btn)}</div>}
       </div>
     );
   };

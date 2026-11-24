@@ -218,7 +218,7 @@ export const ADV_HERO_NAMES: Record<string, [string, string]> = {
   "stacked-poster": ["Centre + arch photo", "बीच में + arch photo"], "mosaic": ["Mosaic", "Mosaic"], "video-first": ["Video first", "पहले video"],
   "centered-minimal": ["Calm, centred", "शांत, बीच में"], "diagonal": ["Slanted photo", "तिरछी photo"], "masthead": ["Magazine title", "Magazine जैसा"],
   "kinetic-type": ["Giant headline", "बहुत बड़ी headline"], "pinned-story": ["Scroll story", "Scroll कहानी"], "parallax-collage": ["Floating collage", "तैरती photos"],
-  "product-spotlight": ["Product spotlight", "Product spotlight"],
+  "product-spotlight": ["Product spotlight", "Product spotlight"], "storefront": ["Store front", "दुकान का सामना"],
 };
 export const SHAPE_NAMES: Record<string, [string, string]> = { sharp: ["Sharp", "शार्प"], soft: ["Soft", "सॉफ्ट"], pill: ["Round", "राउंड"] };
 
