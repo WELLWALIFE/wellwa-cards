@@ -8,7 +8,8 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { Children, Fragment, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
+import { LoaderCircle, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings, Smartphone, Monitor, QrCode, Copy, MessageCircle, X, Wand2, LayoutGrid } from "lucide-react";
+import QRCode from "qrcode";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -39,12 +40,14 @@ const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
 type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
-type Group = "design" | "content" | "contact" | "settings" | "more";
+type Group = "design" | "content" | "photos" | "contact" | "settings";
+/** Off: nothing in the editor goes live by itself any more — Save puts it on the website (owner, 24 Nov 2026). */
+const AUTO_SAVE = false as boolean;
 /** Which group each part sits in (the list's GROUPS, for a part opened from the preview). */
 const TAB_GROUP: Record<string, Group> = {
-  look: "design", hero: "design", text: "content", photos: "content", products: "content", about: "content", details: "content", reviews: "content",
-  you: "contact", where: "contact", links: "contact", buttons: "contact", offer: "settings", website: "settings", trade: "settings",
-  home: "more", pages: "more", seo: "more", domain: "more",
+  look: "design", hero: "design", home: "content", text: "content", products: "content", about: "content", details: "content", reviews: "content",
+  photos: "photos", you: "contact", where: "contact", links: "contact", buttons: "contact", trade: "contact",
+  offer: "settings", website: "settings", pages: "settings", seo: "settings", domain: "settings",
 };
 /** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
 const DONE = "/poster/embed-done";
@@ -140,6 +143,9 @@ export default function WebsiteEditPage() {
   const [big, setBig] = useState(false);
   // One screen of the website, not the whole page (a one-screen-tall hero grew with a page-tall frame; 24 Oct 2026): it scrolls inside.
   const [boxH, setBoxH] = useState(230);
+  // Phone / computer view of the preview (master list #13): the same page in a 390 px wide window.
+  const [phoneView, setPhoneView] = useState(false);
+  const [boxW, setBoxW] = useState(0);
   const focusAsk = useRef<{ top?: boolean; text?: string; sec?: string } | null>(null);
   /** Show this part in the window: the top of the website, or the section / line with this text. */
   const focus = (f: { top?: boolean; text?: string }) => { focusAsk.current = f; };
@@ -194,13 +200,15 @@ export default function WebsiteEditPage() {
   }, [s]);
   useEffect(() => {
     const el = box.current;
-    const fit = () => { if (!el) return; if (el.clientWidth) setScale(Math.min(1, el.clientWidth / 1280)); if (el.clientHeight) setBoxH(el.clientHeight); };
+    const fit = () => { if (!el) return; if (el.clientWidth) { setScale(Math.min(1, el.clientWidth / 1280)); setBoxW(el.clientWidth); } if (el.clientHeight) setBoxH(el.clientHeight); };
     fit();
     const ro = el && "ResizeObserver" in window ? new ResizeObserver(fit) : null;
     if (el) ro?.observe(el);
     window.addEventListener("resize", fit); return () => { ro?.disconnect(); window.removeEventListener("resize", fit); };
   }, [s]);
-  const frameH = Math.round(boxH / scale);
+  const pvW = phoneView ? 390 : 1280;
+  const pvScale = phoneView ? Math.min(1, (boxW || 390) / 390) : scale;
+  const frameH = Math.round(boxH / pvScale);
 
   // Closing the tab or reloading with a change not saved: the browser asks first (owner, 26 Oct 2026: "bina save kiye kaam na khoye").
   useEffect(() => {
@@ -281,6 +289,13 @@ export default function WebsiteEditPage() {
   // "save ka button laga do"), so trying ten layouts does not change the live website ten times. Everything else on this screen
   // still saves by itself.
   const [mixHeld, setMixHeld] = useState(false);
+  // After a Save: "your website is live" with its link, a QR and a WhatsApp share (master list #14).
+  const [liveBox, setLiveBox] = useState(false);
+  const [liveQr, setLiveQr] = useState("");
+  const [liveCopied, setLiveCopied] = useState(false);
+  const mixBox = useRef<HTMLDivElement>(null);
+  const [mixJump, setMixJump] = useState(false);
+  useEffect(() => { if (!mixJump || tab !== "look" || !open) return; const t = setTimeout(() => { mixBox.current?.scrollIntoView({ behavior: "smooth", block: "start" }); setMixJump(false); }, 500); return () => clearTimeout(t); }, [mixJump, tab, open]);
   const mixHold = useRef(false);
   const mixAllow = useMemo(() => (card ? allowedByFit(fitOf(card)) : () => true), [card]);
   /** "D2, D5": the designs that wear this layout of this part. */
@@ -410,7 +425,7 @@ export default function WebsiteEditPage() {
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1); mixHold.current = false; setMixHeld(false);
       if (from) { setCard((cur) => (cur ? { ...cur, site: from.site } : from)); say("save", hi ? "↩️ पहले जैसा कर दिया।" : "↩️ Put back as it was.", false); }
-      else { say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false); if (before) setUndo(before); }
+      else { say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false); if (before) setUndo(before); setLiveBox(true); setLiveQr(""); setLiveCopied(false); }
     } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
@@ -420,12 +435,14 @@ export default function WebsiteEditPage() {
   const [foldAt, setFoldAt] = useState("");
   const foldIs = (id: string, first: boolean) => foldAt === id || (first && !foldAt.startsWith(`${id.split(":")[0]}:`));
   const foldTap = (id: string, first: boolean) => setFoldAt(foldIs(id, first) ? `${id.split(":")[0]}:none` : id);
+  // One rule for the whole editor (master list #12, owner 24 Nov 2026 "do it"): a change shows in the window first and goes to
+  // the real website only when Save is pressed. The two "save by itself" timers below stay in the code, switched off.
   const autoTried = useRef<Card | null>(null);
   const advOrderTouched = useRef(false);
   const saveRef = useRef(save);
   useEffect(() => { saveRef.current = save; });
   useEffect(() => {
-    if (!dirty || !open || busy || !card || mixHold.current || (tab !== "look" && tab !== "hero" && !(advOrderTouched.current && (tab === "text" || tab === "home"))) || autoTried.current === card) return;
+    if (!AUTO_SAVE || !dirty || !open || busy || !card || mixHold.current || (tab !== "look" && tab !== "hero" && !(advOrderTouched.current && (tab === "text" || tab === "home"))) || autoTried.current === card) return;
     const t = setTimeout(() => { autoTried.current = card; void saveRef.current(); }, tab === "hero" ? 1800 : 900);
     return () => clearTimeout(t);
   }, [dirty, open, busy, card, tab]);
@@ -433,7 +450,7 @@ export default function WebsiteEditPage() {
   // Text & pages and Buttons (the full editor, shown inside this page) go live by themselves as well, a moment after the last change
   // (owner, 19 Nov 2026: "jo bhi changes karte hain site par live dikhne chahiye"). The forms with their own Save button are left alone.
   useEffect(() => {
-    if (!embedDirty || !open || (tab !== "text" && tab !== "buttons" && tab !== "pages")) return;
+    if (!AUTO_SAVE || !embedDirty || !open || (tab !== "text" && tab !== "buttons" && tab !== "pages")) return;
     const t = setTimeout(() => { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); }, 2500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one try per change: only a new "unsaved" from the editor starts it
@@ -506,7 +523,7 @@ export default function WebsiteEditPage() {
   // Everything about the website on this one page (owner, 25 Oct 2026: "saari cheez yahi par"), in four groups. Each part says
   // what it changes and where it shows (card + website, or the website only).
   type TabDef = { key: Tab; label: string; Icon: typeof Palette; sub: string; scope: Scope };
-  const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: TabDef[] }[] = [
+  const RAW_GROUPS: { key: string; label: string; Icon: typeof Palette; tabs: TabDef[] }[] = [
     { key: "design", label: hi ? "डिज़ाइन" : "Design", Icon: Paintbrush, tabs: [
       { key: "look", label: hi ? "अक्षर और look" : "Letters & look", Icon: Palette, sub: hi ? "अक्षर, background, कोने — और पसंद की site का look" : "Letters, background, corners — and copy a look you like", scope: "site" },
       { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon, sub: hi ? "बड़ी heading, banners और ऊपर की photo" : "The big heading, the banners and the top photo", scope: "site" },
@@ -536,6 +553,17 @@ export default function WebsiteEditPage() {
       { key: "seo", label: hi ? "Google SEO" : "Google SEO", Icon: Search, sub: hi ? "अपने शहर में Google पर मिलें" : "Be found on Google in your city", scope: "site" },
       { key: "domain", label: hi ? "अपना web address" : "Own web address", Icon: Globe, sub: hi ? "www.yourshop.com" : "www.yourshop.com", scope: "site" },
     ] },
+  ];
+  // Five plain groups (master list #29, 24 Nov 2026 — https://claude.ai/artifact/UJXzJBJjKAssCmCsQGGB3u): the parts are the same,
+  // only sorted by what a shop owner looks for: the design, the sections and their words, the photos, the shop's details, settings.
+  const allTabs = RAW_GROUPS.flatMap((g) => g.tabs);
+  const tabsOf = (...ks: Tab[]) => ks.map((k) => allTabs.find((t) => t.key === k)).filter((t): t is TabDef => !!t);
+  const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: TabDef[] }[] = [
+    { key: "design", label: hi ? "डिज़ाइन" : "Design", Icon: Paintbrush, tabs: tabsOf("look", "hero") },
+    { key: "content", label: hi ? "हिस्से और शब्द" : "Sections & words", Icon: ListOrdered, tabs: tabsOf("home", "text", "products", "about", "details", "reviews") },
+    { key: "photos", label: hi ? "फ़ोटो" : "Photos", Icon: Camera, tabs: tabsOf("photos") },
+    { key: "contact", label: hi ? "दुकान की जानकारी" : "Shop details", Icon: Store, tabs: tabsOf("you", "where", "links", "buttons", "trade") },
+    { key: "settings", label: hi ? "Settings" : "Settings", Icon: Settings, tabs: tabsOf("offer", "website", "pages", "seo", "domain") },
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setSync(null); setTab(t); };
@@ -611,9 +639,13 @@ export default function WebsiteEditPage() {
           wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
       <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1 lg:top-6! lg:col-start-1 lg:row-start-1 lg:row-span-[40] lg:mx-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
-          <div ref={box} className="pv-box bg-white overflow-hidden transition-[height] duration-300" style={{ height: `var(--pv-h, ${big ? "68svh" : "32svh"})` }}>
-            <div className="relative" style={{ width: Math.round(1280 * scale), height: boxH }}>
-              <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
+          <div className="absolute left-2 top-2 z-10 inline-flex rounded-full border border-border bg-surface/95 p-0.5 shadow-sm" role="group" aria-label={hi ? "Phone या computer पर कैसी दिखेगी" : "How it looks on a phone or a computer"}>
+            <button type="button" onClick={() => setPhoneView(false)} aria-pressed={!phoneView} title={hi ? "Computer पर" : "On a computer"} className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${!phoneView ? "bg-brand text-white" : "text-muted"}`}><Monitor className="h-3.5 w-3.5" /><span className="hidden sm:inline">{hi ? "Computer" : "Computer"}</span></button>
+            <button type="button" onClick={() => setPhoneView(true)} aria-pressed={phoneView} title={hi ? "Phone पर" : "On a phone"} className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${phoneView ? "bg-brand text-white" : "text-muted"}`}><Smartphone className="h-3.5 w-3.5" /><span className="hidden sm:inline">{hi ? "Phone" : "Phone"}</span></button>
+          </div>
+          <div ref={box} className={`pv-box overflow-hidden ${phoneView ? "bg-surface2" : "bg-white"} transition-[height] duration-300`} style={{ height: `var(--pv-h, ${big ? "68svh" : "32svh"})` }}>
+            <div className="relative mx-auto" style={{ width: Math.round(pvW * pvScale), height: boxH }}>
+              <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: pvW, height: frameH, border: 0, transform: `scale(${pvScale})` }} />
             </div>
           </div>
           <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)}
@@ -632,9 +664,33 @@ export default function WebsiteEditPage() {
       </div>
 
       <div className="space-y-3 lg:col-start-2 lg:min-w-0">
+      {liveBox && !dirty && !embedDirty && (() => { const link = `${s.url}?view=site`; return (
+        <section className="space-y-2 rounded-2xl border border-good/40 bg-good/10 p-3">
+          <div className="flex items-start justify-between gap-2"><p className="text-sm font-bold text-good">{hi ? "✅ आपकी website live है" : "✅ Your website is live"}</p><button type="button" aria-label={hi ? "बंद" : "Close"} onClick={() => setLiveBox(false)} className="text-muted"><X className="h-4 w-4" /></button></div>
+          <p className="break-all rounded-lg bg-surface px-2.5 py-1.5 font-mono text-[12px]">{link.replace(/^https?:\/\//, "")}</p>
+          <div className="flex flex-wrap gap-2">
+            <a href={link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-3 py-2 text-xs font-semibold text-white"><ExternalLink className="h-3.5 w-3.5" /> {hi ? "Website देखें" : "See the website"}</a>
+            <button type="button" onClick={() => { void navigator.clipboard?.writeText(link).then(() => setLiveCopied(true)).catch(() => {}); }} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold"><Copy className="h-3.5 w-3.5" /> {liveCopied ? (hi ? "कॉपी हो गया" : "Copied") : (hi ? "लिंक कॉपी" : "Copy link")}</button>
+            <a href={`https://wa.me/?text=${encodeURIComponent(link)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-[#25D366] bg-surface px-3 py-2 text-xs font-semibold text-[#128C7E]"><MessageCircle className="h-3.5 w-3.5" /> {hi ? "WhatsApp पर भेजें" : "Share on WhatsApp"}</a>
+            <button type="button" onClick={() => { if (liveQr) { setLiveQr(""); return; } QRCode.toDataURL(link, { width: 320, margin: 1 }).then(setLiveQr).catch(() => setLiveQr("")); }} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold"><QrCode className="h-3.5 w-3.5" /> QR</button>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL made on this phone */}
+          {liveQr && <img src={liveQr} alt="QR" className="h-40 w-40 rounded-lg border border-border bg-white p-1" />}
+        </section>); })()}
+      {!open && (
+        <section className="space-y-2 rounded-2xl border border-brand/30 bg-brand-soft/40 p-3">
+          <p className="text-sm font-bold">{hi ? "🎨 Design — website कैसी दिखे" : "🎨 Design — how the website looks"}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Link href="/poster/site/choose" className="flex items-center gap-2.5 rounded-xl grad-brand px-3 py-3 text-white shadow-card"><LayoutGrid className="h-5 w-5 shrink-0" /><span><span className="block text-sm font-bold">{hi ? "तैयार design चुनें" : "Choose a ready design"}</span><span className="block text-[11px] opacity-90">{hi ? "पूरी website एक बार में बदलें" : "Change the whole website in one go"}</span></span></Link>
+            {adv && !storeDesign
+              ? <button type="button" onClick={() => { openPart("look"); setMixJump(true); }} className="flex items-center gap-2.5 rounded-xl border-2 border-brand/40 bg-surface px-3 py-3 text-left shadow-card"><Wand2 className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "हर हिस्से का रूप अलग चुनें" : "Pick the layout of each part"}</span></span></button>
+              : <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-border bg-surface px-3 py-3"><Wand2 className="h-5 w-5 shrink-0 text-muted" /><span><span className="block text-sm font-bold text-muted">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "पहले बाईं तरफ़ से एक तैयार design चुनें, फिर ये खुलेगा।" : "First choose a ready design; then this opens."}</span></span></div>}
+          </div>
+          <p className="text-[11px] text-muted">{hi ? "रंग, अक्षर और कोने नीचे “Design” में हैं। यहाँ का कोई भी बदलाव पहले इस window में दिखता है; असली website पर तभी जाता है जब आप Save दबाते हैं।" : "Colours, letters and corners are under “Design” below. Any change here shows in this window first; it goes to the real website only when you press Save."}</p>
+        </section>)}
       {!open && card && <SiteCheck card={card} hi={hi} />}
       {!open
-        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["more"]} state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
+        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["settings"]} state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
       {open && (<>
       {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">
@@ -742,7 +798,7 @@ export default function WebsiteEditPage() {
                 {HERO_IDS.map((h) => { const ok = mixAllow("hero", h) || adv.hero === h; const by = mixUsedBy("hero", h); return <button key={h} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए banner फ़ोटो चाहिए" : "This one needs a banner photo")} onClick={() => setAdv({ hero: h })} className={`${chip(adv.hero === h)} ${ok ? "" : "opacity-40"}`}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}{by && <span className="ml-1 text-[10px] font-normal opacity-70">{by}</span>}</button>; })}
               </div>
             </div>}
-            {!storeDesign && advRows.some((r) => r.key !== "hero") && <div className="rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
+            {!storeDesign && advRows.some((r) => r.key !== "hero") && <div ref={mixBox} className="scroll-mt-24 rounded-xl border border-brand/30 bg-brand-soft/40 p-3">
               <p className="text-sm font-bold">{hi ? "अपना design खुद बनाएँ — हर हिस्सा अलग चुनें" : "Build your own design — pick each part"}</p>
               <p className="mt-0.5 text-[11px] text-muted">{hi ? "हर हिस्से के नीचे उसके सारे रूप हैं। जो पसंद आए वो दबाएँ — बाईं तरफ़ website में तुरंत दिखेगा। D2, D5 = ये रूप Design 2 और 5 में है। रंग और अक्षर वही रहते हैं, इसलिए सब एक जैसा दिखता है। यहाँ का बदलाव अभी सिर्फ़ इस window में दिखता है — असली website पर तभी जाएगा जब आप “Save” दबाएँगे।" : "Under each part are all its layouts. Tap the one you like — it shows on the website at once. D2, D5 = Design 2 and 5 use this layout. Colours and letters stay the same, so everything still matches. A change here shows only in this window — it goes to the real website when you press “Save”."}</p>
               <div className="mt-2 space-y-3">
