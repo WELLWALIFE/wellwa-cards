@@ -538,12 +538,12 @@ export default function WebsiteEditPage() {
   function hideHomeBlock(id: string, hide: boolean) {
     const h = new Set(site.home?.hidden ?? []);
     if (hide) h.add(id); else h.delete(id);
-    if (hide) {
-      // The sheet goes on to the part that takes its place.
+    if (hide && sheet) {
+      // Hidden from a section's sheet: the sheet goes on to the section that takes its place. From the list, the list stays as it is.
       const i = homeRows.findIndex((r) => r.id === id), next = homeRows[i + 1] ?? homeRows[i - 1];
       const f = next ? rowFocus(next) : { top: true };
       sheetFocus.current = next ? f : null; focusAsk.current = f; lastFocus.current = f; setSheet(next ? { id: next.id } : null);
-    } else { const f = { blk: id }; focusAsk.current = f; lastFocus.current = f; }
+    } else if (!hide) { const f = { blk: id }; focusAsk.current = f; lastFocus.current = f; }
     setHome({ hidden: [...h] });
   }
   const sheetClose = () => { sheetFocus.current = null; setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); };
