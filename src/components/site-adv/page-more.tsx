@@ -405,7 +405,7 @@ export function Block({ b, x, c, i, v }: { b: CardBlock; x: AdvCtxPlus; c: SiteC
       // Only a button, no heading and no words: a slim line with the button in the middle — not a tall dark band that looks empty
       // (seen on a live site, 24 Nov 2026: a lone "See all services" in a big black strip).
       if (href && !(b.title ?? "").trim() && !(b.body ?? "").trim()) return (
-        <div data-reveal className="adv-wrap" style={{ paddingTop: 28, paddingBottom: 28, textAlign: "center" }}>
+        <div data-reveal className="adv-wrap gb-lonebtn">
           <Btn href={/^#/.test(href) ? (x.hrefFor?.(href.slice(1)) ?? href) : href} external={/^https?:/i.test(href)}>{x.t((b.joinLabel ?? "").trim() || x.ui("Open", "खोलें"))}</Btn>
         </div>
       );
@@ -605,7 +605,13 @@ export const MORE_CSS = `
 .gb-table th,.gb-table td{padding:.9em 1.1em;text-align:left;border-bottom:1px solid var(--line)}
 .gb-table thead th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--paper-2)}
 .gb-table td[data-hl]{font-weight:700;color:var(--accent)}.gb-table tr:last-child td,.gb-table tr:last-child th{border-bottom:0}
+/* a lone button ("See all services") belongs to the section above it: it sits in that section's own foot, not in a strip of its own a
+   whole section's padding below (review of twelve designs, 24 Nov 2026: too much empty room round these buttons) */
+.gb-lonebtn{position:relative;z-index:1;text-align:center;margin-top:calc(var(--section-pad) * -.55);padding-block:0 calc(var(--section-pad) * .3)}
 .gb-form{max-width:36rem}
+/* on a wide screen the form no longer sits in the left third with the rest of the row empty (review of the Contact page in twelve
+   designs, 25 Nov 2026): the heading and its line on the left, the form as a card on the right */
+@media (min-width:900px){.gb-form{max-width:none;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:clamp(2rem,5vw,5rem);align-items:start}.gb-form>:last-child{padding:clamp(1.25rem,2.5vw,2rem);border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper)}}
 .gb-hours{max-width:34rem}.gb-addr{font-style:normal;margin-bottom:var(--s4);font-size:var(--t-sub)}
 .gb-show{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5);margin:0;padding:0;list-style:none}
 @media (min-width:900px){.gb-show{grid-template-columns:repeat(3,1fr)}}

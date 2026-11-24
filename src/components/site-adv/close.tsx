@@ -1506,7 +1506,8 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .ft-lg .ft-t-pages li a{border-bottom:0;padding:.4rem 0}
 .ft:has(.ft-lg){padding-top:clamp(2rem,4vw,3rem)}
 /* a quarter-width tile cut an e-mail address in two on a small laptop: the contact tiles take half the row there */
-@media (min-width:768px) and (max-width:1199px){.ft-lg .ft-t-contact{grid-column:span 2}}
+/* (on every wide screen: a long address broke in a quarter tile at 1400px too) and with two such tiles the visit tile takes the row under them */
+@media (min-width:768px){.ft-lg .ft-t-contact{grid-column:span 2}.ft-lg:has(.ft-t-contact~.ft-t-contact) .ft-t-visit{grid-column:1/-1}}
 /* …and on a phone each takes the whole row: half a phone broke the number and the e-mail address into three lines */
 @media (max-width:767px){.ft-lg .ft-t-contact{grid-column:1/-1}}
 @media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);grid-auto-flow:row dense}.ft-t-brand{grid-column:span 2}.ft-t-pages{grid-column:span 2}.ft-t-visit{grid-column:span 2}}

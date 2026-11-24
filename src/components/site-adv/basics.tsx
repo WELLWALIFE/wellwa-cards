@@ -406,4 +406,15 @@ export const BASICS_CSS = `
 .aft-legal-wrap{margin-top:clamp(2rem,5vw,3.5rem);border-top:1px solid var(--hero-line)}
 .aft-legal{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--s2);padding-block:var(--s4) 4.5rem;font-size:12px;color:var(--hero-muted)}
 @media (min-width:768px){.aft-grid{grid-template-columns:1.3fr 1fr 1fr}.aft-grid:has(nav){grid-template-columns:1.3fr .8fr 1fr 1fr}.aft-legal{padding-bottom:var(--s4)}}
+/* "Columns" was the same picture as the "Big footer" (review, 24 Nov 2026). Its own shape on a wide screen: the name, the line and the
+   QR as one band across the top, then equal columns under it, ruled apart. */
+@media (min-width:900px){
+.aft-grid,.aft-grid:has(nav){grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6) 0}
+.aft-grid:has(nav){grid-template-columns:repeat(3,minmax(0,1fr))}
+.aft-grid>div:first-child{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--s7);align-items:start;padding-bottom:var(--s6);border-bottom:1px solid var(--hero-line)}
+.aft-grid>div:first-child>*{grid-column:1}
+.aft-grid>div:first-child>.aft-qr{grid-column:2;grid-row:1/span 4;margin-top:0;align-self:center}
+.aft-grid>div:not(:first-child){padding-left:var(--s6);border-left:1px solid var(--hero-line)}
+.aft-grid>div:nth-child(2){padding-left:0;border-left:0}
+}
 `;
