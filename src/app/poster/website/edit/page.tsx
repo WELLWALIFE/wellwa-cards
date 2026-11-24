@@ -49,7 +49,7 @@ const LAYOUTS_IN_LOOK = false as boolean;
 /** The editor's names (final review, 24 Nov 2026 — https://claude.ai/artifact/HkXgzpjpzf9AgS5oP1bp8h): short, in English, one name per thing. */
 const LABEL: Record<string, [string, string]> = {
   hero: ["Top section", "Heading, banner photo and its layout"],
-  look: ["Colour, font & background", "Colour, font, background, corners and section layouts"],
+  look: ["Colour, font & background", "Colour, font, background and corners"],
   text: ["Pages & text", "Every page's text; add or remove a section or a page"],
   photos: ["Photos", "Banner photos and the photo gallery"],
   products: ["Products", "Products, prices and their photos"],
@@ -209,7 +209,13 @@ export default function WebsiteEditPage() {
   const [dirty, setDirty] = useState(false);
   /** ↶ ↷ on the bar: each change on this screen is a step; loading or a Save starts afresh. */
   const [histReset, setHistReset] = useState(0);
-  const history = useEditHistory(card ? JSON.stringify(card.site ?? null) : null, (v) => { setCard((cur) => (cur ? { ...cur, site: JSON.parse(v) as Card["site"] } : cur)); setDirty(true); }, `${card?.id ?? ""}-${histReset}`);
+  // Undo / Redo cover the website settings and the order of the Home page's sections (moved from the Sections tab).
+  const histSnap = card ? JSON.stringify({ site: card.site ?? null, home: (card.pages.find((p) => p.slug === homeSlugOf(card))?.blocks ?? []).map((b) => b.id) }) : null;
+  const history = useEditHistory(histSnap, (v) => {
+    const o = JSON.parse(v) as { site: Card["site"]; home: string[] };
+    touched.current.add("homeBlocks");
+    setCard((cur) => (cur ? { ...cur, site: o.site, pages: orderHome(cur.pages, homeSlugOf(cur), o.home) } : cur)); setDirty(true);
+  }, `${card?.id ?? ""}-${histReset}`);
   const [refUrl, setRefUrl] = useState("");
   const [unlock, setUnlock] = useState(false);
   const access = useAiAccess();
@@ -826,7 +832,7 @@ export default function WebsiteEditPage() {
       <div ref={topBar} className="sticky z-30 -mx-4 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur lg:col-span-2 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:shadow-card" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
-          <div className="min-w-0 flex-1 lg:flex-none lg:pr-2">
+          <div className="min-w-0 flex-1 lg:pr-2">
             <p className="text-sm font-bold leading-tight text-ink">Website</p>
             <a href={liveUrl} target="_blank" rel="noreferrer" className={`flex min-w-0 items-center gap-1 text-[11px] font-semibold ${siteOn ? "text-good" : "text-muted"}`}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${siteOn ? "bg-good" : "bg-muted"}`} /><span className="truncate">{siteOn ? "Live" : "Off"} · {liveUrl.replace(/^https?:\/\//, "").replace(/\?view=site$/, "")}</span></a>
           </div>
@@ -835,12 +841,11 @@ export default function WebsiteEditPage() {
             <Seg value={phoneView ? "phone" : "computer"} options={[["computer", "Computer"], ["phone", "Phone"]] as const} onChange={(v) => setPhoneView(v === "phone")} label="Preview size" />
             <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={`${TBW} sm:hidden`}><ExternalLink className="h-3.5 w-3.5" /> View site</a>
           </div>
-          <span className="hidden flex-1 lg:block" />
           <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={TB}><Undo2 className="h-4 w-4" /></button>
           <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={TB}><Redo2 className="h-4 w-4" /></button>
-          <span className={`hidden whitespace-nowrap text-[12px] font-medium md:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
-          {undo && !unsaved && <button type="button" onClick={() => void save(undo)} className={TBW} title="Put back the website as it was before the last Save"><RotateCcw className="h-3.5 w-3.5" /> Undo save</button>}
-          <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={`${TBW} hidden sm:inline-flex`}><ExternalLink className="h-3.5 w-3.5" /> View site</a>
+          <span className={`hidden whitespace-nowrap text-[12px] font-medium xl:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
+          {undo && !unsaved && <button type="button" onClick={() => void save(undo)} className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="Put back the website as it was before the last Save"><RotateCcw className="h-3.5 w-3.5" /> <span className="hidden xl:inline">Undo save</span></button>}
+          <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="View site"><ExternalLink className="h-3.5 w-3.5" /> <span className="hidden xl:inline">View site</span></a>
           <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
         </div>
         <SaveToast note={note?.k === "save" ? { text: note.text, bad: note.bad } : null} />
@@ -876,7 +881,7 @@ export default function WebsiteEditPage() {
 
       {liveBox && !dirty && !embedDirty && (() => { const link = `${s.url}?view=site`; return (
         <section className="space-y-2 rounded-2xl border border-good/40 bg-good/10 p-3">
-          <div className="flex items-start justify-between gap-2"><p className="text-sm font-bold text-good">{hi ? "✅ आपकी website live है" : "✅ Your website is live"}</p><button type="button" aria-label={hi ? "बंद" : "Close"} onClick={() => setLiveBox(false)} className="text-muted"><X className="h-4 w-4" /></button></div>
+          <div className="flex items-start justify-between gap-2"><p className="text-sm font-bold text-good"><span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4" /> Your website is live</span></p><button type="button" aria-label={hi ? "बंद" : "Close"} onClick={() => setLiveBox(false)} className="text-muted"><X className="h-4 w-4" /></button></div>
           <p className="break-all rounded-lg bg-surface px-2.5 py-1.5 font-mono text-[12px]">{link.replace(/^https?:\/\//, "")}</p>
           <div className="flex flex-wrap gap-2">
             <a href={link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-3 py-2 text-xs font-semibold text-white"><ExternalLink className="h-3.5 w-3.5" /> {hi ? "Website देखें" : "See the website"}</a>
