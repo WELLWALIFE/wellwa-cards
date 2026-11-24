@@ -1810,7 +1810,8 @@ function Onboard() {
     // A focused edit (?back=…) saves from any screen and returns there.
     const last = lastScreen || editing;
     return (
-    <div className="space-y-2">
+    // Inside Card / Website edit the one Save on the top bar saves this screen (embed-save above): its own Save bar is not drawn there.
+    <div data-embed-hide className="space-y-2">
       {err && <p className="text-sm text-danger">{err}</p>}
       <button type="button" onClick={last ? save : goNext} disabled={busy === "save" || busy === "next"} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
         {busy === "save" || busy === "next" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : last ? <Check className="h-5 w-5" /> : null} {editing ? T("Save", "Save करें") : last ? T("Save and continue", "Save करके आगे बढ़ें") : T("Next →", "आगे →")}
@@ -2004,7 +2005,7 @@ function Onboard() {
           )}
         </section>
       ) : step === "you" ? (
-        <section className="space-y-3">
+        <section className="ob-step space-y-3">
           {/* "About you" on one screen, no scroll, a premium look (owner, 24 Oct 2026): photo + name side by side, the WhatsApp and
               second number stay closed until their box is ticked, and every line is short. */}
           {editing
@@ -2067,7 +2068,7 @@ function Onboard() {
           </button>
         </section>
       ) : step === "trade" ? (
-        <section className="space-y-3">
+        <section className="ob-step space-y-3">
           {/* Everything about the business on one screen (owner, 24 Oct 2026): logo + name, what you do, then where it is. The link
               (sub domain) is chosen after the website is made, on the "Live" choice of the finished screen. */}
           {(() => {
@@ -2223,7 +2224,7 @@ function Onboard() {
           {nextBar()}
         </section>
       ) : step === "details" || step === "highlights" ? (
-        <section className="space-y-4">
+        <section className="ob-step space-y-4">
           {/* One screen for "about your trade" and "why customers choose you" (owner, 14 Oct 2026: fewer steps). A trade with no questions of its own shows only the second part. */}
           {noDetails()
             ? head(T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?"), T("Tap what is true. This goes on your website.", "जो सही है वो दबाएँ। यही आपकी website पर दिखेगा।"))
@@ -2253,7 +2254,7 @@ function Onboard() {
           {nextBar(true)}
         </section>
       ) : step === "where" ? (
-        <section className="space-y-3">
+        <section className="ob-step space-y-3">
           {head(T("Where & when", "कहाँ और कब"), T("City, address, map and timings.", "शहर, पता, map और समय।"))}
           {/* Inside the website editor each group is its own raised card with a small heading (ob-card / ob-cap, globals.css):
               the look of the editor around it. In the first-time set-up nothing changes. */}
@@ -2318,7 +2319,7 @@ function Onboard() {
           {nextBar(true)}
         </section>
       ) : step === "about" ? (
-        <section className="space-y-3">
+        <section className="ob-step space-y-3">
           {head(T("About & logo", "परिचय और logo"), T("AI writes it. Change what you like.", "AI लिखता है। जो चाहें बदलें।"))}
           {/* 4 — about (the AI writes it) */}
           <div className="block text-sm font-semibold">
@@ -2347,7 +2348,7 @@ function Onboard() {
           {nextBar(true)}
         </section>
       ) : (
-        <section className="space-y-3">
+        <section className="ob-step space-y-3">
           {/* Two edit tiles share this screen: ?part=photos (the pictures) and ?part=links (payments, social, Maps); the set-up shows both. */}
           {head(editing && part === "photos" ? T("Photos & banner", "Photos और banner") : editing && part === "links" ? T("Payments & social links", "Payment और social links") : T("Photos & more", "Photos और बाकी"), editing && part === "photos" ? T("Every picture on your website.", "आपकी website की हर picture।") : editing && part === "links" ? T("UPI and social links. All optional.", "UPI और social links। सब ज़रूरी नहीं।") : T("All optional.", "सब ज़रूरी नहीं।"))}
           {/* A focused edit shows the photos that are on the website, one by one; the set-up (no website yet) asks for the banner and photos. */}
