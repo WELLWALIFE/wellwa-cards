@@ -602,9 +602,11 @@ export function CardEditor({ id }: { id: string }) {
     const blk = q.get("block") ?? "";
     if (blk && card.pages.some((p) => p.blocks.some((b) => b.id === blk))) { focused.current = true; editFrom({ kind: "block", blockId: blk }); return; }
     // ?add=1: the first page open, its "Add section" list showing (PageSections).
+    // ?addpage=1 (Website edit → "+ Page"): a new page is added and opened at once.
+    if (q.get("addpage") === "1") { focused.current = true; addPage(); return; }
     const addTo = q.get("add");
-    const addPage = addTo ? card.pages.find((p) => p.slug === addTo) ?? (addTo === "1" ? card.pages[0] : undefined) : undefined;
-    if (addPage) { focused.current = true; setOpenPage(addPage.id); return; }
+    const addIn = addTo ? card.pages.find((p) => p.slug === addTo) ?? (addTo === "1" ? card.pages[0] : undefined) : undefined;
+    if (addIn) { focused.current = true; setOpenPage(addIn.id); return; }
     if (!f) return;
     focused.current = true;
     if (f === "photo" || f === "cover" || f === "tagline") { editFrom({ kind: "profile" }); return; }

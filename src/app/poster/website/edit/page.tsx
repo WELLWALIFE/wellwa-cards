@@ -19,7 +19,7 @@ import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
 import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, VARIANT_IDS, homeSlugOf, repairOrder, type SectionKey } from "@/lib/site-advanced";
 import { variantName } from "@/lib/site-advanced-names";
-import { allowedByFit, fitOf } from "@/lib/site-advanced-archetypes";
+import { allowedByFit, fitOf, groupOf } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 import { flowParts } from "@/components/site-adv/flow";
@@ -104,7 +104,11 @@ function SaveToast({ note }: { note: { text: string; bad: boolean } | null }) {
   return shown ? <p role={shown.bad ? "alert" : "status"} className={`absolute inset-x-3 top-[calc(100%+6px)] z-40 rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)] ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p> : null;
 }
 /** Section designs made for another kind of business: offered only when the business's own designs use them (or one is in use). */
-const OTHER_TRADE = new Set(["services:menu-leaders", "services:rate-list", "services:tiers"]);
+const OTHER_TRADE: Record<string, string[]> = {
+  "services:menu-leaders": ["sweets", "dining"],
+  "services:rate-list": ["wholesale", "industry", "buildmat", "grocery", "farm", "pharmacy"],
+  "services:tiers": ["fitness", "tech", "coaching", "school", "playschool", "college", "advisory", "travel", "wellness", "beauty"],
+};
 /** What a design that does not fit yet needs, and where to add it. */
 function needOf(k: string, id: string): { text: string; part: string; btn: string } {
   if (k === "hero" && id === "product-spotlight") return { text: "This design needs at least 2 products with photos.", part: "products", btn: "Add products" };
@@ -438,7 +442,7 @@ export default function WebsiteEditPage() {
     if (onHome && sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", ic: "trust", name: nm("trust"), kind: "Key figures · fixed position" });
     // A section the website adds by itself (the plans copy, the Google check) is not one of the owner's: fixed, no Move or Hide.
     const stored = new Set((card.pages.find((p) => p.slug === slug)?.blocks ?? []).map((b) => b.id));
-    if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, ic: p.b.kind, kind: kindLine(p.b), ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
+    if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, ic: p.b.kind, kind: kindLine(p.b), ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "story" && p.b.style === "stats" ? "Key figures" : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
     if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", ic: "cta", name: nm("cta"), kind: "WhatsApp and Call · fixed position" });
     rows.push({ id: "footer", sec: "footer", ic: "footer", name: nm("footer"), kind: "Address and links · always at the bottom" });
     return rows;
@@ -612,8 +616,11 @@ export default function WebsiteEditPage() {
     const all: readonly string[] = k === "hero" ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[k] ?? [];
     const rec = new Set((mixDesigns ?? []).map((d) => (k === "hero" ? d.hero : d.sections?.[k] ?? all[0])).filter((x): x is string => !!x));
     const okOf = (id: string) => mixAllow(k, id) || cur === id || mixSeen.has(`${k}:${id}`);
-    const otherTrade = (id: string) => OTHER_TRADE.has(`${k}:${id}`) && !rec.has(id) && cur !== id;
-    const main = rec.size ? all.filter((id) => rec.has(id) || id === cur) : all.filter((id) => !otherTrade(id));
+    // A menu, a rate list or plans side by side belong to their own trades — even when one of this trade's 12 designs happens to use
+    // one (a mobile shop was offered "Plans side by side" and "Trader's rate list", 24 Nov 2026).
+    const trade = groupOf(card?.seo?.categoryKey);
+    const otherTrade = (id: string) => { const g = OTHER_TRADE[`${k}:${id}`]; return !!g && !g.includes(trade) && cur !== id; };
+    const main = rec.size ? all.filter((id) => (rec.has(id) && !otherTrade(id)) || id === cur) : all.filter((id) => !otherTrade(id));
     const more = rec.size ? all.filter((id) => !main.includes(id) && !otherTrade(id)) : [];
     const open = !!moreOpen[k];
     const name = (id: string) => (k === "hero" ? (ADV_HERO_NAMES[id] ?? [id, id])[0] : variantName(k, id, false));
@@ -856,7 +863,7 @@ export default function WebsiteEditPage() {
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setSync(null); setTab(t); };
   // "+ Add section": the page editor opens with its "Add section" list already open (atBlock "__add").
-  const embedSrc = tab === "text" && atBlock === "__add" ? `${EMBED.text!(s.cardId)}&add=${encodeURIComponent(curSlug)}` : tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
+  const embedSrc = tab === "text" && atBlock === "__page" ? `${EMBED.text!(s.cardId)}&addpage=1` : tab === "text" && atBlock === "__add" ? `${EMBED.text!(s.cardId)}&add=${encodeURIComponent(curSlug)}` : tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
   const domainOk = tier === "growth" || tier === "pro";
   const siteOn = !!(s.site?.enabled ?? card.site?.enabled);
   async function setEnabled(on: boolean) {
@@ -967,7 +974,7 @@ export default function WebsiteEditPage() {
         {!open && visiblePages.length > 1 && (
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5" role="tablist" aria-label="Pages">
             {visiblePages.map((p) => { const home = p.slug === "home"; const on = home ? !viewPage : viewPage === p.slug; return <button key={p.slug} type="button" role="tab" aria-selected={on} onClick={() => { sheetFocus.current = null; setSheet(null); setViewPage(home ? "" : p.slug); }} className={`h-8 shrink-0 rounded-full border px-3 text-[12px] font-semibold shadow-sm transition ${on ? "border-brand bg-brand text-white" : "border-border bg-surface text-muted hover:text-ink"}`}>{p.label || p.slug}</button>; })}
-            <button type="button" onClick={() => openPart("text")} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3 text-[12px] font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" /> Page</button>
+            <button type="button" title="Add a new page" onClick={() => sheetOpen("text", "__page")} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-dashed border-border px-3 text-[12px] font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" /> Page</button>
           </div>
         )}
         <div className="relative overflow-clip rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
