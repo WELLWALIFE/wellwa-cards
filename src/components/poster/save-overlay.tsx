@@ -42,7 +42,7 @@ export function WindowBar({ hi, onBack, see, big, onBig, save, switcher, history
   // On a phone the bar has no room for the word "Website" beside Save / Saved / Undo: the pill ran off the right edge (live walk, 19 Nov 2026).
   const tight = !!(save.show || save.undo || save.dirty || save.busy);
   return (
-    <div className="relative flex items-center gap-1 border-t border-border bg-surface px-2 py-1.5">
+    <div className="relative flex flex-wrap items-center justify-end gap-x-1 gap-y-1.5 border-t border-border bg-surface px-2 py-1.5">
       {shown && <p role={shown.bad ? "alert" : "status"} className={`pointer-events-none absolute inset-x-2 bottom-[calc(100%+8px)] rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-card ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p>}
       <button type="button" onClick={onBack} aria-label={hi ? "पीछे" : "Back"} className={icon}><ChevronLeft className="h-5 w-5" /></button>
       {switcher?.site

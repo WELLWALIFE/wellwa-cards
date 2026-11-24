@@ -638,7 +638,7 @@ export default function WebsiteEditPage() {
       {/* ---- live preview (the real website renderer, scaled to fit), with the colours right under it (owner, 23 Oct 2026: "colour
           wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
       <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1 lg:top-6! lg:col-start-1 lg:row-start-1 lg:row-span-[40] lg:mx-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
-        <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
+        <div className="relative overflow-clip rounded-2xl border border-border shadow-card">
           <div className="absolute left-2 top-2 z-10 inline-flex rounded-full border border-border bg-surface/95 p-0.5 shadow-sm" role="group" aria-label={hi ? "Phone या computer पर कैसी दिखेगी" : "How it looks on a phone or a computer"}>
             <button type="button" onClick={() => setPhoneView(false)} aria-pressed={!phoneView} title={hi ? "Computer पर" : "On a computer"} className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${!phoneView ? "bg-brand text-white" : "text-muted"}`}><Monitor className="h-3.5 w-3.5" /><span className="hidden sm:inline">{hi ? "Computer" : "Computer"}</span></button>
             <button type="button" onClick={() => setPhoneView(true)} aria-pressed={phoneView} title={hi ? "Phone पर" : "On a phone"} className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${phoneView ? "bg-brand text-white" : "text-muted"}`}><Smartphone className="h-3.5 w-3.5" /><span className="hidden sm:inline">{hi ? "Phone" : "Phone"}</span></button>
