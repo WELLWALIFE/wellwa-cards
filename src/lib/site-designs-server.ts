@@ -16,7 +16,12 @@ export const seenItems = (uid: string, cardId: string) => advDesigns(uid, cardId
  *  wear any trade's colour (plum and rust on a cleaning company); they are repaired as they are read, so the choose screen and the
  *  design put live agree. */
 export const tradeItems = async (uid: string, row: { id: string; data: Card }) => {
-  const list = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
+  const kept = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
+  // A finished template is read as it is written TODAY, not as it was on the day it was kept (24 Nov 2026: the bridal twelve were
+  // rewritten to be twelve different pages; a card that had kept the old ones would have gone on showing them). The design that is
+  // live on the card is the card's own copy and is not touched here.
+  const now = new Map(fixedSpecs(row.data).map((sp) => [sp.seed, sp]));
+  const list = kept.map((r) => { const cur = now.get((r.spec as AdvancedSpec).seed); return cur ? { ...r, spec: cur } : r; });
   const tinted = tradeTint(list.map((r) => ({ r, palette: (r.spec as AdvancedSpec).palette })), row.data);
   // …and each with its own layouts: every section shared out over the designs (spreadSections), then one top each.
   return distinctTradeHeroes(spreadSections(list.map((r, i) => ({ ...r, spec: { ...(r.spec as AdvancedSpec), palette: tinted[i].palette } })), row.data), row.data);
