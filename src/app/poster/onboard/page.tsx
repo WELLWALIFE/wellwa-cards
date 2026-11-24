@@ -1183,11 +1183,11 @@ function Onboard() {
   const embedBase = useRef("");
   useEffect(() => {
     if (!editing || !isEmbedded() || loading) return;
-    const sig = JSON.stringify([biz, facts, you, site]);
+    const sig = JSON.stringify([biz, facts, you, site, email]);
     if (!embedBase.current) embedBase.current = sig;
     toParent({ type: "embed-dirty", dirty: sig !== embedBase.current });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [biz, facts, you, site, loading, editing]);
+  }, [biz, facts, you, site, email, loading, editing]);
   useEffect(() => {
     if (!editing || !isEmbedded()) return;
     const on = (e: MessageEvent) => { if (e.origin === window.location.origin && e.source === window.parent && (e.data as { type?: string })?.type === "embed-save") setSaveGo((n) => n + 1); };
