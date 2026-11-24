@@ -133,7 +133,15 @@ export function isShubhoraSellerCard(card: { company?: string; name?: string; jo
  *  A spec the designer wrote for this card speaks of what the card sells — Shubhora, the V-Card, digital tools — in its notes or its
  *  archetype; a tailor's or a sweet shop's does not, and stays hidden as before. Used by the public page and the editor's preview, so
  *  the two always agree. */
+/** A partner's card whose drawn website was written into it once (api/site/bake): from then on it is drawn as stored, like every card. */
+export function sellerBaked(card: unknown): boolean {
+  const site = card && typeof card === "object" ? (card as { site?: unknown }).site : null;
+  return !!site && typeof site === "object" && (site as { sellerBaked?: unknown }).sellerBaked === true;
+}
+
 export function sellerDrawsPremium(site: unknown): boolean {
+  // A partner's own card, written as drawn (sellerBaked): his Premium design is his, drawn like anyone's.
+  if (site && typeof site === "object" && (site as { sellerBaked?: unknown }).sellerBaked === true) return true;
   const adv = site && typeof site === "object" ? (site as { advanced?: { notes?: unknown; archetype?: unknown } }).advanced : null;
   if (!adv || typeof adv !== "object") return false;
   // A design the partner picked on the choose screen (designChosenAt, api/card/advanced) was picked FOR this card: drawn (20 Nov 2026).
@@ -261,6 +269,8 @@ function pageWithoutFreeCard(p: CardPage): CardPage {
 }
 
 export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["popup"] }>(card: T, seller: boolean): T {
+  // Written as drawn once (sellerBaked): nothing is re-sorted, renamed, added or taken away any more — the partner edits it all.
+  if (seller && sellerBaked(card)) return card;
   const pages = card.pages.map((p) => (seller ? homeWithStory(pageWithoutFreeCard(p)) : p.slug === SHUBHORA_PAGE_SLUG ? pageWithoutFreeCard(p) : p));
   const pp = card.popup;
   const old = !!pp && (/^(make free card|see your own card, free)$/i.test(pp.title.trim()) || (seller && FREE_CARD.test(`${pp.title} | ${pp.subtitle ?? ""} | ${pp.ctaLabel} | ${pp.terms ?? ""}`)));

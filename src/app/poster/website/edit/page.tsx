@@ -4,7 +4,7 @@
 // Everything here changes card.site.* only; the phone card, the pages and their text are untouched (those are
 // edited in the full editor). One Save writes it all through PATCH /api/site/status.
 import { checkSite } from "@/lib/site-quality";
-import { isShubhoraSellerCard, withoutFreeCard } from "@/lib/shubhora-page";
+import { isShubhoraSellerCard, sellerBaked, withoutFreeCard } from "@/lib/shubhora-page";
 import { Children, Fragment, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -247,8 +247,18 @@ export default function WebsiteEditPage() {
   const load = useCallback(async (id?: string) => {
     setErr("");
     try {
-      const r = await api<Status & { error?: string }>(`/api/site/status?full=1${id ? `&card=${id}` : ""}`);
+      let r = await api<Status & { error?: string }>(`/api/site/status?full=1${id ? `&card=${id}` : ""}`);
       if (!r.ok) { setErr(r.data?.error || "No internet — tap to try again"); return; }
+      // A Shubhora partner's website is written into his card exactly as it shows (api/site/bake), once: then every section is his to
+      // edit, like anyone's. The website does not change.
+      if (r.data.hasCard && r.data.card && isShubhoraSellerCard(r.data.card) && !sellerBaked(r.data.card)) {
+        const cid = (r.data as { cardId?: string }).cardId;
+        const b = await api<{ ok?: boolean; baked?: boolean }>("/api/site/bake", { method: "POST", json: cid ? { card_id: cid } : {} }).catch(() => null);
+        if (b?.ok && b.data.baked) {
+          const r2 = await api<Status & { error?: string }>(`/api/site/status?full=1${id ? `&card=${id}` : ""}`);
+          if (r2.ok) r = r2;
+        }
+      }
       setS(r.data);
       if (r.data.hasCard && r.data.card) { setCard(r.data.card); lastSaved.current = r.data.card; setDirty(false); touched.current.clear(); }
     } catch { setErr("No internet — tap to try again"); }
@@ -986,6 +996,18 @@ export default function WebsiteEditPage() {
           </div>
         </div>
 
+        {/* A website still on one of the older looks (no Premium design): the same editor, but the section designs come with the new
+            designs — said plainly, with the way there (owner, 24 Nov 2026: "Haryana wali id me kuch aur dikhta hai, Sunita wali me kuch aur"). */}
+        {!adv && (rtab === "sections" || rtab === "design") && (
+          <div className="flex items-start gap-3 rounded-2xl border border-brand/30 bg-brand-soft/40 px-3.5 py-3">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-ink" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-ink">Your website uses an older design</p>
+              <p className="mt-0.5 text-[12px] text-muted">Pick one of the 12 new designs to change the design of each section, like every new website. Your text and photos stay.</p>
+            </div>
+            <Link href="/poster/site/choose" className="shrink-0 rounded-lg bg-brand px-3 py-2 text-[12px] font-bold text-white">Choose a design</Link>
+          </div>
+        )}
         {rtab === "sections" && (homeRows.length > 0 ? <>
           <div className="flex items-center justify-between px-1">
             <p className="text-[13px] font-semibold text-ink">Home page — top to bottom</p>
