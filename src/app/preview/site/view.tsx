@@ -195,7 +195,13 @@ function PreviewInner() {
   // heading; the editor finds the part (owner, 25 Oct 2026: "preview par tap karke edit").
   useEffect(() => {
     if (!tap || asCard || !card) return;
-    const css = "position:absolute;top:18px;right:18px;z-index:60;font:700 34px/1 system-ui,sans-serif;padding:16px 30px;border-radius:999px;border:0;background:rgba(18,20,74,.92);color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer";
+    const css = "position:absolute;top:18px;right:18px;z-index:60;font:600 26px/1 system-ui,sans-serif;padding:12px 22px;border-radius:999px;border:0;background:rgba(18,20,74,.9);color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.2);cursor:pointer";
+    // Small, and only on the section the pointer is over (final review, 24 Nov 2026): the website stays in view. Always shown on touch.
+    if (!document.getElementById("pv-chip-css")) {
+      const st = document.createElement("style"); st.id = "pv-chip-css";
+      st.textContent = "[data-pv-chip]{opacity:0;transition:opacity .15s}section:hover>[data-pv-chip],header:hover>[data-pv-chip],footer:hover>[data-pv-chip],[data-pv-chip]:focus{opacity:1}@media (hover:none){[data-pv-chip]{opacity:1}}";
+      document.head.appendChild(st);
+    }
     const add = () => {
       const secs = Array.from(document.querySelectorAll<HTMLElement>("section, header, footer")).filter((el) => !el.parentElement?.closest("section") && el.offsetHeight > 120);
       secs.forEach((el, i) => {

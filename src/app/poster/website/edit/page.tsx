@@ -34,7 +34,7 @@ import { useEditHistory } from "@/lib/use-edit-history";
 import { type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
-import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
+import type { Card, CardBlock, HeroSlide, SiteStyle } from "@/lib/types";
 
 const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
@@ -140,7 +140,17 @@ const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
 
 const field = "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
 /** One part of a Premium home page as the website draws it: a design section (`sec`), one of the Home page's own sections (`blk`), or both. */
-type HomeRow = { id: string; sec: SectionKey | null; blk?: string; name: string };
+type HomeRow = { id: string; sec: SectionKey | null; blk?: string; name: string; /** What kind of section it is, and how many items ("Photos · 9"). */ kind?: string };
+/** A section's kind in plain words, for the line under its name. */
+const KIND_NAME: Record<string, string> = {
+  about: "About", highlights: "Key points", services: "Services", product: "Products", gallery: "Photos", image: "Photo", carousel: "Photos",
+  video: "Video", testimonials: "Reviews", faq: "Questions", hours: "Timings", location: "Address", contact: "Contact form", form: "Form",
+  cta: "Button", story: "Story", table: "Price list", showcase: "Showcase", compare: "Comparison", offer: "Offer", appointment: "Booking", pdf: "PDF",
+};
+function kindLine(b: CardBlock): string {
+  const n = "items" in b && Array.isArray(b.items) ? b.items.length : "images" in b && Array.isArray(b.images) ? b.images.length : 0;
+  return `${KIND_NAME[b.kind] ?? b.kind}${n > 1 ? ` · ${n}` : ""}`;
+}
 const rowFocus = (r: HomeRow): { top?: boolean; sec?: string; blk?: string } => (r.sec === "hero" ? { top: true } : r.blk ? { blk: r.blk, ...(r.sec ? { sec: r.sec } : {}) } : { sec: r.sec ?? "" });
 /** The home page's sections put in the order of `ids`; a section the list does not name keeps its place. */
 function orderHome(pages: Card["pages"], slug: string, ids: string[]): Card["pages"] {
@@ -387,11 +397,11 @@ export default function WebsiteEditPage() {
     const blocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
     const titleOf = (...kinds: string[]) => (blocks.find((b) => kinds.includes(b.kind) && (b.title ?? "").trim())?.title ?? "").trim();
     const names: Record<string, [string, string]> = {
-      hero: ["Home banner (big heading and photo)", "Home banner (बड़ी heading और photo)"], trust: ["Key points strip", "खास बातों की पट्टी"],
+      hero: ["Home banner", "Home banner"], trust: ["Key points strip", "खास बातों की पट्टी"],
       about: [titleOf("about") || "About", titleOf("about") || "हमारे बारे में"], services: [titleOf("services", "product") || "Services / products", titleOf("services", "product") || "Services / products"],
       gallery: [titleOf("gallery", "image", "carousel") || "Photos", titleOf("gallery", "image", "carousel") || "Photos"], proof: [titleOf("testimonials") || "Customer reviews", titleOf("testimonials") || "Customer reviews"],
       process: ["Step by step", "Step by step"], faq: [titleOf("faq") || "Questions", titleOf("faq") || "सवाल-जवाब"],
-      visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip (WhatsApp / Call)", "Contact पट्टी (WhatsApp / Call)"], footer: ["Footer (bottom of every page)", "सबसे नीचे"],
+      visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip (WhatsApp / Call)", "Contact पट्टी (WhatsApp / Call)"], footer: ["Footer", "सबसे नीचे"],
     };
     return repairOrder(adv.order).filter((k) => sectionHasContent(k, c, hasContact)).map((k) => ({ key: k, name: (names[k] ?? [k, k])[hi ? 1 : 0], fixed: k === "hero" || k === "footer" }));
   }, [adv, storeDesign, card, hi]);
@@ -408,15 +418,15 @@ export default function WebsiteEditPage() {
     const c = buildContent(dc, lang);
     const hasContact = card.links.some((l) => l.type === "phone" || l.type === "whatsapp");
     const nm = (k: SectionKey) => advRows.find((r) => r.key === k)?.name ?? k;
-    const rows: HomeRow[] = [{ id: "hero", sec: "hero", name: nm("hero") }];
-    if (sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust") });
+    const rows: HomeRow[] = [{ id: "hero", sec: "hero", name: nm("hero"), kind: "Heading and photos · always on top" }];
+    if (sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust"), kind: "Key figures · fixed position" });
     const slug = homeSlugOf(dc);
     const hp = dc.pages.find((p) => p.slug === slug);
     // A section the website adds by itself (the plans copy, the Google check) is not one of the owner's: fixed, no Move or Hide.
     const stored = new Set((card.pages.find((p) => p.slug === homeSlugOf(card))?.blocks ?? []).map((b) => b.id));
-    if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
-    if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", name: nm("cta") });
-    rows.push({ id: "footer", sec: "footer", name: nm("footer") });
+    if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, kind: kindLine(p.b), ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
+    if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", name: nm("cta"), kind: "WhatsApp and Call · fixed position" });
+    rows.push({ id: "footer", sec: "footer", name: nm("footer"), kind: "Address and links · always at the bottom" });
     return rows;
   }, [adv, storeDesign, card, advRows, hi]);
   useEffect(() => { homeRowsRef.current = homeRows; }, [homeRows]);
@@ -905,7 +915,7 @@ export default function WebsiteEditPage() {
       {/* ---- Top bar (final review, 24 Nov 2026): where you are, whether it is live, the view, Undo / Redo and one Save — always here. ---- */}
       <div ref={topBar} className="sticky z-30 -mx-4 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur lg:col-span-2 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:shadow-card" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={`${TB} lg:hidden`}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={doBack} aria-label={open ? "Back to the list" : "Back"} title={open ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
           <div className="min-w-0 flex-1 lg:pr-2">
             <p className="text-sm font-bold leading-tight text-ink">Website</p>
             <a href={liveUrl} target="_blank" rel="noreferrer" className={`flex min-w-0 items-center gap-1 text-[11px] font-semibold ${siteOn ? "text-good" : "text-muted"}`}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${siteOn ? "bg-good" : "bg-muted"}`} /><span className="truncate">{siteOn ? "Live" : "Off"} · {liveUrl.replace(/^https?:\/\//, "").replace(/\?view=site$/, "")}</span></a>
@@ -915,12 +925,12 @@ export default function WebsiteEditPage() {
             <Seg value={phoneView ? "phone" : "computer"} options={[["computer", "Computer"], ["phone", "Phone"]] as const} onChange={(v) => setPhoneView(v === "phone")} label="Preview size" />
             <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={`${TBW} sm:hidden`}><ExternalLink className="h-3.5 w-3.5" /> View site</a>
           </div>
-          <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={`${TB} lg:hidden`}><Undo2 className="h-4 w-4" /></button>
-          <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={`${TB} lg:hidden`}><Redo2 className="h-4 w-4" /></button>
-          <span className={`hidden whitespace-nowrap text-[12px] font-medium md:inline lg:hidden ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
+          <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={TB}><Undo2 className="h-4 w-4" /></button>
+          <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={TB}><Redo2 className="h-4 w-4" /></button>
+          <span className={`hidden whitespace-nowrap text-[12px] font-medium md:inline ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
           {undo && !unsaved && <button type="button" onClick={() => void save(undo)} className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="Put back the website as it was before the last Save"><RotateCcw className="h-3.5 w-3.5" /> <span className="hidden xl:inline">Undo save</span></button>}
           <a href={unsaved ? `/preview/site?k=${PREVIEW_KEY}` : liveUrl} target="_blank" rel="noreferrer" className={TBW.replace("inline-flex", "hidden sm:inline-flex")} title="View site"><ExternalLink className="h-3.5 w-3.5" /> <span className="hidden xl:inline">View site</span></a>
-          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand lg:hidden px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
+          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
         </div>
         <SaveToast note={note?.k === "save" ? { text: note.text, bad: note.bad } : null} />
       </div>
@@ -944,16 +954,9 @@ export default function WebsiteEditPage() {
       </div>
 
       <div className="space-y-3 pb-20 lg:col-start-2 lg:min-w-0 lg:pb-0">
-      {/* ---- The editor bar (owner, 24 Nov 2026: "Sections Design Business info Settings hamesha dikhte rahe; back, undo, redo aur save
-          bhi inke saath"): always there, whatever is open. On a computer it stays at the top of this column while it scrolls. ---- */}
+      {/* ---- The four tabs, always there whatever is open (owner, 24 Nov 2026); Back, Undo, Redo and Save are on the one top bar. On a
+          computer the tabs stay at the top of this column while it scrolls; on a phone they sit at the foot of the screen. ---- */}
       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:sticky lg:bottom-auto lg:left-auto lg:top-[var(--bar-top)] lg:z-20 lg:max-w-none lg:translate-x-0 lg:rounded-2xl lg:border lg:p-2 lg:shadow-card" style={{ ["--bar-top" as string]: `${barH + 8}px` }}>
-        <div className="mb-2 hidden items-center gap-2 lg:flex">
-          <button type="button" onClick={doBack} aria-label={open || sheet ? "Back to the list" : "Back"} title={open || sheet ? "Back to the list" : "Back"} className={TB}><ChevronLeft className="h-5 w-5" /></button>
-          <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" className={TB}><Undo2 className="h-4 w-4" /></button>
-          <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" className={TB}><Redo2 className="h-4 w-4" /></button>
-          <span className={`min-w-0 flex-1 truncate text-right text-[12px] font-medium ${unsaved ? "text-[#b45309]" : "text-muted"}`}>{busy === "save" ? "Saving…" : unsaved ? "Unsaved changes" : "All changes saved"}</span>
-          <button type="button" onClick={doSave} disabled={!unsaved || busy === "save"} className="h-9 shrink-0 rounded-lg bg-brand px-5 text-sm font-bold text-white shadow-sm transition hover:brightness-110 disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
-        </div>
         <div role="tablist" aria-label="Editor" className="flex rounded-xl bg-surface2 p-1">
           {RTABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={curTab === k} onClick={() => goTab(k)} className={`flex-1 rounded-lg px-1 py-2 text-[12.5px] font-semibold transition ${curTab === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{k === "info" ? <><span className="sm:hidden">Info</span><span className="hidden sm:inline">{l}</span></> : l}</button>)}
         </div>
@@ -996,31 +999,30 @@ export default function WebsiteEditPage() {
         return (
         <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
           <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
-            <button type="button" aria-label="Back to sections" title="Back to sections" onClick={sheetClose} className={IB}><ChevronLeft className="h-5 w-5" /></button>
-            <div className="min-w-0 flex-1"><p className="text-[11px] text-muted">Section {i + 1} of {homeRows.length}</p><p className="truncate text-sm font-bold text-ink">{row.name}</p></div>
+            <div className="min-w-0 flex-1 pl-1"><p className="text-[11px] text-muted">Section {i + 1} of {homeRows.length}</p><p className="truncate text-sm font-bold text-ink">{row.name}</p></div>
             <button type="button" disabled={i === 0} onClick={() => sheetGo(i - 1)} className={TBW}>Previous</button>
             {i < homeRows.length - 1
               ? <button type="button" onClick={() => sheetGo(i + 1)} className={TBW}>Next</button>
               : <button type="button" onClick={sheetClose} className={TBW}><Check className="h-3.5 w-3.5" /> Done</button>}
           </div>
           <div className="space-y-4 p-3">
-            {sec && ids.length > 1 && <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Design of this section</p><p className="text-[12px] text-muted">Tap a design — the preview changes at once; press Save to keep it.</p>
-              <div className="mt-2">
-                {layoutPicker(sec, cur, (id) => sheetLayout(sec, id))}
-              </div>
-            </div>}
             <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
               <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : "Edit text"}</button>
               {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
             </div>
+            {sec && ids.length > 1 && <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Design</p><p className="text-[12px] text-muted">Tap a design — the preview changes at once; press Save to keep it.</p>
+              <div className="mt-2">
+                {layoutPicker(sec, cur, (id) => sheetLayout(sec, id))}
+              </div>
+            </div>}
             {row.blk
               ? <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Position</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Position and visibility</p>
                   <div className="mt-1.5 flex flex-wrap gap-2">
                     <button type="button" disabled={at <= 0} onClick={() => moveHomeBlock(row.blk!, -1)} className={TBW}><ChevronUp className="h-4 w-4" /> Move up</button>
                     <button type="button" disabled={at < 0 || at >= own.length - 1} onClick={() => moveHomeBlock(row.blk!, 1)} className={TBW}><ChevronDown className="h-4 w-4" /> Move down</button>
-                    <button type="button" onClick={() => hideHomeBlock(row.blk!, true)} className={TBW}><EyeOff className="h-4 w-4" /> Hide</button>
+                    <button type="button" onClick={() => hideHomeBlock(row.blk!, true)} className={TBW}><Eye className="h-4 w-4" /> Hide</button>
                   </div>
                 </div>
               : <p className="flex items-center gap-1.5 text-[12px] text-muted"><Info className="h-3.5 w-3.5" /> This section has a fixed position on every website.</p>}
@@ -1032,7 +1034,13 @@ export default function WebsiteEditPage() {
         {(() => {
           const comp = completeness(card, true);
           const todo = checkSite(isShubhoraSellerCard(card) ? withoutFreeCard(card, true) : card).filter((n) => n.level === "todo");
-          const toFix = comp.empty.length + todo.length;
+          // A section of products or services on the home page with no photo at all: the design shows letters instead (seen on a demo,
+          // 24 Nov 2026) — the thing that makes a website look unfinished, so it is counted.
+          const hidH = new Set(card.site?.home?.hidden ?? []);
+          const bare = (card.pages.find((p) => p.slug === homeSlugOf(card))?.blocks ?? []).filter((b) => !hidH.has(b.id) && (
+            (b.kind === "product" && b.items.length > 0 && !b.items.some((x) => x.imageUrl || x.images?.length)) ||
+            (!!adv && b.kind === "services" && b.items.length > 0 && !b.items.some((x) => x.imageUrl))));
+          const toFix = comp.empty.length + todo.length + bare.length;
           const FIX = "shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-semibold text-brand-ink hover:bg-surface2";
           return (
             <section className="rounded-2xl border border-border bg-surface shadow-card">
@@ -1045,6 +1053,7 @@ export default function WebsiteEditPage() {
               {healthOpen && toFix > 0 && (
                 <ul className="space-y-2 border-t border-border px-3.5 py-3">
                   {comp.empty.map((k) => <li key={k} className="flex items-center gap-2 text-[13px]"><span className="min-w-0 flex-1"><span className="font-semibold">{LABEL[k]?.[0] ?? k}</span> is empty</span><button type="button" onClick={() => openPart(k)} className={FIX}>Fix</button></li>)}
+                  {bare.map((b) => <li key={b.id} className="flex items-center gap-2 text-[13px]"><span className="min-w-0 flex-1"><span className="font-semibold">{("title" in b && b.title?.trim()) || KIND_NAME[b.kind]}</span> has no photos — the website shows letters instead</span><button type="button" onClick={() => { if (b.kind === "product") openPart("products"); else sheetOpen("text", b.id); }} className={FIX}>Add photos</button></li>)}
                   {todo.map((n, j) => <li key={j} className="flex items-start gap-2 text-[13px]"><span className="min-w-0 flex-1"><span className="font-semibold">{n.page}:</span> {n.en}</span>{(n.blockId || n.part) && <button type="button" onClick={() => { if (n.blockId) sheetOpen("text", n.blockId); else if (n.part) openPart(n.part); }} className={FIX}>Fix</button>}</li>)}
                 </ul>
               )}
@@ -1071,20 +1080,14 @@ export default function WebsiteEditPage() {
             <button type="button" onClick={() => sheetGo(0)} className="text-[12px] font-semibold text-brand-ink hover:underline">Review one by one</button>
           </div>
           <div className={BOX}>
-            {homeRows.map((r, i) => {
-              const own = homeRows.filter((x) => x.blk), at = own.findIndex((x) => x.id === r.id);
-              return (
-                <EdRow key={r.id} title={r.name} sub={r.blk ? undefined : "Fixed position"} onClick={() => sheetGo(i)}>
-                  {r.blk && <>
-                    <button type="button" aria-label="Move up" title="Move up" disabled={at <= 0} onClick={() => moveHomeBlock(r.blk!, -1)} className={IB}><ChevronUp className="h-4 w-4" /></button>
-                    <button type="button" aria-label="Move down" title="Move down" disabled={at >= own.length - 1} onClick={() => moveHomeBlock(r.blk!, 1)} className={IB}><ChevronDown className="h-4 w-4" /></button>
-                    <button type="button" aria-label="Hide this section" title="Shown on the website — tap to hide" onClick={() => hideHomeBlock(r.blk!, true)} className={IB}><Eye className="h-4 w-4" /></button>
-                  </>}
-                  {r.sec && ((r.sec === "hero" ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[r.sec] ?? []).length > 1) && <button type="button" aria-label="Change design" title="Change the design of this section" onClick={() => sheetGo(i)} className={IB}><LayoutTemplate className="h-4 w-4" /></button>}
-                  <button type="button" aria-label="Edit" title="Edit" onClick={() => sheetGo(i)} className={IB}><Pencil className="h-4 w-4" /></button>
-                </EdRow>
-              );
-            })}
+            {homeRows.map((r, i) => (
+              <EdRow key={r.id} title={r.name} sub={r.kind} onClick={() => sheetGo(i)}>
+                {r.blk
+                  ? <button type="button" aria-label="Hide this section" title="Shown on the website — tap to hide" onClick={() => hideHomeBlock(r.blk!, true)} className={IB}><Eye className="h-4 w-4" /></button>
+                  : <span className="w-8 shrink-0" aria-hidden />}
+                <button type="button" aria-label="Edit" title="Edit text, photo, design and position" onClick={() => sheetGo(i)} className={IB}><Pencil className="h-4 w-4" /></button>
+              </EdRow>
+            ))}
           </div>
           {hiddenHome.length > 0 && <>
             <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Hidden sections</p>
@@ -1096,7 +1099,7 @@ export default function WebsiteEditPage() {
         </> : <>
           <p className="px-1 text-[13px] font-semibold text-ink">Home page — top to bottom</p>
           <div className={BOX}>
-            <EdRow Icon={ImageIcon} title="Home banner (big heading and photo)" sub="Fixed position" onClick={() => openPart("hero")}><button type="button" aria-label="Edit" onClick={() => openPart("hero")} className={IB}><Pencil className="h-4 w-4" /></button></EdRow>
+            <EdRow Icon={ImageIcon} title="Home banner" sub="Heading and photos · always on top" onClick={() => openPart("hero")}><button type="button" aria-label="Edit" onClick={() => openPart("hero")} className={IB}><Pencil className="h-4 w-4" /></button></EdRow>
             {sections.map((sec, i) => {
               const off = hiddenSections.has(sec.key);
               const edit = () => { const p = sec.kind === "block" ? partFor(card, { kind: "block", blockId: sec.key }, true) : partFor(card, { kind: "text", text: secText(sec.key) }, true); sheetOpen(p.key, p.blockId); };
