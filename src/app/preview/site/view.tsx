@@ -209,7 +209,9 @@ function PreviewInner() {
           const head = el.querySelector("h2, h3")?.textContent?.trim() ?? "";
           // The owner's own section (flow.tsx): opened by its id, whatever its heading says.
           const blk = el.parentElement?.closest<HTMLElement>("[data-blk]")?.dataset.blk ?? "";
-          tellEdit(storageKey(), el.tagName === "FOOTER" ? { kind: "footer" } : isTop ? { kind: "hero" } : blk ? { kind: "block", blockId: blk } : { kind: "text", text: head });
+          // `sec`: which part of a Premium home page this is (data-sec) — the editor opens that part's own sheet (layout, words, photo).
+          const sec = el.tagName === "FOOTER" ? "footer" : isTop ? "hero" : el.dataset.sec ?? "";
+          tellEdit(storageKey(), { ...(el.tagName === "FOOTER" ? { kind: "footer" } : isTop ? { kind: "hero" } : blk ? { kind: "block", blockId: blk } : { kind: "text", text: head }), ...(sec ? { sec } : {}) });
         };
         el.appendChild(b);
       });

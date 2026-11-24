@@ -147,6 +147,12 @@ export default function WebsiteEditPage() {
   const [phoneView, setPhoneView] = useState(false);
   const [boxW, setBoxW] = useState(0);
   const focusAsk = useRef<{ top?: boolean; text?: string; sec?: string } | null>(null);
+  // One part of the home page, tapped in the window (or reached by "check my website"): its own sheet with everything that can be
+  // changed about it — layout, words, photo — in one place (owner, 24 Nov 2026: "kuch chhupa na rahe"; master list #6, #11).
+  const [sheet, setSheet] = useState<{ sec: SectionKey; key?: string; blockId?: string } | null>(null);
+  const sheetRef = useRef(sheet);
+  useEffect(() => { sheetRef.current = sheet; });
+  const advKeysRef = useRef<string[]>([]);
   /** Show this part in the window: the top of the website, or the section / line with this text. */
   const focus = (f: { top?: boolean; text?: string }) => { focusAsk.current = f; };
 
@@ -183,7 +189,7 @@ export default function WebsiteEditPage() {
   // A part opened: the window goes to the section it changes (back to the top on the list).
   useEffect(() => {
     // With the place the part's content sits at (partPlace → sync): the part's name alone sent the window to whatever heading matched a word.
-    const t = setTimeout(() => { const sy = syncRef.current; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? (sy ? (sy.text || sy.alt?.length || sy.sec || sy.blk ? { text: sy.text, alt: sy.alt, sec: sy.sec, blk: sy.blk, part: tab } : { top: true }) : { part: tab }) : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
+    const t = setTimeout(() => { const sy = syncRef.current; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? (sy ? (sy.text || sy.alt?.length || sy.sec || sy.blk ? { text: sy.text, alt: sy.alt, sec: sy.sec, blk: sy.blk, part: tab } : { top: true }) : { part: tab }) : sheetRef.current && sheetRef.current.sec !== "hero" ? { sec: sheetRef.current.sec } : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
     return () => clearTimeout(t);
   }, [open, tab]);
 
@@ -222,12 +228,20 @@ export default function WebsiteEditPage() {
   useEffect(() => { tapState.current = { card, embedDirty, hi }; });
   useEffect(() => {
     const on = (e: MessageEvent) => {
-      const d = e.data as { type?: string; key?: string; target?: { kind: string; blockId?: string; text?: string } } | null;
+      const d = e.data as { type?: string; key?: string; target?: { kind: string; blockId?: string; text?: string; sec?: string } } | null;
       const now = tapState.current;
       if (e.origin !== window.location.origin || d?.type !== "preview-edit" || d.key !== PREVIEW_KEY || !d.target || !now.card) return;
       const p = partFor(now.card, d.target, true);
       const key = p.key as Tab;
       if (now.embedDirty && !window.confirm(now.hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
+      // A part of a Premium home page: its sheet (layout, words, photo) instead of going straight into one screen.
+      const sec = d.target.sec ?? "";
+      if (sec && advKeysRef.current.includes(sec)) {
+        setEmbedDirty(false); setEmbedView(null); setOpen(false);
+        setSheet({ sec: sec as SectionKey, ...(p.blockId || p.key !== "text" ? { key: p.key, ...(p.blockId ? { blockId: p.blockId } : {}) } : {}) });
+        window.scrollTo({ top: 0 });
+        return;
+      }
       setEmbedDirty(false); setEmbedView(null); setAtBlock(p.blockId ?? ""); setGroup(TAB_GROUP[key] ?? "content"); setTab(key); setOpen(true); window.scrollTo({ top: 0 });
     };
     window.addEventListener("message", on);
@@ -271,6 +285,7 @@ export default function WebsiteEditPage() {
   // "Build your own design" (owner, 24 Nov 2026): each part of the home page can wear any of its layouts, so the owner can take the
   // top of one design, the About of another, the footer of a third. The designs of the "choose" screen are read once, only to
   // say which design uses which layout ("Design 2").
+  useEffect(() => { advKeysRef.current = advRows.map((r) => r.key); }, [advRows]);
   const [mixDesigns, setMixDesigns] = useState<{ hero?: string; sections?: Record<string, string> }[] | null>(null);
   const mixCardId = s?.hasCard ? s.cardId : undefined;
   useEffect(() => {
@@ -357,6 +372,26 @@ export default function WebsiteEditPage() {
   const setAdv = (patch: Record<string, unknown>) => { if (!adv) return; focus({ top: true }); set({ advanced: { ...adv, ...patch } as NonNullable<Card["site"]>["advanced"] }); };
   /** One part of the home page takes another layout; the window moves to that part so the change is seen. */
   const setAdvSection = (k: SectionKey, id: string) => { if (!adv || k === "hero") return; mixHold.current = true; setMixHeld(true); set({ advanced: { ...adv, sections: { ...((adv.sections as Record<string, string> | undefined) ?? {}), [k]: id } } as NonNullable<Card["site"]>["advanced"] }); showAdv(k); };
+  /** Which screen holds the words of a part of the home page (and the section inside "Text & pages", when it is one of those). */
+  const sheetWords = (sec: SectionKey): { key: string; blockId?: string } => {
+    const all = card ? card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).filter((b) => !isEmptyBlock(b)) : [];
+    const blk = (...kinds: string[]) => all.find((b) => kinds.includes(b.kind));
+    if (sec === "hero") return { key: "hero" };
+    if (sec === "about") return { key: "about" };
+    if (sec === "services") return { key: blk("product", "table") ? "products" : "details" };
+    if (sec === "gallery") return { key: "photos" };
+    if (sec === "proof") return { key: "reviews" };
+    if (sec === "visit" || sec === "footer") return { key: "where" };
+    if (sec === "cta") return { key: "buttons" };
+    if (sec === "trust") return { key: "details" };
+    const b = sec === "faq" ? blk("faq") : undefined;
+    return { key: "text", ...(b ? { blockId: b.id } : {}) };
+  };
+  /** Which screen holds the photo of a part (none: the part has no photo of its own). */
+  const SHEET_PHOTO: Partial<Record<SectionKey, string>> = { hero: "photos", about: "about", gallery: "photos", services: "products" };
+  const sheetGo = (i: number) => { const r = advRows[i]; if (!r) return; setSheet({ sec: r.key }); showAdv(r.key); };
+  const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") setAdv({ hero: id }); else setAdvSection(k, id); };
+  const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
   function setTone(t: "light" | "dark") {
     if (!adv) return;
@@ -677,6 +712,40 @@ export default function WebsiteEditPage() {
           {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL made on this phone */}
           {liveQr && <img src={liveQr} alt="QR" className="h-40 w-40 rounded-lg border border-border bg-white p-1" />}
         </section>); })()}
+      {!open && sheet && adv && (() => {
+        const i = advRows.findIndex((r) => r.key === sheet.sec); const row = advRows[i]; if (!row) return null;
+        const w = sheet.key ? { key: sheet.key, blockId: sheet.blockId } : sheetWords(row.key);
+        const ph = SHEET_PHOTO[row.key];
+        const isHero = row.key === "hero";
+        const ids: readonly string[] = isHero ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[row.key] ?? [];
+        const cur = isHero ? String(adv.hero ?? "") : (adv.sections as Record<string, string> | undefined)?.[row.key] ?? ids[0];
+        const big = "flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold hover:bg-surface2";
+        return (
+        <section className="space-y-3 rounded-2xl border-2 border-brand bg-surface p-3 shadow-card">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0"><p className="text-[11px] font-semibold text-muted">{hi ? `हिस्सा ${i + 1} / ${advRows.length} — बाईं तरफ़ website में यही दिख रहा है` : `Part ${i + 1} of ${advRows.length} — this is what the window on the left shows`}</p><p className="truncate text-base font-bold">{row.name}</p></div>
+            <button type="button" aria-label={hi ? "बंद" : "Close"} onClick={() => { setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); }} className="rounded-lg p-1 text-muted"><X className="h-4 w-4" /></button>
+          </div>
+          <div className={`grid gap-2 ${ph && ph !== w.key ? "sm:grid-cols-2" : ""}`}>
+            <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={big}>{ph === w.key ? (row.key === "gallery" ? (hi ? "📷 फ़ोटो बदलें" : "📷 Change the photos") : (hi ? "✍️ शब्द और 📷 फ़ोटो बदलें" : "✍️ Change the words and 📷 photo")) : (hi ? "✍️ शब्द बदलें" : "✍️ Change the words")}</button>
+            {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={big}>{hi ? "📷 फ़ोटो बदलें" : "📷 Change the photo"}</button>}
+          </div>
+          {ids.length > 1 && <div>
+            <p className="text-[13px] font-semibold">{hi ? "🎨 इस हिस्से का रूप (layout)" : "🎨 The layout of this part"}</p>
+            <p className="text-[11px] text-muted">{hi ? "जो पसंद आए वो दबाएँ — बाईं तरफ़ तुरंत दिखेगा। पक्का करने के लिए नीचे “Save” दबाएँ।" : "Tap one — it shows on the left at once. Press “Save” under the window to keep it."}</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {/* eslint-disable-next-line react-hooks/refs -- sheetLayout runs on the tap, never while drawing */}
+              {ids.map((id) => { const ok = mixAllow(row.key, id) || cur === id; return <button key={id} type="button" disabled={!ok} title={ok ? undefined : (hi ? "इसके लिए और फ़ोटो / items चाहिए" : "This one needs more photos / items")} onClick={() => sheetLayout(row.key, id)} className={`${chip(cur === id)} !px-2.5 !py-1.5 !text-xs ${ok ? "" : "opacity-40"}`}>{isHero ? (ADV_HERO_NAMES[id] ?? [id, id])[hi ? 1 : 0] : variantName(row.key, id, hi)}</button>; })}
+            </div>
+          </div>}
+          <button type="button" onClick={() => sheetOpen("home")} className="text-left text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "इस हिस्से को ऊपर-नीचे करना या छुपाना है? “हिस्से (Sections)” खोलें →" : "Move this part up or down, or hide it? Open “Sections” →"}</button>
+          <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
+            <button type="button" disabled={i === 0} onClick={() => sheetGo(i - 1)} className="rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-30">{hi ? "← पिछला हिस्सा" : "← Previous part"}</button>
+            {i < advRows.length - 1
+              ? <button type="button" onClick={() => sheetGo(i + 1)} className="rounded-xl grad-brand px-3 py-2 text-xs font-semibold text-white">{hi ? "ठीक है, अगला हिस्सा →" : "Looks good, next part →"}</button>
+              : <button type="button" onClick={() => { setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); }} className="rounded-xl bg-good px-3 py-2 text-xs font-semibold text-white">{hi ? "✅ पूरी website देख ली" : "✅ Whole website checked"}</button>}
+          </div>
+        </section>); })()}
       {!open && (
         <section className="space-y-2 rounded-2xl border border-brand/30 bg-brand-soft/40 p-3">
           <p className="text-sm font-bold">{hi ? "🎨 Design — website कैसी दिखे" : "🎨 Design — how the website looks"}</p>
@@ -686,11 +755,12 @@ export default function WebsiteEditPage() {
               ? <button type="button" onClick={() => { openPart("look"); setMixJump(true); }} className="flex items-center gap-2.5 rounded-xl border-2 border-brand/40 bg-surface px-3 py-3 text-left shadow-card"><Wand2 className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "हर हिस्से का रूप अलग चुनें" : "Pick the layout of each part"}</span></span></button>
               : <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-border bg-surface px-3 py-3"><Wand2 className="h-5 w-5 shrink-0 text-muted" /><span><span className="block text-sm font-bold text-muted">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "पहले बाईं तरफ़ से एक तैयार design चुनें, फिर ये खुलेगा।" : "First choose a ready design; then this opens."}</span></span></div>}
           </div>
+          {advRows.length > 1 && <button type="button" onClick={() => sheetGo(0)} className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-left shadow-card"><Eye className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "मेरी website जाँचें" : "Check my website"}</span><span className="block text-[11px] text-muted">{hi ? "ऊपर से नीचे, हर हिस्सा एक-एक करके देखें और वहीं बदलें" : "Top to bottom, one part at a time — change anything right there"}</span></span></button>}
           <p className="text-[11px] text-muted">{hi ? "रंग, अक्षर और कोने नीचे “Design” में हैं। यहाँ का कोई भी बदलाव पहले इस window में दिखता है; असली website पर तभी जाता है जब आप Save दबाते हैं।" : "Colours, letters and corners are under “Design” below. Any change here shows in this window first; it goes to the real website only when you press Save."}</p>
         </section>)}
       {!open && card && <SiteCheck card={card} hi={hi} />}
       {!open
-        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["settings"]} state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
+        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["settings"]} state={(k) => partState(card, k)} onPick={(_g, k) => { setSheet(null); openPart(k); }} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
       {open && (<>
       {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">
