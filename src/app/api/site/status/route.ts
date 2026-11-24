@@ -80,6 +80,16 @@ export async function PATCH(request: Request) {
   const home = cleanHome(b.home); if (home) patch.home = home;
   // The Home page's own sections in a new order (website editor → a part's sheet → Move up / down): ids only, the server re-orders
   // the sections it already has — nothing is added, removed or rewritten.
+  // The sections of the other pages in a new order (the same, page by page): ids only, re-ordering what each page already has.
+  if (b.pageOrders && typeof b.pageOrders === "object") {
+    const po: Record<string, string[]> = {};
+    for (const [k, v] of Object.entries(b.pageOrders as Record<string, unknown>).slice(0, 30)) {
+      if (!/^[\w-]{1,60}$/.test(k) || !Array.isArray(v)) continue;
+      const ids = v.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 80).slice(0, 200);
+      if (ids.length > 1) po[k] = ids;
+    }
+    if (Object.keys(po).length) patch.pageOrders = po;
+  }
   if (Array.isArray(b.homeBlocks)) { const ids = (b.homeBlocks as unknown[]).filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 80).slice(0, 200); if (ids.length > 1) patch.homeBlocks = ids; }
   // "Make it look like this website": one public URL, read on the server (same safety rules as the AI builder).
   if (typeof b.reference === "string" && b.reference.trim()) patch.referenceUrl = b.reference.trim().slice(0, 300);

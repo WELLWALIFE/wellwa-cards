@@ -229,11 +229,12 @@ export default function WebsiteEditPage() {
   /** ↶ ↷ on the bar: each change on this screen is a step; loading or a Save starts afresh. */
   const [histReset, setHistReset] = useState(0);
   // Undo / Redo cover the website settings and the order of the Home page's sections (moved from the Sections tab).
-  const histSnap = card ? JSON.stringify({ site: card.site ?? null, home: (card.pages.find((p) => p.slug === homeSlugOf(card))?.blocks ?? []).map((b) => b.id) }) : null;
+  const histSnap = card ? JSON.stringify({ site: card.site ?? null, orders: Object.fromEntries(card.pages.map((p) => [p.slug, p.blocks.map((b) => b.id)])) }) : null;
   const history = useEditHistory(histSnap, (v) => {
-    const o = JSON.parse(v) as { site: Card["site"]; home: string[] };
+    const o = JSON.parse(v) as { site: Card["site"]; orders: Record<string, string[]> };
     touched.current.add("homeBlocks");
-    setCard((cur) => (cur ? { ...cur, site: o.site, pages: orderHome(cur.pages, homeSlugOf(cur), o.home) } : cur)); setDirty(true);
+    for (const sl of Object.keys(o.orders ?? {})) touched.current.add(`order:${sl}`);
+    setCard((cur) => (cur ? { ...cur, site: o.site, pages: Object.entries(o.orders ?? {}).reduce((pg, [sl, ids]) => orderHome(pg, sl, ids), cur.pages) } : cur)); setDirty(true);
   }, `${card?.id ?? ""}-${histReset}`);
   const [refUrl, setRefUrl] = useState("");
   const [unlock, setUnlock] = useState(false);
@@ -418,17 +419,25 @@ export default function WebsiteEditPage() {
     const c = buildContent(dc, lang);
     const hasContact = card.links.some((l) => l.type === "phone" || l.type === "whatsapp");
     const nm = (k: SectionKey) => advRows.find((r) => r.key === k)?.name ?? k;
-    const rows: HomeRow[] = [{ id: "hero", sec: "hero", name: nm("hero"), kind: "Heading and photos · always on top" }];
-    if (sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust"), kind: "Key figures · fixed position" });
-    const slug = homeSlugOf(dc);
+    // The page picked above the preview (owner, 24 Nov 2026: "section sirf home ka hai ya sabhi pages ka?" — every page's).
+    const homeSl = homeSlugOf(dc);
+    const slug = viewPage && dc.pages.some((p) => p.slug === viewPage) ? viewPage : homeSl;
+    const onHome = slug === homeSl;
     const hp = dc.pages.find((p) => p.slug === slug);
+    const rows: HomeRow[] = onHome
+      ? [{ id: "hero", sec: "hero", name: nm("hero"), kind: "Heading and photos · always on top" }]
+      : [{ id: "masthead", sec: null, name: "Page heading", kind: "Page name and photo · always on top" }];
+    if (onHome && sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust"), kind: "Key figures · fixed position" });
     // A section the website adds by itself (the plans copy, the Google check) is not one of the owner's: fixed, no Move or Hide.
-    const stored = new Set((card.pages.find((p) => p.slug === homeSlugOf(card))?.blocks ?? []).map((b) => b.id));
+    const stored = new Set((card.pages.find((p) => p.slug === slug)?.blocks ?? []).map((b) => b.id));
     if (hp) for (const p of flowParts(dc, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, kind: kindLine(p.b), ...(stored.has(p.b.id) ? { blk: p.b.id } : {}), name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
     if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", name: nm("cta"), kind: "WhatsApp and Call · fixed position" });
     rows.push({ id: "footer", sec: "footer", name: nm("footer"), kind: "Address and links · always at the bottom" });
     return rows;
-  }, [adv, storeDesign, card, advRows, hi]);
+  }, [adv, storeDesign, card, advRows, hi, viewPage]);
+  /** The page whose sections the list shows, and its name. */
+  const curSlug = card ? (viewPage && card.pages.some((p) => p.slug === viewPage) ? viewPage : homeSlugOf(card)) : "home";
+  const curName = card?.pages.find((p) => p.slug === curSlug)?.label || "Home";
   useEffect(() => { homeRowsRef.current = homeRows; }, [homeRows]);
   const haveCard = !!card;
   useEffect(() => {
@@ -442,9 +451,10 @@ export default function WebsiteEditPage() {
   const hiddenHome = useMemo(() => {
     if (!adv || storeDesign || !card) return [] as { id: string; name: string }[];
     const hid = new Set(card.site?.home?.hidden ?? []);
-    const hp = card.pages.find((p) => p.slug === homeSlugOf(card));
+    const sl = viewPage && card.pages.some((p) => p.slug === viewPage) ? viewPage : homeSlugOf(card);
+    const hp = card.pages.find((p) => p.slug === sl);
     return (hp?.blocks ?? []).filter((b) => hid.has(b.id) && !isEmptyBlock(b)).map((b) => ({ id: b.id, name: ("title" in b ? (b.title ?? "").trim() : "") || sectionLabel({ key: b.id, kind: "block", block: b } as Parameters<typeof sectionLabel>[0], card.language) }));
-  }, [adv, storeDesign, card]);
+  }, [adv, storeDesign, card, viewPage]);
   const [mixDesigns, setMixDesigns] = useState<{ hero?: string; sections?: Record<string, string> }[] | null>(null);
   const mixCardId = s?.hasCard ? s.cardId : undefined;
   useEffect(() => {
@@ -552,7 +562,7 @@ export default function WebsiteEditPage() {
   };
   /** Which screen holds the photo of a part (none: the part has no photo of its own). */
   const SHEET_PHOTO: Partial<Record<SectionKey, string>> = { hero: "photos", about: "about", gallery: "photos", services: "products" };
-  const sheetGo = (i: number) => { const r = homeRows[i]; if (!r) return; setViewPage(""); const f = rowFocus(r); sheetFocus.current = f; setSheet({ id: r.id }); focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); window.scrollTo({ top: 0 }); };
+  const sheetGo = (i: number) => { const r = homeRows[i]; if (!r) return; if (r.id === "masthead") { sheetOpen("text"); return; } const f = rowFocus(r); sheetFocus.current = f; setSheet({ id: r.id }); focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); window.scrollTo({ top: 0 }); };
   /** Hides one of the Home page's sections (it stays stored) or shows it again; goes to the website with Save. */
   function hideHomeBlock(id: string, hide: boolean) {
     const h = new Set(site.home?.hidden ?? []);
@@ -569,7 +579,8 @@ export default function WebsiteEditPage() {
   /** One of the Home page's own sections changes place with the one above / below it; goes to the website with Save. */
   function moveHomeBlock(id: string, dir: -1 | 1) {
     if (!card) return;
-    const slug = homeSlugOf(card), hp = card.pages.find((p) => p.slug === slug);
+    const slug = curSlug, hp = card.pages.find((p) => p.slug === slug);
+    const onHome = slug === homeSlugOf(card);
     const own = homeRows.filter((r) => r.blk), i = own.findIndex((r) => r.blk === id), other = own[i + dir];
     if (!hp || i < 0 || !other) return;
     // The order as the website draws it, with the two swapped, becomes the page's order (a partner's home was re-sorted when drawn).
@@ -578,11 +589,11 @@ export default function WebsiteEditPage() {
     const named = hp.blocks.filter((b) => pos.has(b.id)).sort((x, y) => pos.get(x.id)! - pos.get(y.id)!);
     const rest = hp.blocks.filter((b) => !pos.has(b.id));
     const blocks = [...named, ...rest];
-    touched.current.add("homeBlocks"); setNote((n) => (n?.k === "save" ? null : n));
+    touched.current.add(onHome ? "homeBlocks" : `order:${slug}`); setNote((n) => (n?.k === "save" ? null : n));
     const f = { blk: id }; sheetFocus.current = f; focusAsk.current = f; lastFocus.current = f;
     // Asked again once the window has drawn the new order (the first ask can land before it).
     setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 700);
-    setCard({ ...card, site: { ...(card.site ?? { enabled: true }), homeOwnOrder: true } as Card["site"], pages: card.pages.map((p) => (p === hp ? { ...hp, blocks } : p)) }); setDirty(true);
+    setCard({ ...card, ...(onHome ? { site: { ...(card.site ?? { enabled: true }), homeOwnOrder: true } as Card["site"] } : {}), pages: card.pages.map((p) => (p === hp ? { ...hp, blocks } : p)) }); setDirty(true);
   }
   const pickHero = (id: string) => { remember("hero", String(adv?.hero ?? "")); setAdv({ hero: id }); };
   /** The designs of one section, the way a professional editor offers them (owner, 24 Nov 2026: "har category me alag ho sakti hai"):
@@ -680,6 +691,12 @@ export default function WebsiteEditPage() {
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
         // The order of the Home page's own sections (moved from a part's sheet); an Undo sends the earlier order back.
+        ...(() => {
+          const src = from ?? card;
+          const sl = from ? src.pages.map((p) => p.slug) : [...touched.current].filter((k) => k.startsWith("order:")).map((k) => k.slice(6));
+          const po = Object.fromEntries(sl.filter((x) => x !== homeSlugOf(src)).map((x) => [x, (src.pages.find((p) => p.slug === x)?.blocks ?? []).map((b) => b.id)]));
+          return Object.keys(po).length ? { pageOrders: po } : {};
+        })(),
         ...(from || touched.current.has("homeBlocks") ? { homeBlocks: ((from ?? card).pages.find((p) => p.slug === homeSlugOf(from ?? card))?.blocks ?? []).map((b) => b.id) } : {}),
         ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}), ...((adv.palette as { own?: boolean }).own ? { own: true } : {}) } } : {}),
         ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}), ...(Array.isArray(adv.order) ? { order: adv.order as string[] } : {}), ...(adv.sections && typeof adv.sections === "object" ? { sections: adv.sections as Record<string, string> } : {}) } } : {}),
@@ -829,7 +846,7 @@ export default function WebsiteEditPage() {
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setSync(null); setTab(t); };
   // "+ Add section": the page editor opens with its "Add section" list already open (atBlock "__add").
-  const embedSrc = tab === "text" && atBlock === "__add" ? `${EMBED.text!(s.cardId)}&add=1` : tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
+  const embedSrc = tab === "text" && atBlock === "__add" ? `${EMBED.text!(s.cardId)}&add=${encodeURIComponent(curSlug)}` : tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
   const domainOk = tier === "growth" || tier === "pro";
   const siteOn = !!(s.site?.enabled ?? card.site?.enabled);
   async function setEnabled(on: boolean) {
@@ -1077,7 +1094,7 @@ export default function WebsiteEditPage() {
         )}
         {rtab === "sections" && (homeRows.length > 0 ? <>
           <div className="flex items-center justify-between px-1">
-            <p className="text-[13px] font-semibold text-ink">Home page — top to bottom</p>
+            <p className="text-[13px] font-semibold text-ink">{curName} page — top to bottom</p>
             <button type="button" onClick={() => sheetGo(0)} className="text-[12px] font-semibold text-brand-ink hover:underline">Review one by one</button>
           </div>
           <div className={BOX}>
@@ -1098,8 +1115,11 @@ export default function WebsiteEditPage() {
           </>}
           <button type="button" onClick={() => sheetOpen("text", "__add")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
         </> : <>
-          <p className="px-1 text-[13px] font-semibold text-ink">Home page — top to bottom</p>
-          <div className={BOX}>
+          <p className="px-1 text-[13px] font-semibold text-ink">{curName} page — top to bottom</p>
+          {curSlug !== homeSlugOf(card) ? <div className={BOX}>
+            {/* Another page of an older-design website: its sections, each opening in the page editor. */}
+            {(card.pages.find((p) => p.slug === curSlug)?.blocks ?? []).filter((b) => !isEmptyBlock(b)).map((b) => <EdRow key={b.id} title={("title" in b ? (b.title ?? "").trim() : "") || KIND_NAME[b.kind] || b.kind} sub={kindLine(b)} onClick={() => sheetOpen("text", b.id)}><button type="button" aria-label="Edit" onClick={() => sheetOpen("text", b.id)} className={IB}><Pencil className="h-4 w-4" /></button></EdRow>)}
+          </div> : <div className={BOX}>
             <EdRow Icon={ImageIcon} title="Home banner" sub="Heading and photos · always on top" onClick={() => openPart("hero")}><button type="button" aria-label="Edit" onClick={() => openPart("hero")} className={IB}><Pencil className="h-4 w-4" /></button></EdRow>
             {sections.map((sec, i) => {
               const off = hiddenSections.has(sec.key);
@@ -1113,7 +1133,7 @@ export default function WebsiteEditPage() {
                 </EdRow>
               );
             })}
-          </div>
+          </div>}
           <button type="button" onClick={() => sheetOpen("text", "__add")} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-3 text-sm font-semibold text-brand-ink hover:bg-surface2"><Plus className="h-4 w-4" /> Add section</button>
         </>)}
         {rtab === "sections" && <>

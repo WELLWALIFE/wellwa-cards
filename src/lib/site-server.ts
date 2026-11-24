@@ -392,6 +392,8 @@ export type SitePatch = {
   advancedLook?: { heading?: string; hero?: string; shape?: string; tone?: "light" | "dark"; corners?: boolean; order?: string[]; sections?: Record<string, string> };
   /** The ids of the Home page's sections in the order the owner wants; a section not named keeps its place. */
   homeBlocks?: string[];
+  /** The other pages' sections in the order the owner wants, page by page (slug → ids). */
+  pageOrders?: Record<string, string[]>;
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -454,6 +456,17 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
     if (L.corners && a4.palette) (site as Record<string, unknown>).advanced = { ...a4, palette: { ...a4.palette, corners: true } };
   }
   let pages = row.data.pages;
+  if (patch.pageOrders && Array.isArray(pages)) {
+    for (const [sl, ids] of Object.entries(patch.pageOrders)) {
+      const pos = new Map(ids.map((id, n) => [id, n]));
+      pages = pages.map((p) => {
+        if (p.slug !== sl) return p;
+        const named = p.blocks.filter((b) => pos.has(b.id)).sort((x, y) => pos.get(x.id)! - pos.get(y.id)!);
+        let n = 0;
+        return { ...p, blocks: p.blocks.map((b) => (pos.has(b.id) ? named[n++] : b)) };
+      });
+    }
+  }
   if (patch.homeBlocks?.length && Array.isArray(pages)) {
     const slug = homeSlugOf(row.data), pos = new Map(patch.homeBlocks.map((id, n) => [id, n]));
     pages = pages.map((p) => {
