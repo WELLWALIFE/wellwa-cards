@@ -6,7 +6,7 @@
 // Tokens come from the root (`advancedVars`, src/lib/site-advanced.ts): --r-ctl/--r-card/--r-tile/--r-img (shape),
 // --section-pad/--gap (density), --font-display/--font-text, and the OKLCH colour tokens (--paper, --paper-2, --ink,
 // --muted, --line, --accent, --accent-soft, --hero-ink, ...). A variant never hard-codes a colour, radius or font.
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { Card, CardLink } from "@/lib/types";
 import type { CardBrand } from "@/components/card-view";
 import type { AdvancedSpec } from "@/lib/site-advanced";
@@ -61,6 +61,21 @@ export function Sec({ k, tone = "paper", wide = false, className = "", children,
     <section id={`adv-${k}`} data-sec={k} data-tone={tone} data-reveal aria-label={label} className={`adv-sec ${tone === "ink" ? "hero-dark" : ""} ${className}`}>
       <div className={`adv-wrap ${wide ? "adv-wide" : ""}`}>{children}</div>
     </section>
+  );
+}
+
+/** The story beside a photo (owner, 24 Nov 2026: "text bahut neeche tak aa raha hai, photo upar hi rah jata hai — barabar hona
+ *  chahiye"). A story longer than `limit` letters is folded to about seven lines with "Read more", so the words end where the photo
+ *  does; the whole story stays in the page (search engines and a print read all of it) and opens on a tap. A short story is drawn as it is. */
+export function StoryMore({ paras, x, className = "", limit = 560 }: { paras: string[]; x: AdvCtx; className?: string; limit?: number }) {
+  const [open, setOpen] = useState(false);
+  if (!paras.length) return null;
+  const long = paras.join(" ").length > limit;
+  return (
+    <>
+      <div className={`adv-body ${className} ${long && !open ? "adv-fold" : ""}`}>{paras.map((p, i) => <p key={i}>{p}</p>)}</div>
+      {long && <button type="button" className="adv-more" aria-expanded={open} onClick={() => setOpen((o) => !o)}>{open ? x.ui("Show less", "कम दिखाएँ") : x.ui("Read more", "पूरा पढ़ें")}</button>}
+    </>
   );
 }
 
@@ -134,6 +149,11 @@ export const ADV_BASE_CSS = `
 .adv-head{max-width:46rem;margin-bottom:clamp(2rem,5vw,3.5rem)}
 .adv-body{font-size:var(--t-body);line-height:var(--body-lh);color:var(--muted)}
 .adv-body p{margin:0 0 1em}
+/* StoryMore: a long story beside a photo, folded to about seven lines so the words and the photo end together */
+.adv-fold{max-height:11.6em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 58%,transparent);mask-image:linear-gradient(#000 58%,transparent)}
+.adv-more{display:inline-flex;align-items:center;gap:.35em;margin:.2em 0 0;padding:.45em 0;border:0;background:none;font:600 var(--t-meta)/1.2 var(--font-text);color:var(--ink);cursor:pointer;text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:.3em}
+.adv-more:hover{color:var(--accent)}
+@media print{.adv-fold{max-height:none;-webkit-mask-image:none;mask-image:none}.adv-more{display:none}}
 .adv-photo{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--focus,50% 22%)}
 .adv-tile{display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--font-display);font-size:clamp(2rem,6vw,4rem);width:100%;height:100%}
 .adv-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}

@@ -1497,7 +1497,7 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .ft-t-gst{grid-column:1/-1;margin:0}
 .ft-t-pages{grid-column:1/-1}
 /* Compact (owner, 14 Nov 2026: "footer ki height bahut zyada"): tiles as tall as what they hold, the pages in two columns. */
-.ft-lg{align-items:start}
+.ft-lg{align-items:stretch}
 .ft-lg .ft-tile{padding:var(--s4) var(--s5);gap:var(--s2)}
 .ft-lg .ft-t-contact{justify-content:flex-start;min-height:0}
 .ft-lg .ft-t-pages ul{grid-template-columns:1fr 1fr;column-gap:var(--s5)}

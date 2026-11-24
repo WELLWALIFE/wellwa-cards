@@ -16,7 +16,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon } from "@/components/site-icons";
 import { Stamp, Parallax } from "@/components/site-adv/motion";
-import { Btn, Eyebrow, H2, Photo, Sec, type AdvCtx, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
+import { Btn, Eyebrow, H2, Photo, Sec, StoryMore, type AdvCtx, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
 
 /* ================= helpers ================= */
 
@@ -183,7 +183,7 @@ export function AboutOverlapCard({ c, x, index }: VariantProps) {
           <Eyebrow>{s.eyebrow}</Eyebrow>
           <H2 className="abo-title mt-3">{s.title}</H2>
           {lead && <p className="abo-lead" data-t={tier(lead)}>{lead}</p>}
-          <div className="adv-body abo-text">{body.slice(0, 4).map((p, i) => <p key={i}>{p}</p>)}</div>
+          <StoryMore paras={body.slice(0, 4)} x={x} className="abo-text" />
           <Chips items={c.highlights} x={x} className="abo-chips" />
         </div>
       </Seen>
@@ -311,7 +311,7 @@ export function AboutFounderLetter({ c, x, index }: VariantProps) {
         <article className="abl-letter abx-rv" style={css({ "--i": 2 })}>
           <Eyebrow>{o.isPerson ? x.ui(`A note from ${o.first}`, `${o.first} की ओर से`) : x.ui("A note from us", "हमारी ओर से")}</Eyebrow>
           <p className="abl-lead" data-t={tier(s.statement)}><Emph text={s.statement} n={3} /></p>
-          <div className="adv-body abl-text">{s.rest.slice(0, 4).map((p, i) => <p key={i}>{p}</p>)}</div>
+          <StoryMore paras={s.rest.slice(0, 4)} x={x} className="abl-text" limit={700} />
           <p className="abl-sign" aria-label={x.ui(`Signed, ${o.name}`, `${o.name}`)}><span aria-hidden="true">&mdash; {o.isPerson ? o.first : x.t(c.name)}</span></p>
           <div className="abl-foot">
             {contact && <Btn href={contact} external onClick={() => x.track("about-owner")}><Icon name="whatsapp" /> {o.isPerson ? x.ui(`Message ${o.first}`, `${o.first} को मैसेज करें`) : x.ui("Message us", "हमें मैसेज करें")}</Btn>}

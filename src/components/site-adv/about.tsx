@@ -20,7 +20,7 @@
 import { useId, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Icon, iconFor, type IconName } from "@/components/site-icons";
 import { linkHref } from "@/components/link-icon";
-import { Btn, Eyebrow, H2, Head, Photo, Sec, type AdvCtx, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
+import { Btn, Eyebrow, H2, Head, Photo, Sec, StoryMore, type AdvCtx, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
 
 /* ================= shared helpers ================= */
 
@@ -224,7 +224,7 @@ export function AboutOwnerCard({ c, x, index }: VariantProps) {
         <div className="abw-note">
           <Eyebrow>{o.isPerson ? x.ui("Meet the owner", "मालिक से मिलिए") : s.eyebrow}</Eyebrow>
           <H2 className="abw-statement mt-3">{s.statement}</H2>
-          {s.rest.length > 0 && <div className="adv-body abw-text">{s.rest.map((p, i) => <p key={i}>{p}</p>)}</div>}
+          <StoryMore paras={s.rest} x={x} className="abw-text" />
           <Ticks items={c.highlights} x={x} className="abw-ticks" />
           {(x.wa || x.phone) && (
             <div className="adv-btn-row abw-btns">
@@ -281,7 +281,7 @@ export function AboutPhotoCollage({ c, x, index }: VariantProps) {
         <div className="abc-copy">
           <Eyebrow>{s.eyebrow}</Eyebrow>
           <H2 className="mt-3 abc-title">{s.statement}</H2>
-          {s.rest.length > 0 && <div className="adv-body abc-text">{s.rest.slice(0, 4).map((p, i) => <p key={i}>{p}</p>)}</div>}
+          <StoryMore paras={s.rest.slice(0, 4)} x={x} className="abc-text" />
           <Ticks items={c.highlights} x={x} className="abc-ticks" />
         </div>
       </div>
