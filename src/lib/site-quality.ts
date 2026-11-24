@@ -57,6 +57,8 @@ export function withQuality(card: Card): Card {
 }
 
 export interface QualityNote {
+  /** Where the owner mends it: a section of "Text & pages" (blockId) or a part of the editor (part). */
+  blockId?: string; part?: string;
   /** "fixed": the site already handles it; "todo": something only the owner can give. */
   level: "fixed" | "todo";
   page: string;
@@ -109,23 +111,23 @@ export function checkSite(card: Card): QualityNote[] {
   }));
   const personal = card.seo?.categoryKey === "personal";
   if (!personal && !contact && !contactSection) out.push({
-    level: "todo", page: "Website", en: "Add a working phone, WhatsApp, email, contact form or booking link so customers can reach you.",
+    level: "todo", page: "Website", part: "you", en: "Add a working phone, WhatsApp, email, contact form or booking link so customers can reach you.",
     hi: "ग्राहक आपसे संपर्क कर सकें, इसके लिए सही फ़ोन, WhatsApp, ईमेल, संपर्क फ़ॉर्म या बुकिंग लिंक जोड़ें।",
   });
   for (const p of pages) {
     const name = p.label || p.slug;
     const blocks = p.blocks.filter((block) => !isEmptyBlock(block) && !(p.slug === "home" && hiddenSections.has(block.id)));
-    if (p.slug === "home" && blocks.length > 11) out.push({ level: "todo", page: name, en: `Home has ${blocks.length} sections. 9 to 11 read best; hide the ones that repeat.`, hi: `Home पर ${blocks.length} हिस्से हैं। 9 से 11 सबसे अच्छे लगते हैं; जो दोहराते हैं उन्हें छुपाएँ।` });
+    if (p.slug === "home" && blocks.length > 11) out.push({ level: "todo", page: name, part: "home", en: `Home has ${blocks.length} sections. 9 to 11 read best; hide the ones that repeat.`, hi: `Home पर ${blocks.length} हिस्से हैं। 9 से 11 सबसे अच्छे लगते हैं; जो दोहराते हैं उन्हें छुपाएँ।` });
     blocks.forEach((b, i) => {
       const tt = title(b);
-      if (tt && words(tt) > 8) out.push({ level: "todo", page: name, en: `"${tt}" is a long heading. Keep it to 8 words or fewer.`, hi: `"${tt}" लंबी heading है। 8 शब्द या कम रखें।` });
-      if (b.kind === "faq" && p.slug === "home" && b.items.length > 6) out.push({ level: "todo", page: name, en: `${b.items.length} questions on Home. Keep the top 6; put the rest on a page of their own.`, hi: `Home पर ${b.items.length} सवाल हैं। सबसे ज़रूरी 6 रखें, बाक़ी अलग पेज पर।` });
-      if (isLoc(b) && !b.mapUrl && vagueAddress(b.address)) out.push({ level: "fixed", page: name, en: `The address "${b.address.trim()}" is not a place on a map, so the map is hidden. Add your full address to show it.`, hi: `पता "${b.address.trim()}" नक्शे पर कोई जगह नहीं है, इसलिए नक्शा छुपा दिया। पूरा पता डालें तो दिखेगा।` });
-      if (isLoc(b) && !b.mapUrl && townOnly(b.address)) out.push({ level: "todo", page: name, en: `The address "${b.address.trim()}" has no street, so the map finds the town, not you. Add the full address or a Google Maps link.`, hi: `पते "${b.address.trim()}" में गली/दुकान नहीं है, नक्शा सिर्फ़ शहर दिखाएगा। पूरा पता या Google Maps link डालें।` });
+      if (tt && words(tt) > 8) out.push({ level: "todo", page: name, blockId: b.id, en: `"${tt}" is a long heading. Keep it to 8 words or fewer.`, hi: `"${tt}" लंबी heading है। 8 शब्द या कम रखें।` });
+      if (b.kind === "faq" && p.slug === "home" && b.items.length > 6) out.push({ level: "todo", page: name, blockId: b.id, en: `${b.items.length} questions on Home. Keep the top 6; put the rest on a page of their own.`, hi: `Home पर ${b.items.length} सवाल हैं। सबसे ज़रूरी 6 रखें, बाक़ी अलग पेज पर।` });
+      if (isLoc(b) && !b.mapUrl && vagueAddress(b.address)) out.push({ level: "fixed", page: name, part: "where", en: `The address "${b.address.trim()}" is not a place on a map, so the map is hidden. Add your full address to show it.`, hi: `पता "${b.address.trim()}" नक्शे पर कोई जगह नहीं है, इसलिए नक्शा छुपा दिया। पूरा पता डालें तो दिखेगा।` });
+      if (isLoc(b) && !b.mapUrl && townOnly(b.address)) out.push({ level: "todo", page: name, part: "where", en: `The address "${b.address.trim()}" has no street, so the map finds the town, not you. Add the full address or a Google Maps link.`, hi: `पते "${b.address.trim()}" में गली/दुकान नहीं है, नक्शा सिर्फ़ शहर दिखाएगा। पूरा पता या Google Maps link डालें।` });
       // Three sections of words in a row is where a page starts to read like a document (two is normal on an inner page).
       const p1 = blocks[i - 1], p2 = blocks[i - 2];
-      if (p1 && p2 && !hasPicture(p2) && !hasPicture(p1) && !hasPicture(b)) out.push({ level: "todo", page: name, en: `"${title(p2) || p2.kind}", "${title(p1) || p1.kind}" and "${tt || b.kind}" are three sections of text in a row. Add a photo to the middle one.`, hi: `"${title(p2) || p2.kind}", "${title(p1) || p1.kind}" और "${tt || b.kind}" लगातार तीन हिस्से सिर्फ़ लिखाई के हैं। बीच वाले में फ़ोटो डालें।` });
-      if (tt && blocks.slice(0, i).some((x) => title(x).toLowerCase() === tt.toLowerCase())) out.push({ level: "todo", page: name, en: `Two sections are called "${tt}". Rename or join them.`, hi: `दो हिस्सों का नाम "${tt}" है। एक का नाम बदलें या दोनों को जोड़ें।` });
+      if (p1 && p2 && !hasPicture(p2) && !hasPicture(p1) && !hasPicture(b)) out.push({ level: "todo", page: name, blockId: p1.id, en: `"${title(p2) || p2.kind}", "${title(p1) || p1.kind}" and "${tt || b.kind}" are three sections of text in a row. Add a photo to the middle one.`, hi: `"${title(p2) || p2.kind}", "${title(p1) || p1.kind}" और "${tt || b.kind}" लगातार तीन हिस्से सिर्फ़ लिखाई के हैं। बीच वाले में फ़ोटो डालें।` });
+      if (tt && blocks.slice(0, i).some((x) => title(x).toLowerCase() === tt.toLowerCase())) out.push({ level: "todo", page: name, blockId: b.id, en: `Two sections are called "${tt}". Rename or join them.`, hi: `दो हिस्सों का नाम "${tt}" है। एक का नाम बदलें या दोनों को जोड़ें।` });
     });
   }
   // One note per thing: the same pair can come up only once, but a long page could still list a lot; the first 8 are enough to act on.

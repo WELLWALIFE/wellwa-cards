@@ -78,7 +78,7 @@ export default function ChooseDesignPage() {
     // A trade with finished templates (bridal wear, 16 Nov 2026): its twelve are the whole choice — marked by their seed ("|fix:").
     const all = r?.ok && r.data.designs?.length ? r.data.designs : [];
     const fixed = all.filter((d) => String(d.spec?.seed ?? "").includes("|fix:"));
-    setDesigns(fixed.length ? fixed.slice(0, 12) : all.slice(0, 6));
+    setDesigns(fixed.length ? fixed.slice(0, 12) : all.slice(0, 12));
   })(); }, [router, tick]);
 
   const advOn = !!card?.site?.advanced && (card.site as { advancedOn?: boolean }).advancedOn !== false;
@@ -105,7 +105,10 @@ export default function ChooseDesignPage() {
       swatch: (() => { const st = l.key === cur && keepOwn ? plain.site?.style : l.style; return swatchOf(st?.palette, st?.color ?? card.themeColor, st?.body === "dark" ? "dark" : "light", fontSetFor(st?.font)?.display.family); })(),
     }));
     // Twelve finished templates of the trade: they are the choice; the six general looks are not mixed in.
-    if (prem.length > 6) return prem;
+    // Every trade has twelve Premium designs now (24 Nov 2026): the old basic looks are not offered any more. A website that still
+    // wears one keeps seeing it here as its current design, so nothing changes until the owner picks another.
+    const worn = looks.find((o) => o.on);
+    if (prem.length >= 6) return worn ? [...prem, { ...worn, name: `Design ${prem.length + 1}` }] : prem;
     return [...prem, ...looks];
   }, [card, designs, hi, advOn]);
   const chosen = options.find((o) => o.id === pick) ?? options.find((o) => o.on) ?? options[0];
@@ -222,7 +225,7 @@ export default function ChooseDesignPage() {
         {options.length ? (
           <>
             {/* Keep design numbers stable within their two labeled sets. */}
-            {([["p", T("Premium designs", "Premium designs")], ["s", T("Standard designs", "Standard designs")]] as const).map(([row, label]) => {
+            {([["p", T("Premium designs", "Premium designs")], ["s", T("Your current design (older style)", "आपका अभी का design (पुराना रूप)")]] as const).map(([row, label]) => {
               const rowOpts = options.map((o, i) => ({ o, i })).filter(({ o }) => (row === "p") === o.id.startsWith("p"));
               if (!rowOpts.length) return null;
               return (

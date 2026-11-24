@@ -9,7 +9,7 @@
 // (preview focus), and the ✏️ on it opens exactly that section in the editor.
 import { Fragment, type ReactNode } from "react";
 import type { Card, CardBlock, CardPage } from "@/lib/types";
-import type { AdvItem, AdvancedSpec, SectionKey } from "@/lib/site-advanced";
+import { homeSlugOf, type AdvItem, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
 import { isEmptyBlock } from "@/lib/site-home";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import type { SiteContent } from "@/components/site-adv/shared";
@@ -54,8 +54,10 @@ export type FlowPart = { b: CardBlock; key: SectionKey | null; c: SiteContent };
 export function flowParts(card: Card, page: CardPage, c: SiteContent, lang: string, hasContact: boolean): FlowPart[] {
   const out: FlowPart[] = [];
   let visitDone = false;
+  // A section the owner hid on the Home page (site.home.hidden, by its id) is not drawn — it stays stored and can be shown again.
+  const hid = page.slug === homeSlugOf(card) ? new Set(card.site?.home?.hidden ?? []) : null;
   for (const b of page.blocks) {
-    if (isEmptyBlock(b)) continue;
+    if (isEmptyBlock(b) || hid?.has(b.id)) continue;
     let key = sectionOf(b);
     if (key === "visit") { if (visitDone) continue; visitDone = true; }
     let cx = c;

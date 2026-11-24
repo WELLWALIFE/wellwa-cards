@@ -50,7 +50,8 @@ const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> =
 
 /** Six designs to choose from (owner, 14 Nov 2026), the same number as a Standard website's looks: the ones already made, filled up from
  *  the design library with no AI run. They carry the words of the design on the card (written once), so choosing one changes the layout only. */
-const CHOICES = 6;
+// Twelve for every trade (owner, 24 Nov 2026: "dono me Premium hi bane" — the six old basic looks are no longer offered).
+const CHOICES = 12;
 async function fillDesigns(uid: string, row: { id: string; username: string; data: Card }, from?: Obj): Promise<void> {
   const kept = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
   // A trade with finished templates (owner, 16 Nov 2026: bridal wear first): its twelve, exactly as written — no seeded variation, no AI.

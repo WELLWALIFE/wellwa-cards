@@ -188,7 +188,11 @@ export default function WebsiteEditPage() {
   const lastFocus = useRef<Record<string, unknown> | null>(null);
   const syncRef = useRef(sync);
   useEffect(() => { syncRef.current = sync; });
-  const previewPage = sync && open ? (sync.page && sync.page !== "home" ? sync.page : "") : embedView?.page ?? "";
+  /** The page of the website the window shows while the list is open ("" = Home): the "Pages" chips set it (master list #8). */
+  const [viewPage, setViewPage] = useState("");
+  const viewPageRef = useRef("");
+  useEffect(() => { viewPageRef.current = viewPage; });
+  const previewPage = sync && open ? (sync.page && sync.page !== "home" ? sync.page : "") : embedView?.page ?? (open ? "" : viewPage);
   useEffect(() => {
     const shown = embedView && card ? keepTouched(embedView.card, card, touched.current) : card;
     if (!shown) return;
@@ -250,7 +254,8 @@ export default function WebsiteEditPage() {
       if (now.embedDirty && !window.confirm(now.hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
       // A part of a Premium home page: its sheet (layout, words, photo) instead of going straight into one screen.
       const sec = d.target.sec ?? "", rows = homeRowsRef.current;
-      const row = (d.target.blockId ? rows.find((r) => r.blk === d.target!.blockId) : undefined) ?? (sec ? rows.find((r) => r.sec === sec && !r.blk) ?? rows.find((r) => r.sec === sec) : undefined);
+      // (only on the Home page: another page's "About" is not the Home page's part)
+      const row = viewPageRef.current ? undefined : (d.target.blockId ? rows.find((r) => r.blk === d.target!.blockId) : undefined) ?? (sec ? rows.find((r) => r.sec === sec && !r.blk) ?? rows.find((r) => r.sec === sec) : undefined);
       if (row) {
         setEmbedDirty(false); setEmbedView(null); setOpen(false);
         sheetFocus.current = rowFocus(row); setSheet({ id: row.id });
@@ -312,12 +317,19 @@ export default function WebsiteEditPage() {
     if (sectionHasContent("trust", c, hasContact)) rows.push({ id: "trust", sec: "trust", name: nm("trust") });
     const slug = homeSlugOf(card);
     const hp = card.pages.find((p) => p.slug === slug);
-    if (hp) for (const p of flowParts(card, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, blk: p.b.id, name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
+    if (hp) for (const p of flowParts(card, hp, c, lang, hasContact)) rows.push({ id: p.b.id, sec: p.key, blk: p.b.id, name: ("title" in p.b ? (p.b.title ?? "").trim() : "") || (p.b.kind === "cta" && (p.b.joinLabel ?? "").trim() ? `${hi ? "बटन" : "Button"}: ${p.b.joinLabel.trim()}` : "") || (p.key ? nm(p.key) : sectionLabel({ key: p.b.id, kind: "block", block: p.b } as Parameters<typeof sectionLabel>[0], card.language)) });
     if (sectionHasContent("cta", c, hasContact)) rows.push({ id: "cta", sec: "cta", name: nm("cta") });
     rows.push({ id: "footer", sec: "footer", name: nm("footer") });
     return rows;
-  }, [adv, storeDesign, card, advRows]);
+  }, [adv, storeDesign, card, advRows, hi]);
   useEffect(() => { homeRowsRef.current = homeRows; }, [homeRows]);
+  /** The Home page's sections the owner hid: listed so each can be shown again. */
+  const hiddenHome = useMemo(() => {
+    if (!adv || storeDesign || !card) return [] as { id: string; name: string }[];
+    const hid = new Set(card.site?.home?.hidden ?? []);
+    const hp = card.pages.find((p) => p.slug === homeSlugOf(card));
+    return (hp?.blocks ?? []).filter((b) => hid.has(b.id) && !isEmptyBlock(b)).map((b) => ({ id: b.id, name: ("title" in b ? (b.title ?? "").trim() : "") || sectionLabel({ key: b.id, kind: "block", block: b } as Parameters<typeof sectionLabel>[0], card.language) }));
+  }, [adv, storeDesign, card]);
   const [mixDesigns, setMixDesigns] = useState<{ hero?: string; sections?: Record<string, string> }[] | null>(null);
   const mixCardId = s?.hasCard ? s.cardId : undefined;
   useEffect(() => {
@@ -328,7 +340,7 @@ export default function WebsiteEditPage() {
       const all = r.ok && r.data.designs?.length ? r.data.designs : [];
       // The same twelve (a trade's finished templates) or six, in the same order, as the "choose a design" screen numbers them.
       const fixed = all.filter((d) => String(d.spec?.seed ?? "").includes("|fix:"));
-      setMixDesigns((fixed.length ? fixed.slice(0, 12) : all.slice(0, 6)).map((d) => ({ hero: d.spec?.hero, sections: d.spec?.sections ?? {} })));
+      setMixDesigns((fixed.length ? fixed.slice(0, 12) : all.slice(0, 12)).map((d) => ({ hero: d.spec?.hero, sections: d.spec?.sections ?? {} })));
     }).catch(() => { if (live) setMixDesigns([]); });
     return () => { live = false; };
   }, [tab, adv, storeDesign, mixDesigns, mixCardId]);
@@ -421,7 +433,19 @@ export default function WebsiteEditPage() {
   };
   /** Which screen holds the photo of a part (none: the part has no photo of its own). */
   const SHEET_PHOTO: Partial<Record<SectionKey, string>> = { hero: "photos", about: "about", gallery: "photos", services: "products" };
-  const sheetGo = (i: number) => { const r = homeRows[i]; if (!r) return; const f = rowFocus(r); sheetFocus.current = f; setSheet({ id: r.id }); focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); window.scrollTo({ top: 0 }); };
+  const sheetGo = (i: number) => { const r = homeRows[i]; if (!r) return; setViewPage(""); const f = rowFocus(r); sheetFocus.current = f; setSheet({ id: r.id }); focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); window.scrollTo({ top: 0 }); };
+  /** Hides one of the Home page's sections (it stays stored) or shows it again; goes to the website with Save. */
+  function hideHomeBlock(id: string, hide: boolean) {
+    const h = new Set(site.home?.hidden ?? []);
+    if (hide) h.add(id); else h.delete(id);
+    if (hide) {
+      // The sheet goes on to the part that takes its place.
+      const i = homeRows.findIndex((r) => r.id === id), next = homeRows[i + 1] ?? homeRows[i - 1];
+      const f = next ? rowFocus(next) : { top: true };
+      sheetFocus.current = next ? f : null; focusAsk.current = f; lastFocus.current = f; setSheet(next ? { id: next.id } : null);
+    } else { const f = { blk: id }; focusAsk.current = f; lastFocus.current = f; }
+    setHome({ hidden: [...h] });
+  }
   const sheetClose = () => { sheetFocus.current = null; setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); };
   /** One of the Home page's own sections changes place with the one above / below it; goes to the website with Save. */
   function moveHomeBlock(id: string, dir: -1 | 1) {
@@ -796,7 +820,10 @@ export default function WebsiteEditPage() {
                   {/* eslint-disable-next-line react-hooks/refs -- moveHomeBlock runs on the tap, never while drawing */}
                   <button type="button" disabled={at <= 0} onClick={() => moveHomeBlock(row.blk!, -1)} className={small}><ChevronUp className="h-4 w-4" /> {hi ? "ऊपर ले जाएँ" : "Move up"}</button>
                   <button type="button" disabled={at < 0 || at >= own.length - 1} onClick={() => moveHomeBlock(row.blk!, 1)} className={small}><ChevronDown className="h-4 w-4" /> {hi ? "नीचे ले जाएँ" : "Move down"}</button>
-                  <button type="button" onClick={() => sheetOpen("text", row.blk)} className="text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "हटाना है? “शब्द बदलें” में 🗑 दबाएँ →" : "Remove it? Press 🗑 in “Change the words” →"}</button>
+                  <button type="button" onClick={() => hideHomeBlock(row.blk!, true)} className={small}><EyeOff className="h-4 w-4" /> {hi ? "छुपाएँ" : "Hide"}</button>
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted">{hi ? "छुपाया हुआ हिस्सा मिटता नहीं — ऊपर “छुपे हुए हिस्से” से कभी भी वापस दिखा सकते हैं। पक्का करने के लिए Save दबाएँ।" : "A hidden part is not deleted — show it again any time from “Hidden parts” above. Press Save to keep the change."}</p>
+                <div>
                 </div>
               </div>
             : <p className="text-[11px] text-muted">{hi ? "यह हिस्सा हर website में अपनी तय जगह पर रहता है — इसे ऊपर-नीचे नहीं किया जाता।" : "This part has a fixed place on every website — it is not moved up or down."}</p>}
@@ -817,9 +844,27 @@ export default function WebsiteEditPage() {
               : <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-border bg-surface px-3 py-3"><Wand2 className="h-5 w-5 shrink-0 text-muted" /><span><span className="block text-sm font-bold text-muted">{hi ? "अपना design खुद बनाएँ" : "Build your own design"}</span><span className="block text-[11px] text-muted">{hi ? "पहले बाईं तरफ़ से एक तैयार design चुनें, फिर ये खुलेगा।" : "First choose a ready design; then this opens."}</span></span></div>}
           </div>
           {homeRows.length > 1 && <button type="button" onClick={() => sheetGo(0)} className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-left shadow-card"><Eye className="h-5 w-5 shrink-0 text-brand" /><span><span className="block text-sm font-bold">{hi ? "मेरी website जाँचें" : "Check my website"}</span><span className="block text-[11px] text-muted">{hi ? "ऊपर से नीचे, हर हिस्सा एक-एक करके देखें और वहीं बदलें" : "Top to bottom, one part at a time — change anything right there"}</span></span></button>}
+          {hiddenHome.length > 0 && <div className="rounded-xl border border-dashed border-border bg-surface px-3 py-2">
+            <p className="text-[12px] font-semibold">{hi ? `छुपे हुए हिस्से (${hiddenHome.length})` : `Hidden parts (${hiddenHome.length})`}</p>
+            <ul className="mt-1 space-y-1">
+              {hiddenHome.map((x) => <li key={x.id} className="flex items-center justify-between gap-2 text-[12px]"><span className="min-w-0 truncate text-muted">{x.name}</span><button type="button" onClick={() => hideHomeBlock(x.id, false)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1 font-semibold"><Eye className="h-3.5 w-3.5" /> {hi ? "वापस दिखाएँ" : "Show again"}</button></li>)}
+            </ul>
+          </div>}
           <p className="text-[11px] text-muted">{hi ? "रंग, अक्षर और कोने नीचे “Design” में हैं। यहाँ का कोई भी बदलाव पहले इस window में दिखता है; असली website पर तभी जाता है जब आप Save दबाते हैं।" : "Colours, letters and corners are under “Design” below. Any change here shows in this window first; it goes to the real website only when you press Save."}</p>
         </section>)}
-      {!open && card && <SiteCheck card={card} hi={hi} />}
+      {!open && visiblePages.length > 1 && (
+        <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 shadow-card">
+          <p className="text-sm font-bold">{hi ? "📄 Website के pages" : "📄 Pages of the website"}</p>
+          <p className="text-[11px] text-muted">{hi ? "किसी page को दबाएँ — बाईं तरफ़ वही page दिखेगा।" : "Tap a page — the window on the left shows that page."}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {visiblePages.map((p) => { const home = p.slug === "home"; const on = home ? !viewPage : viewPage === p.slug; return <button key={p.slug} type="button" onClick={() => { sheetFocus.current = null; setSheet(null); setViewPage(home ? "" : p.slug); }} className={`${chip(on)} !px-2.5 !py-1.5 !text-xs`}>{p.label || p.slug}</button>; })}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <button type="button" onClick={() => openPart("text")} className="text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "Page के शब्द बदलें / नया page जोड़ें →" : "Change a page's words / add a page →"}</button>
+            <button type="button" onClick={() => openPart("pages")} className="text-[12px] font-semibold text-brand-ink underline decoration-dotted underline-offset-2">{hi ? "कौन से pages दिखें →" : "Which pages show →"}</button>
+          </div>
+        </section>)}
+      {!open && card && <SiteCheck card={card} hi={hi} onFix={(n) => { sheetFocus.current = null; setSheet(null); if (n.blockId) sheetOpen("text", n.blockId); else if (n.part) openPart(n.part); }} />}
       {!open
         ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["settings"]} state={(k) => partState(card, k)} onPick={(_g, k) => { sheetFocus.current = null; setSheet(null); openPart(k); }} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
