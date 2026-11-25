@@ -15,7 +15,7 @@ type Report = {
 };
 type Fix = { title: string; why: string; plan: "website" | "growth"; hi?: string };
 /** The partner whose website sent the visitor: the report's buttons open their WhatsApp. */
-type Partner = { name: string; wa: string };
+type Partner = { name: string; wa: string; card?: string };
 
 const post = async (body: unknown) => {
   const r = await fetch("/api/google-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -115,6 +115,7 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
   const scoreTone = r.score >= 75 ? "text-good" : r.score >= 45 ? "text-amber-600" : "text-red-600";
   const needsWebsite = !r.place.website || issues.some((f) => f.plan === "website");
   const ask = `Hi${partner?.name ? ` ${partner.name}` : " Shubhora"}, my Google report for ${r.place.name} (${r.city}): score ${r.score}/100, ${issues.length} issues${ahead.length ? `, ${ahead.length}${more} businesses ahead of me` : ""}. Please fix my Google profile.`;
+  const pic = `${typeof window === "undefined" ? "" : window.location.origin}/api/google-check/card?p=${encodeURIComponent(r.place.id)}${partner?.card ? `&by=${encodeURIComponent(partner.card)}` : ""}`;
   const wa = partner ? `https://wa.me/${partner.wa}?text=${encodeURIComponent(ask)}` : waLink(ask);
   const card = "rounded-3xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_14px_30px_-14px_rgba(16,24,40,0.18)] md:p-7";
   const cta = "flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#6d28d9] via-[#2563eb] to-[#06b6d4] px-5 py-4 text-center text-lg font-bold text-white shadow-lg hover:opacity-95";
@@ -158,6 +159,11 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
             : <div className="rounded-2xl border border-border bg-bg p-3"><p className="text-3xl font-extrabold tabular-nums">{r.place.reviews}</p><p className="mt-1 text-xs text-muted">Reviews</p></div>}
         </div>
         <a href={wa} target="_blank" rel="noopener noreferrer" className={`${cta} mt-5`}>{T("Fix my Google profile", "Fix My Google profile")} <ArrowRight className="h-5 w-5" /></a>
+        {/* The report as one picture: to keep, or to send on WhatsApp. */}
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
+          <a href={pic} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold hover:border-brand">🖼️ {T("Report as a picture", "Report ki photo")}</a>
+          <a href={`https://wa.me/?text=${encodeURIComponent(`${r.place.name} - Google report: score ${r.score}/100, ${issues.length} issues.\n${pic}`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold hover:border-brand">📤 {T("Share on WhatsApp", "WhatsApp par share karein")}</a>
+        </div>
       </div>
 
       {/* ---- who is ahead ---- */}

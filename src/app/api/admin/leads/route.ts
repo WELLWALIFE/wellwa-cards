@@ -21,3 +21,12 @@ export async function PATCH(request: Request) {
   const r = await restAsService(`site_leads?id=eq.${id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status }) });
   return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Could not save." }, { status: 502 });
 }
+
+/** Removes one lead from the Admin list for good (a test, a wrong number). The copy on a card's own Leads is not touched. */
+export async function DELETE(request: Request) {
+  if (!(await adminAllowed(request))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const id = Number(new URL(request.url).searchParams.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ error: "bad request" }, { status: 400 });
+  const r = await restAsService(`site_leads?id=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Could not delete." }, { status: 502 });
+}

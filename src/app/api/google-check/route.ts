@@ -60,18 +60,18 @@ export async function POST(request: Request) {
 }
 
 /** A Shubhora partner's name and WhatsApp number as their own card shows them; null for any other card. */
-async function partnerOf(by: string): Promise<{ name: string; wa: string } | null> {
+async function partnerOf(by: string): Promise<{ name: string; wa: string; card: string } | null> {
   const admin = getAdminSupabase();
   if (!admin || !/^[a-z0-9_.-]{2,60}$/.test(by)) return null;
   const { data } = await admin.from("cards").select("data").eq("username", by).maybeSingle();
   const d = (data?.data ?? {}) as { company?: string; name?: string; jobTitle?: string; tagline?: string; links?: { type?: string; value?: string }[] };
   if (!data || !isShubhoraSellerCard(d)) return null;
   const wa = ((d.links ?? []).find((l) => l.type === "whatsapp")?.value ?? "").replace(/\D/g, "");
-  return wa.length >= 10 ? { name: (d.name || d.company || "").trim(), wa: wa.length === 10 ? `91${wa}` : wa } : null;
+  return wa.length >= 10 ? { name: (d.name || d.company || "").trim(), wa: wa.length === 10 ? `91${wa}` : wa, card: by } : null;
 }
 
 /** The report as one WhatsApp message: where they stand, the score, what to fix first, and the link to check again. */
-function reportText(r: { place: { name: string }; city: string; score: number; fixes: { title: string; why: string }[]; issues?: unknown[]; local?: { rank: number | null; total: number; ahead: unknown[] }; profile?: { ok: boolean }[] }, from: string): string {
+function reportText(r: { place: { name: string; id?: string }; city: string; score: number; fixes: { title: string; why: string }[]; issues?: unknown[]; local?: { rank: number | null; total: number; ahead: unknown[] }; profile?: { ok: boolean }[] }, from: string): string {
   const fixes = r.fixes.slice(0, 3).map((f, i) => `${i + 1}. *${f.title}*\n   ${f.why}`).join("\n");
   const pct = r.profile?.length ? Math.round((r.profile.filter((x) => x.ok).length / r.profile.length) * 100) : null;
   return [
@@ -79,6 +79,7 @@ function reportText(r: { place: { name: string }; city: string; score: number; f
     r.local && r.local.ahead.length ? `🏆 *${r.local.ahead.length}${r.local.rank === null ? "+" : ""} businesses* show before you on Google` : "",
     `📊 Score: *${r.score}/100*${pct !== null ? ` · Profile ${pct}% complete` : ""}${r.issues?.length ? ` · ${r.issues.length} issues found` : ""}`,
     fixes ? `\n*Fix these first:*\n${fixes}` : "",
+    r.place.id ? `\n🖼️ Your report as a picture: ${SITE_URL}/api/google-check/card?p=${encodeURIComponent(r.place.id)}` : "",
     `\nSee the full report: ${SITE_URL}/google-check`,
     `— ${from}`,
   ].filter(Boolean).join("\n");

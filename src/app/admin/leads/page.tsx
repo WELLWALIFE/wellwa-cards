@@ -2,7 +2,7 @@
 // Super Admin → Leads: every lead from the platform's own website — "Contact / Start a project" form and the free Google check —
 // with a WhatsApp / call / email button and a status (New → Contacted → Closed).
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, MessageCircle, Phone, Mail } from "lucide-react";
+import { Loader2, MessageCircle, Phone, Mail, Trash2 } from "lucide-react";
 import { adminHeaders } from "@/lib/admin-client";
 
 type Lead = { id: number; created_at: string; source: string; name: string; phone: string; email: string; message: string; card: string; status: string };
@@ -24,6 +24,11 @@ export default function AdminLeads() {
   async function mark(id: number, status: string) {
     setList((l) => (l ?? []).map((x) => (x.id === id ? { ...x, status } : x)));
     await fetch("/api/admin/leads", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ id, status }) });
+  }
+  async function remove(l: Lead) {
+    if (!window.confirm(`Delete the lead "${l.name}" for good? This cannot be undone.`)) return;
+    const r = await fetch(`/api/admin/leads?id=${l.id}`, { method: "DELETE", headers: await adminHeaders() });
+    if (r.ok) setList((x) => (x ?? []).filter((y) => y.id !== l.id));
   }
   if (!list) return <div className="grid place-items-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted" /></div>;
   const shown = list.filter((l) => (!src || l.source === src) && (!st || l.status === st));
@@ -58,6 +63,7 @@ export default function AdminLeads() {
               <div className="mt-3 flex flex-wrap gap-2">
                 {l.phone && <a href={wa(l.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp {l.phone}</a>}
                 {l.phone && <a href={`tel:${l.phone}`} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold"><Phone className="h-3.5 w-3.5" /> Call</a>}
+                <button type="button" onClick={() => void remove(l)} className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-danger"><Trash2 className="h-3.5 w-3.5" /> Delete</button>
                 {l.email && <a href={`mailto:${l.email}`} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold"><Mail className="h-3.5 w-3.5" /> {l.email}</a>}
               </div>
             </div>
