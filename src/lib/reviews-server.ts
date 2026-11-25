@@ -97,6 +97,24 @@ const LANG_RULE: Record<string, string> = {
   hi: "Hindi in Devanagari script", hinglish: "Hinglish (Hindi in Roman letters)", en: "simple Indian English",
 };
 
+
+/* The draft is checked in code, not only asked of the AI (owner, 26 Nov 2026: replies carried another number, mixed scripts —
+ * "प्रanjal", Urdu letters — and Hindi answers to English reviews). */
+const HINGLISH = /\b(hai|hain|ka|ki|ke|aur|bahut|bohot|accha|acha|achha|nahi|nhi|mera|meri|hum|aap|tha|thi|bhi|kya|sahi|kaam|ji)\b/i;
+/** The language to answer in: the review's own (Devanagari → Hindi, Roman with Hindi words → Hinglish, else English). */
+export function replyLang(text: string, fallback: string): string {
+  if (/[\u0900-\u097F]/.test(text)) return "hi";
+  if (/[a-z]{2,}/i.test(text)) return HINGLISH.test(text) ? "hinglish" : "en";
+  return fallback;
+}
+/** The draft as it may go out, or null when it must be written again (another script, or Hindi and Roman letters inside one word).
+ *  Every phone number in it becomes the business's own one (or goes, when there is none). */
+export function guardReply(reply: string, phone: string): string | null {
+  if (!reply || /[\u0600-\u06FF\u0400-\u04FF\u4E00-\u9FFF]/.test(reply) || /[\u0900-\u097F][a-z]|[a-z][\u0900-\u097F]/i.test(reply)) return null;
+  const want = phone.replace(/\D/g, "").slice(-10);
+  return reply.replace(/(\+?91[\s-]?)?\d[\d\s-]{8,}\d/g, (m) => (m.replace(/\D/g, "").slice(-10) === want ? m : want ? phone : "")).replace(/\s{2,}/g, " ").trim();
+}
+
 /** Draft a reply to a comment/review. Returns "" if AI is not configured. */
 export async function draftReply(ctx: { name: string; tagline: string; phone: string; lang: string; knowledge: string }, item: { provider: string; kind: string; author: string; text: string; rating: number | null }): Promise<string> {
   const key = process.env.GEMINI_API_KEY; if (!key) return "";
@@ -106,14 +124,17 @@ export async function draftReply(ctx: { name: string; tagline: string; phone: st
 ${item.kind === "review" ? `Rating: ${item.rating ?? "n/a"}/5. ` : ""}From: ${item.author}
 Their message: "${item.text || "(no text, rating only)"}"
 ${ctx.knowledge ? `Facts about the business (use only these, never invent prices/claims):\n${ctx.knowledge}\n` : ""}
-Write ONE short public reply in ${LANG_RULE[lang]}: 1-3 sentences, max 50 words, warm and personal, address them by name if natural, thank them.
+Write ONE short public reply in ${LANG_RULE[replyLang(item.text, lang)]}, in that script only. 1-3 sentences, max 50 words, warm and personal, address them by name if natural, thank them.
+${ctx.phone ? `If you give a phone or WhatsApp number, give only ${ctx.phone} — never any other number, even one in the facts.` : "Do not write any phone number."}
 ${negative ? `This is a complaint/low rating: apologise sincerely, do not argue or make excuses, ${ctx.phone ? `invite them to WhatsApp ${ctx.phone} so you can fix it personally` : "offer to fix it personally"}.` : item.text.includes("?") ? "They asked a question — answer it briefly from the facts if possible, otherwise invite them to message on WhatsApp." : `${ctx.phone ? `You may end with an invitation to WhatsApp ${ctx.phone} for orders or help.` : ""}`}
 No hashtags, at most 1 emoji, no medical or income claims. Return only the reply text.`;
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) try {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", { method: "POST", headers: { "x-goog-api-key": key, "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.6, maxOutputTokens: 200 } }) });
     const j = await r.json().catch(() => ({}));
-    return String(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().replace(/^["“]|["”]$/g, "").slice(0, 600);
-  } catch { return ""; }
+    const out = guardReply(String(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().replace(/^["“]|["”]$/g, "").slice(0, 600), ctx.phone);
+    if (out) return out;
+  } catch { /* try again */ }
+  return "";
 }
 
 export type ReplyRow = { provider: string; item_id: string; reply_text: string; status: string; auto: boolean; created_at: string };

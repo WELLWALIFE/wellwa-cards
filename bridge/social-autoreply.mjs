@@ -37,6 +37,24 @@ async function context(userId) {
   const card = (await rest(`cards?owner_id=eq.${userId}&order=updated_at.desc&limit=1&select=data`))?.[0]?.data;
   return { name: prof?.tagline || card?.company || prof?.name || "our business", tagline: card?.tagline ?? "", phone: prof?.phone ?? "", lang: LANG[prof?.lang] ? prof.lang : "hinglish", knowledge: [card?.about, card?.botKnowledge].filter(Boolean).join("\n").slice(0, 2000) };
 }
+
+/* The draft is checked in code, not only asked of the AI (owner, 26 Nov 2026: replies carried another number, mixed scripts —
+ * "प्रanjal", Urdu letters — and Hindi answers to English reviews). */
+const HINGLISH = /\b(hai|hain|ka|ki|ke|aur|bahut|bohot|accha|acha|achha|nahi|nhi|mera|meri|hum|aap|tha|thi|bhi|kya|sahi|kaam|ji)\b/i;
+/** The language to answer in: the review's own (Devanagari → Hindi, Roman with Hindi words → Hinglish, else English). */
+function replyLang(text, fallback) {
+  if (/[\u0900-\u097F]/.test(text)) return "hi";
+  if (/[a-z]{2,}/i.test(text)) return HINGLISH.test(text) ? "hinglish" : "en";
+  return fallback;
+}
+/** The draft as it may go out, or null when it must be written again (another script, or Hindi and Roman letters inside one word).
+ *  Every phone number in it becomes the business's own one (or goes, when there is none). */
+function guardReply(reply, phone) {
+  if (!reply || /[\u0600-\u06FF\u0400-\u04FF\u4E00-\u9FFF]/.test(reply) || /[\u0900-\u097F][a-z]|[a-z][\u0900-\u097F]/i.test(reply)) return null;
+  const want = phone.replace(/\D/g, "").slice(-10);
+  return reply.replace(/(\+?91[\s-]?)?\d[\d\s-]{8,}\d/g, (m) => (m.replace(/\D/g, "").slice(-10) === want ? m : want ? phone : "")).replace(/\s{2,}/g, " ").trim();
+}
+
 async function draft(ctx, item) {
   if (!GEMINI_KEY) return "";
   const negative = item.rating !== null && item.rating <= 3;
@@ -44,14 +62,17 @@ async function draft(ctx, item) {
 ${item.kind === "review" ? `Rating: ${item.rating ?? "n/a"}/5. ` : ""}From: ${item.author}
 Their message: "${item.text || "(no text, rating only)"}"
 ${ctx.knowledge ? `Facts about the business (use only these, never invent prices/claims):\n${ctx.knowledge}\n` : ""}
-Write ONE short public reply in ${LANG[ctx.lang]}: 1-3 sentences, max 50 words, warm and personal, thank them.
+Write ONE short public reply in ${LANG[replyLang(item.text, ctx.lang)]}, in that script only. 1-3 sentences, max 50 words, warm and personal, thank them.
+${ctx.phone ? `If you give a phone or WhatsApp number, give only ${ctx.phone} — never any other number, even one in the facts.` : "Do not write any phone number."}
 ${negative ? `This is a complaint/low rating: apologise sincerely, do not argue, ${ctx.phone ? `invite them to WhatsApp ${ctx.phone} so you can fix it personally` : "offer to fix it personally"}.` : item.text.includes("?") ? "They asked a question — answer briefly from the facts if possible, otherwise invite them to message on WhatsApp." : ""}
 No hashtags, at most 1 emoji, no medical or income claims. Return only the reply text.`;
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) try {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", { method: "POST", headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.6, maxOutputTokens: 200 } }) });
     const j = await r.json();
-    return String(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().replace(/^["“]|["”]$/g, "").slice(0, 600);
-  } catch { return ""; }
+    const out = guardReply(String(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().replace(/^["“]|["”]$/g, "").slice(0, 600), ctx.phone);
+    if (out) return out;
+  } catch { /* try again */ }
+  return "";
 }
 async function record(userId, item, reply, status, error) {
   await rest("social_replies?on_conflict=user_id,provider,item_id", { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: JSON.stringify({ user_id: userId, provider: item.provider, item_id: item.id, item_kind: item.kind, author: item.author.slice(0, 80), text: item.text.slice(0, 1000), rating: item.rating, reply_text: reply.slice(0, 600), status, auto: true, error: error?.slice(0, 200) ?? null }) });
@@ -134,7 +155,8 @@ async function runGoogle() {
       const done = await alreadyDone(g.user_id, "google", open.map((i) => i.id));
       const fresh = open.filter((i) => !done.has(i.id)).slice(0, MAX_PER_ACCOUNT);
       if (!fresh.length) continue;
-      const ctx = await context(g.user_id);
+      // Google reviews give the number on the Google profile — the business's public / customer-care number (owner, 26 Nov 2026).
+      const ctx = { ...(await context(g.user_id)), ...(g.phone ? { phone: g.phone } : {}) };
       for (const it of fresh) {
         const reply = await draft(ctx, it); if (!reply) continue;
         const pr = await fetch(`${V4}/${it.id}/reply`, { method: "PUT", headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" }, body: JSON.stringify({ comment: reply }) });

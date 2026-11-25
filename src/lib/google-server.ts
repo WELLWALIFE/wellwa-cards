@@ -206,11 +206,29 @@ export type GAttrMeta = { name: string; displayName: string; group: string };
 export async function attributeOptions(token: string, locationName: string): Promise<{ meta: GAttrMeta[]; values: Record<string, boolean> }> {
   const loc = locPath(locationName);
   type M = { parent: string; valueType: string; displayName?: string; groupDisplayName?: string; deprecated?: boolean };
-  const [m, v] = await Promise.all([
-    gget<{ attributeMetadata?: M[] }>(`${INFO}/attributes?parent=${loc}&languageCode=en&regionCode=IN&pageSize=200`, token),
-    gget<{ attributes?: { name: string; valueType?: string; values?: unknown[] }[] }>(`${INFO}/${loc}/attributes`, token).catch(() => ({ attributes: [] })),
-  ]);
-  const meta = (m.attributeMetadata ?? []).filter((x) => x.valueType === "BOOL" && !x.deprecated && x.displayName)
+  // With `parent` (the location) Google works out the category, region and language itself; sending those too was refused as
+  // "invalid argument" (live, 26 Nov 2026). Paged, 100 a page.
+  // Asked by the location first; Google refused that for Wellwa ("invalid argument", 26 Nov 2026), so then by the profile's main
+  // category, region and language — the other way the list can be asked for.
+  const pull = async (q: string) => {
+    const list: M[] = []; let page = "";
+    for (let i = 0; i < 5; i++) {
+      const m = await gget<{ attributeMetadata?: M[]; nextPageToken?: string }>(`${INFO}/attributes?${q}&pageSize=100${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`, token);
+      list.push(...(m.attributeMetadata ?? []));
+      if (!m.nextPageToken) break; page = m.nextPageToken;
+    }
+    return list;
+  };
+  let list: M[];
+  try { list = await pull(`parent=${encodeURIComponent(loc)}`); }
+  catch (e) {
+    console.error("[google] attributes by location", e instanceof Error ? e.message : e);
+    const cat = (await getProfile(token, locationName)).primaryCategory?.name;
+    if (!cat) throw new Error("Set the main category first — Google lists the options by it.");
+    list = await pull(`categoryName=${encodeURIComponent(cat)}&regionCode=IN&languageCode=en`);
+  }
+  const v = await gget<{ attributes?: { name: string; valueType?: string; values?: unknown[] }[] }>(`${INFO}/${loc}/attributes`, token).catch(() => ({ attributes: [] }));
+  const meta = list.filter((x) => x.valueType === "BOOL" && !x.deprecated && x.displayName)
     .map((x) => ({ name: x.parent, displayName: x.displayName!, group: x.groupDisplayName ?? "" }));
   const values: Record<string, boolean> = {};
   for (const a of v.attributes ?? []) if (a.valueType === "BOOL" && typeof a.values?.[0] === "boolean") values[a.name] = a.values[0] as boolean;
