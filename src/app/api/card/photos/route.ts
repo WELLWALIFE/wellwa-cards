@@ -27,7 +27,7 @@ import { bannerFocus } from "@/lib/media/photo-focus";
 import { MAX_GALLERY_PHOTOS } from "@/lib/card-facts";
 import { SITE_PALETTES } from "@/lib/site-style";
 import { categoryOf } from "@/lib/poster-categories";
-import type { Card, CardBlock } from "@/lib/types";
+import type { Card, CardBlock, CardPage } from "@/lib/types";
 import { activeAdvanced } from "@/lib/site-advanced";
 import { youtubeId, youtubeThumb, youtubeWatch } from "@/lib/youtube";
 
@@ -156,16 +156,30 @@ function removeSlot(card: Card, slot: string): Card | null {
   return null;   // the banner is never taken off
 }
 function addToGallery(card: Card, url: string, group = "", video = ""): Card | null {
-  let g = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).find((b) => b.kind === "gallery");
+  // New photos go to the Gallery page's own gallery when the website has one (its albums are shown there), else to the first gallery.
+  const pageGallery = card.pages.find((p) => !p.hidden && p.slug === "gallery")?.blocks.find((b) => b.kind === "gallery");
+  let g = pageGallery ?? card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).find((b) => b.kind === "gallery");
   if (!g || g.kind !== "gallery") {
     // No gallery yet (owner, 24 Oct 2026: "gallery nahi hai ka warning sahi hai, par add gallery ka option bhi"): the first photo
     // makes one — on the website's Gallery page when it has one, else on the home page just above the closing contact / call-to-action.
-    const host = card.pages.find((p) => !p.hidden && p.slug === "gallery") ?? card.pages.find((p) => !p.hidden && p.slug === "home") ?? card.pages.find((p) => !p.hidden);
-    if (!host) return null;
-    const block: CardBlock = { id: randomUUID().slice(0, 8), kind: "gallery", title: card.language === "hi" ? "गैलरी" : "Gallery", images: [] };
-    let at = host.blocks.findIndex((b) => b.kind === "contact" || b.kind === "cta");
-    if (at < 0) at = host.blocks.length;
-    card = { ...card, pages: card.pages.map((p) => (p === host ? { ...p, blocks: [...p.blocks.slice(0, at), block, ...p.blocks.slice(at)] } : p)) };
+    // Since 25 Nov 2026 (owner: "gallery ka page automatically site me lag jana chahiye") a website with no Gallery page gets one — in the
+    // menu, before Contact — instead of the photos landing at the foot of the Home page. A card with no website keeps the old way.
+    const hi = card.language === "hi";
+    const block: CardBlock = { id: randomUUID().slice(0, 8), kind: "gallery", title: hi ? "गैलरी" : "Gallery", images: [] };
+    const host = card.pages.find((p) => !p.hidden && p.slug === "gallery");
+    if (host || !card.site) {
+      const h = host ?? card.pages.find((p) => !p.hidden && p.slug === "home") ?? card.pages.find((p) => !p.hidden);
+      if (!h) return null;
+      let at = h.blocks.findIndex((b) => b.kind === "contact" || b.kind === "cta");
+      if (at < 0) at = h.blocks.length;
+      card = { ...card, pages: card.pages.map((p) => (p === h ? { ...p, blocks: [...p.blocks.slice(0, at), block, ...p.blocks.slice(at)] } : p)) };
+    } else {
+      const taken = new Set(card.pages.map((p) => p.slug));
+      const slug = !taken.has("gallery") ? "gallery" : !taken.has("photos") ? "photos" : `gallery-${randomUUID().slice(0, 4)}`;
+      const page: CardPage = { id: randomUUID().slice(0, 8), slug, label: hi ? "गैलरी" : "Gallery", blocks: [block] };
+      const at = card.pages.findIndex((p) => p.slug === "contact");
+      card = { ...card, pages: at < 0 ? [...card.pages, page] : [...card.pages.slice(0, at), page, ...card.pages.slice(at)] };
+    }
     g = block;
   }
   const colors = ["#e2e8f0", "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#ddd6fe"];

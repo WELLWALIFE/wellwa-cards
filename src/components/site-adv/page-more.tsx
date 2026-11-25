@@ -341,6 +341,46 @@ function Story({ b, x, i, tone }: { b: Extract<CardBlock, { kind: "story" }>; x:
   );
 }
 
+/** A gallery with albums: a row of the album names (each jumps to its album), then every album under its own name with its count —
+ *  "Opening ceremony · 12 photos" — and its photos; photos with no album last, as "More photos". Tapping a photo opens that album big. */
+function Albums({ b, x, i, tone, title }: { b: Extract<CardBlock, { kind: "gallery" }>; x: AdvCtxPlus; i: number; tone: "alt" | "paper"; title: string }) {
+  const all = b.images.filter((q) => q.url).map((q) => ({ url: q.url!, label: (q.label ?? "").trim(), group: (q.group ?? "").trim(), video: !!q.video }));
+  const heads = [...new Set(all.map((g) => g.group).filter(Boolean))];
+  const albums = [
+    ...heads.map((h) => ({ key: h, name: x.t(h), items: all.filter((g) => g.group === h) })),
+    ...(all.some((g) => !g.group) ? [{ key: "", name: x.ui("More photos", "और फ़ोटो"), items: all.filter((g) => !g.group) }] : []),
+  ];
+  const head = title || x.ui("Albums", "एल्बम");
+  const idOf = (n: number) => `alb-${b.id}-${n}`;
+  const count = (n: number) => (x.hi ? `${n} फ़ोटो` : `${n} ${n === 1 ? "photo" : "photos"}`);
+  return (
+    <Sec k={`b${i}`} tone={tone} wide label={head}>
+      <Head title={head} />
+      {albums.length > 1 && (
+        <nav className="cg-chips gl-albums" aria-label={x.ui("Albums", "एल्बम")}>
+          {albums.map((a, n) => <a key={a.key || "more"} href={`#${idOf(n)}`}>{a.name} <small>{a.items.length}</small></a>)}
+        </nav>
+      )}
+      {albums.map((a, n) => (
+        <div key={a.key || "more"} id={idOf(n)} className="gl-album">
+          <h3 className="gl-album-h"><span>{a.name}</span> <small>{count(a.items.length)}</small></h3>
+          <ul className="gl-grid" data-mode="grid">
+            {a.items.map((g, k) => (
+              <li key={g.url}>
+                <button type="button" onClick={() => x.zoom(a.items.map((q) => q.url), k, g.label || a.name)} aria-label={g.label || `${a.name} ${k + 1}`}>
+                  <Pic src={g.url} alt={g.label || a.name} className="adv-photo" sizes="(min-width:900px) 25vw, 50vw" />
+                  {g.video && <PlayMark />}
+                  {g.label && <span className="gl-cap">{x.t(g.label)}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </Sec>
+  );
+}
+
 /** How a list of key points is dressed, by the design's own facts layout (`v`, the spec's trust variant): ruled rows, cards or pills.
  *  Before this the block was one narrow plain list in every one of the twelve designs, set a little inside the page's own edge. */
 const POINTS_LOOK: Record<string, "rule" | "cards" | "chips"> = { strip: "rule", hairline: "rule", "usp-bar": "rule", "icon-row": "cards", "split-cards": "cards", bento: "cards", ticker: "chips", counters: "chips" };
@@ -370,6 +410,7 @@ export function Block({ b, x, c, i, v }: { b: CardBlock; x: AdvCtxPlus; c: SiteC
     case "gallery": case "image": case "carousel": {
       const imgs = b.kind === "gallery" ? b.images.filter((q) => q.url).map((q) => ({ url: q.url!, label: q.label })) : b.images.filter((q) => q.url).map((q) => ({ url: q.url, label: q.caption ?? "" }));
       if (!imgs.length) return null;
+      if (b.kind === "gallery" && b.images.some((q) => q.url && (q.group ?? "").trim())) return <Albums b={b} x={x} i={i} tone={tone} title={title(b.title)} />;
       return <Sec k={`b${i}`} tone={tone} wide label={title(b.title)}><Head title={title(b.title)} /><ul className="gl-grid" data-mode="grid">{imgs.map((g, k) => <li key={g.url}><button type="button" onClick={() => x.zoom(imgs.map((q) => q.url), k, g.label)} aria-label={g.label || `${x.ui("Photo", "फ़ोटो")} ${k + 1}`}><Pic src={g.url} alt={g.label ?? ""} className="adv-photo" sizes="(min-width:900px) 25vw, 50vw" /></button></li>)}</ul></Sec>;
     }
     case "testimonials": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-quotes">{b.items.filter((q) => q.text?.trim()).map((q, k) => <li key={k}><Stars n={q.rating} /><blockquote>{x.t(q.text)}</blockquote><cite>{q.name}</cite></li>)}</ul></Sec>;
@@ -499,6 +540,11 @@ export const MORE_CSS = `
 /* ---- gallery ---- */
 .gl{padding-block:clamp(1.5rem,4vw,3rem) var(--section-pad);background:var(--paper)}
 .gl-albums{margin-bottom:var(--s6)}
+.gl-albums a{flex:none;display:inline-flex;align-items:center;gap:.5em;min-height:44px;padding:0 1.1em;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);font-size:14px;font-weight:500;text-decoration:none;transition:border-color .25s}
+.gl-albums a small{font-size:11.5px;opacity:.6}.gl-albums a:hover{border-color:var(--ink)}
+.gl-album{scroll-margin-top:96px}.gl-album+.gl-album{margin-top:var(--s7,3.5rem)}
+.gl-album-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:.25em .6em;margin:0 0 var(--s4);font-size:clamp(1.2rem,2.4vw,1.6rem);font-weight:600;line-height:1.2;overflow-wrap:anywhere}
+.gl-album-h small{font-size:13px;font-weight:500;opacity:.6}
 .gl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin:0;padding:0;list-style:none}
 .gl-grid li{position:relative;min-width:0;animation:cg-in .7s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0ms)}
 .gl-grid button{position:relative;display:block;width:100%;height:100%;padding:0;border:0;overflow:hidden;cursor:zoom-in;border-radius:var(--r-card);background:var(--accent-soft)}

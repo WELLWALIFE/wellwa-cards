@@ -9,7 +9,7 @@
 // (preview focus), and the ✏️ on it opens exactly that section in the editor.
 import { Fragment, type ReactNode } from "react";
 import type { Card, CardBlock, CardPage } from "@/lib/types";
-import { variantOf, type AdvItem, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
+import { homeSlugOf, variantOf, type AdvItem, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
 import { isEmptyBlock } from "@/lib/site-home";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import type { SiteContent } from "@/components/site-adv/shared";
@@ -27,6 +27,8 @@ const count = (b: CardBlock): number =>
   : b.kind === "gallery" ? b.images.filter((q) => q.url).length
   : b.kind === "image" || b.kind === "carousel" ? b.images.filter((q) => q.url).length
   : 0;
+
+const hasAlbums = (b: CardBlock) => b.kind === "gallery" && b.images.some((q) => q.url && (q.group ?? "").trim());
 
 /** The design's section for a part of the owner's, or null for the plain block style. */
 export function sectionOf(b: CardBlock): SectionKey | null {
@@ -56,6 +58,7 @@ export function flowParts(card: Card, page: CardPage, c: SiteContent, lang: stri
   let visitDone = false;
   // A section the owner hid (site.home.hidden, by its id — on any page) is not drawn; it stays stored and can be shown again.
   const hid = new Set(card.site?.home?.hidden ?? []);
+  const onHome = page.slug === homeSlugOf(card);
   for (const b of page.blocks) {
     if (isEmptyBlock(b) || hid?.has(b.id)) continue;
     let key = sectionOf(b);
@@ -68,7 +71,10 @@ export function flowParts(card: Card, page: CardPage, c: SiteContent, lang: stri
       const fits = sectionHasContent(key, cx, hasContact)
         && !(key === "gallery" && count(b) > 9)
         && !(key === "proof" && count(b) > 3)
-        && !(key === "faq" && count(b) > 8);
+        && !(key === "faq" && count(b) > 8)
+        // A gallery with albums ("Opening ceremony", "Seminar") on its own page is shown album by album, each under its name (owner,
+        // 25 Nov 2026: "album ki tarah dikhe — ye us samay ka, ye us samay ka"); the Home page keeps the design's own gallery.
+        && !(key === "gallery" && !onHome && hasAlbums(b));
       if (!fits) { key = null; cx = c; }
     }
     out.push({ b, key, c: cx });
