@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   const word = (good: boolean, mid: boolean) => (good ? "Good" : mid ? "Average" : "Poor");
   const tiles: { k: string; v: string; good: boolean; mid: boolean; note: string }[] = [
     { k: "Google score", v: `${r.score}/100`, good: r.score >= 75, mid: r.score >= 45, note: "Rating, reviews, photos, hours, website" },
-    ...(pct !== null ? [{ k: "Profile completion", v: `${pct}%`, good: pct >= 85, mid: pct >= 60, note: `${r.profile!.filter((x) => !x.ok).length} fields are missing` }] : []),
+    ...(pct !== null ? [{ k: "Profile completion", v: `${pct}%`, good: pct >= 85, mid: pct >= 60, note: ((n) => (n === 0 ? "Nothing missing" : n === 1 ? "1 field is missing" : `${n} fields are missing`))(r.profile!.filter((x) => !x.ok).length) }] : []),
     { k: "Reviews", v: String(r.place.reviews), good: r.place.reviews >= 100, mid: r.place.reviews >= 30, note: r.place.rating ? `Rating ${r.place.rating.toFixed(1)} / 5` : "No rating yet" },
     { k: "Issues found", v: String(issues.length), good: issues.length === 0, mid: issues.length <= 2, note: "Things hurting your ranking" },
   ].slice(0, 4);
@@ -55,13 +55,13 @@ export async function GET(request: Request) {
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#ffffff", fontFamily: "Inter", color: "#111827" }}>
-        <div style={{ display: "flex", flexDirection: "column", padding: "56px 60px 44px", background: "#f3f4f6" }}>
+        <div style={{ display: "flex", flexDirection: "column", padding: "44px 60px 34px", background: "#f3f4f6" }}>
           <div style={{ display: "flex", fontSize: 54, fontWeight: 700, lineHeight: 1.1 }}>{ascii(r.place.name, 44) || "Your business"}</div>
           <div style={{ display: "flex", marginTop: 12, fontSize: 30, color: "#4b5563" }}>{`${r.place.rating ? r.place.rating.toFixed(1) : "0"}/5  ·  ${r.place.reviews} reviews  ·  ${ascii(r.city, 30)}`}</div>
           <div style={{ display: "flex", marginTop: 6, fontSize: 24, color: "#6b7280" }}>{ascii(r.place.address, 78)}</div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", padding: "40px 60px 0", flex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", padding: "30px 60px 0", flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "34px 40px", borderRadius: 28, border: "3px solid #2563eb", background: "#eaf2ff" }}>
             <div style={{ display: "flex", flexDirection: "column", maxWidth: 640 }}>
               <div style={{ display: "flex", fontSize: 44, fontWeight: 700 }}>Google Search Rank</div>
@@ -77,12 +77,12 @@ export async function GET(request: Request) {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", marginTop: 30 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", marginTop: 24 }}>
             {tiles.map((t) => (
-              <div key={t.k} style={{ display: "flex", flexDirection: "column", width: 464, marginBottom: 30, padding: "30px 34px", borderRadius: 26, background: "#f5f5f7" }}>
+              <div key={t.k} style={{ display: "flex", flexDirection: "column", width: 464, marginBottom: 22, padding: "22px 30px", borderRadius: 26, background: "#f5f5f7" }}>
                 <div style={{ display: "flex", fontSize: 32, color: "#1f2937" }}>{t.k}</div>
                 <div style={{ display: "flex", alignItems: "center", marginTop: 12 }}>
-                  <div style={{ display: "flex", fontSize: 66, fontWeight: 700 }}>{t.v}</div>
+                  <div style={{ display: "flex", fontSize: 58, fontWeight: 700 }}>{t.v}</div>
                   <div style={{ display: "flex", marginLeft: 22, padding: "4px 18px", borderRadius: 12, fontSize: 30, fontWeight: 700, color: tone(t.good, t.mid), background: t.good ? "#dcfce7" : t.mid ? "#fef3c7" : "#fee2e2" }}>{word(t.good, t.mid)}</div>
                 </div>
                 <div style={{ display: "flex", marginTop: 10, fontSize: 26, color: "#6b7280" }}>{t.note}</div>
