@@ -105,7 +105,8 @@ export async function PATCH(request: Request) {
       const photo = typeof o.photo === "string" && o.photo.length <= 600 && /^(https:\/\/|\/)[^\s"'<>]+$/.test(o.photo) ? o.photo : "";
       const line = typeof o.line === "string" ? o.line.trim().slice(0, 160) : "";
       const kind = o.kind === "ink" || o.kind === "split" || o.kind === "type" || o.kind === "poster" ? o.kind : undefined;
-      ph[k] = { ...(label ? { label } : {}), ...(photo ? { photo } : {}), ...(o.noPhoto === true ? { noPhoto: true } : {}), ...(line ? { line } : {}), ...(kind ? { kind } : {}) };
+      const focus = typeof o.focus === "string" && /^\d{1,3}% \d{1,3}%$/.test(o.focus) ? o.focus : "";
+      ph[k] = { ...(focus ? { focus } : {}), ...(label ? { label } : {}), ...(photo ? { photo } : {}), ...(o.noPhoto === true ? { noPhoto: true } : {}), ...(line ? { line } : {}), ...(kind ? { kind } : {}) };
     }
     if (Object.keys(ph).length) patch.pageHeads = ph;
   }

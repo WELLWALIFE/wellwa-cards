@@ -3,7 +3,7 @@
 // card in four layouts, the "browse all" band the home page uses to lead into a page, the enquiry form, and the share button.
 // Colour, corner and type come from the root's tokens, like every variant; a masthead style and an item layout are chosen from
 // the spec, so the pages of two businesses do not look alike.
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, Search, Send, Share2 } from "lucide-react";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 import type { AdvItem } from "@/lib/site-advanced";
@@ -58,12 +58,19 @@ export function Masthead({ x, chrome, kicker, title, lede: lede0, trail, image: 
   // The owner's own photo is always seen: a design whose page tops are letters only gives way to the photo band for that page.
   const want = head?.kind ?? (head?.photo && !head.noPhoto && (chrome.mast === "type" || chrome.mast === "poster") ? "ink" : chrome.mast);
   const kind = want === "split" && !image ? "type" : want;
+  // The crop (owner, 25 Nov 2026: "full banner me sahi lagti hai, par chhote me?"): the small photo card is a square cut out of what is
+  // usually a wide banner, and it was cut from the middle whatever the picture — the people at one side were lost. It now keeps the
+  // owner's chosen part in view; for the home banner, the subject point read from that photo when it was made (site.hero.focus).
+  const hero = x.card.site?.hero;
+  const isBanner = !!image && (image === hero?.imageUrl || image === x.card.site?.bannerUrl || image === x.card.coverUrl);
+  const focus = head?.focus || (isBanner && /^\s*\d{1,3}%\s+\d{1,3}%\s*$/.test(hero?.focus ?? "") ? hero!.focus! : "");
+  const crop = focus ? ({ "--focus": focus } as CSSProperties) : undefined;
   const ribbon = [name, kicker, title].filter(Boolean) as string[];
   return (
     <section className={`mh ${kind === "ink" ? "hero-dark" : ""}`} data-kind={kind} aria-labelledby="mh-title">
       {kind === "ink" && (
         <>
-          {image && <div className="mh-bg" aria-hidden="true"><Photo src={image} eager sizes="100vw" /></div>}
+          {image && <div className="mh-bg" aria-hidden="true" style={crop}><Photo src={image} eager sizes="100vw" /></div>}
           <i className="mh-glow" aria-hidden="true" />
         </>
       )}
@@ -77,7 +84,7 @@ export function Masthead({ x, chrome, kicker, title, lede: lede0, trail, image: 
             {aside && <div className="mh-aside">{aside}</div>}
           </div>
           {kind === "split" && image && (
-            <div className="mh-frame"><span className="mh-block" aria-hidden="true" /><div className="mh-pic"><Photo src={image} eager sizes="(min-width:900px) 40vw, 90vw" /></div></div>
+            <div className="mh-frame"><span className="mh-block" aria-hidden="true" /><div className="mh-pic" style={crop}><Photo src={image} eager sizes="(min-width:900px) 40vw, 90vw" /></div></div>
           )}
         </div>
       </div>

@@ -395,7 +395,7 @@ export type SitePatch = {
   /** The other pages' sections in the order the owner wants, page by page (slug → ids). */
   pageOrders?: Record<string, string[]>;
   /** The top of a page, page by page (slug → its name, photo, line and shape): CardPage.label and CardPage.head. */
-  pageHeads?: Record<string, { label?: string; photo?: string; noPhoto?: boolean; line?: string; kind?: "ink" | "split" | "type" | "poster" }>;
+  pageHeads?: Record<string, { label?: string; photo?: string; noPhoto?: boolean; line?: string; kind?: "ink" | "split" | "type" | "poster"; focus?: string }>;
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);

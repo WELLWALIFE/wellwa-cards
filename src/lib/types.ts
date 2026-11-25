@@ -175,7 +175,8 @@ export interface CardPage {
    *  before: the page's own first photo, else the home banner, in the shape the design gives. `photo`: the owner's own picture for
    *  this page; `noPhoto`: no picture at all; `line`: a short line under the page's name; `kind`: the shape (a photo band, a photo
    *  card beside the name, big letters, centred letters). The home page has its own banner (site.hero) and never reads this. */
-  head?: { photo?: string; noPhoto?: boolean; line?: string; kind?: "ink" | "split" | "type" | "poster" };
+  /** `focus`: which part of the photo stays in view when it is cropped (CSS object-position, "50% 15%" = the top). */
+  head?: { photo?: string; noPhoto?: boolean; line?: string; kind?: "ink" | "split" | "type" | "poster"; focus?: string };
 }
 
 /** The hero's shape within a blueprint (docs/premium-look.md §3.7): board-* for bento, cover-* for cinematic,

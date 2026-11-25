@@ -1091,6 +1091,13 @@ export default function WebsiteEditPage() {
                   </div>
                 </>}
               </div>
+              {mode !== "none" && <div>
+                <p className={CAP}>Which part of the photo to keep</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {([["", "Automatic"], ["50% 12%", "Top"], ["50% 50%", "Middle"], ["50% 88%", "Bottom"], ["12% 40%", "Left"], ["88% 40%", "Right"]] as const).map(([f, name]) => <button key={name} type="button" aria-pressed={(hd.focus ?? "") === f} onClick={() => setHead(curSlug, { focus: f })} className={CH((hd.focus ?? "") === f)}>{name}</button>)}
+                </div>
+                <p className="mt-1.5 text-[12px] text-muted">A small photo card shows only a square of a wide photo. If someone is cut off, pick the side they stand on.</p>
+              </div>}
               <div>
                 <p className={CAP}>Shape of the heading</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
