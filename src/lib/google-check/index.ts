@@ -24,7 +24,10 @@ export function cityOf(address: string): string {
   // The PIN shares its part with the state ("Rajasthan 302001"): the city is the part before it. A PIN on its own ("…, Jaipur, Rajasthan,
   // 302001"): two before. (The old rule always took two before and gave "MG Road" or "Sector 24" — 25 Nov 2026, Wellwa Life's report.)
   const pinAlone = idx >= 0 && /^\d{6}$/.test(parts[idx].replace(/\s+/g, ""));
-  const pick = idx < 0 ? parts[Math.max(0, parts.length - 3)] : pinAlone ? parts[idx - 2] : parts[idx - 1];
+  let at = idx < 0 ? Math.max(0, parts.length - 3) : pinAlone ? idx - 2 : idx - 1;
+  // Google sometimes puts the civic body after the city ("Jaipur, Jaipur Nagar Nigam Area, Rajasthan 302003"): step back past it.
+  while (at > 0 && /nagar nigam|municipal|corporation|\barea\b|district|tehsil/i.test(parts[at] ?? "")) at--;
+  const pick = parts[at];
   return (pick ?? "").replace(/\b\d{6}\b/, "").trim() || "your city";
 }
 
