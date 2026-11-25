@@ -134,6 +134,66 @@ async function locationMeta(userId: string): Promise<{ review_url: string; place
 }
 export const reviewUrlFor = async (userId: string) => (await locationMeta(userId)).review_url;
 export const placeIdFor = async (userId: string) => (await locationMeta(userId)).place_id;
+/* ---- The profile itself (owner, 26 Nov 2026: "SaaS hai, sab kuch app se hona chahiye") ----
+ * Read and change what a shop owner keeps up to date: category, description, phone, website, opening hours, service options.
+ * The name and address are shown but not changed here: Google asks a business to verify again when they change. */
+export type GTime = { hours?: number; minutes?: number };
+export type GPeriod = { openDay: string; openTime?: GTime; closeDay: string; closeTime?: GTime };
+export type GProfile = {
+  title: string; address: string;
+  primaryCategory: { name: string; displayName: string } | null;
+  additionalCategories: { name: string; displayName: string }[];
+  description: string; phone: string; additionalPhones: string[]; website: string;
+  periods: GPeriod[]; pendingEdits: boolean;
+};
+const locPath = (locationName: string) => locationName.replace(/^accounts\/[^/]+\//, "");
+const PROFILE_MASK = "title,storefrontAddress,categories,profile,phoneNumbers,websiteUri,regularHours,metadata";
+
+export async function getProfile(token: string, locationName: string): Promise<GProfile> {
+  type L = { title?: string; storefrontAddress?: { addressLines?: string[]; locality?: string; administrativeArea?: string; postalCode?: string };
+    categories?: { primaryCategory?: { name: string; displayName?: string }; additionalCategories?: { name: string; displayName?: string }[] };
+    profile?: { description?: string }; phoneNumbers?: { primaryPhone?: string; additionalPhones?: string[] }; websiteUri?: string;
+    regularHours?: { periods?: GPeriod[] }; metadata?: { hasPendingEdits?: boolean } };
+  const l = await gget<L>(`${INFO}/${locPath(locationName)}?readMask=${PROFILE_MASK}`, token);
+  const a = l.storefrontAddress;
+  const cat = (c?: { name: string; displayName?: string }) => (c ? { name: c.name, displayName: c.displayName ?? c.name.replace(/^categories\/gcid:/, "").replace(/_/g, " ") } : null);
+  return {
+    title: l.title ?? "", address: a ? [...(a.addressLines ?? []), a.locality, a.administrativeArea, a.postalCode].filter(Boolean).join(", ") : "",
+    primaryCategory: cat(l.categories?.primaryCategory), additionalCategories: (l.categories?.additionalCategories ?? []).map((c) => cat(c)!),
+    description: l.profile?.description ?? "", phone: l.phoneNumbers?.primaryPhone ?? "", additionalPhones: l.phoneNumbers?.additionalPhones ?? [],
+    website: l.websiteUri ?? "", periods: l.regularHours?.periods ?? [], pendingEdits: !!l.metadata?.hasPendingEdits,
+  };
+}
+
+/** Google's category list, searched by name ("water", "jewel"). */
+export async function searchCategories(token: string, q: string, lang: "en" | "hi" = "en"): Promise<{ name: string; displayName: string }[]> {
+  const f = encodeURIComponent(`displayName=${q.replace(/["\\]/g, "").slice(0, 40)}`);
+  const r = await gget<{ categories?: { name: string; displayName: string }[] }>(`${INFO}/categories?regionCode=IN&languageCode=${lang}&view=BASIC&pageSize=20&filter=${f}`, token);
+  return (r.categories ?? []).map((c) => ({ name: c.name, displayName: c.displayName }));
+}
+
+export type ProfilePatch = {
+  description?: string; phone?: string; website?: string; periods?: GPeriod[];
+  primaryCategory?: string; additionalCategories?: string[];
+};
+/** Send only what changed; Google may hold an edit for review before it shows (metadata.hasPendingEdits). */
+export async function updateProfile(token: string, locationName: string, p: ProfilePatch, keep: GProfile): Promise<void> {
+  const body: Record<string, unknown> = {}; const mask: string[] = [];
+  if (p.description !== undefined) { body.profile = { description: p.description.slice(0, 750) }; mask.push("profile.description"); }
+  if (p.phone !== undefined) { body.phoneNumbers = { primaryPhone: p.phone, additionalPhones: keep.additionalPhones }; mask.push("phoneNumbers"); }
+  if (p.website !== undefined) { body.websiteUri = p.website; mask.push("websiteUri"); }
+  if (p.periods !== undefined) { body.regularHours = { periods: p.periods }; mask.push("regularHours"); }
+  if (p.primaryCategory !== undefined || p.additionalCategories !== undefined) {
+    const primary = p.primaryCategory ?? keep.primaryCategory?.name;
+    if (!primary) throw new Error("Pick the main category first.");
+    const extra = (p.additionalCategories ?? keep.additionalCategories.map((c) => c.name)).filter((n) => n && n !== primary).slice(0, 9);
+    body.categories = { primaryCategory: { name: primary }, additionalCategories: extra.map((name) => ({ name })) };
+    mask.push("categories");
+  }
+  if (!mask.length) return;
+  await gsend(`${INFO}/${locPath(locationName)}?updateMask=${mask.join(",")}`, token, "PATCH", body);
+}
+
 export const replyReview = (token: string, reviewName: string, comment: string) => gsend(`${V4}/${reviewName}/reply`, token, "PUT", { comment: comment.slice(0, 4000) });
 export const deleteReply = (token: string, reviewName: string) => gsend(`${V4}/${reviewName}/reply`, token, "DELETE");
 
