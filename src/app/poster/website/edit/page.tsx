@@ -418,7 +418,7 @@ export default function WebsiteEditPage() {
   // of "Section designs" shows exactly these (owner, 25 Nov 2026: "aisa na ho ki section page par na ho tab bhi dikh raha ho, aur aisa
   // na ho ki section ho aur dikh hi na raha ho"): before this it listed every kind the card had words for, drawn or not.
   const drawnAt = useMemo(() => {
-    const m = new Map<SectionKey, { slug: string; blk: string; name: string }>();
+    const m = new Map<SectionKey, { slug: string; blk: string; name: string; on: string[]; list: boolean }>();
     if (!adv || storeDesign || !card) return m;
     const lang = card.language === "hi" ? "hi" : "en";
     const dc = isShubhoraSellerCard(card) ? withoutFreeCard(card, true) : card;
@@ -428,7 +428,14 @@ export default function WebsiteEditPage() {
     const live = dc.pages.filter((p) => !p.hidden && !off.has(p.slug));
     for (const p of [...live.filter((x) => x.slug === homeSl), ...live.filter((x) => x.slug !== homeSl)]) {
       for (const part of flowParts(dc, p, c, lang, hasContact)) {
-        if (part.key && !m.has(part.key)) m.set(part.key, { slug: p.slug, blk: part.b.id, name: "title" in part.b ? (part.b.title ?? "").trim() : "" });
+        if (!part.key) continue;
+        // Every page that draws it is named under it ("On: Home · Photos"): one design, all its places. A product or service list on
+        // a page of its own is drawn as that page's catalogue (flow.tsx), which takes only the broad look of the design (page-parts layoutFor).
+        const label = p.slug === homeSl ? "Home" : (p.label || p.slug);
+        const list = p.slug !== homeSl && (part.b.kind === "product" || (part.b.kind === "services" && part.key === "services"));
+        const had = m.get(part.key);
+        if (had) { if (!had.on.includes(label)) had.on.push(label); continue; }
+        m.set(part.key, { slug: p.slug, blk: part.b.id, name: "title" in part.b ? (part.b.title ?? "").trim() : "", on: [label], list });
       }
     }
     return m;
@@ -1422,6 +1429,7 @@ export default function WebsiteEditPage() {
                 {advRows.filter((r) => r.key !== "hero").map((r) => { const cur = (adv.sections as Record<string, string> | undefined)?.[r.key] ?? VARIANT_IDS[r.key][0]; return (
                   <div key={r.key}>
                     <button type="button" onClick={() => showAdv(r.key)} className="text-left text-[13px] font-semibold underline decoration-dotted underline-offset-2">{r.name}</button>
+                    {(() => { const at = drawnAt.get(r.key); if (!at) return null; return <p className="text-[11px] text-muted">On: {at.on.join(" · ")}{at.list ? " — the products page takes the broad look of this design" : ""}</p>; })()}
                     <div className="mt-1.5">
                       {layoutPicker(r.key, cur, (id) => setAdvSection(r.key, id))}
                     </div>
