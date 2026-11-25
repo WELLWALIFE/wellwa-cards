@@ -13,6 +13,7 @@
 
 import { getTemplate, SHUBHORA_SERVICE_PICS, SHUBHORA_SLIDES } from "@/lib/templates";
 import type { Card, CardBlock, CardPage } from "@/lib/types";
+import { SITE_URL } from "@/lib/site-url";
 import { ownNotes, ownPersona } from "../../bridge/shubhora-kb.mjs";
 
 /** The slug the Shubhora side lives on: /c/<user>/shubhora. */
@@ -389,7 +390,9 @@ function withPlansOnHome(pages: CardPage[]): CardPage[] {
 }
 
 /** "Check your Google profile free" (the free tool at /google-check), after the plans: the SaaS sites' free tools that bring leads. */
-const GOOGLE_CHECK: CardBlock = { id: "sh-google-check", kind: "cta", title: "Is your business showing on Google?", body: "Free Google check: your score out of 100, where you rank on Maps and the three things to fix first. Takes a minute.", joinUrl: "/google-check", joinLabel: "Check my Google profile", referralCode: "" };
+// The full address (owner, 25 Nov 2026: "Check my Google profile" did nothing on a partner's own domain): on jaidevrajwal.com a bare
+// "/google-check" is that domain's path, and an own domain shows the partner's home page for any path it does not know.
+const GOOGLE_CHECK: CardBlock = { id: "sh-google-check", kind: "cta", title: "Is your business showing on Google?", body: "Free Google check: your score out of 100, where you rank on Maps and the three things to fix first. Takes a minute.", joinUrl: `${SITE_URL}/google-check`, joinLabel: "Check my Google profile", referralCode: "" };
 
 function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
   if (!seller) return card;
