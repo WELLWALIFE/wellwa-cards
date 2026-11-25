@@ -101,11 +101,11 @@ function setSlot(card: Card, slot: string, url: string, focus: { focus?: string;
     // Each banner keeps its own subject in view (the old focus belonged to the old picture).
     const { focus: _old, focusOwn: _own, ...rest } = slides[n];
     void _old; void _own;
-    slides[n] = { ...rest, imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}) };
+    slides[n] = { ...rest, imageUrl: url, focusOwn: undefined, ...(focus?.focus ? { focus: focus.focus } : {}) };
     // The first banner on a card whose cover was the same picture (one shared banner until now) keeps the card in step, as before.
     const shared = n === 0 && scope === "" && (!card.coverUrl || card.coverUrl === (hero.imageUrl || card.coverUrl));
     // The first banner changed for the website: it becomes the website's own banner, the card's cover stays.
-    return { ...card, ...(shared ? { coverUrl: url } : {}), site: { ...card.site, ...(n === 0 && !shared ? { bannerUrl: url } : {}), hero: { ...hero, slides, ...(n === 0 ? { imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } : {}) } } };
+    return { ...card, ...(shared ? { coverUrl: url } : {}), site: { ...card.site, ...(n === 0 && !shared ? { bannerUrl: url } : {}), hero: { ...hero, slides, ...(n === 0 ? { imageUrl: url, focusOwn: undefined, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } : {}) } } };
   }
   if (slot === "cardbanner") {
     // The card's own banner. A website that was still showing the card's picture keeps that picture (it is pinned to the website first).
@@ -115,11 +115,11 @@ function setSlot(card: Card, slot: string, url: string, focus: { focus?: string;
     return { ...card, coverUrl: url, site: keep };
   }
   if (slot === "sitebanner" && card.site) {
-    return { ...card, site: { ...card.site, bannerUrl: url, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } };
+    return { ...card, site: { ...card.site, bannerUrl: url, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, focusOwn: undefined, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } };
   }
   if (slot === "banner" || slot === "sitebanner") {
     // One shared banner: the card and the website show the same picture again.
-    const site = card.site ? { ...card.site, bannerUrl: undefined, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } : card.site;
+    const site = card.site ? { ...card.site, bannerUrl: undefined, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, focusOwn: undefined, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } : card.site;
     return { ...card, coverUrl: url, site };
   }
   const [kind, blockId, idx] = slot.split(":");

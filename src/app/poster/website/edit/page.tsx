@@ -39,7 +39,37 @@ import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site
 import type { Card, CardBlock, CardPage, HeroSlide, SiteStyle } from "@/lib/types";
 
 const PREVIEW_KEY = "site-edit";
-type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
+type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[]; focus?: string; focusOwn?: boolean };
+/** "Keep in view": which part of a banner photo stays in the frame when it is cut to the banner's shape. */
+const KEEP: readonly (readonly [string, string, string])[] = [["", "Automatic", "अपने-आप"], ["10% 40%", "Left", "बायाँ"], ["50% 40%", "Middle", "बीच"], ["90% 40%", "Right", "दायाँ"], ["50% 10%", "Top", "ऊपर"], ["50% 90%", "Bottom", "नीचे"]];
+/** The screens that go with each screen (owner, 25 Nov 2026: "ek page pe gaye to usse related doosra link usi page pe dikh jaye"): shown under
+ *  every screen's title, so the owner moves on from one to the next — banner words → banner photos → which part to keep, and back. */
+const RELATED: Record<string, readonly string[]> = {
+  hero: ["photos", "look", "offer", "home"],
+  photos: ["hero", "products", "about"],
+  products: ["photos", "details", "reviews"],
+  about: ["photos", "you", "details"],
+  details: ["products", "about", "text"],
+  reviews: ["about", "links", "buttons"],
+  you: ["where", "buttons", "links"],
+  where: ["you", "buttons", "hero"],
+  links: ["you", "buttons", "reviews"],
+  buttons: ["you", "where", "links"],
+  trade: ["you", "about", "seo"],
+  text: ["hero", "about", "details", "pages"],
+  look: ["hero", "home", "photos"],
+  offer: ["hero", "buttons"],
+  home: ["hero", "look", "text"],
+  pages: ["text", "home"],
+  seo: ["trade", "domain"],
+  domain: ["seo", "website"],
+  website: ["pages", "domain"],
+};
+/** The words on a related screen's button where its own name would not say why it is there. */
+const RELATED_NAME: Record<string, Record<string, string>> = {
+  photos: { hero: "Banner words & which part of the photo to keep" },
+  hero: { photos: "Change banner photos" },
+};
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
 type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
 type Group = "design" | "content" | "photos" | "contact" | "settings";
@@ -414,6 +444,13 @@ export default function WebsiteEditPage() {
   const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; Object.keys(patch).forEach((k) => touched.current.add(k)); setNote((n) => (n?.k === "save" ? null : n)); setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
   const setStyle = (patch: Partial<SiteStyle>) => { focus({ top: true }); set({ style: { ...style, ...patch } }); };
   // A picture chosen for the top of the website is the website's own banner (site.bannerUrl): the preview shows it at once, the card's cover stays.
+  /** "Keep in view" on a banner (i = which sliding banner; -1 = the one banner): the owner's pick, or back to automatic (read again on Save). */
+  const keepBanner = (i: number, f: string) => {
+    const h = site.hero ?? { headline: "", sub: "" };
+    if (i >= 0) { setHero({ slides: (h.slides ?? []).map((x, j) => (j !== i ? x : f ? { ...x, focus: f, focusOwn: true } : { ...x, focus: undefined, focusOwn: undefined })) }); return; }
+    touched.current.add("heroFocus");
+    setHero(f ? { focus: f, focusOwn: true } : { focusOwn: false });
+  };
   const setHero = (patch: Partial<Hero>) => { focus({ top: true }); set({ hero: { headline: "", sub: "", ...(site.hero ?? {}), ...patch }, ...(typeof patch.imageUrl === "string" ? { bannerUrl: patch.imageUrl || undefined } : {}) }); };
   const setHome = (patch: Partial<NonNullable<Card["site"]>["home"] & object>) => set({ home: { ...(site.home ?? {}), ...patch } });
 
@@ -784,7 +821,7 @@ export default function WebsiteEditPage() {
         card_id: s.cardId,
         style: site.style ?? {},
         home: { order: site.home?.order ?? [], hidden: site.home?.hidden ?? [], ...(site.home?.stats ? { stats: site.home.stats } : {}) },
-        hero: { headline: site.hero?.headline ?? "", sub: site.hero?.sub ?? "", ctaLabel: site.hero?.ctaLabel ?? "", ...(site.hero?.imageUrl !== undefined ? { imageUrl: site.hero.imageUrl } : {}), ...(site.hero?.slides ? { slides: site.hero.slides.filter((x) => x.headline.trim()) } : {}) },
+        hero: { headline: site.hero?.headline ?? "", sub: site.hero?.sub ?? "", ctaLabel: site.hero?.ctaLabel ?? "", ...(site.hero?.imageUrl !== undefined ? { imageUrl: site.hero.imageUrl } : {}), ...(site.hero?.slides ? { slides: site.hero.slides.filter((x) => x.headline.trim()) } : {}), ...(touched.current.has("heroFocus") ? (site.hero?.focusOwn ? { focus: site.hero.focus ?? "", focusOwn: true } : { focusOwn: false }) : {}) },
         hideProfile: !!site.hideProfile,
         showcase: (site as { showcase?: boolean }).showcase === true,
         logoUrl: site.logoUrl ?? "",
@@ -1201,6 +1238,7 @@ export default function WebsiteEditPage() {
               <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (w.key === "products" ? "Edit products" : w.key === "photos" ? (sec === "hero" ? "Change banner photos" : "Change photos") : "Edit text & photo") : w.key === "text" ? (withPics ? "Edit text & photos" : "Edit text") : `Edit: ${LABEL[w.key]?.[0] ?? "text"}`}</button>
               {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
             </div>
+            {isHero && <BannerKeep hi={hi} card={card} onKeep={keepBanner} onPhotos={() => sheetOpen("photos")} />}
             {sec && ids.length > 1 && <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Design</p><p className="text-[12px] text-muted">Tap a design — the preview changes at once; press Save to keep it.</p>
               <div className="mt-2">
@@ -1347,6 +1385,16 @@ export default function WebsiteEditPage() {
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><I className="h-[18px] w-[18px]" /></span>
           <div className="min-w-0"><p className="text-base font-bold leading-tight text-ink">{tab === "look" && lookMode === "sections" ? "Section designs" : d.label}</p><p className="truncate text-[12px] text-muted">{tab === "look" && lookMode === "sections" ? "The design of the home banner and of each section" : d.sub}</p></div>
         </div>); })()}
+      {open && (RELATED[tab] ?? []).length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 px-1" aria-label="Related">
+          <span className="text-[11px] font-semibold text-muted">{hi ? "साथ में:" : "Next:"}</span>
+          {(RELATED[tab] ?? []).filter((k) => LABEL[k] && GROUPS.some((g) => g.tabs.some((t) => t.key === k))).map((k) => (
+            <button key={k} type="button" onClick={() => openPart(k)} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink hover:border-brand/60 hover:text-brand-ink">
+              {RELATED_NAME[tab]?.[k] ?? LABEL[k][0]} <ChevronLeft className="h-3 w-3 rotate-180" />
+            </button>
+          ))}
+        </div>
+      )}
       {open && (<>
       {tab === "look" && lookMode === "style" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
@@ -1527,6 +1575,7 @@ export default function WebsiteEditPage() {
 
       {tab === "hero" && (
         <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
+          <BannerKeep hi={hi} card={card} onKeep={keepBanner} onPhotos={() => openPart("photos")} />
           {/* One heading, its own boxes under it; one opens at a time (owner, 19 Nov 2026: "jo heading hai uski editing usi ke andar ho"). */}
           <Fold title={hi ? "बड़ी line और उसके नीचे के शब्द" : "Big line and the words under it"} open={foldIs("hero:0", true)} onToggle={() => foldTap("hero:0", true)}>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "सबसे ऊपर की बड़ी लाइन" : "Big line at the top"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
@@ -1646,6 +1695,43 @@ export default function WebsiteEditPage() {
 
 /** The Premium website's sliding banners (owner, 23 Oct 2026): up to 3, each its own big line, small line and picture. "AI से लिखें"
  *  fills three different big lines from the card's facts (/api/site/slides); the owner changes anything, then Save. */
+/** The banner photos and, under each, which part of it stays in view (owner, 25 Nov 2026: "banner ko edit kar rahe hain to usi page pe
+ *  saath me banner ke next option bhi de do"): first on the banner's screen and on its section card, with the way to change the photos. */
+function BannerKeep({ hi, card, onKeep, onPhotos }: { hi: boolean; card: Card; onKeep: (i: number, f: string) => void; onPhotos: () => void }) {
+  const T = (en: string, h: string) => (hi ? h : en);
+  const h = card.site?.hero;
+  const all = h?.slides ?? [];
+  // As the website draws it (photos/route.ts siteTop): two or more banners with a big line slide, each its own picture; else one banner.
+  const many = all.filter((x) => x && x.headline).length >= 2;
+  const one = card.site?.bannerUrl || card.coverUrl || "";
+  const rows = many
+    ? all.map((x, i) => ({ i, url: x.imageUrl || (i === 0 ? one : ""), own: x.focusOwn ? x.focus ?? "" : "" })).filter((r) => r.url)
+    : one ? [{ i: -1, url: one, own: h?.focusOwn ? h.focus ?? "" : "" }] : [];
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-surface2/50 p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold text-ink">{T("Banner photo — which part to keep", "Banner photo — कौन सा हिस्सा दिखे")}</p>
+        <button type="button" onClick={onPhotos} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-ink hover:border-brand/60"><Camera className="h-3.5 w-3.5" /> {T("Change photos", "Photo बदलें")}</button>
+      </div>
+      {rows.length === 0 && <p className="text-[11px] text-muted">{T("No banner photo yet — tap Change photos.", "अभी banner photo नहीं है — Photo बदलें दबाएँ।")}</p>}
+      {rows.map((r) => (
+        <div key={r.i} className="flex items-center gap-2">
+          <span className="h-10 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-white"><Thumb src={r.url} alt="" /></span>
+          <div className="min-w-0 flex-1">
+            {many && <p className="text-[11px] font-semibold text-muted">{T(`Banner ${r.i + 1}`, `Banner ${r.i + 1}`)}</p>}
+            <div className="flex flex-wrap gap-1">
+              {KEEP.map(([f, en, hn]) => {
+                const on = r.own === f;
+                return <button key={f || "auto"} type="button" aria-pressed={on} onClick={() => onKeep(r.i, f)} className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink"}`}>{T(en, hn)}</button>;
+              })}
+            </div>
+          </div>
+        </div>
+      ))}
+      <p className="text-[11px] text-muted">{T("If a person is cut off in the banner, pick the side they stand on. The window shows it at once; press Save to keep it.", "Banner में कोई कट रहा हो तो वो जिस तरफ़ है वो चुनें। ऊपर तुरंत दिखेगा; रखने के लिए Save दबाएँ।")}</p>
+    </div>
+  );
+}
 function SlidesEditor({ hi, card, images, slides, onChange, cardId }: { hi: boolean; card: Card; images: { label: string; url: string }[]; slides: HeroSlide[]; onChange: (s: HeroSlide[]) => void; cardId: string }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const [busy, setBusy] = useState(false);
@@ -1680,17 +1766,6 @@ function SlidesEditor({ hi, card, images, slides, onChange, cardId }: { hi: bool
           {photos.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {photos.map((u) => <button key={u} type="button" onClick={() => setOne(i, { imageUrl: u, focus: undefined, focusOwn: undefined })} className={`h-11 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-white ${sl.imageUrl === u ? "border-brand" : "border-transparent"}`}><Thumb src={u} alt="" /></button>)}
-            </div>
-          )}
-          {sl.imageUrl && (
-            // Which part of the picture stays in view (owner, 25 Nov 2026: "banner ki image sahi set nahi hui"): a tall banner shows only a
-            // slice of a wide photo, and the automatic pick can land on the shelves instead of the person.
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[11px] text-muted">{T("Keep in view:", "दिखे:")}</span>
-              {([["", T("Automatic", "अपने-आप")], ["10% 40%", T("Left", "बायाँ")], ["50% 40%", T("Middle", "बीच")], ["90% 40%", T("Right", "दायाँ")], ["50% 10%", T("Top", "ऊपर")]] as const).map(([f, name]) => {
-                const on = (sl.focusOwn ? sl.focus ?? "" : "") === f;
-                return <button key={f || "auto"} type="button" aria-pressed={on} onClick={() => setOne(i, f ? { focus: f, focusOwn: true } : { focus: undefined, focusOwn: undefined })} className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink"}`}>{name}</button>;
-              })}
             </div>
           )}
         </div>

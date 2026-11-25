@@ -376,7 +376,7 @@ export type SitePatch = {
   enabled?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string;
   /** An information website: products shown with no order / WhatsApp button of their own (site-adv/shared.tsx isShowcase). */
   showcase?: boolean;
-  hero?: { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; tiles?: string[]; video?: boolean; slides?: { headline: string; sub?: string; imageUrl?: string; focus?: string; focusOwn?: boolean }[] };
+  hero?: { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; tiles?: string[]; video?: boolean; focus?: string; focusOwn?: boolean; slides?: { headline: string; sub?: string; imageUrl?: string; focus?: string; focusOwn?: boolean }[] };
   /** Design choices from the website editor (already cleaned, see cleanStyle). Replaces the stored style. */
   style?: SiteStyle;
   /** Home-page section order / hidden sections / trust facts (already cleaned, see cleanHome). */
@@ -424,7 +424,10 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
   if (!row) throw new Error("NO_CARD");
   const prev = row.data.site ?? { enabled: false };
   const hero0 = patch.hero ? { headline: "", sub: "", ...(prev.hero ?? {}), ...patch.hero } : prev.hero;
-  const hero = hero0 ? { ...hero0, ...(hero0.slides ? { slides: await slidesWithFocus(hero0.slides, prev.hero?.slides ?? [], hero0) } : {}) } : hero0;
+  // "Automatic" again on the one banner: its focal point read from the banner as it is now (the owner's pick is dropped).
+  const autoFocus = patch.hero?.focusOwn === false && prev.hero?.focusOwn ? await bannerFocus(prev.bannerUrl || row.data.coverUrl).catch(() => null) : null;
+  const hero1 = hero0 && patch.hero?.focusOwn === false ? (() => { const { focusOwn: _o, ...rest } = hero0; void _o; return { ...rest, ...(autoFocus?.focus ? { focus: autoFocus.focus } : {}) }; })() : hero0;
+  const hero = hero1 ? { ...hero1, ...(hero1.slides ? { slides: await slidesWithFocus(hero1.slides, prev.hero?.slides ?? [], hero1) } : {}) } : hero1;
   let style = patch.style ?? prev.style;
   let reference = prev.reference;
   if (patch.referenceUrl) {

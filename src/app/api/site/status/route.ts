@@ -44,6 +44,9 @@ export async function PATCH(request: Request) {
     if (typeof h.imageUrl === "string") patch.hero.imageUrl = /^https:\/\/.{0,400}$/.test(h.imageUrl) ? h.imageUrl : "";
     const tiles = cleanTiles(h.tiles); if (tiles) patch.hero.tiles = tiles;
     if (typeof h.video === "boolean") patch.hero.video = h.video;
+    // The one banner's "Keep in view": the owner's pick, or false = automatic again (read from the photo on this save, site-server.ts).
+    if (h.focusOwn === true && typeof h.focus === "string" && /^\d{1,3}% \d{1,3}%$/.test(h.focus)) { patch.hero.focus = h.focus; patch.hero.focusOwn = true; }
+    else if (h.focusOwn === false) patch.hero.focusOwn = false;
     // The Premium website's sliding banners: up to 3, each a big line (required), a small line and an https picture.
     if (Array.isArray(h.slides)) patch.hero.slides = h.slides.slice(0, 3).map((x: unknown) => {
       const o = x && typeof x === "object" ? x as Record<string, unknown> : {};

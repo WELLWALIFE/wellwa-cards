@@ -324,6 +324,8 @@ export interface Card {
       /** Where the banner's subject is, as CSS object-position ("62% 38%"), read from the photo at build time
        *  (src/lib/media/photo-focus.ts) so the crop keeps it in view on every screen. */
       focus?: string;
+      /** The owner picked the focus ("Keep in view"); a new banner photo or "Automatic" reads it from the photo again. */
+      focusOwn?: boolean;
       /** Which side the headline sits on in a photo hero: the side the subject leaves empty. */
       textSide?: "left" | "right" | "center";
       /** A 24 px WebP of the banner as a data: URL (≤ 600 bytes): painted under the photo until it loads. */
