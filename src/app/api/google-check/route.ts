@@ -40,9 +40,12 @@ export async function POST(request: Request) {
     if (rateLimited(clientKey(request, me ? "gcheck-user" : "gcheck-public"), me ? 20 : 3, DAY)) return Response.json({ ok: false, error: "Daily limit reached. Try again tomorrow." }, { status: 429 });
 
     const query = clean(b.q, 120);
+    const sells = clean(b.sells, 40);
     let report = await cachedReport(placeId); let fresh = false;
+    // A kept report with no local list, and now the visitor says what they sell: made again with it.
+    if (report && !report.local && sells) report = null;
     if (!report) {
-      try { report = await buildReport(placeId); fresh = true; }
+      try { report = await buildReport(placeId, sells); fresh = true; }
       catch (e) { console.error("google-check report", e); return Response.json({ ok: false, error: "Could not build the report. Try again in a minute." }, { status: 502 }); }
     }
     await saveReport(report, { ip: clientIp(request), userId: me?.user.id, phone: phone || undefined, query }).catch(() => {});

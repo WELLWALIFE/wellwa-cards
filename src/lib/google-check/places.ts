@@ -66,9 +66,9 @@ export async function placeDetails(id: string): Promise<Place> {
 /** The same-trade businesses Google lists for "<category> in <city>" around the place, in GOOGLE'S OWN ORDER (up to 20), and where
  *  the place itself comes in that list (1 = first; null = not in the first 20). One text search: the place's local standing without a
  *  paid rank service. An estimate — the order moves a little with the searcher's exact spot — and the report says so. */
-export async function localList(place: Place, city: string): Promise<{ list: Candidate[]; rank: number | null }> {
+export async function localList(place: Place, city: string, trade = place.category): Promise<{ list: Candidate[]; rank: number | null }> {
   const j = await call<{ places?: RawPlace[] }>("/places:searchText", {
-    textQuery: `${place.category} in ${city}`, regionCode: "IN", languageCode: "en", maxResultCount: 20,
+    textQuery: `${trade} in ${city}`, regionCode: "IN", languageCode: "en", maxResultCount: 20,
     locationBias: { circle: { center: { latitude: place.lat, longitude: place.lng }, radius: 5000 } },
   }, "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.location");
   const list = (j.places ?? []).map(toCandidate).filter((c) => c.id && c.name);

@@ -20,6 +20,9 @@ export type Report = {
   local?: { rank: number | null; total: number; ahead: Candidate[] };
   /** The parts of the Google profile we can see from outside, each filled in or not. */
   profile?: { label: string; ok: boolean }[];
+  /** What the local list was searched by: Google's own category, or — when Google files the place under no trade — what the visitor
+   *  said they sell ("water purifier"). */
+  trade?: string;
   /** Everything found, not only the first three. */
   issues?: Fix[];
 };
@@ -49,14 +52,18 @@ export async function cachedReport(placeId: string): Promise<Report | null> {
   return r && r.v === 2 ? r : null;
 }
 
-export async function buildReport(placeId: string): Promise<Report> {
+export async function buildReport(placeId: string, sells = ""): Promise<Report> {
   const place = await placeDetails(placeId);
   const city = cityOf(place.address);
   const generic = GENERIC.test(place.category.trim());
+  // Google has no trade for the place (many small shops: "Zinda pani" is just a "business"): the visitor's own words are searched
+  // instead, so the report can still show who is ahead of them (owner, 25 Nov 2026).
+  const said = sells.replace(/[^\p{L}\p{N} &'-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 40);
+  const trade = generic ? said : place.category;
   const [near, ranks, site] = await Promise.all([
     // A place Google files under no trade ("business") has no real rivals: "business in Gurugram" brought malls and office parks,
     // and the report compared a company's 17 reviews with a mall's 28,000. No trade, no comparison.
-    generic ? Promise.resolve(null) : localList(place, city).catch(() => null),
+    trade ? localList(place, city, trade).catch(() => null) : Promise.resolve(null),
     rankConfigured() ? mapsRanks(place, keywordsFor(place.category, city)).catch(() => null) : Promise.resolve(null),
     place.website ? siteCheck(place.website).catch(() => NO_SITE) : Promise.resolve(NO_SITE),
   ]);
@@ -83,8 +90,8 @@ export async function buildReport(placeId: string): Promise<Report> {
   ];
   const issues: Fix[] = [];
   if (local && local.ahead.length > 0) issues.push(local.rank === null
-    ? { title: `Not in the first ${local.total} for "${place.category} in ${city}"`, why: `${local.total} businesses of your kind show before you when people search nearby.`, plan: "growth", hi: `"${place.category} in ${city}" search mein pehle ${local.total} mein nahi - ${local.total} businesses aapse pehle dikhte hain` }
-    : { title: `#${local.rank} for "${place.category} in ${city}"`, why: `${local.ahead.length} ${local.ahead.length === 1 ? "business shows" : "businesses show"} before you. Most people call one of the first three.`, plan: "growth", hi: `"${place.category} in ${city}" search mein #${local.rank} - ${local.ahead.length} businesses aapse pehle dikhte hain` });
+    ? { title: `Not in the first ${local.total} for "${trade} in ${city}"`, why: `${local.total} businesses of your kind show before you when people search nearby.`, plan: "growth", hi: `"${trade} in ${city}" search mein pehle ${local.total} mein nahi - ${local.total} businesses aapse pehle dikhte hain` }
+    : { title: `#${local.rank} for "${trade} in ${city}"`, why: `${local.ahead.length} ${local.ahead.length === 1 ? "business shows" : "businesses show"} before you. Most people call one of the first three.`, plan: "growth", hi: `"${trade} in ${city}" search mein #${local.rank} - ${local.ahead.length} businesses aapse pehle dikhte hain` });
   issues.push(...s.issues);
   if (generic) issues.push({ title: "No clear business category on Google", why: "Google does not know what you sell, so it cannot show you for any search of your trade. Pick the exact category.", plan: "growth", hi: "Google par business category saaf nahi hai - Google ko pata nahi aap kya bechte hain" });
   else if ((place.types ?? []).length < 2) issues.push({ title: "Additional categories are not set", why: "Google uses them to show you for nearby searches of related things.", plan: "growth", hi: "Additional categories set nahi hain - nearby searches mein rank karne ke liye Google inhe use karta hai" });
@@ -94,7 +101,7 @@ export async function buildReport(placeId: string): Promise<Report> {
   const seen = new Set<string>();
   // No reviews at all: said once ("No reviews yet"), not also as "Fewer than 30 reviews".
   const all = issues.filter((f) => !(place.reviews === 0 && f.title === "Fewer than 30 reviews")).filter((f) => !seen.has(f.title) && !!seen.add(f.title));
-  return { place, city, ranks: rankRows, rankChecked: ranks !== null, site, rivals, score: s.score, breakdown: s.breakdown, fixes: all.slice(0, 3), issues: all, local, profile, v: 2, at: new Date().toISOString() };
+  return { place, city, ranks: rankRows, rankChecked: ranks !== null, site, rivals, score: s.score, breakdown: s.breakdown, fixes: all.slice(0, 3), issues: all, local, profile, ...(trade ? { trade } : {}), v: 2, at: new Date().toISOString() };
 }
 
 export async function saveReport(r: Report, meta: { ip: string; userId?: string; phone?: string; query: string }) {

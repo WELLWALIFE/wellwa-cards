@@ -8,7 +8,7 @@ export async function siteCheck(url: string): Promise<SiteCheck> {
   if (!/^https?:\/\//i.test(url)) return NO_SITE;
   const q = new URLSearchParams({ url, strategy: "mobile" }); q.append("category", "performance"); q.append("category", "seo");
   const key = (process.env.PAGESPEED_KEY ?? "").trim(); if (key) q.set("key", key);
-  const r = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${q}`, { cache: "no-store", signal: AbortSignal.timeout(60_000) });
+  const r = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${q}`, { cache: "no-store", signal: AbortSignal.timeout(25_000) });
   if (!r.ok) return NO_SITE;
   const j = (await r.json()) as { lighthouseResult?: { categories?: Record<string, { score?: number }>; audits?: Record<string, { score?: number | null }> } };
   const cat = j.lighthouseResult?.categories ?? {}; const a = j.lighthouseResult?.audits ?? {};

@@ -299,6 +299,8 @@ export default function WebsiteEditPage() {
   const [scale, setScale] = useState(0.3);
   // The window on top stays put while the options under it scroll (owner, 24 Oct 2026); a tap makes it big or small again.
   const [big, setBig] = useState(false);
+  /** Phone only: the window folded away, so the editing has the whole screen (owner, 25 Nov 2026: only ~200px was left to edit in). */
+  const [pvHide, setPvHide] = useState(false);
   // One screen of the website, not the whole page (a one-screen-tall hero grew with a page-tall frame; 24 Oct 2026): it scrolls inside.
   const [boxH, setBoxH] = useState(230);
   // Phone / computer view of the preview (master list #13): the same page in a 390 px wide window.
@@ -1111,12 +1113,15 @@ export default function WebsiteEditPage() {
           </div>
         )}
         <div className="relative overflow-clip rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
-          <div ref={box} className={`pv-box overflow-hidden ${phoneView ? "bg-surface2" : "bg-white"} transition-[height] duration-300`} style={{ height: `var(--pv-h, ${big ? "68svh" : "32svh"})` }}>
+          <div ref={box} className={`pv-box overflow-hidden ${phoneView ? "bg-surface2" : "bg-white"} transition-[height] duration-300`} style={{ height: `var(--pv-h, ${pvHide ? "0px" : big ? "68svh" : "32svh"})` }}>
             <div className="relative mx-auto" style={{ width: Math.round(pvW * pvScale), height: boxH }}>
               <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: pvW, height: frameH, border: 0, transform: `scale(${pvScale})` }} />
             </div>
           </div>
-          <button type="button" onClick={() => setBig((b) => !b)} className="absolute bottom-2 right-2 z-10 inline-flex h-8 items-center gap-1 rounded-lg bg-black/60 px-2.5 text-[11px] font-semibold text-white backdrop-blur lg:hidden">{big ? <><Minimize2 className="h-3.5 w-3.5" /> Smaller</> : <><Maximize2 className="h-3.5 w-3.5" /> Full screen</>}</button>
+          {pvHide
+            ? <button type="button" onClick={() => setPvHide(false)} className="flex h-9 w-full items-center justify-center gap-1.5 text-[12px] font-semibold text-brand-ink lg:hidden"><Eye className="h-3.5 w-3.5" /> Show the preview</button>
+            : <button type="button" onClick={() => { setBig(false); setPvHide(true); }} className="absolute bottom-2 left-2 z-10 inline-flex h-8 items-center gap-1 rounded-lg bg-black/60 px-2.5 text-[11px] font-semibold text-white backdrop-blur lg:hidden"><EyeOff className="h-3.5 w-3.5" /> Hide</button>}
+          <button type="button" style={pvHide ? { display: "none" } : undefined} onClick={() => setBig((b) => !b)} className="absolute bottom-2 right-2 z-10 inline-flex h-8 items-center gap-1 rounded-lg bg-black/60 px-2.5 text-[11px] font-semibold text-white backdrop-blur lg:hidden">{big ? <><Minimize2 className="h-3.5 w-3.5" /> Smaller</> : <><Maximize2 className="h-3.5 w-3.5" /> Full screen</>}</button>
         </div>
       </div>
 

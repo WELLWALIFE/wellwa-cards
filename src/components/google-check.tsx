@@ -11,7 +11,7 @@ type Report = {
   city: string; ranks: { keyword: string; rank: number | null; top: { name: string; rating: number; reviews: number }[] }[]; rankChecked: boolean;
   site: { performance: number; seo: number; checked: boolean }; rivals: Candidate[];
   score: number; breakdown: { label: string; got: number; max: number }[]; fixes: Fix[];
-  local?: { rank: number | null; total: number; ahead: Candidate[] }; profile?: { label: string; ok: boolean }[]; issues?: Fix[];
+  local?: { rank: number | null; total: number; ahead: Candidate[] }; profile?: { label: string; ok: boolean }[]; issues?: Fix[]; trade?: string;
 };
 type Fix = { title: string; why: string; plan: "website" | "growth"; hi?: string };
 /** The partner whose website sent the visitor: the report's buttons open their WhatsApp. */
@@ -27,7 +27,7 @@ const Stars = ({ r }: { r: number }) => <span className="inline-flex items-cente
 export function GoogleCheck() {
   const [q, setQ] = useState(""); const [city, setCity] = useState("");
   const [places, setPlaces] = useState<Candidate[] | null>(null); const [pick, setPick] = useState<Candidate | null>(null);
-  const [phone, setPhone] = useState(""); const [name, setName] = useState("");
+  const [phone, setPhone] = useState(""); const [name, setName] = useState(""); const [sells, setSells] = useState("");
   const [busy, setBusy] = useState<"" | "find" | "report">(""); const [error, setError] = useState("");
   const [report, setReport] = useState<Report | null>(null);
   const [partner, setPartner] = useState<Partner | null>(null);
@@ -41,7 +41,7 @@ export function GoogleCheck() {
     e.preventDefault(); if (!pick) return; setError(""); setBusy("report");
     // The partner whose website sent the visitor here (?by=<card>): the lead is theirs.
     let by = ""; try { by = new URLSearchParams(window.location.search).get("by") ?? ""; } catch { /* old browser */ }
-    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${city}`.trim(), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setReport(j.report); }
+    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${city}`.trim(), ...(sells.trim() ? { sells: sells.trim() } : {}), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setReport(j.report); }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
 
@@ -80,6 +80,9 @@ export function GoogleCheck() {
             <div><p className="text-base font-semibold">{pick.name}</p><p className="text-sm text-muted">{pick.address}</p></div>
             <button type="button" onClick={() => setPick(null)} className="text-muted hover:text-ink" aria-label="Change"><X className="h-5 w-5" /></button>
           </div>
+          {/* Used to find the competitors when Google has no category for the business. */}
+          <input value={sells} onChange={(e) => setSells(e.target.value.slice(0, 40))} placeholder="What do you sell? (e.g. water purifier, sweets, salon)" className="mt-4 w-full rounded-xl border border-border bg-bg px-4 py-3 text-base" />
+          <p className="mt-1 text-xs text-muted">So we can show which businesses like yours rank above you.</p>
           <p className="mt-4 text-sm text-muted">Your WhatsApp number — we send the full report there too.</p>
           <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />
@@ -105,6 +108,8 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
   const ahead = r.local?.ahead ?? [];
   const more = r.local && r.local.rank === null ? "+" : "";
   const prof = r.profile ?? [];
+  const trade = r.trade || r.place.category;
+  const PLAN = { growth: "Growth Plan", website: "Website" } as const;
   const pct = prof.length ? Math.round((prof.filter((x) => x.ok).length / prof.length) * 100) : null;
   const pctTone = pct === null ? "" : pct >= 85 ? "text-good" : pct >= 60 ? "text-amber-600" : "text-red-600";
   const scoreTone = r.score >= 75 ? "text-good" : r.score >= 45 ? "text-amber-600" : "text-red-600";
@@ -142,7 +147,7 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
             : r.score >= 75 ? T(`${r.place.name} stands strong on Google.`, `${r.place.name} Google par strong hai.`)
             : T(`${r.place.name}'s Google profile is leaving customers on the table.`, `${r.place.name} ki Google profile customers chhod rahi hai.`)}
         </p>
-        {ahead.length > 0 && <p className="mx-auto mt-3 max-w-xl text-base text-muted">{T(`Right now, when people search "${r.place.category}" in ${r.city}, these businesses show before you.`, `Abhi - jab log ${r.city} mein "${r.place.category}" search karte hain, ye businesses aapse pehle dikhte hain.`)} <span className="font-semibold text-brand">{T("You can start fixing this within 24 hours.", "Aap 24 hours mein ise fix karna start kar sakte hain.")}</span></p>}
+        {ahead.length > 0 && <p className="mx-auto mt-3 max-w-xl text-base text-muted">{T(`Right now, when people search "${trade}" in ${r.city}, these businesses show before you.`, `Abhi - jab log ${r.city} mein "${trade}" search karte hain, ye businesses aapse pehle dikhte hain.`)} <span className="font-semibold text-brand">{T("You can start fixing this within 24 hours.", "Aap 24 hours mein ise fix karna start kar sakte hain.")}</span></p>}
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           {ahead.length > 0
             ? <div className="rounded-2xl border border-border bg-bg p-3"><p className="text-3xl font-extrabold tabular-nums text-red-600">{ahead.length}{more}</p><p className="mt-1 text-xs text-muted">{T("Competitors ranking above you", "Competitors jo upar rank kar rahe hain")}</p></div>
@@ -184,7 +189,7 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
             <span className={`text-right font-semibold tabular-nums ${ahead.some((c) => c.reviews > r.place.reviews) ? "text-red-600" : "text-good"}`}>{r.place.reviews}</span>
             <span className="text-right"><span className="inline-block min-w-[2.6rem] rounded-lg bg-red-600 px-2 py-1 text-center text-sm font-bold tabular-nums text-white">{r.local?.rank ?? `${r.local?.total ?? 20}+`}</span></span>
           </div>
-          <p className="mt-3 text-xs text-muted">{T(`The order Google gives for "${r.place.category} in ${r.city}" around your address. An estimate: it moves a little with where the searcher stands.`, `"${r.place.category} in ${r.city}" search par aapke address ke aas-paas Google ka order. Ye estimate hai: search karne wale ki jagah ke hisaab se thoda badalta hai.`)}</p>
+          <p className="mt-3 text-xs text-muted">{T(`The order Google gives for "${trade} in ${r.city}" around your address. An estimate: it moves a little with where the searcher stands.`, `"${trade} in ${r.city}" search par aapke address ke aas-paas Google ka order. Ye estimate hai: search karne wale ki jagah ke hisaab se thoda badalta hai.`)}</p>
         </div>
       )}
 
@@ -219,7 +224,9 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
             {issues.map((f) => (
               <li key={f.title} className="flex gap-3 text-base leading-snug">
                 <X className="mt-0.5 h-5 w-5 shrink-0 text-red-500" strokeWidth={3} />
-                <span>{lang === "hi" && f.hi ? f.hi : <><b>{f.title}</b> - {f.why}</>}</span>
+                <span className="min-w-0 flex-1">{lang === "hi" && f.hi ? f.hi : <><b>{f.title}</b> - {f.why}</>}
+                  {/* Which Shubhora plan fixes this one. */}
+                  <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-brand-soft px-2 py-0.5 align-middle text-[11px] font-bold text-brand-ink">{T("Fixed by", "Theek karta hai")}: {PLAN[f.plan]}</span></span>
               </li>
             ))}
           </ul>
