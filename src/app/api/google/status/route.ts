@@ -2,7 +2,7 @@
 // PATCH { auto_post?, auto_reply?, location_name?, refresh? }. DELETE → disconnect (keeps nothing).
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
-import { googleCreds, googleRow, googleToken, listReviews, fetchInsights, patchRow, friendlyGoogleError, GOOGLE_REDIRECT } from "@/lib/google-server";
+import { googleCreds, googleRow, googleToken, listReviews, fetchInsights, replyCount, patchRow, friendlyGoogleError, GOOGLE_REDIRECT } from "@/lib/google-server";
 
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
@@ -17,7 +17,9 @@ export async function GET(request: Request) {
       const tok = await googleToken(g);
       const [rv, ins] = await Promise.all([listReviews(tok, g.location_name).catch(() => null), fetchInsights(tok, g.location_name).catch(() => null)]);
       if (rv) { rating = rv.averageRating; review_count = rv.totalReviewCount; }
-      if (ins) insights = ins;
+      const before = insights as { replies?: unknown };
+      if (ins) insights = { ...ins, ...(before.replies ? { replies: before.replies } : {}) };
+      if (rv) insights = { ...insights, replies: replyCount(rv.reviews) };
       await patchRow(me.id, { rating, review_count, insights, insights_at: new Date().toISOString(), last_error: "" });
       last_error = "";
     } catch (e) { last_error = friendlyGoogleError(e); await patchRow(me.id, { last_error }); }

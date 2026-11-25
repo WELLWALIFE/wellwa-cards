@@ -281,6 +281,7 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
           <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-base font-semibold text-white hover:opacity-90">{partner?.name ? T(`Talk to ${partner.name} on WhatsApp`, `${partner.name} se WhatsApp par baat karein`) : T("Talk on WhatsApp", "WhatsApp par baat karein")} <ArrowRight className="h-5 w-5" /></a>
           <a href="/pricing" className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-5 py-3 text-base font-semibold text-white hover:bg-white/10">{T("See plans", "Plans dekhein")}</a>
         </div>
+        <p className="mt-4 text-sm text-white/80">{T("Already use Shubhora?", "Pehle se Shubhora use karte hain?")} <a href="/poster/social?tab=google" className="font-semibold text-white underline">{T("Connect your Google profile", "Apni Google profile connect karein")}</a> {T("and answer reviews and post from the app.", "aur app se reviews ke jawab aur post karein.")}</p>
       </div>
 
       <details className="rounded-3xl border border-border bg-surface p-6"><summary className="cursor-pointer font-semibold">{T(`Google score ${r.score}/100 - how it is made`, `Google score ${r.score}/100 - kaise bana`)}</summary>

@@ -50,13 +50,21 @@ export async function findPlaces(query: string): Promise<Candidate[]> {
 }
 
 /** The full public profile of one place. */
+/** Many shops put a WhatsApp or Facebook link in Google's "website" box. That is not a website of their own: nothing to speed-test,
+ *  and the report must say a website is missing (Jagdish Misthan Bhandar, Udaipur, 25 Nov 2026 — its wa link got a site score). */
+const NOT_A_SITE = /(^|\.)(wa\.me|whatsapp\.com|facebook\.com|fb\.com|fb\.me|instagram\.com|youtube\.com|youtu\.be|x\.com|twitter\.com|t\.me|linkedin\.com|g\.page)$/i;
+export function ownSite(u?: string): string {
+  if (!u) return "";
+  try { return NOT_A_SITE.test(new URL(u).hostname) ? "" : u; } catch { return ""; }
+}
+
 export async function placeDetails(id: string): Promise<Place> {
   const p = await call<RawPlace>(`/places/${encodeURIComponent(id)}?regionCode=IN&languageCode=en`, undefined,
     "id,displayName,formattedAddress,rating,userRatingCount,location,primaryType,primaryTypeDisplayName,websiteUri,nationalPhoneNumber,photos,regularOpeningHours,googleMapsUri,businessStatus,types,delivery,takeout,dineIn,curbsidePickup,reservable,paymentOptions,parkingOptions,accessibilityOptions,reviews.publishTime", "GET");
   const c = toCandidate(p);
   return {
     ...c, category: p.primaryTypeDisplayName?.text || (p.primaryType ?? "").replace(/_/g, " ") || "business",
-    website: p.websiteUri ?? "", phone: p.nationalPhoneNumber ?? "", photos: Array.isArray(p.photos) ? p.photos.length : 0,
+    website: ownSite(p.websiteUri), phone: p.nationalPhoneNumber ?? "", photos: Array.isArray(p.photos) ? p.photos.length : 0,
     hoursSet: !!p.regularOpeningHours?.periods?.length, open: (p.businessStatus ?? "OPERATIONAL") === "OPERATIONAL",
     mapsUrl: p.googleMapsUri ?? "", status: p.businessStatus ?? "",
     types: (p.types ?? []).filter((t) => !CATCH_ALL.has(t)),

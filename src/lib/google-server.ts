@@ -132,6 +132,9 @@ export async function listLocalPosts(token: string, locationName: string) {
 
 /** 28-day performance: impressions, website clicks, calls, direction requests. */
 export type Insights = { days: number; impressions: number; website: number; calls: number; directions: number; series: { day: string; impressions: number }[] };
+/** Of the newest reviews Google gave us (50 at most): how many the owner has answered. Counted, never guessed. */
+export type ReplyCount = { of: number; answered: number };
+export const replyCount = (reviews: GReview[]): ReplyCount => ({ of: reviews.length, answered: reviews.filter((r) => !!r.reviewReply?.comment).length });
 export async function fetchInsights(token: string, locationName: string): Promise<Insights> {
   const loc = locationName.replace(/^accounts\/[^/]+\//, ""); // performance API wants "locations/123"
   const end = new Date(Date.now() - 2 * 86400000), start = new Date(end.getTime() - 27 * 86400000);

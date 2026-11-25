@@ -10,7 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 
 type Loc = { name: string; title: string; address: string; phone: string; maps: string };
-type Ins = { days?: number; impressions?: number; website?: number; calls?: number; directions?: number; series?: { day: string; impressions: number }[] };
+type Ins = { days?: number; impressions?: number; website?: number; calls?: number; directions?: number; series?: { day: string; impressions: number }[]; replies?: { of: number; answered: number } };
 type Status = { configured: boolean; source: string; own_client: boolean; connected: boolean; title: string; status: string; auto_post: boolean; auto_reply: boolean; address: string; phone: string; maps_url: string; rating: number | null; review_count: number; insights: Ins; last_error: string; locations: Loc[]; location_name: string; redirect_uri: string };
 const inputCls = "w-full rounded-xl border border-border bg-surface2/50 px-3 py-2 text-sm outline-none focus:border-brand";
 
@@ -145,6 +145,20 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
             </div>
             {(ins.series?.length ?? 0) > 0 && <div className="mt-2 flex h-10 items-end gap-px">{ins.series!.map((d) => <div key={d.day} title={`${d.day}: ${d.impressions}`} className="flex-1 rounded-t-sm bg-[#4285F4]/60" style={{ height: `${(d.impressions / maxImp) * 100}%` }} />)}</div>}
           </section>
+
+          {/* reviews answered: counted from the newest reviews Google gives us */}
+          {ins.replies && ins.replies.of > 0 && (() => { const left = ins.replies.of - ins.replies.answered; return (
+            <section className="rounded-xl border border-border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold text-ink">{hi ? "Reviews ke jawab" : "Reviews answered"}</div>
+                  <div className="text-base font-bold text-ink">{ins.replies.answered} / {ins.replies.of}{ins.replies.of >= 50 && <span className="ml-1 text-[11px] font-normal text-muted">{hi ? "(naye 50 mein se)" : "(of the newest 50)"}</span>}</div>
+                  <div className="text-[11px] text-muted">{left > 0 ? (hi ? `${left} review bina jawab ke hain. Jawab dene se Google par bharosa badhta hai.` : `${left} ${left === 1 ? "review has" : "reviews have"} no answer yet. Answering builds trust on Google.`) : (hi ? "Sab reviews ka jawab diya hua hai." : "Every review is answered.")}</div>
+                </div>
+                {left > 0 && <button type="button" onClick={onReviews} className="shrink-0 rounded-xl grad-brand px-3 py-2 text-sm font-semibold text-white">{hi ? "Jawab dein" : "Answer now"}</button>}
+              </div>
+            </section>
+          ); })()}
 
           <section className="rounded-xl border border-border p-3 space-y-3">
             <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
