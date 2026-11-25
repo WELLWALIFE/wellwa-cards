@@ -4,7 +4,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard, Users, Store, UserCog, ScrollText, IndianRupee, CreditCard, Wallet, Headset, LayoutTemplate, Image as ImageIcon,
-  Building2, Sparkles, Bot, Bell, Globe, Settings, Network, Activity, SlidersHorizontal, ShieldCheck, Link2,
+  Building2, Sparkles, Bot, Bell, Globe, Settings, Network, Activity, SlidersHorizontal, ShieldCheck, Link2, Search,
 } from "lucide-react";
 
 export const RIGHTS = [
@@ -62,6 +62,7 @@ export const MENU: { title: string; items: MenuItem[] }[] = [
     { href: "/admin/support", label: "Live help", icon: Headset, right: "support.live", franchise: true },
     { href: "/admin/cards", label: "Cards", icon: CreditCard, right: "users.view" },
     { href: "/admin/websites", label: "Websites", icon: Globe, right: "users.view" },
+    { href: "/admin/google-checks", label: "Google checks", icon: Search, right: "users.view" },
   ] },
   { title: "Money", items: [
     { href: "/admin/earnings", label: "My earnings", icon: IndianRupee, right: "franchises.view", franchise: true },

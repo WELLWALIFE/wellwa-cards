@@ -7,6 +7,9 @@ import { clientIp, clientKey, rateLimited, requireUser, sameOrigin } from "@/lib
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { buildReport, cachedReport, findPlaces, placesConfigured, saveReport } from "@/lib/google-check";
 import { isShubhoraSellerCard } from "@/lib/shubhora-page";
+import { bridge, ownerPlanExpiry } from "@/lib/crm-server";
+import { notify } from "@/lib/notify";
+import { SITE_URL } from "@/lib/site-url";
 
 const DAY = 86_400_000;
 const clean = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
@@ -42,14 +45,28 @@ export async function POST(request: Request) {
       catch (e) { console.error("google-check report", e); return Response.json({ ok: false, error: "Could not build the report. Try again in a minute." }, { status: 502 }); }
     }
     await saveReport(report, { ip: clientIp(request), userId: me?.user.id, phone: phone || undefined, query }).catch(() => {});
-    if (!me && phone) await saveLead(phone, clean(b.name, 100) || report.place.name, report, clean(b.by, 60).toLowerCase()).catch(() => {});
+    // A number typed in is a lead — also when the one checking is signed in (a partner checking a shop with its owner beside them; the
+    // owner tested with his own number while signed in and nothing arrived — 25 Nov 2026). Ten digits at least.
+    if (phone.replace(/\D/g, "").length >= 10) await saveLead(phone, clean(b.name, 100) || report.place.name, report, clean(b.by, 60).toLowerCase(), me?.user.id).catch((e) => console.error("google-check lead", e));
     return Response.json({ ok: true, report, fresh });
   }
   return Response.json({ ok: false, error: "Unknown step." }, { status: 400 });
 }
 
+/** The report as one WhatsApp message: the score, what to fix first, and the link to check again. */
+function reportText(r: { place: { name: string }; city: string; score: number; fixes: { title: string; why: string }[] }, from: string): string {
+  const fixes = r.fixes.slice(0, 3).map((f, i) => `${i + 1}. *${f.title}*\n   ${f.why}`).join("\n");
+  return [
+    `🔎 *Google check — ${r.place.name}*${r.city ? ` (${r.city})` : ""}`,
+    `Score: *${r.score}/100*`,
+    fixes ? `\n*Fix these first:*\n${fixes}` : "",
+    `\nCheck again any time: ${SITE_URL}/google-check`,
+    `— ${from}`,
+  ].filter(Boolean).join("\n");
+}
+
 /** The visitor's number goes to the company's own leads (same as the contact form), with the score in the message. */
-async function saveLead(phone: string, name: string, r: { place: { name: string; address: string }; score: number; fixes: { title: string }[] }, by = "") {
+async function saveLead(phone: string, name: string, r: { place: { name: string; address: string }; city: string; score: number; fixes: { title: string; why: string }[] }, by = "", signedIn?: string) {
   const admin = getAdminSupabase();
   if (!admin) return;
   // Opened from a Shubhora partner's website (?by=<their card>): the visitor is that partner's lead (owner, 25 Nov 2026). Only a real
@@ -60,6 +77,11 @@ async function saveLead(phone: string, name: string, r: { place: { name: string;
     const d = (data?.data ?? {}) as { company?: string; name?: string; jobTitle?: string; tagline?: string };
     if (data && isShubhoraSellerCard(d)) card = { id: data.id, owner_id: data.owner_id };
   }
+  // Signed in, not sent by a partner: the lead is the signed-in account's own (their customer), on their newest card.
+  if (!card && signedIn) {
+    const { data } = await admin.from("cards").select("id,owner_id").eq("owner_id", signedIn).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    card = data ?? null;
+  }
   if (!card) {
     const username = (process.env.SITE_LEAD_CARD ?? "").trim().toLowerCase();
     if (!username) return;
@@ -69,4 +91,22 @@ async function saveLead(phone: string, name: string, r: { place: { name: string;
   if (!card) return;
   const message = [`Google check: ${r.place.name} — score ${r.score}/100`, r.place.address, ...r.fixes.map((f) => `• ${f.title}`)].join("\n");
   await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email: "", message, source: "form", src: "google-check" });
+
+  // The page says "we send the full report there too": it goes from the lead owner's own WhatsApp when it is linked (the same
+  // bridge as booking reminders). Not linked: the owner gets the report with the customer's number, to forward in one tap.
+  const { data: c } = await admin.from("cards").select("data").eq("id", card.id).maybeSingle();
+  const cd = (c?.data ?? {}) as { company?: string; name?: string };
+  const from = (cd.company || cd.name || "Shubhora").trim();
+  const text = reportText(r, from);
+  const digits = phone.replace(/\D/g, "");
+  const to = digits.length === 10 ? `91${digits}` : digits;
+  let sent = false;
+  const expiry = await ownerPlanExpiry(card.owner_id).catch(() => null);
+  if (expiry) sent = (await bridge(card.owner_id, expiry, "send", { to, text })).ok;
+  await notify(card.owner_id, "new_lead", {
+    title: `New lead: ${name}`.slice(0, 80),
+    body: `Google check ${r.score}/100 · ${phone}${sent ? " · report sent on WhatsApp" : ""}`.slice(0, 160),
+    path: "/poster/leads", ref: `gcheck:${digits}:${r.place.name}`.slice(0, 120),
+    whatsappText: sent ? undefined : `🔎 *New lead from the Google check*\n${name} — ${phone}\nScore ${r.score}/100\n\nSend them the report in one tap:\nhttps://wa.me/${to}?text=${encodeURIComponent(text)}`,
+  }).catch(() => undefined);
 }
