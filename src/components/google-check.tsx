@@ -181,7 +181,7 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
           <div className="mt-2 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 rounded-2xl border-2 border-brand px-3 py-3 text-base">
             <span className="min-w-0 font-bold text-brand [overflow-wrap:anywhere]">▸ {r.place.name}</span>
             <span className="text-right tabular-nums"><Star className="mr-1 inline h-4 w-4 fill-amber-400 text-amber-400" />{r.place.rating ? r.place.rating.toFixed(1) : "0.0"}</span>
-            <span className="text-right font-semibold tabular-nums text-red-600">{r.place.reviews}</span>
+            <span className={`text-right font-semibold tabular-nums ${ahead.some((c) => c.reviews > r.place.reviews) ? "text-red-600" : "text-good"}`}>{r.place.reviews}</span>
             <span className="text-right"><span className="inline-block min-w-[2.6rem] rounded-lg bg-red-600 px-2 py-1 text-center text-sm font-bold tabular-nums text-white">{r.local?.rank ?? `${r.local?.total ?? 20}+`}</span></span>
           </div>
           <p className="mt-3 text-xs text-muted">{T(`The order Google gives for "${r.place.category} in ${r.city}" around your address. An estimate: it moves a little with where the searcher stands.`, `"${r.place.category} in ${r.city}" search par aapke address ke aas-paas Google ka order. Ye estimate hai: search karne wale ki jagah ke hisaab se thoda badalta hai.`)}</p>
