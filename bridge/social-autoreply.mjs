@@ -35,7 +35,9 @@ const LANG = { hi: "Hindi in Devanagari script", hinglish: "Hinglish (Hindi in R
 async function context(userId) {
   const prof = (await rest(`poster_profiles?user_id=eq.${userId}&order=is_default.desc,created_at&limit=1&select=name,tagline,phone,lang`))?.[0];
   const card = (await rest(`cards?owner_id=eq.${userId}&order=updated_at.desc&limit=1&select=data`))?.[0]?.data;
-  return { name: prof?.tagline || card?.company || prof?.name || "our business", tagline: card?.tagline ?? "", phone: prof?.phone ?? "", lang: LANG[prof?.lang] ? prof.lang : "hinglish", knowledge: [card?.about, card?.botKnowledge].filter(Boolean).join("\n").slice(0, 2000) };
+  // The Google profile's number (the public / customer-care one) when connected, for every reply (owner, 26 Nov 2026).
+  const gPhone = (await rest(`google_accounts?user_id=eq.${userId}&status=eq.ok&select=phone`))?.[0]?.phone ?? "";
+  return { name: prof?.tagline || card?.company || prof?.name || "our business", tagline: card?.tagline ?? "", phone: gPhone || prof?.phone || "", lang: LANG[prof?.lang] ? prof.lang : "hinglish", knowledge: [card?.about, card?.botKnowledge].filter(Boolean).join("\n").slice(0, 2000) };
 }
 
 /* The draft is checked in code, not only asked of the AI (owner, 26 Nov 2026: replies carried another number, mixed scripts —

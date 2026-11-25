@@ -78,16 +78,20 @@ export { isPermErr };
 
 /** What the AI knows about this business when drafting a reply. */
 export async function businessContext(userId: string): Promise<{ name: string; tagline: string; phone: string; lang: string; knowledge: string }> {
-  const [pr, cr] = await Promise.all([
+  const [pr, cr, gr] = await Promise.all([
     restAsService<{ name: string; tagline: string | null; phone: string | null; lang: string }[]>(`poster_profiles?user_id=eq.${userId}&order=is_default.desc,created_at&limit=1&select=name,tagline,phone,lang`),
     restAsService<{ data: { company?: string; tagline?: string; about?: string; botKnowledge?: string } }[]>(`cards?owner_id=eq.${userId}&order=created_at.desc&limit=1&select=data`),
+    restAsService<{ phone: string | null }[]>(`google_accounts?user_id=eq.${userId}&status=eq.ok&select=phone`),
   ]);
+  // The number every public reply gives: the one on the Google profile when connected — the business's public / customer-care
+  // number (owner, 26 Nov 2026) — else the poster profile's.
+  const gPhone = Array.isArray(gr.data) ? gr.data[0]?.phone ?? "" : "";
   const prof = pr.data?.[0];
   const card = cr.data?.[0]?.data;
   return {
     name: prof?.tagline || card?.company || prof?.name || "our business",
     tagline: card?.tagline ?? "",
-    phone: prof?.phone ?? "",
+    phone: gPhone || prof?.phone || "",
     lang: prof?.lang ?? "hinglish",
     knowledge: [card?.about, card?.botKnowledge].filter(Boolean).join("\n").slice(0, 2000),
   };
