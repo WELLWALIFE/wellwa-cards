@@ -701,7 +701,14 @@ export default function WebsiteEditPage() {
     );
   };
   const sheetLayout = (k: SectionKey, id: string) => { if (k === "hero") pickHero(id); else setAdvSection(k, id); };
-  const sheetOpen = (key: string, blockId?: string) => { openPart(key); if (blockId) setAtBlock(blockId); if (key === "text" && blockId === "__add") setSync({ text: "", page: curSlug }); };
+  const sheetOpen = (key: string, blockId?: string) => {
+    openPart(key); if (blockId) setAtBlock(blockId);
+    if (key === "text" && blockId === "__add") { setSync({ text: "", page: curSlug }); return; }
+    // Opened from a section's sheet: the window stays on THAT section, on its page (owner, 25 Nov 2026: Contact strip → Edit, and the
+    // window jumped to the Home banner because the part's own rule looked for a heading of its kind on Home).
+    const f = sheetFocus.current;
+    if (sheet && f && !f.top && (f.sec || f.blk)) setSync({ text: "", page: curSlug, ...(f.sec ? { sec: f.sec } : {}), ...(f.blk ? { blk: f.blk } : {}) });
+  };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
   function setTone(t: "light" | "dark") {
     if (!adv) return;
@@ -1164,7 +1171,7 @@ export default function WebsiteEditPage() {
           </div>
           <div className="space-y-4 p-3">
             <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
-              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : "Edit text"}</button>
+              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : w.key === "text" ? "Edit text" : `Edit: ${LABEL[w.key]?.[0] ?? "text"}`}</button>
               {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
             </div>
             {sec && ids.length > 1 && <div>
