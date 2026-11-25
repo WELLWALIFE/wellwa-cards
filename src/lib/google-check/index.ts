@@ -39,7 +39,7 @@ export async function buildReport(placeId: string): Promise<Report> {
     place.website ? siteCheck(place.website).catch(() => NO_SITE) : Promise.resolve(NO_SITE),
   ]);
   const rankRows = ranks ?? keywordsFor(place.category, city).map((keyword) => ({ keyword, rank: null, top: [] }));
-  const s = scoreOf(place, rankRows, site, rivals);
+  const s = scoreOf(place, rankRows, site, rivals, ranks !== null);
   return { place, city, ranks: rankRows, rankChecked: ranks !== null, site, rivals, ...s, at: new Date().toISOString() };
 }
 

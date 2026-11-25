@@ -6,7 +6,10 @@ import type { SiteCheck } from "./pagespeed";
 export type Fix = { title: string; why: string; plan: "website" | "growth" };
 export type Breakdown = { label: string; got: number; max: number };
 
-export function scoreOf(place: Place, ranks: RankRow[], site: SiteCheck, rivals: Candidate[]): { score: number; breakdown: Breakdown[]; fixes: Fix[] } {
+// Only what was really checked is scored (25 Nov 2026): with no Maps-rank service set up, or a website PageSpeed could not read, the
+// report said "Not in the top 20 on Google Maps" and gave 0 — a claim nobody checked. Unchecked parts are left out and the score is
+// out of what was checked, scaled to 100.
+export function scoreOf(place: Place, ranks: RankRow[], site: SiteCheck, rivals: Candidate[], rankChecked = true): { score: number; breakdown: Breakdown[]; fixes: Fix[] } {
   const b: Breakdown[] = []; const fixes: Fix[] = [];
   const add = (label: string, got: number, max: number) => b.push({ label, got, max });
 
@@ -17,16 +20,21 @@ export function scoreOf(place: Place, ranks: RankRow[], site: SiteCheck, rivals:
   add("Opening hours", place.hoursSet ? 5 : 0, 5);
   add("Phone number", place.phone ? 5 : 0, 5);
   add("Website", place.website ? 5 : 0, 5);
-  add("Website speed (mobile)", site.checked ? (site.performance >= 70 ? 10 : site.performance >= 40 ? 5 : 0) : 0, 10);
-  add("Website SEO basics", site.checked ? (site.seo >= 80 ? 5 : site.seo >= 50 ? 2 : 0) : 0, 5);
+  // No website: these two are lost (0). A website that could not be read: left out.
+  if (site.checked || !place.website) {
+    add("Website speed (mobile)", site.checked ? (site.performance >= 70 ? 10 : site.performance >= 40 ? 5 : 0) : 0, 10);
+    add("Website SEO basics", site.checked ? (site.seo >= 80 ? 5 : site.seo >= 50 ? 2 : 0) : 0, 5);
+  }
   const best = ranks.map((x) => x.rank).filter((x): x is number => x !== null).sort((a, c) => a - c)[0] ?? null;
-  add("Maps rank", best === null ? 0 : best <= 3 ? 15 : best <= 10 ? 8 : 3, 15);
+  if (rankChecked) add("Maps rank", best === null ? 0 : best <= 3 ? 15 : best <= 10 ? 8 : 3, 15);
 
-  const score = b.reduce((s, x) => s + x.got, 0);
+  const got = b.reduce((s, x) => s + x.got, 0), max = b.reduce((s, x) => s + x.max, 0);
+  const score = max >= 100 ? got : Math.round((got / Math.max(1, max)) * 100);
   const rivalAvg = rivals.length ? rivals.reduce((s, x) => s + x.rating, 0) / rivals.length : 0;
   const rivalReviews = rivals.length ? Math.round(rivals.reduce((s, x) => s + x.reviews, 0) / rivals.length) : 0;
 
-  if (best === null) fixes.push({ title: "Not in the top 20 on Google Maps", why: "Customers searching nearby never see you. Weekly Google posts, photos and review replies push you up.", plan: "growth" });
+  if (!rankChecked) { /* not checked: nothing to say about the Maps rank */ }
+  else if (best === null) fixes.push({ title: "Not in the top 20 on Google Maps", why: "Customers searching nearby never see you. Weekly Google posts, photos and review replies push you up.", plan: "growth" });
   else if (best > 3) fixes.push({ title: `#${best} on Maps — not in the top 3`, why: "Most people call one of the first three. Regular posts, photos and fresh reviews move you up.", plan: "growth" });
   if (n < rivalReviews) fixes.push({ title: `${n} reviews vs ${rivalReviews} for competitors`, why: "Google trusts businesses people talk about. Ask every happy customer, reply to every review.", plan: "growth" });
   else if (n < 30) fixes.push({ title: "Fewer than 30 reviews", why: "Google trusts businesses people talk about. Ask every happy customer, reply to every review.", plan: "growth" });

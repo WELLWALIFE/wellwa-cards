@@ -398,7 +398,11 @@ function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolea
   if (!seller) return card;
   const c = card as T & { site?: Card["site"]; company?: string };
   const own = (c.site as { homeOwnOrder?: boolean } | undefined)?.homeOwnOrder === true;
-  const pages = withPlansOnHome(card.pages).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p), own));
+  // A card saved with the Google check on it keeps its copy: the old bare "/google-check" is brought to the full address (an owner's own
+  // address in that button is left as it is).
+  const fixGc = (p: CardPage): CardPage => (p.blocks.some((b) => b.id === GOOGLE_CHECK.id && b.kind === "cta" && (b.joinUrl ?? "").trim() === "/google-check")
+    ? { ...p, blocks: p.blocks.map((b) => (b.id === GOOGLE_CHECK.id && b.kind === "cta" && (b.joinUrl ?? "").trim() === "/google-check" ? { ...b, joinUrl: GOOGLE_CHECK.kind === "cta" ? GOOGLE_CHECK.joinUrl : b.joinUrl } : b)) } : p);
+  const pages = withPlansOnHome(card.pages).map(fixGc).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p), own));
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;
