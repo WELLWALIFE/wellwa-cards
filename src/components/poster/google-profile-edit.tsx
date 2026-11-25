@@ -3,13 +3,17 @@
 // phone, website and opening hours, changed here and sent to Google. Name and address are shown only — Google asks for a new
 // verification when they change, so those stay on business.google.com.
 import { useState } from "react";
-import { LoaderCircle, Pencil, Sparkles, X, Plus, Search } from "lucide-react";
+import { LoaderCircle, Pencil, Sparkles, X, Plus, Search, ImagePlus, Check } from "lucide-react";
 import { api } from "@/lib/poster-client";
 
 type Cat = { name: string; displayName: string };
 type GTime = { hours?: number; minutes?: number };
 type GPeriod = { openDay: string; openTime?: GTime; closeDay: string; closeTime?: GTime };
-type Profile = { title: string; address: string; primaryCategory: Cat | null; additionalCategories: Cat[]; description: string; phone: string; website: string; periods: GPeriod[]; pendingEdits: boolean };
+type GDate = { year: number; month: number; day: number };
+type GSpecial = { startDate: GDate; closed?: boolean; openTime?: GTime; closeTime?: GTime };
+type Profile = { title: string; address: string; primaryCategory: Cat | null; additionalCategories: Cat[]; description: string; phone: string; website: string; periods: GPeriod[]; pendingEdits: boolean; special: GSpecial[] };
+type Special = { date: string; closed: boolean; from: string; to: string };
+type Attr = { name: string; displayName: string; group: string };
 type Day = { day: string; open: boolean; from: string; to: string; extra: boolean };
 
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
@@ -19,6 +23,7 @@ const daysOf = (p: GPeriod[]): Day[] => DAYS.map((d) => {
   const mine = p.filter((x) => x.openDay === d);
   return mine.length ? { day: d, open: true, from: hhmm(mine[0].openTime), to: hhmm(mine[0].closeTime) === "24:00" ? "23:59" : hhmm(mine[0].closeTime), extra: mine.length > 1 } : { day: d, open: false, from: "10:00", to: "19:00", extra: false };
 });
+const specialsOf = (l: GSpecial[]): Special[] => l.map((s) => ({ date: `${s.startDate.year}-${String(s.startDate.month).padStart(2, "0")}-${String(s.startDate.day).padStart(2, "0")}`, closed: !!s.closed, from: s.closed ? "10:00" : hhmm(s.openTime), to: s.closed ? "19:00" : hhmm(s.closeTime) }));
 const inputCls = "w-full rounded-xl border border-border bg-surface2/50 px-3 py-2 text-sm outline-none focus:border-brand";
 
 export function GoogleProfileEdit({ hi }: { hi: boolean }) {
@@ -29,10 +34,15 @@ export function GoogleProfileEdit({ hi }: { hi: boolean }) {
   const [primary, setPrimary] = useState<Cat | null>(null);
   const [extra, setExtra] = useState<Cat[]>([]);
   const [days, setDays] = useState<Day[]>([]);
+  const [special, setSpecial] = useState<Special[]>([]);
+  const [attrs, setAttrs] = useState<{ meta: Attr[]; values: Record<string, boolean> } | null>(null);
+  const [attrCh, setAttrCh] = useState<Record<string, boolean>>({});
+  const [photos, setPhotos] = useState<{ google: number | null; mine: string[] } | null>(null);
+  const [sent, setSent] = useState<Record<string, "busy" | "ok" | "err">>({});
   const [q, setQ] = useState(""); const [found, setFound] = useState<Cat[] | null>(null); const [pickFor, setPickFor] = useState<"primary" | "extra">("primary");
   const [busy, setBusy] = useState(""); const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  function fill(x: Profile) { setP(x); setForm({ description: x.description, phone: x.phone, website: x.website }); setPrimary(x.primaryCategory); setExtra(x.additionalCategories); setDays(daysOf(x.periods)); }
+  function fill(x: Profile) { setP(x); setForm({ description: x.description, phone: x.phone, website: x.website }); setPrimary(x.primaryCategory); setExtra(x.additionalCategories); setDays(daysOf(x.periods)); setSpecial(specialsOf(x.special ?? [])); setAttrCh({}); }
   async function load() {
     setOpen(true); if (p) return;
     setBusy("load"); setMsg(null);
@@ -52,6 +62,22 @@ export function GoogleProfileEdit({ hi }: { hi: boolean }) {
     else if (c.name !== primary?.name && !extra.some((x) => x.name === c.name) && extra.length < 9) setExtra([...extra, c]);
     setFound(null); setQ("");
   }
+  async function loadAttrs() {
+    setBusy("attrs"); const r = await api<{ meta?: Attr[]; values?: Record<string, boolean>; error?: string }>("/api/google/profile?attrs=1"); setBusy("");
+    if (!r.ok || !r.data.meta) { setMsg({ ok: false, text: r.data?.error ?? T("Could not read the service options.", "Service options नहीं पढ़ पाए।") }); return; }
+    setAttrs({ meta: r.data.meta, values: r.data.values ?? {} });
+  }
+  async function loadPhotos() {
+    setBusy("photos"); const r = await api<{ google?: number | null; mine?: string[]; error?: string }>("/api/google/profile?photos=1"); setBusy("");
+    if (!r.ok) { setMsg({ ok: false, text: r.data?.error ?? "Could not load photos." }); return; }
+    setPhotos({ google: r.data.google ?? null, mine: r.data.mine ?? [] });
+  }
+  async function sendPhoto(u: string) {
+    setSent((s) => ({ ...s, [u]: "busy" }));
+    const r = await api<{ ok?: boolean; error?: string }>("/api/google/profile", { method: "POST", json: { photo: u } });
+    setSent((s) => ({ ...s, [u]: r.ok ? "ok" : "err" }));
+    if (!r.ok) setMsg({ ok: false, text: r.data?.error ?? T("Google did not take the photo.", "Google ने photo नहीं ली।") });
+  }
   async function aiDesc() {
     setBusy("ai"); setMsg(null);
     const r = await api<{ description?: string; error?: string }>("/api/google/profile", { method: "POST", json: { ai: "description", hi } });
@@ -70,12 +96,16 @@ export function GoogleProfileEdit({ hi }: { hi: boolean }) {
     const sig = (l: Day[]) => JSON.stringify(l.map((d) => [d.day, d.open, d.from, d.to]));
     const before = sig(daysOf(p.periods)), now = sig(days);
     if (before !== now) body.periods = days.filter((d) => d.open).map((d) => ({ day: d.day, open: d.from, close: d.to }));
+    const sp = (l: Special[]) => JSON.stringify(l.map((d) => [d.date, d.closed, d.closed ? "" : d.from, d.closed ? "" : d.to]));
+    if (sp(special) !== sp(specialsOf(p.special ?? []))) body.special = special.filter((d) => d.date).map((d) => (d.closed ? { date: d.date, closed: true } : { date: d.date, open: d.from, close: d.to }));
+    if (Object.keys(attrCh).length) body.attributes = attrCh;
     if (!Object.keys(body).length) { setMsg({ ok: true, text: T("Nothing changed.", "कुछ नहीं बदला।") }); return; }
     setBusy("save"); setMsg(null);
     const r = await api<{ ok?: boolean; profile?: Profile; error?: string }>("/api/google/profile", { method: "PATCH", json: body });
     setBusy("");
     if (!r.ok || !r.data.profile) { setMsg({ ok: false, text: r.data?.error ?? T("Google did not take the change.", "Google ने बदलाव नहीं लिया।") }); return; }
     fill(r.data.profile);
+    if (body.attributes && attrs) setAttrs({ ...attrs, values: { ...attrs.values, ...attrCh } });
     setMsg({ ok: true, text: T("✅ Sent to Google. Some changes show at once; some wait for Google's check (minutes to a few days).", "✅ Google को भेज दिया। कुछ बदलाव तुरंत दिखते हैं, कुछ Google की जाँच के बाद (कुछ मिनट से कुछ दिन)।") });
   }
 
@@ -144,8 +174,62 @@ export function GoogleProfileEdit({ hi }: { hi: boolean }) {
             <button type="button" onClick={() => { const f = days.find((d) => d.open); if (f) setDays(days.map((d) => (d.open ? { ...d, from: f.from, to: f.to } : d))); }} className="text-xs font-semibold text-brand-ink">{T("Same time on all open days", "सभी खुले दिनों पर यही समय")}</button>
           </div>
 
+          <div className="space-y-1.5">
+            <div className="text-xs font-semibold text-ink">{T("Holidays and special days", "छुट्टी और ख़ास दिन")}</div>
+            {special.map((d, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+                <input type="date" value={d.date} onChange={(e) => setSpecial(special.map((x, j) => (j === i ? { ...x, date: e.target.value } : x)))} className="rounded-lg border border-border bg-surface2/50 px-2 py-1" />
+                <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={d.closed} onChange={(e) => setSpecial(special.map((x, j) => (j === i ? { ...x, closed: e.target.checked } : x)))} />{T("Closed", "बंद")}</label>
+                {!d.closed && <><input type="time" value={d.from} onChange={(e) => setSpecial(special.map((x, j) => (j === i ? { ...x, from: e.target.value } : x)))} className="rounded-lg border border-border bg-surface2/50 px-2 py-1" /><span className="text-muted">–</span><input type="time" value={d.to} onChange={(e) => setSpecial(special.map((x, j) => (j === i ? { ...x, to: e.target.value } : x)))} className="rounded-lg border border-border bg-surface2/50 px-2 py-1" /></>}
+                <button type="button" aria-label="Remove" onClick={() => setSpecial(special.filter((_, j) => j !== i))}><X className="h-4 w-4 text-muted" /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setSpecial([...special, { date: "", closed: true, from: "10:00", to: "19:00" }])} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" />{T("Add a holiday / special day", "छुट्टी / ख़ास दिन जोड़ें")}</button>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="text-xs font-semibold text-ink">{T("Service options", "Service options")}</div>
+            {!attrs ? (
+              <button type="button" onClick={loadAttrs} className="text-xs font-semibold text-brand-ink">{busy === "attrs" ? <LoaderCircle className="inline h-3.5 w-3.5 animate-spin" /> : T("Show delivery, payment and other options →", "Delivery, payment और बाकी options दिखाएँ →")}</button>
+            ) : attrs.meta.length === 0 ? <p className="text-xs text-muted">{T("Google offers no yes/no options for this category.", "इस category के लिए Google कोई options नहीं देता।")}</p> : (
+              <div className="max-h-72 space-y-2 overflow-auto rounded-xl border border-border p-2">
+                {[...new Set(attrs.meta.map((a) => a.group))].map((g) => (
+                  <div key={g}>
+                    {g && <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">{g}</div>}
+                    {attrs.meta.filter((a) => a.group === g).map((a) => { const on = attrCh[a.name] ?? attrs.values[a.name] ?? false; return (
+                      <label key={a.name} className="flex items-center gap-2 py-0.5 text-sm text-ink"><input type="checkbox" checked={on} onChange={(e) => setAttrCh({ ...attrCh, [a.name]: e.target.checked })} />{a.displayName}</label>
+                    ); })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button type="button" onClick={save} disabled={busy === "save"} className="grad-brand flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" && <LoaderCircle className="h-4 w-4 animate-spin" />}{T("Save to Google", "Google पर save करें")}</button>
         </>
+      )}
+      {p && (
+        <div className="space-y-1.5 border-t border-border pt-3">
+          <div className="text-xs font-semibold text-ink">{T("Photos on Google", "Google पर photos")}</div>
+          {!photos ? (
+            <button type="button" onClick={loadPhotos} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{busy === "photos" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}{T("Add photos from your card / website", "Card / website की photos Google पर डालें")}</button>
+          ) : (
+            <>
+              <p className="text-[11px] text-muted">{photos.google !== null ? T(`${photos.google} photos on Google now. `, `Google पर अभी ${photos.google} photos हैं। `) : ""}{T("Tap a photo to add it. Only your own photos (not stock pictures) can go.", "Photo पर tap करें। सिर्फ आपकी अपनी photos जाती हैं (stock नहीं)।")}</p>
+              {photos.mine.length === 0 ? <p className="text-xs text-muted">{T("No photos of your own on the card yet.", "Card पर अभी आपकी अपनी कोई photo नहीं है।")}</p> : (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {photos.mine.map((u) => (
+                    <button key={u} type="button" disabled={!!sent[u]} onClick={() => sendPhoto(u)} className="relative aspect-square overflow-hidden rounded-lg border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={u} alt="" className="h-full w-full object-cover" />
+                      {sent[u] && <span className={`absolute inset-0 grid place-items-center text-xs font-semibold text-white ${sent[u] === "err" ? "bg-danger/70" : "bg-black/50"}`}>{sent[u] === "busy" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : sent[u] === "ok" ? <Check className="h-5 w-5" /> : "✕"}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
       {msg && <p role="alert" className={`rounded-lg px-3 py-2 text-xs font-semibold ${msg.ok ? "bg-good/10 text-good" : "border border-danger/40 bg-danger/10 text-danger"}`}>{msg.text}</p>}
     </section>

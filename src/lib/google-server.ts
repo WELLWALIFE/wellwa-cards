@@ -145,15 +145,19 @@ export type GProfile = {
   additionalCategories: { name: string; displayName: string }[];
   description: string; phone: string; additionalPhones: string[]; website: string;
   periods: GPeriod[]; pendingEdits: boolean;
+  special: GSpecial[];
 };
+export type GDate = { year: number; month: number; day: number };
+/** A holiday or a one-off day: closed, or open at other times. */
+export type GSpecial = { startDate: GDate; endDate?: GDate; closed?: boolean; openTime?: GTime; closeTime?: GTime };
 const locPath = (locationName: string) => locationName.replace(/^accounts\/[^/]+\//, "");
-const PROFILE_MASK = "title,storefrontAddress,categories,profile,phoneNumbers,websiteUri,regularHours,metadata";
+const PROFILE_MASK = "title,storefrontAddress,categories,profile,phoneNumbers,websiteUri,regularHours,specialHours,metadata";
 
 export async function getProfile(token: string, locationName: string): Promise<GProfile> {
   type L = { title?: string; storefrontAddress?: { addressLines?: string[]; locality?: string; administrativeArea?: string; postalCode?: string };
     categories?: { primaryCategory?: { name: string; displayName?: string }; additionalCategories?: { name: string; displayName?: string }[] };
     profile?: { description?: string }; phoneNumbers?: { primaryPhone?: string; additionalPhones?: string[] }; websiteUri?: string;
-    regularHours?: { periods?: GPeriod[] }; metadata?: { hasPendingEdits?: boolean } };
+    regularHours?: { periods?: GPeriod[] }; specialHours?: { specialHourPeriods?: GSpecial[] }; metadata?: { hasPendingEdits?: boolean } };
   const l = await gget<L>(`${INFO}/${locPath(locationName)}?readMask=${PROFILE_MASK}`, token);
   const a = l.storefrontAddress;
   const cat = (c?: { name: string; displayName?: string }) => (c ? { name: c.name, displayName: c.displayName ?? c.name.replace(/^categories\/gcid:/, "").replace(/_/g, " ") } : null);
@@ -162,18 +166,19 @@ export async function getProfile(token: string, locationName: string): Promise<G
     primaryCategory: cat(l.categories?.primaryCategory), additionalCategories: (l.categories?.additionalCategories ?? []).map((c) => cat(c)!),
     description: l.profile?.description ?? "", phone: l.phoneNumbers?.primaryPhone ?? "", additionalPhones: l.phoneNumbers?.additionalPhones ?? [],
     website: l.websiteUri ?? "", periods: l.regularHours?.periods ?? [], pendingEdits: !!l.metadata?.hasPendingEdits,
+    special: l.specialHours?.specialHourPeriods ?? [],
   };
 }
 
 /** Google's category list, searched by name ("water", "jewel"). */
 export async function searchCategories(token: string, q: string, lang: "en" | "hi" = "en"): Promise<{ name: string; displayName: string }[]> {
   const f = encodeURIComponent(`displayName=${q.replace(/["\\]/g, "").slice(0, 40)}`);
-  const r = await gget<{ categories?: { name: string; displayName: string }[] }>(`${INFO}/categories?regionCode=IN&languageCode=${lang}&view=BASIC&pageSize=20&filter=${f}`, token);
+  const r = await gget<{ categories?: { name: string; displayName: string }[] }>(`${INFO}/categories?regionCode=IN&languageCode=${lang}&view=BASIC&pageSize=100&filter=${f}`, token);
   return (r.categories ?? []).map((c) => ({ name: c.name, displayName: c.displayName }));
 }
 
 export type ProfilePatch = {
-  description?: string; phone?: string; website?: string; periods?: GPeriod[];
+  description?: string; phone?: string; website?: string; periods?: GPeriod[]; special?: GSpecial[];
   primaryCategory?: string; additionalCategories?: string[];
 };
 /** Send only what changed; Google may hold an edit for review before it shows (metadata.hasPendingEdits). */
@@ -183,6 +188,7 @@ export async function updateProfile(token: string, locationName: string, p: Prof
   if (p.phone !== undefined) { body.phoneNumbers = { primaryPhone: p.phone, additionalPhones: keep.additionalPhones }; mask.push("phoneNumbers"); }
   if (p.website !== undefined) { body.websiteUri = p.website; mask.push("websiteUri"); }
   if (p.periods !== undefined) { body.regularHours = { periods: p.periods }; mask.push("regularHours"); }
+  if (p.special !== undefined) { body.specialHours = { specialHourPeriods: p.special }; mask.push("specialHours"); }
   if (p.primaryCategory !== undefined || p.additionalCategories !== undefined) {
     const primary = p.primaryCategory ?? keep.primaryCategory?.name;
     if (!primary) throw new Error("Pick the main category first.");
@@ -193,6 +199,38 @@ export async function updateProfile(token: string, locationName: string, p: Prof
   if (!mask.length) return;
   await gsend(`${INFO}/${locPath(locationName)}?updateMask=${mask.join(",")}`, token, "PATCH", body);
 }
+
+/* Service options and other yes/no facts Google asks per category ("Delivery", "Accepts UPI", "Wheelchair-accessible entrance"). Only the
+ * yes/no ones are offered here — they are most of them; the rest stay on business.google.com. */
+export type GAttrMeta = { name: string; displayName: string; group: string };
+export async function attributeOptions(token: string, locationName: string): Promise<{ meta: GAttrMeta[]; values: Record<string, boolean> }> {
+  const loc = locPath(locationName);
+  type M = { parent: string; valueType: string; displayName?: string; groupDisplayName?: string; deprecated?: boolean };
+  const [m, v] = await Promise.all([
+    gget<{ attributeMetadata?: M[] }>(`${INFO}/attributes?parent=${loc}&languageCode=en&regionCode=IN&pageSize=200`, token),
+    gget<{ attributes?: { name: string; valueType?: string; values?: unknown[] }[] }>(`${INFO}/${loc}/attributes`, token).catch(() => ({ attributes: [] })),
+  ]);
+  const meta = (m.attributeMetadata ?? []).filter((x) => x.valueType === "BOOL" && !x.deprecated && x.displayName)
+    .map((x) => ({ name: x.parent, displayName: x.displayName!, group: x.groupDisplayName ?? "" }));
+  const values: Record<string, boolean> = {};
+  for (const a of v.attributes ?? []) if (a.valueType === "BOOL" && typeof a.values?.[0] === "boolean") values[a.name] = a.values[0] as boolean;
+  return { meta, values };
+}
+export async function updateAttributes(token: string, locationName: string, changes: Record<string, boolean>): Promise<void> {
+  const names = Object.keys(changes).filter((n) => /^attributes\/[\w.-]+$/.test(n)).slice(0, 60);
+  if (!names.length) return;
+  const loc = locPath(locationName);
+  await gsend(`${INFO}/${loc}/attributes?attributeMask=${names.join(",")}`, token, "PATCH",
+    { name: `${loc}/attributes`, attributes: names.map((name) => ({ name, valueType: "BOOL", values: [changes[name]] })) });
+}
+
+/** Photos on the profile: how many there are, and adding one from a public address (Google copies it). */
+export async function profilePhotoCount(token: string, locationName: string): Promise<number> {
+  const r = await gget<{ totalMediaItemCount?: number; mediaItems?: unknown[] }>(`${V4}/${locationName}/media?pageSize=1`, token);
+  return r.totalMediaItemCount ?? r.mediaItems?.length ?? 0;
+}
+export const addProfilePhoto = (token: string, locationName: string, sourceUrl: string) =>
+  gsend(`${V4}/${locationName}/media`, token, "POST", { mediaFormat: "PHOTO", locationAssociation: { category: "ADDITIONAL" }, sourceUrl });
 
 export const replyReview = (token: string, reviewName: string, comment: string) => gsend(`${V4}/${reviewName}/reply`, token, "PUT", { comment: comment.slice(0, 4000) });
 export const deleteReply = (token: string, reviewName: string) => gsend(`${V4}/${reviewName}/reply`, token, "DELETE");
