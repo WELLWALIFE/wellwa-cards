@@ -18,6 +18,7 @@ import { isTeamMember } from "@/lib/crm-pro";
 import { denied, forView, has, isUuid, jobById, jobsCtx, logEvent, moveTo, notifyReady, personName, personOf, shopName, tellPerson } from "@/lib/jobs-server";
 import { JOB_COLS, cleanPhone, flowFor, isStatus, nextStep, rupees, toPaise, type JobEvent, type JobRow, type Karigar, type Measurement } from "@/lib/jobs";
 import { isOwnMedia } from "@/lib/card-inputs";
+import { askForReview } from "@/lib/customer-send";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 const txt = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
@@ -81,6 +82,8 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       }
       const r = await moveTo(scope, setup, cur, status, byName, { note: txt(b.note, 300), notifyCustomer: b.notify !== false });
       if (!r.job) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 502 });
+      // Handed over: thank-you + review link (owner, 25 Nov 2026), once — only when it BECOMES delivered.
+      if (status === "delivered" && job.status !== "delivered" && r.job.customer_phone) void askForReview(scope.ownerId, { name: r.job.customer_name ?? "", phone: r.job.customer_phone }, `job:${job.id}`);
       return out(r.job, { notice: r.notice, told: r.told });
     }
     case "take": {

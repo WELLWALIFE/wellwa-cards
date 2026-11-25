@@ -7,6 +7,8 @@ import { notify } from "@/lib/notify";
 import { SITE_URL, cardHome } from "@/lib/site-url";
 import { tapLink } from "@/lib/bookings";
 import type { Card } from "@/lib/types";
+import { reviewUrlFor } from "@/lib/google-server";
+import { reviewAskText } from "@/lib/review-ask";
 
 export type OwnerCard = { id: string; username: string; company: string | null; name: string | null; data: Card | null };
 export type Prefs = { festival_wishes: boolean; review_ask: boolean };
@@ -41,7 +43,19 @@ export async function sendCustomer(ownerId: string, phone: string, text: string)
 }
 
 /** Thank-you + review link after a sale. */
-export function reviewText(c: OwnerCard | null, name: string, hindi: boolean): string {
+/** Where the customer writes the review: Google's own review box of the connected profile, else the card's Maps link. */
+export async function googleReviewUrl(ownerId: string, c: OwnerCard | null): Promise<string> {
+  return (await reviewUrlFor(ownerId).catch(() => "")) || googleLink(c);
+}
+/** The review helper page (stars, what they liked, a ready draft, then Google), when there is a Google address to send them on to. */
+export const reviewPage = (c: OwnerCard) => `${SITE_URL}/r/${encodeURIComponent(c.username)}`;
+export async function reviewLinkOf(ownerId: string, c: OwnerCard | null): Promise<string> {
+  const g = await googleReviewUrl(ownerId, c);
+  return g && c ? reviewPage(c) : g;
+}
+
+export function reviewText(c: OwnerCard | null, name: string, hindi: boolean, link?: string): string {
+  if (link !== undefined) return reviewAskText({ biz: businessOf(c), name, link, site: siteOf(c), hindi });
   const first = (name || "").split(" ")[0];
   const g = googleLink(c);
   const biz = businessOf(c);
@@ -58,7 +72,7 @@ export async function askForReview(ownerId: string, who: { name: string; phone: 
     const [c, prefs] = await Promise.all([cardOf(ownerId), prefsOf(ownerId)]);
     if (!prefs.review_ask) return;
     const hindi = hindiCard(c);
-    const text = reviewText(c, who.name, hindi);
+    const text = reviewText(c, who.name, hindi, await reviewLinkOf(ownerId, c));
     if (await sendCustomer(ownerId, who.phone, text)) return;
     const link = tapLink(who.phone, text);
     await notify(ownerId, "review_ask", {

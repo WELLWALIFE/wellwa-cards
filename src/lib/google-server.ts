@@ -115,6 +115,21 @@ export async function listReviews(token: string, locationName: string): Promise<
   const r = await gget<{ reviews?: GReview[]; averageRating?: number; totalReviewCount?: number }>(`${V4}/${locationName}/reviews?pageSize=50&orderBy=updateTime%20desc`, token);
   return { reviews: r.reviews ?? [], averageRating: r.averageRating ?? null, totalReviewCount: r.totalReviewCount ?? 0 };
 }
+/** Google's own "write a review" box of the connected location (Business Information metadata.newReviewUri, else built from its
+ *  place id). Kept in insights.review_url so Google is asked once. "" when Google is not connected or does not say. */
+export async function reviewUrlFor(userId: string): Promise<string> {
+  const g = await googleRow(userId);
+  if (!g?.refresh_token || !g.location_name || g.status !== "ok") return "";
+  const kept = (g.insights as { review_url?: unknown } | null)?.review_url;
+  if (typeof kept === "string" && kept) return kept;
+  try {
+    const loc = g.location_name.replace(/^accounts\/[^/]+\//, "");
+    const m = await gget<{ metadata?: { newReviewUri?: string; placeId?: string } }>(`${INFO}/${loc}?readMask=metadata`, await googleToken(g));
+    const url = m.metadata?.newReviewUri || (m.metadata?.placeId ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(m.metadata.placeId)}` : "");
+    if (url) await patchRow(userId, { insights: { ...(g.insights ?? {}), review_url: url } });
+    return url;
+  } catch (e) { console.error("[google] review url", e instanceof Error ? e.message : e); return ""; }
+}
 export const replyReview = (token: string, reviewName: string, comment: string) => gsend(`${V4}/${reviewName}/reply`, token, "PUT", { comment: comment.slice(0, 4000) });
 export const deleteReply = (token: string, reviewName: string) => gsend(`${V4}/${reviewName}/reply`, token, "DELETE");
 

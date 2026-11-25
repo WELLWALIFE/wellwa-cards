@@ -8,6 +8,7 @@ import { BILL_COLS, billTotals, cleanLine, cleanOld, cleanPayment, type BillKind
 import { createBill, istDay, jwCtx, jwDenied, jwHas, rateOf, sendBill } from "@/lib/jewellery-server";
 import { orderPaid } from "@/lib/jewellery-orders";
 import { orderById, patchOrder } from "@/lib/jewellery-orders-server";
+import { askForReview } from "@/lib/customer-send";
 import { patchScheme, schemeById } from "@/lib/jewellery-finance-server";
 import { schemeState } from "@/lib/jewellery-finance";
 
@@ -89,6 +90,9 @@ export async function POST(request: Request) {
     await restAsService(`jw_bills?id=eq.${bill.id}&owner_id=eq.${scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ order_id: order.id }) });
     await patchOrder(scope.ownerId, order.id, { status: "delivered", bill_id: bill.id, delivered_at: new Date().toISOString(),
       events: [...(order.events ?? []), { at: new Date().toISOString(), by: access.name, text: `Delivered with bill ${bill.code}` }] });
+    // The order is handed over with this bill: thank-you + review link (owner, 25 Nov 2026; the owner's switch decides).
+    const ph = bill.customer_phone || order.customer_phone;
+    if (ph) void askForReview(scope.ownerId, { name: bill.customer_name || order.customer_name, phone: ph }, `jw:${order.id}`);
   }
   if (scheme) {
     await restAsService(`jw_bills?id=eq.${bill.id}&owner_id=eq.${scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ scheme_id: scheme.id }) });

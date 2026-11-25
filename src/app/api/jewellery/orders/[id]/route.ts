@@ -5,6 +5,7 @@ import { cleanPayment } from "@/lib/jewellery";
 import { jwCtx, jwDenied, jwHas } from "@/lib/jewellery-server";
 import { shopName } from "@/lib/jobs-server";
 import { cleanOrderItem, orderPaid, type OrderEvent, type OrderRow } from "@/lib/jewellery-orders";
+import { askForReview } from "@/lib/customer-send";
 import { karigarById, karigarsOf, orderById, orderLink, patchOrder, sendOrder, txnsOf } from "@/lib/jewellery-orders-server";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -65,7 +66,10 @@ export async function PATCH(request: Request, { params }: Ctx) {
       if (o.kind === "order" && b.without_bill !== true) return NextResponse.json({ error: "Make the bill to deliver an order." }, { status: 400 });
       const p = cleanPayment(b.payment);
       const payments = p ? [...(o.payments ?? []), p] : o.payments ?? [];
-      return done({ status: "delivered", delivered_at: new Date().toISOString(), payments, events: ev(p ? `Delivered · ₹${Math.round(p.paise / 100).toLocaleString("en-IN")} (${p.mode})` : "Delivered") }, b.send === true);
+      const res = await done({ status: "delivered", delivered_at: new Date().toISOString(), payments, events: ev(p ? `Delivered · ₹${Math.round(p.paise / 100).toLocaleString("en-IN")} (${p.mode})` : "Delivered") }, b.send === true);
+      // Handed over: thank-you + review link (owner, 25 Nov 2026; the owner's switch decides).
+      if (res.status === 200 && o.customer_phone) void askForReview(scope.ownerId, { name: o.customer_name, phone: o.customer_phone }, `jw:${o.id}`);
+      return res;
     }
     case "edit": {
       if (closed) return NextResponse.json({ error: "This order is closed." }, { status: 400 });

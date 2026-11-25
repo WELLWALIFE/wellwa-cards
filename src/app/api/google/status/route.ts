@@ -17,8 +17,7 @@ export async function GET(request: Request) {
       const tok = await googleToken(g);
       const [rv, ins] = await Promise.all([listReviews(tok, g.location_name).catch(() => null), fetchInsights(tok, g.location_name).catch(() => null)]);
       if (rv) { rating = rv.averageRating; review_count = rv.totalReviewCount; }
-      const before = insights as { replies?: unknown };
-      if (ins) insights = { ...ins, ...(before.replies ? { replies: before.replies } : {}) };
+      if (ins) insights = { ...(insights ?? {}), ...ins };
       if (rv) insights = { ...insights, replies: replyCount(rv.reviews) };
       await patchRow(me.id, { rating, review_count, insights, insights_at: new Date().toISOString(), last_error: "" });
       last_error = "";

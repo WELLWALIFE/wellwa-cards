@@ -8,6 +8,7 @@ import { LoaderCircle, Plus, Send, Check, Trash2, MapPin, Star, RefreshCw, Exter
 import { api, currentProfileId, type Profile, type Poster } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { ReviewAsk } from "@/components/poster/review-ask";
 
 type Loc = { name: string; title: string; address: string; phone: string; maps: string };
 type Ins = { days?: number; impressions?: number; website?: number; calls?: number; directions?: number; series?: { day: string; impressions: number }[]; replies?: { of: number; answered: number } };
@@ -159,6 +160,8 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
               </div>
             </section>
           ); })()}
+
+          <ReviewAsk hi={hi} />
 
           <section className="rounded-xl border border-border p-3 space-y-3">
             <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
