@@ -2,15 +2,16 @@
 // Settings (docs/crm-pro.md 6, 3.13): calling behaviour + the existing sheets (quick replies, team, menu bot,
 // integrations, import, export). Reports = the existing analytics sheet, inline, plus a calls line.
 import { useEffect, useState } from "react";
-import { Zap, Users, GitBranch, Plug, Upload, Download, UserCheck, LoaderCircle, Check, PhoneCall } from "lucide-react";
+import { Zap, Users, GitBranch, Plug, Link2, Upload, Download, UserCheck, LoaderCircle, Check, PhoneCall } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { Templates, TeamSheet, ImportSheet, FlowSheet, IntegrationsSheet, AnalyticsSheet } from "@/components/crm/crm";
 import { useShell, inputCls, Chip, type Prefs, type CrmField } from "@/components/crm/shared";
 import { DuplicatesSheet, ContactsImport, Leaderboard } from "@/components/crm/sales";
+import { LeadSourcesSheet } from "@/components/crm/lead-sources";
 
 export function SettingsSection({ onChanged }: { onChanged: () => void }) {
   const { L, ws, ctx, as } = useShell();
-  const [sheet, setSheet] = useState<"" | "tpl" | "team" | "import" | "flow" | "integrations" | "dups">("");
+  const [sheet, setSheet] = useState<"" | "tpl" | "team" | "import" | "flow" | "integrations" | "dups" | "sources">("");
   const [p, setP] = useState<Prefs>(ws.prefs);
   const [busy, setBusy] = useState(false); const [ok, setOk] = useState(false); const [err, setErr] = useState("");
   const owner = ctx.role === "owner";
@@ -89,6 +90,7 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
         {btn(Zap, L.stTemplates, () => setSheet("tpl"))}
         {owner && btn(Users, L.stTeam, () => setSheet("team"))}
         {owner && btn(GitBranch, L.stBot, () => setSheet("flow"))}
+        {owner && btn(Link2, L.hi ? "Leads कहाँ से आएँ (website, IndiaMART…)" : "Lead sources (website, IndiaMART…)", () => setSheet("sources"))}
         {owner && btn(Plug, L.stIntegrations, () => setSheet("integrations"))}
         {ctx.role !== "agent" && btn(Upload, L.stImport, () => setSheet("import"))}
         {ctx.role !== "agent" && btn(Users, L.hi ? "एक ही ग्राहक दो बार — मिलाएँ" : "Duplicate customers — merge", () => setSheet("dups"))}
@@ -101,6 +103,7 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
       {sheet === "import" && <ImportSheet ctx={ctx} onClose={() => setSheet("")} onDone={() => { setSheet(""); onChanged(); }} />}
       {sheet === "flow" && <FlowSheet onClose={() => setSheet("")} />}
       {sheet === "integrations" && <IntegrationsSheet onClose={() => setSheet("")} />}
+      {sheet === "sources" && <LeadSourcesSheet onClose={() => setSheet("")} onImport={() => setSheet("import")} />}
       {sheet === "dups" && <DuplicatesSheet onClose={() => setSheet("")} onChanged={onChanged} />}
       <ContactsImport onDone={onChanged} />
     </div>
