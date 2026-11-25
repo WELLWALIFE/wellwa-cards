@@ -233,6 +233,22 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
         </div>
       )}
 
+      {/* ---- review replies: Google does not show an owner's replies to outsiders, so no number is claimed; what is true is said ---- */}
+      <div className={card}>
+        {head("💬", T("Are you replying to your reviews?", "Kya aap reviews ka jawab de rahe hain?"))}
+        <p className="text-base leading-relaxed">
+          {r.place.reviews === 0
+            ? T("You have no reviews yet, so there is nothing to reply to. Businesses that ask every customer and reply to every review move up fastest.", "Abhi aapke paas koi review nahi hai, isliye jawab dene ko kuch nahi hai. Jo businesses har customer se review maangte hain aur har review ka jawab dete hain, wo sabse tez upar aate hain.")
+            : T(`You have ${r.place.reviews} reviews. Google itself advises owners to reply to reviews - aim to answer at least 8 of every 10. Every unanswered review is a customer who thinks nobody is listening.`, `Aapke paas ${r.place.reviews} reviews hain. Google khud owners ko reviews ka jawab dene ki salah deta hai - har 10 mein se kam se kam 8 ka jawab dein. Har bina jawab wala review ek customer hai jise lagta hai koi sun nahi raha.`)}
+        </p>
+        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-bg p-4"><p className="text-sm text-muted">{T("A good target", "Achha target")}</p><p className="text-2xl font-extrabold text-good">80%+</p></div>
+          <div className="rounded-2xl border border-border bg-bg p-4"><p className="text-sm text-muted">{T("With Shubhora", "Shubhora ke saath")}</p><p className="text-base font-bold leading-snug">{T("Every review gets a reply, automatically", "Har review ka jawab, apne-aap")}</p></div>
+        </div>
+        <p className="mt-3 text-xs text-muted">{T("Your exact reply rate shows once your Google Business is connected to Shubhora - Google does not share it publicly.", "Aapka exact reply rate tab dikhega jab aapka Google Business Shubhora se connect hoga - Google ise publicly share nahi karta.")}</p>
+        <a href={wa} target="_blank" rel="noopener noreferrer" className={`${cta} mt-5`}>{T("Start auto-replies to my reviews", "Mere reviews ke auto-reply shuru karein")} <ArrowRight className="h-5 w-5" /></a>
+      </div>
+
       {/* ---- how Shubhora fixes it ---- */}
       <div className="rounded-3xl bg-[#171447] p-6 text-white md:p-8">
         <h2 className="text-2xl font-bold">{T("How Shubhora fixes these", "Shubhora in problems ko kaise theek karta hai")}</h2>

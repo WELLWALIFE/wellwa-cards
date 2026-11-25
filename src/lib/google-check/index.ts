@@ -97,6 +97,25 @@ export async function buildReport(placeId: string, sells = ""): Promise<Report> 
   else if ((place.types ?? []).length < 2) issues.push({ title: "Additional categories are not set", why: "Google uses them to show you for nearby searches of related things.", plan: "growth", hi: "Additional categories set nahi hain - nearby searches mein rank karne ke liye Google inhe use karta hai" });
   if (!place.phone) issues.push({ title: "No phone number on the profile", why: "People cannot call you from Google.", plan: "growth", hi: "Profile par phone number nahi hai - customers Google se call nahi kar sakte" });
   if (!place.options) issues.push({ title: "Service options are not filled in", why: "Delivery, payment and other options help Google match you to what people ask for.", plan: "growth", hi: "Service options bhare nahi hain - delivery, payment jaise options se Google aapko sahi search se jodta hai" });
+  // The trade's own words nowhere on what Google shows of the profile (name, category, types): Google cannot match the business to
+  // that search. A fact we can see; the fix is the category, services and posts — never stuffing words into the name.
+  if (trade) {
+    const words = trade.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 4);
+    const hay = `${place.name} ${generic ? "" : place.category} ${(place.types ?? []).join(" ").replace(/_/g, " ")}`.toLowerCase();
+    if (words.length && !words.some((w) => hay.includes(w) || hay.includes(w.replace(/s$/, "")))) issues.push({
+      title: `"${trade}" is not in your name or category`, why: "Google matches searches to the words on your profile. Add them through the right category, your services and regular posts.", plan: "growth",
+      hi: `Keyword missing - "${trade}" aapke naam ya category mein kahin nahi hai, isliye Google aapko is search se jod nahi paata`,
+    });
+  }
+  // Fresh reviews: the newest review Google shows for the place is old. (Google shows a handful, so this is "none recent among
+  // those shown", and the line says so.)
+  if (place.reviews > 0 && place.lastReview) {
+    const months = Math.floor((Date.now() - new Date(place.lastReview).getTime()) / (30 * 86_400_000));
+    if (months >= 3) issues.push({
+      title: `No recent reviews - the newest one Google shows is ${months} months old`, why: "Google ranks businesses that keep getting fresh reviews. Top businesses near you get new ones every week.", plan: "growth",
+      hi: `Naye reviews nahi aa rahe - Google par dikhne wala sabse naya review ${months} mahine purana hai. Aas-paas ke top businesses ko har hafte naye milte hain`,
+    });
+  }
   // Said once: with competitors to compare to, "0 reviews vs 318" already says it.
   if (place.reviews === 0 && !issues.some((f) => / reviews vs /.test(f.title))) issues.push({ title: "No reviews yet", why: "A profile with no reviews is rarely chosen. Ask your first ten happy customers.", plan: "growth", hi: "Abhi ek bhi review nahi hai - bina reviews wali profile ko log kam chunte hain" });
   const seen = new Set<string>();

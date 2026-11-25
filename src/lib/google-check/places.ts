@@ -13,13 +13,15 @@ export type Place = Candidate & {
   types?: string[];
   /** Any service option / attribute is filled in on the profile (delivery, takeaway, payment options, parking, accessibility…). */
   options?: boolean;
+  /** The newest of the reviews Google shows for the place (it shows up to five), as an ISO date; "" = none shown. */
+  lastReview?: string;
 };
 
 type RawPlace = {
   id?: string; displayName?: { text?: string }; formattedAddress?: string; rating?: number; userRatingCount?: number;
   location?: { latitude?: number; longitude?: number }; primaryTypeDisplayName?: { text?: string }; primaryType?: string;
   websiteUri?: string; nationalPhoneNumber?: string; photos?: unknown[]; regularOpeningHours?: { periods?: unknown[] };
-  googleMapsUri?: string; businessStatus?: string; types?: string[];
+  googleMapsUri?: string; businessStatus?: string; types?: string[]; reviews?: { publishTime?: string }[];
   delivery?: boolean; takeout?: boolean; dineIn?: boolean; curbsidePickup?: boolean; reservable?: boolean;
   paymentOptions?: Record<string, unknown>; parkingOptions?: Record<string, unknown>; accessibilityOptions?: Record<string, unknown>;
 };
@@ -50,7 +52,7 @@ export async function findPlaces(query: string): Promise<Candidate[]> {
 /** The full public profile of one place. */
 export async function placeDetails(id: string): Promise<Place> {
   const p = await call<RawPlace>(`/places/${encodeURIComponent(id)}?regionCode=IN&languageCode=en`, undefined,
-    "id,displayName,formattedAddress,rating,userRatingCount,location,primaryType,primaryTypeDisplayName,websiteUri,nationalPhoneNumber,photos,regularOpeningHours,googleMapsUri,businessStatus,types,delivery,takeout,dineIn,curbsidePickup,reservable,paymentOptions,parkingOptions,accessibilityOptions", "GET");
+    "id,displayName,formattedAddress,rating,userRatingCount,location,primaryType,primaryTypeDisplayName,websiteUri,nationalPhoneNumber,photos,regularOpeningHours,googleMapsUri,businessStatus,types,delivery,takeout,dineIn,curbsidePickup,reservable,paymentOptions,parkingOptions,accessibilityOptions,reviews.publishTime", "GET");
   const c = toCandidate(p);
   return {
     ...c, category: p.primaryTypeDisplayName?.text || (p.primaryType ?? "").replace(/_/g, " ") || "business",
@@ -58,6 +60,7 @@ export async function placeDetails(id: string): Promise<Place> {
     hoursSet: !!p.regularOpeningHours?.periods?.length, open: (p.businessStatus ?? "OPERATIONAL") === "OPERATIONAL",
     mapsUrl: p.googleMapsUri ?? "", status: p.businessStatus ?? "",
     types: (p.types ?? []).filter((t) => !CATCH_ALL.has(t)),
+    lastReview: (p.reviews ?? []).map((r) => r.publishTime ?? "").filter(Boolean).sort().pop() ?? "",
     options: [p.delivery, p.takeout, p.dineIn, p.curbsidePickup, p.reservable].some((v) => typeof v === "boolean")
       || [p.paymentOptions, p.parkingOptions, p.accessibilityOptions].some((o) => !!o && Object.keys(o).length > 0),
   };
