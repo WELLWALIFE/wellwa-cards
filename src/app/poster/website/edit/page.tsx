@@ -23,7 +23,7 @@ import { LayoutThumb } from "@/components/site-adv/layout-thumb";
 import { allowedByFit, fitOf, groupOfCard, tradeAllows } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
-import { flowParts } from "@/components/site-adv/flow";
+import { flowParts, sectionOf } from "@/components/site-adv/flow";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
@@ -526,7 +526,22 @@ export default function WebsiteEditPage() {
   }
   /** A row tapped: the window above shows that part of the website (owner, 19 Nov 2026). */
   // The window may be on another page (About, Plans…): it comes back to Home first, then goes to the part.
-  const showAdv = (k: SectionKey) => { const f = k === "hero" ? { top: true } : { sec: k }; focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); };
+  /** Show a section in the window. A section that is not on the Home page (the gallery on its own page, the address on Contact, the
+   *  questions on FAQ) is shown on the page that has it: asked for on Home, the window found nothing there and jumped to the top or
+   *  did not move at all (owner, 25 Nov 2026: "Real screens par click karne se screen top me chali jaati hai… ye kaam nahi kar raha"). */
+  const showAdv = (k: SectionKey) => {
+    const f = k === "hero" ? { top: true } : { sec: k };
+    let page = "home";
+    if (card && k !== "hero" && k !== "trust" && k !== "cta" && k !== "footer") {
+      const homeSl = homeSlugOf(card), off = new Set(card.site?.hidden ?? []);
+      const has = (p: CardPage) => p.blocks.some((b) => sectionOf(b) === k);
+      const live = card.pages.filter((p) => !p.hidden && !off.has(p.slug));
+      const hp = live.find((p) => p.slug === homeSl);
+      const at = hp && has(hp) ? hp : live.find(has);
+      if (at && at.slug !== homeSl) page = at.slug;
+    }
+    focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page });
+  };
   // The order of the home page is now the Home page's own sections (Text & pages → Home): this panel is not drawn any more.
   void showAdv;
   const advOrderPanel = advRows.length > 2 && (

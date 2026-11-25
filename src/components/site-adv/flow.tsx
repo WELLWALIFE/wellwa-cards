@@ -29,7 +29,7 @@ const count = (b: CardBlock): number =>
   : 0;
 
 /** The design's section for a part of the owner's, or null for the plain block style. */
-function sectionOf(b: CardBlock): SectionKey | null {
+export function sectionOf(b: CardBlock): SectionKey | null {
   if (isSteps(b)) return "process";
   switch (b.kind) {
     case "about": return "about";
