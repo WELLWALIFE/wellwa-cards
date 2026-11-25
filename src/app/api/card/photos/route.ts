@@ -98,7 +98,10 @@ function setSlot(card: Card, slot: string, url: string, focus: { focus?: string;
     const slides = (hero.slides ?? []).length ? [...hero.slides!] : [{ headline: head, ...(hero.sub ? { sub: hero.sub } : {}), ...(hero.imageUrl || card.coverUrl ? { imageUrl: hero.imageUrl || card.coverUrl } : {}) }];
     if (n > slides.length || n >= MAX_SLIDES) return null;
     if (n === slides.length) slides.push({ headline: head || "Welcome" });
-    slides[n] = { ...slides[n], imageUrl: url };
+    // Each banner keeps its own subject in view (the old focus belonged to the old picture).
+    const { focus: _old, ...rest } = slides[n];
+    void _old;
+    slides[n] = { ...rest, imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}) };
     // The first banner on a card whose cover was the same picture (one shared banner until now) keeps the card in step, as before.
     const shared = n === 0 && scope === "" && (!card.coverUrl || card.coverUrl === (hero.imageUrl || card.coverUrl));
     // The first banner changed for the website: it becomes the website's own banner, the card's cover stays.

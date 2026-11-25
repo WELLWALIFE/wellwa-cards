@@ -45,6 +45,8 @@ type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" |
 type Group = "design" | "content" | "photos" | "contact" | "settings";
 /** Off: nothing in the editor goes live by itself any more — Save puts it on the website (owner, 24 Nov 2026). */
 const AUTO_SAVE = false as boolean;
+/** What Undo / Redo step through: the website settings, each page's order of sections and each page's top. */
+const snapOf = (c: Card) => JSON.stringify({ site: c.site ?? null, orders: Object.fromEntries(c.pages.map((p) => [p.slug, p.blocks.map((b) => b.id)])), heads: Object.fromEntries(c.pages.map((p) => [p.slug, { label: p.label, head: p.head ?? null }])) });
 /** Which group each part sits in (the list's GROUPS, for a part opened from the preview). */
 /** The editor's names (final review, 24 Nov 2026 — https://claude.ai/artifact/HkXgzpjpzf9AgS5oP1bp8h): short, in English, one name per thing. */
 const LABEL: Record<string, [string, string]> = {
@@ -237,7 +239,7 @@ export default function WebsiteEditPage() {
   /** ↶ ↷ on the bar: each change on this screen is a step; loading or a Save starts afresh. */
   const [histReset, setHistReset] = useState(0);
   // Undo / Redo cover the website settings and the order of the Home page's sections (moved from the Sections tab).
-  const histSnap = card ? JSON.stringify({ site: card.site ?? null, orders: Object.fromEntries(card.pages.map((p) => [p.slug, p.blocks.map((b) => b.id)])), heads: Object.fromEntries(card.pages.map((p) => [p.slug, { label: p.label, head: p.head ?? null }])) }) : null;
+  const histSnap = card ? snapOf(card) : null;
   const history = useEditHistory(histSnap, (v) => {
     const o = JSON.parse(v) as { site: Card["site"]; orders: Record<string, string[]>; heads?: Record<string, { label: string; head: CardPage["head"] | null }> };
     touched.current.add("homeBlocks");
@@ -254,7 +256,10 @@ export default function WebsiteEditPage() {
         return { ...bare, label: h.label, ...(h.head ? { head: h.head } : {}) };
       });
       return { ...cur, site: o.site, pages };
-    }); setDirty(true);
+    });
+    // Back to exactly what is saved → nothing to save (owner, 25 Nov 2026: Undo to the start still said "Unsaved changes").
+    const saved = lastSaved.current;
+    setDirty(!saved || v !== snapOf(saved));
   }, `${card?.id ?? ""}-${histReset}`);
   const [refUrl, setRefUrl] = useState("");
   const [unlock, setUnlock] = useState(false);
@@ -282,6 +287,17 @@ export default function WebsiteEditPage() {
   const [barH, setBarH] = useState(56);
   /** Where the window stays while a sheet is open (that part of the home page). */
   const sheetFocus = useRef<{ top?: boolean; sec?: string; blk?: string } | null>(null);
+  /** A part opened from a section's sheet keeps the window on that section (sheetOpen): the screen inside reports where IT is scrolled
+   *  while it opens (the page's first parts, then the block), and the window used to follow — up to the top, then to two other sections
+   *  (final test, 25 Nov 2026). While pinned, only a different section the owner scrolls to himself, after the screen has settled, moves it. */
+  const pin = useRef<{ sync: { text: string; page?: string; sec?: string; blk?: string }; at: number } | null>(null);
+  /** The screen inside has sent this website's own card (onLive below): until then its "not saved" is its blank start, not a change. */
+  const embedReal = useRef(false);
+  const onEmbedSync = useCallback((at: { text: string; page?: string; alt?: string[]; blk?: string }) => {
+    const p = pin.current;
+    if (p && (Date.now() - p.at < 4000 || !at.blk || at.blk === p.sync.blk)) { setSync(p.sync); return; }
+    pin.current = null; setSync(at);
+  }, []);
   const homeRowsRef = useRef<HomeRow[]>([]);
   /** Show this part in the window: the top of the website, or the section / line with this text. */
   const focus = (f: { top?: boolean; text?: string }) => { focusAsk.current = f; };
@@ -383,7 +399,7 @@ export default function WebsiteEditPage() {
       // (only on the Home page: another page's "About" is not the Home page's part)
       const row = viewPageRef.current ? undefined : (d.target.blockId ? rows.find((r) => r.blk === d.target!.blockId) : undefined) ?? (sec ? rows.find((r) => r.sec === sec && !r.blk) ?? rows.find((r) => r.sec === sec) : undefined);
       if (row) {
-        setEmbedDirty(false); setEmbedView(null); setOpen(false);
+        setEmbedDirty(false); setEmbedView(null); setOpen(false); pin.current = null;
         sheetFocus.current = rowFocus(row); setSheet({ id: row.id });
         window.scrollTo({ top: 0 });
         return;
@@ -707,7 +723,11 @@ export default function WebsiteEditPage() {
     // Opened from a section's sheet: the window stays on THAT section, on its page (owner, 25 Nov 2026: Contact strip → Edit, and the
     // window jumped to the Home banner because the part's own rule looked for a heading of its kind on Home).
     const f = sheetFocus.current;
-    if (sheet && f && !f.top && (f.sec || f.blk)) setSync({ text: "", page: curSlug, ...(f.sec ? { sec: f.sec } : {}), ...(f.blk ? { blk: f.blk } : {}) });
+    if (sheet && f && !f.top && (f.sec || f.blk)) {
+      const sy = { text: "", page: curSlug, ...(f.sec ? { sec: f.sec } : {}), ...(f.blk ? { blk: f.blk } : {}) };
+      // eslint-disable-next-line react-hooks/purity -- runs on the tap (sheetOpen is a handler), never while drawing
+      pin.current = { sync: sy, at: Date.now() }; setSync(sy);
+    } else pin.current = null;
   };
   /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
   function setTone(t: "light" | "dark") {
@@ -955,6 +975,8 @@ export default function WebsiteEditPage() {
   /** Back to the list of parts (asks first when the open part has a change not saved). */
   /** Open one part (from the list or a ✏️ in the preview). */
   const openPart = (key: string) => {
+    embedReal.current = false;
+    pin.current = null;   // sheetOpen pins again right after, when the part is opened from a section's sheet
     const g = GROUPS.find((x) => x.tabs.some((t) => t.key === key));
     if (!g) return;
     if (embedDirty && key !== tab && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
@@ -990,7 +1012,7 @@ export default function WebsiteEditPage() {
   }
   const toList = () => {
     if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;
-    setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
+    setEmbedDirty(false); setEmbedView(null); setOpen(false); pin.current = null; window.scrollTo({ top: 0 });
   };
   const unsaved = dirty || embedDirty;
   /** The tab that holds what is open (a part's own screen, a section's sheet), else the one picked. */
@@ -998,7 +1020,7 @@ export default function WebsiteEditPage() {
   const goTab = (k: RTab) => {
     if (open) {
       if (embedDirty && !window.confirm("Your change is not saved. Go back without saving?")) return;
-      setEmbedDirty(false); setEmbedView(null); setOpen(false);
+      setEmbedDirty(false); setEmbedView(null); setOpen(false); pin.current = null;
     }
     if (sheet) { sheetFocus.current = null; setSheet(null); }
     setRtab(k); window.scrollTo({ top: 0 });
@@ -1154,7 +1176,12 @@ export default function WebsiteEditPage() {
         }
         const sec = row.sec;
         const w = row.blk ? partFor(card, { kind: "block", blockId: row.blk }, true) : sheetWords(sec ?? "hero");
-        const ph = sec ? SHEET_PHOTO[sec] : undefined;
+        // The photo button only where that screen edits THIS section: the About screen edits the first About only, Products edits the
+        // products (not a list of services), Photo library the first gallery. A second About ("Our craft & service" on Contact) or a
+        // services list opened the Home page's About / the products instead (final test, 25 Nov 2026): their photos are in their own text.
+        const ph = sec && !(row.blk && w.key === "text") ? SHEET_PHOTO[sec] : undefined;
+        const bk = row.blk ? card.pages.flatMap((p) => p.blocks).find((b) => b.id === row.blk) : undefined;
+        const withPics = !!bk && ["about", "services", "product", "gallery", "image", "carousel", "story", "showcase"].includes(bk.kind);
         const isHero = sec === "hero";
         const ids: readonly string[] = !sec ? [] : isHero ? HERO_IDS : (VARIANT_IDS as Record<string, readonly string[]>)[sec] ?? [];
         const cur = isHero ? String(adv.hero ?? "") : sec ? (adv.sections as Record<string, string> | undefined)?.[sec] ?? ids[0] : "";
@@ -1171,7 +1198,7 @@ export default function WebsiteEditPage() {
           </div>
           <div className="space-y-4 p-3">
             <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
-              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : w.key === "text" ? "Edit text" : `Edit: ${LABEL[w.key]?.[0] ?? "text"}`}</button>
+              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : w.key === "text" ? (withPics ? "Edit text & photos" : "Edit text") : `Edit: ${LABEL[w.key]?.[0] ?? "text"}`}</button>
               {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
             </div>
             {sec && ids.length > 1 && <div>
@@ -1370,8 +1397,13 @@ export default function WebsiteEditPage() {
       )}
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
       {embedSrc && (
-        <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick} onSync={setSync}
-          onLive={setEmbedView} onDirty={setEmbedDirty}
+        <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick} onSync={onEmbedSync}
+          // The full editor inside ("All pages & text", "Contact buttons") posts its card from its first moment — a blank "Your Name /
+          // Good work, done properly" card while it is still loading — and "not saved" with it: the window showed that blank site and the
+          // bar said "Unsaved changes" every time the screen opened (owner, 25 Nov 2026: "ye page beech beech me kaise aa jata hai?").
+          // Only this website's own card is shown, and "not saved" counts only once it has arrived.
+          onLive={(v) => { if (!card || v.card?.id !== card.id) return; embedReal.current = true; setEmbedView(v); }}
+          onDirty={(d) => { if (d && (tab === "text" || tab === "buttons") && !embedReal.current) return; setEmbedDirty(d); }}
           onSaved={() => { setEmbedDirty(false); setEmbedView(null); if (ownAfter.current) { ownAfter.current = false; void save().then(() => refresh()); } else void refresh(); say("save", hi ? "✅ Save हो गया — website पर live है।" : "✅ Saved — it is live on your website.", false); }}
           onError={(t) => { ownAfter.current = false; say("save", t); }}
           onDone={(saved) => { setEmbedView(null); if (saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); } }} />

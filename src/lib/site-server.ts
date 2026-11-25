@@ -16,6 +16,7 @@ import { syncCardDomain } from "@/lib/own-domain";
 import type { SavedProduct } from "@/lib/card-facts";
 import type { Card, CardBlock, CardPage, ProductItem } from "@/lib/types";
 import { homeSlugOf } from "@/lib/site-advanced";
+import { bannerFocus } from "@/lib/media/photo-focus";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const abs = (u: string) => (u.startsWith("http") ? u : `${SITE_URL}${u}`);
@@ -397,11 +398,29 @@ export type SitePatch = {
   /** The top of a page, page by page (slug → its name, photo, line and shape): CardPage.label and CardPage.head. */
   pageHeads?: Record<string, { label?: string; photo?: string; noPhoto?: boolean; line?: string; kind?: "ink" | "split" | "type" | "poster"; focus?: string }>;
 };
+/** Every sliding banner keeps its subject in view (owner, 25 Nov 2026: "banner ki image sahi set nahi hui"): only the first banner had a
+ *  focal point, so the second and third were cut at the middle — a person standing at the side of a wide photo fell off a tall frame.
+ *  The editor sends the banners back without their focus, so a banner whose picture did not change keeps the one it had (and its
+ *  chips); a picture with none is read once (photo-focus.ts) on this save. */
+async function slidesWithFocus<S extends { imageUrl?: string; focus?: string }>(next: S[], old: (S | { imageUrl?: string; focus?: string })[], hero: { imageUrl?: string; focus?: string }): Promise<S[]> {
+  const kept = next.map((s) => {
+    if (!s.imageUrl || s.focus) return s;
+    const was = old.find((o) => o && o.imageUrl === s.imageUrl);
+    const focus = was?.focus || (hero.imageUrl === s.imageUrl ? hero.focus : undefined);
+    return { ...(was ?? {}), ...s, ...(focus ? { focus } : {}) } as S;
+  });
+  return Promise.all(kept.map(async (s) => {
+    if (!s.imageUrl || s.focus) return s;
+    const f = await bannerFocus(s.imageUrl).catch(() => null);
+    return f ? { ...s, focus: f.focus } : s;
+  }));
+}
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
   if (!row) throw new Error("NO_CARD");
   const prev = row.data.site ?? { enabled: false };
-  const hero = patch.hero ? { headline: "", sub: "", ...(prev.hero ?? {}), ...patch.hero } : prev.hero;
+  const hero0 = patch.hero ? { headline: "", sub: "", ...(prev.hero ?? {}), ...patch.hero } : prev.hero;
+  const hero = hero0 ? { ...hero0, ...(hero0.slides ? { slides: await slidesWithFocus(hero0.slides, prev.hero?.slides ?? [], hero0) } : {}) } : hero0;
   let style = patch.style ?? prev.style;
   let reference = prev.reference;
   if (patch.referenceUrl) {

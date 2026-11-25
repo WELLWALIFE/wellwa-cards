@@ -695,7 +695,8 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     const hero = built.site.hero ?? { headline: setup.business || setup.person || "", sub: "" };
     const lines = (await within(writeSlides(built as unknown as Card, false).catch(() => null), 25_000))
       ?? [{ headline: hero.headline, sub: hero.sub }, { headline: built.tagline || hero.headline, sub: "" }, { headline: `${setup.business || setup.person}${setup.city ? ` · ${setup.city}` : ""}`, sub: "" }].filter((x) => x.headline);
-    const slides = slideBanners.map((imageUrl, i) => ({ ...(lines[i % lines.length] ?? { headline: hero.headline }), imageUrl })).filter((x) => x.headline).slice(0, 3);
+    const focusOfSlide = await within(Promise.all(slideBanners.slice(0, 3).map((u) => bannerFocus(u).catch(() => null))), 10_000).catch(() => null);
+    const slides = slideBanners.map((imageUrl, i) => ({ ...(lines[i % lines.length] ?? { headline: hero.headline }), imageUrl, ...(focusOfSlide?.[i]?.focus ? { focus: focusOfSlide[i]!.focus } : {}) })).filter((x) => x.headline).slice(0, 3);
     if (slides.length >= 2) built = { ...built, site: { ...built.site, hero: { ...hero, slides } } } as typeof built;
     console.log("[card] order slides", slides.length);
   }
