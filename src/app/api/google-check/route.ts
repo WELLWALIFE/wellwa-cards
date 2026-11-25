@@ -10,6 +10,7 @@ import { isShubhoraSellerCard } from "@/lib/shubhora-page";
 import { bridge, ownerPlanExpiry } from "@/lib/crm-server";
 import { notify } from "@/lib/notify";
 import { SITE_URL } from "@/lib/site-url";
+import { saveSiteLead } from "@/lib/site-leads";
 
 const DAY = 86_400_000;
 const clean = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
@@ -84,12 +85,14 @@ async function saveLead(phone: string, name: string, r: { place: { name: string;
   }
   if (!card) {
     const username = (process.env.SITE_LEAD_CARD ?? "").trim().toLowerCase();
-    if (!username) return;
-    const { data } = await admin.from("cards").select("id,owner_id").eq("username", username).maybeSingle();
-    card = data ?? null;
+    if (username) { const { data } = await admin.from("cards").select("id,owner_id").eq("username", username).maybeSingle(); card = data ?? null; }
   }
-  if (!card) return;
   const message = [`Google check: ${r.place.name} — score ${r.score}/100`, r.place.address, ...r.fixes.map((f) => `• ${f.title}`)].join("\n");
+  // Always kept for Admin → Leads, with the card it also went to.
+  let cardName = "";
+  if (card) { const { data: u } = await admin.from("cards").select("username").eq("id", card.id).maybeSingle(); cardName = u?.username ?? ""; }
+  await saveSiteLead({ source: "google-check", name, phone, message, card: cardName });
+  if (!card) return;
   await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email: "", message, source: "form", src: "google-check" });
 
   // The page says "we send the full report there too": it goes from the lead owner's own WhatsApp when it is linked (the same

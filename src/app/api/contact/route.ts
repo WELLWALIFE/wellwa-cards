@@ -2,6 +2,7 @@
 // (SITE_LEAD_CARD = that card's username), so it shows in Leads and the CRM like any other enquiry.
 import { clientKey, rateLimited, sameOrigin } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { saveSiteLead } from "@/lib/site-leads";
 
 const clean = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 
@@ -19,9 +20,10 @@ export async function POST(request: Request) {
 
   const username = (process.env.SITE_LEAD_CARD ?? "").trim().toLowerCase();
   const admin = getAdminSupabase();
-  if (!username || !admin) return Response.json({ ok: true, saved: false });
-  const { data: card } = await admin.from("cards").select("id,owner_id").eq("username", username).maybeSingle();
-  if (!card) return Response.json({ ok: true, saved: false });
+  const { data: card } = username && admin ? await admin.from("cards").select("id,owner_id").eq("username", username).maybeSingle() : { data: null };
+  // Always kept for Admin → Leads, whether or not a company card is set to receive it too.
+  const kept = await saveSiteLead({ source: "website-contact", name, phone, email, message, card: card ? username : "" });
+  if (!admin || !card) return Response.json({ ok: true, saved: kept });
   const { error } = await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email, message, source: "form", src: "website-contact" });
   return Response.json({ ok: true, saved: !error });
 }
