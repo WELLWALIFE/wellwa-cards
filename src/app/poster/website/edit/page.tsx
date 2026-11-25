@@ -1198,7 +1198,7 @@ export default function WebsiteEditPage() {
           </div>
           <div className="space-y-4 p-3">
             <div className={`grid gap-2 ${ph && ph !== w.key ? "grid-cols-2" : ""}`}>
-              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (sec === "gallery" ? "Change photos" : "Edit text & photo") : w.key === "text" ? (withPics ? "Edit text & photos" : "Edit text") : `Edit: ${LABEL[w.key]?.[0] ?? "text"}`}</button>
+              <button type="button" onClick={() => sheetOpen(w.key, w.blockId)} className={BIG}><Pencil className="h-4 w-4" /> {ph === w.key ? (w.key === "products" ? "Edit products" : w.key === "photos" ? (sec === "hero" ? "Change banner photos" : "Change photos") : "Edit text & photo") : w.key === "text" ? (withPics ? "Edit text & photos" : "Edit text") : `Edit: ${LABEL[w.key]?.[0] ?? "text"}`}</button>
               {ph && ph !== w.key && <button type="button" onClick={() => sheetOpen(ph)} className={BIG}><Camera className="h-4 w-4" /> Change photo</button>}
             </div>
             {sec && ids.length > 1 && <div>
@@ -1679,7 +1679,18 @@ function SlidesEditor({ hi, card, images, slides, onChange, cardId }: { hi: bool
           <input value={sl.sub ?? ""} onChange={(e) => setOne(i, { sub: e.target.value.slice(0, 240) })} placeholder={T("Small line (optional)", "छोटी लाइन (optional)")} className={`${field} mt-0`} />
           {photos.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {photos.map((u) => <button key={u} type="button" onClick={() => setOne(i, { imageUrl: u })} className={`h-11 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-white ${sl.imageUrl === u ? "border-brand" : "border-transparent"}`}><Thumb src={u} alt="" /></button>)}
+              {photos.map((u) => <button key={u} type="button" onClick={() => setOne(i, { imageUrl: u, focus: undefined, focusOwn: undefined })} className={`h-11 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-white ${sl.imageUrl === u ? "border-brand" : "border-transparent"}`}><Thumb src={u} alt="" /></button>)}
+            </div>
+          )}
+          {sl.imageUrl && (
+            // Which part of the picture stays in view (owner, 25 Nov 2026: "banner ki image sahi set nahi hui"): a tall banner shows only a
+            // slice of a wide photo, and the automatic pick can land on the shelves instead of the person.
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[11px] text-muted">{T("Keep in view:", "दिखे:")}</span>
+              {([["", T("Automatic", "अपने-आप")], ["10% 40%", T("Left", "बायाँ")], ["50% 40%", T("Middle", "बीच")], ["90% 40%", T("Right", "दायाँ")], ["50% 10%", T("Top", "ऊपर")]] as const).map(([f, name]) => {
+                const on = (sl.focusOwn ? sl.focus ?? "" : "") === f;
+                return <button key={f || "auto"} type="button" aria-pressed={on} onClick={() => setOne(i, f ? { focus: f, focusOwn: true } : { focus: undefined, focusOwn: undefined })} className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink"}`}>{name}</button>;
+              })}
             </div>
           )}
         </div>

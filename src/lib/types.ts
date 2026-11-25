@@ -393,7 +393,7 @@ export interface Card {
 }
 
 /** One banner of the Premium website's sliding top (site.hero.slides). */
-export type HeroSlide = { headline: string; sub?: string; imageUrl?: string; /** Small cards that float over the picture, as the app would show them ("New lead saved"). */ chips?: { icon: string; title: string; sub?: string }[]; /** Which part of the picture stays in view when it is cropped ("78% 50%"); unset = the middle. */ focus?: string };
+export type HeroSlide = { headline: string; sub?: string; imageUrl?: string; /** Small cards that float over the picture, as the app would show them ("New lead saved"). */ chips?: { icon: string; title: string; sub?: string }[]; /** Which part of the picture stays in view when it is cropped ("78% 50%"); unset = the middle. */ focus?: string; /** The owner picked the focus (Keep in view); an automatic one is read again when the picture changes. */ focusOwn?: boolean };
 
 export interface CardNotice {
   text: string;        // one or two lines

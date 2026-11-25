@@ -48,7 +48,9 @@ export async function PATCH(request: Request) {
     if (Array.isArray(h.slides)) patch.hero.slides = h.slides.slice(0, 3).map((x: unknown) => {
       const o = x && typeof x === "object" ? x as Record<string, unknown> : {};
       const img = typeof o.imageUrl === "string" && /^https:\/\/.{0,400}$/.test(o.imageUrl) ? o.imageUrl : undefined;
-      return { headline: S(o.headline, 90) ?? "", ...(S(o.sub, 240) ? { sub: S(o.sub, 240) } : {}), ...(img ? { imageUrl: img } : {}) };
+      // The owner's own "Keep in view" pick travels with the banner; an automatic one is kept or read on the server (site-server.ts).
+      const own = o.focusOwn === true && typeof o.focus === "string" && /^\d{1,3}% \d{1,3}%$/.test(o.focus);
+      return { headline: S(o.headline, 90) ?? "", ...(S(o.sub, 240) ? { sub: S(o.sub, 240) } : {}), ...(img ? { imageUrl: img } : {}), ...(own ? { focus: o.focus as string, focusOwn: true } : {}) };
     }).filter((x: { headline: string }) => x.headline);
   }
   const style = cleanStyle(b.style); if (style) patch.style = style;

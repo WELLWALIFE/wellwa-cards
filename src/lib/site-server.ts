@@ -376,7 +376,7 @@ export type SitePatch = {
   enabled?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string;
   /** An information website: products shown with no order / WhatsApp button of their own (site-adv/shared.tsx isShowcase). */
   showcase?: boolean;
-  hero?: { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; tiles?: string[]; video?: boolean; slides?: { headline: string; sub?: string; imageUrl?: string }[] };
+  hero?: { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; tiles?: string[]; video?: boolean; slides?: { headline: string; sub?: string; imageUrl?: string; focus?: string; focusOwn?: boolean }[] };
   /** Design choices from the website editor (already cleaned, see cleanStyle). Replaces the stored style. */
   style?: SiteStyle;
   /** Home-page section order / hidden sections / trust facts (already cleaned, see cleanHome). */
@@ -402,12 +402,16 @@ export type SitePatch = {
  *  focal point, so the second and third were cut at the middle — a person standing at the side of a wide photo fell off a tall frame.
  *  The editor sends the banners back without their focus, so a banner whose picture did not change keeps the one it had (and its
  *  chips); a picture with none is read once (photo-focus.ts) on this save. */
-async function slidesWithFocus<S extends { imageUrl?: string; focus?: string }>(next: S[], old: (S | { imageUrl?: string; focus?: string })[], hero: { imageUrl?: string; focus?: string }): Promise<S[]> {
+async function slidesWithFocus<S extends { imageUrl?: string; focus?: string; focusOwn?: boolean }>(next: S[], old: (S | { imageUrl?: string; focus?: string; focusOwn?: boolean })[], hero: { imageUrl?: string; focus?: string }): Promise<S[]> {
   const kept = next.map((s) => {
     if (!s.imageUrl || s.focus) return s;
+    // The owner's own pick was taken back ("Automatic"): a fresh automatic one, not the old pick.
     const was = old.find((o) => o && o.imageUrl === s.imageUrl);
-    const focus = was?.focus || (hero.imageUrl === s.imageUrl ? hero.focus : undefined);
-    return { ...(was ?? {}), ...s, ...(focus ? { focus } : {}) } as S;
+    const auto = was && !was.focusOwn ? was.focus : undefined;
+    const focus = auto || (hero.imageUrl === s.imageUrl && !was?.focusOwn ? hero.focus : undefined);
+    const { focus: _f, focusOwn: _o, ...rest } = (was ?? {}) as { focus?: string; focusOwn?: boolean };
+    void _f; void _o;
+    return { ...rest, ...s, ...(focus ? { focus } : {}) } as S;
   });
   return Promise.all(kept.map(async (s) => {
     if (!s.imageUrl || s.focus) return s;

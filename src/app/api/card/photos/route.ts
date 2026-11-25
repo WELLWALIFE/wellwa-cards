@@ -99,8 +99,8 @@ function setSlot(card: Card, slot: string, url: string, focus: { focus?: string;
     if (n > slides.length || n >= MAX_SLIDES) return null;
     if (n === slides.length) slides.push({ headline: head || "Welcome" });
     // Each banner keeps its own subject in view (the old focus belonged to the old picture).
-    const { focus: _old, ...rest } = slides[n];
-    void _old;
+    const { focus: _old, focusOwn: _own, ...rest } = slides[n];
+    void _old; void _own;
     slides[n] = { ...rest, imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}) };
     // The first banner on a card whose cover was the same picture (one shared banner until now) keeps the card in step, as before.
     const shared = n === 0 && scope === "" && (!card.coverUrl || card.coverUrl === (hero.imageUrl || card.coverUrl));
