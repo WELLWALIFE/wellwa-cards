@@ -104,10 +104,21 @@ export function layoutFor(spec: AdvancedSpec, items: AdvItem[]): CardLayout {
   const v = spec.sections.services ?? "grid";
   const pics = items.some((i) => photosOf(i.item).length > 0);
   if (!pics) return "list";
+  // Every design's Products page is its own page (owner, 25 Nov 2026: "Products page har design me ek jaisa hai — ise alag roop dena
+  // hai"): twelve of the fourteen layouts all fell through to the same four-across cards. Each now takes the catalogue nearest to what
+  // it draws on the home page; cutFor below gives the cards three cuts, so there are six catalogues, not one.
   if (v === "magazine") return "editorial";
-  if (v === "price-list" || v === "menu-leaders") return "list";
-  if (v === "feature-cards") return "wide";
+  if (v === "price-list" || v === "menu-leaders" || v === "rate-list" || v === "index-rows") return "list";
+  if (v === "feature-cards" || v === "listing-rows") return "wide";
   return "cards";
+}
+/** The cut of the photo cards on the catalogue page: tall portraits three across with the name centred under them (the store shelf),
+ *  wide frames three across (the shelf you slide, the plans), or the plain four-across portrait. */
+export function cutFor(spec: AdvancedSpec): "tall" | "land" | "" {
+  const v = spec.sections.services ?? "grid";
+  if (v === "lookbook" || v === "edit-tiles") return "tall";
+  if (v === "scroller" || v === "tiers" || v === "category-tabs") return "land";
+  return "";
 }
 
 export function ItemCard({ it, x, c, layout, i, cat }: { it: AdvItem; x: AdvCtxPlus; c: SiteContent; layout: CardLayout; i: number; cat?: string }) {

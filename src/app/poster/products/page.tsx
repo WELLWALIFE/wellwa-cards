@@ -6,6 +6,7 @@
 import { FinishNext } from "@/components/poster/site-finish";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEmbedForm } from "@/components/poster/embed-mode";
 import Link from "next/link";
 import { ClipboardList, LoaderCircle, Plus, Search, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw, Sparkles } from "lucide-react";
 import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -315,8 +316,14 @@ export default function ProductsPage() {
   // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/products${window.location.search}`)}`); return; } load(); })(); }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Inside Website edit the one Save on the top bar saves the open product form (embed-mode.tsx useEmbedForm).
+  const [savedN, setSavedN] = useState(0);
+  useEmbedForm(draft ? JSON.stringify(draft) : null, () => void save(), savedN, err || priceErr);
+
   async function save(again = false) {
     if (!draft) return;
+    // The editor's top Save can be pressed with the name still empty (the form's own Save is greyed out then): say it, save nothing.
+    if (!draft.name.trim()) { setErr(en ? "Write the name to save." : "Save करने के लिए नाम लिखें।"); return; }
     if (draft.mrp?.trim() && !draft.price.trim()) {
       // Shown under the price fields themselves (the form is long: the field is focused so it is on screen).
       setPriceErr(en ? "Write the offer price too — the MRP is shown struck out next to it." : "ऑफ़र दाम भी लिखें — MRP उसके साथ कटा हुआ दिखता है।");
@@ -334,6 +341,7 @@ export default function ProductsPage() {
       // "Save and add another" keeps the group and brand, so a run of similar things is quick.
       lastSaved.current = draft.name;
       if (again) newDraft({ category: draft.category, brand: draft.brand }); else setDraft(null);
+      setSavedN((n) => n + 1);
       await load();
       void liveSync();
     } catch {
@@ -725,7 +733,7 @@ export default function ProductsPage() {
           <div className="flex gap-2">
             <button type="button" onClick={() => setDraft(null)} disabled={working} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{C("Cancel", "रहने दें")}</button>
             {!draft.id && <button type="button" onClick={() => void save(true)} disabled={busy || studio.busy || !draft.name.trim()} className="rounded-xl border border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60">{C("Save & add another", "Save करें और एक और जोड़ें")}</button>}
-            <button type="button" onClick={() => void save()} disabled={busy || studio.busy || !draft.name.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{t.save}</button>
+            <button type="button" data-embed-hide onClick={() => void save()} disabled={busy || studio.busy || !draft.name.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{t.save}</button>
           </div>
         </div>
       )}

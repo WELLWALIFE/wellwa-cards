@@ -10,7 +10,7 @@ import { Icon } from "@/components/site-icons";
 import { Photo, Sec, type SiteContent, itemCtx } from "@/components/site-adv/shared";
 import type { AdvCtxPlus, AdvPageEntry, Chrome } from "@/components/site-adv/nav";
 import { Crumbs } from "@/components/site-adv/nav";
-import { Cover, ItemCard, Masthead, SearchBox, ShareBtn, ZoomPhoto, askText, enquireLabel, layoutFor, photosOf, priceOf } from "@/components/site-adv/page-parts";
+import { Cover, ItemCard, Masthead, SearchBox, ShareBtn, ZoomPhoto, askText, enquireLabel, cutFor, layoutFor, photosOf, priceOf } from "@/components/site-adv/page-parts";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 
 type PageProps = { c: SiteContent; spec: AdvancedSpec; x: AdvCtxPlus; chrome: Chrome };
@@ -87,7 +87,7 @@ export function CataloguePage({ c, spec, x, chrome, entry, items, bare = false }
           )}
           <p className="cg-count" role="status" aria-live="polite">{filtering ? x.ui(`Showing ${shown.length} of ${main.length}`, `${main.length} में से ${shown.length}`) : ""}</p>
           {shown.length > 0 ? (
-            <div className="cg-grid" data-layout={layout} key={`${pick}|${sort}|${q ? 1 : 0}`}>
+            <div className="cg-grid" data-layout={layout} data-cut={layout === "cards" ? cutFor(spec) || undefined : undefined} key={`${pick}|${sort}|${q ? 1 : 0}`}>
               {shown.map((it, i) => <ItemCard key={it.slug} it={it} x={x} c={c} layout={layout} i={i} cat={x.card.seo?.categoryKey} />)}
             </div>
           ) : (
@@ -260,6 +260,11 @@ export const CATALOG_PAGE_CSS = `
 @media (min-width:760px){.cg-grid[data-layout=cards]{grid-template-columns:repeat(3,minmax(0,1fr))}.cg-grid[data-layout=editorial]{grid-template-columns:repeat(4,minmax(0,1fr))}.cg-grid[data-layout=wide]{grid-template-columns:1fr;gap:clamp(2.5rem,5vw,4.5rem)}}
 @media (min-width:1180px){.cg-grid[data-layout=cards]{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .cg-grid[data-layout=wide]{grid-template-columns:1fr}
+/* the cards' three cuts (cutFor): tall portraits with the name centred, wide frames, or the plain portrait */
+.cg-grid[data-cut=tall] .ic-media{aspect-ratio:2/3}
+.cg-grid[data-cut=tall] .ic-body{align-items:center;text-align:center}
+.cg-grid[data-cut=land] .ic-media{aspect-ratio:3/2}
+@media (min-width:760px){.cg-grid[data-layout=cards][data-cut]{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .cg-grid[data-layout=list]{grid-template-columns:1fr;gap:0}
 @media (min-width:1100px){.cg-grid[data-layout=list]{grid-template-columns:1fr 1fr;column-gap:clamp(2rem,5vw,5rem)}}
 @media (max-width:759px){.ic-editorial[data-lead]{grid-column:span 2;grid-row:auto}.ic-editorial[data-lead] .ic-media{aspect-ratio:4/3;height:auto;min-height:0}}

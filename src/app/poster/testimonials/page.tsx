@@ -4,6 +4,7 @@
 import { FinishNext } from "@/components/poster/site-finish";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEmbedForm } from "@/components/poster/embed-mode";
 import Link from "next/link";
 import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, MessageCircle, Star, Clapperboard } from "lucide-react";
 import { api, isLoggedIn, uploadImage, type Profile } from "@/lib/poster-client";
@@ -77,6 +78,10 @@ export default function TestimonialsPage() {
     load();
   })(); }, [router]);
 
+  // Inside Website edit the one Save on the top bar saves the open review form (embed-mode.tsx useEmbedForm).
+  const [savedN, setSavedN] = useState(0);
+  useEmbedForm(draft ? JSON.stringify(draft) : null, () => void save(), savedN, err);
+
   async function save() {
     if (!draft) return;
     // Nothing to save yet: say what is missing right above the button and put the cursor in that box (was a silent, greyed-out button).
@@ -86,7 +91,7 @@ export default function TestimonialsPage() {
     const r = await api<{ testimonial?: Testimonial; error?: string }>("/api/poster/testimonials", { method: "POST", json: draft });
     setBusy(false);
     if (!r.ok) { setErr(r.data.error || s.saveFail); return; }
-    openDraft(null); load();
+    openDraft(null); load(); setSavedN((n) => n + 1);
   }
   async function pick(file: File | null) {
     if (!file || !draft) return;
@@ -208,7 +213,7 @@ export default function TestimonialsPage() {
           {err && <p role="alert" className="text-sm font-semibold text-danger">{err}</p>}
           <div className="flex gap-2">
             <button type="button" onClick={() => openDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm">{T("Cancel", "रहने दें")}</button>
-            <button type="button" onClick={save} disabled={busy} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{s.save}</button>
+            <button type="button" data-embed-hide onClick={save} disabled={busy} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{s.save}</button>
           </div>
         </div>
       )}
