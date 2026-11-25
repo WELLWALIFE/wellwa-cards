@@ -34,7 +34,9 @@ export function GoogleCheck() {
   }
   async function run(e: React.FormEvent) {
     e.preventDefault(); if (!pick) return; setError(""); setBusy("report");
-    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${city}`.trim() }); setReport(j.report); }
+    // The partner whose website sent the visitor here (?by=<card>): the lead is theirs.
+    let by = ""; try { by = new URLSearchParams(window.location.search).get("by") ?? ""; } catch { /* old browser */ }
+    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${city}`.trim(), ...(by ? { by } : {}) }); setReport(j.report); }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
 
@@ -59,7 +61,8 @@ export function GoogleCheck() {
               <button key={p.id} onClick={() => setPick(p)} className="flex items-start gap-3 rounded-xl border border-border bg-bg p-4 text-left hover:border-brand">
                 <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
                 <span className="flex-1"><span className="block text-base font-semibold">{p.name}</span><span className="block text-sm text-muted">{p.address}</span></span>
-                <span className="text-sm"><Stars r={p.rating} /> <span className="text-muted">({p.reviews})</span></span>
+                {/* The search is the cheap one (no rating): the report has it. */}
+                {(p.rating > 0 || p.reviews > 0) && <span className="text-sm"><Stars r={p.rating} /> <span className="text-muted">({p.reviews})</span></span>}
               </button>
             ))}
           </div>
@@ -117,15 +120,15 @@ function ReportView({ r, onReset }: { r: Report; onReset: () => void }) {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-surface p-6">
+      {/* Only when the rank was really checked (25 Nov 2026): unchecked, the red dashes read as "not found" on every keyword. */}
+      {r.rankChecked && <div className="rounded-2xl border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">Google Maps rank</h2>
-        {!r.rankChecked && <p className="mt-2 text-sm text-muted">Rank check is not available right now.</p>}
         <div className="mt-3 divide-y divide-border">
           {r.ranks.map((k) => (
             <div key={k.keyword} className="flex items-center justify-between gap-3 py-2.5"><span className="text-base">“{k.keyword}”</span><span className={`text-base font-semibold ${k.rank && k.rank <= 3 ? "text-good" : k.rank ? "text-amber-600" : "text-red-600"}`}>{k.rank ? `#${k.rank}` : r.rankChecked ? "Not in top 20" : "—"}</span></div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {r.rivals.length > 0 && (
         <div className="rounded-2xl border border-border bg-surface p-6">

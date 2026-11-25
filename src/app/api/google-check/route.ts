@@ -6,6 +6,7 @@
 import { clientIp, clientKey, rateLimited, requireUser, sameOrigin } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { buildReport, cachedReport, findPlaces, placesConfigured, saveReport } from "@/lib/google-check";
+import { isShubhoraSellerCard } from "@/lib/shubhora-page";
 
 const DAY = 86_400_000;
 const clean = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
@@ -41,17 +42,30 @@ export async function POST(request: Request) {
       catch (e) { console.error("google-check report", e); return Response.json({ ok: false, error: "Could not build the report. Try again in a minute." }, { status: 502 }); }
     }
     await saveReport(report, { ip: clientIp(request), userId: me?.user.id, phone: phone || undefined, query }).catch(() => {});
-    if (!me && phone) await saveLead(phone, clean(b.name, 100) || report.place.name, report).catch(() => {});
+    if (!me && phone) await saveLead(phone, clean(b.name, 100) || report.place.name, report, clean(b.by, 60).toLowerCase()).catch(() => {});
     return Response.json({ ok: true, report, fresh });
   }
   return Response.json({ ok: false, error: "Unknown step." }, { status: 400 });
 }
 
 /** The visitor's number goes to the company's own leads (same as the contact form), with the score in the message. */
-async function saveLead(phone: string, name: string, r: { place: { name: string; address: string }; score: number; fixes: { title: string }[] }) {
-  const username = (process.env.SITE_LEAD_CARD ?? "").trim().toLowerCase(); const admin = getAdminSupabase();
-  if (!username || !admin) return;
-  const { data: card } = await admin.from("cards").select("id,owner_id").eq("username", username).maybeSingle();
+async function saveLead(phone: string, name: string, r: { place: { name: string; address: string }; score: number; fixes: { title: string }[] }, by = "") {
+  const admin = getAdminSupabase();
+  if (!admin) return;
+  // Opened from a Shubhora partner's website (?by=<their card>): the visitor is that partner's lead (owner, 25 Nov 2026). Only a real
+  // partner card counts — any other name, or none, and the lead goes to the company's own card as before.
+  let card: { id: string; owner_id: string } | null = null;
+  if (/^[a-z0-9_.-]{2,60}$/.test(by)) {
+    const { data } = await admin.from("cards").select("id,owner_id,data").eq("username", by).maybeSingle();
+    const d = (data?.data ?? {}) as { company?: string; name?: string; jobTitle?: string; tagline?: string };
+    if (data && isShubhoraSellerCard(d)) card = { id: data.id, owner_id: data.owner_id };
+  }
+  if (!card) {
+    const username = (process.env.SITE_LEAD_CARD ?? "").trim().toLowerCase();
+    if (!username) return;
+    const { data } = await admin.from("cards").select("id,owner_id").eq("username", username).maybeSingle();
+    card = data ?? null;
+  }
   if (!card) return;
   const message = [`Google check: ${r.place.name} — score ${r.score}/100`, r.place.address, ...r.fixes.map((f) => `• ${f.title}`)].join("\n");
   await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email: "", message, source: "form", src: "google-check" });

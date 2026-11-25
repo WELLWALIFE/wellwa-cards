@@ -34,7 +34,9 @@ async function call<T>(path: string, body: unknown, mask: string, method: "POST"
 /** Up to 5 businesses matching "<name> <city>" — the visitor picks theirs. */
 export async function findPlaces(query: string): Promise<Candidate[]> {
   const j = await call<{ places?: RawPlace[] }>("/places:searchText", { textQuery: query, regionCode: "IN", languageCode: "en", maxResultCount: 5 },
-    "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.location");
+    // No rating / review count here (25 Nov 2026): those two fields make the search an Enterprise call (1,000 free a month); without
+    // them it is Pro (5,000). The report reads them from the place itself.
+    "places.id,places.displayName,places.formattedAddress,places.location");
   return (j.places ?? []).map(toCandidate).filter((c) => c.id && c.name);
 }
 

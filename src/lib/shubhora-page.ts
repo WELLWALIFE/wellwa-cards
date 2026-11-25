@@ -271,7 +271,7 @@ function pageWithoutFreeCard(p: CardPage): CardPage {
 
 export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["popup"] }>(card: T, seller: boolean): T {
   // Written as drawn once (sellerBaked): nothing is re-sorted, renamed, added or taken away any more — the partner edits it all.
-  if (seller && sellerBaked(card)) return card.pages.some((p) => p.blocks.some((b) => b.id === "sh-google-check")) ? { ...card, pages: card.pages.map(fixGoogleCheck) } : card;
+  if (seller && sellerBaked(card)) return card.pages.some((p) => p.blocks.some((b) => b.id === "sh-google-check")) ? { ...card, pages: card.pages.map((p) => fixGoogleCheck(p, (card as { username?: string }).username)) } : card;
   const pages = card.pages.map((p) => (seller ? homeWithStory(pageWithoutFreeCard(p)) : p.slug === SHUBHORA_PAGE_SLUG ? pageWithoutFreeCard(p) : p));
   const pp = card.popup;
   const old = !!pp && (/^(make free card|see your own card, free)$/i.test(pp.title.trim()) || (seller && FREE_CARD.test(`${pp.title} | ${pp.subtitle ?? ""} | ${pp.ctaLabel} | ${pp.terms ?? ""}`)));
@@ -394,9 +394,12 @@ function withPlansOnHome(pages: CardPage[]): CardPage[] {
 // "/google-check" is that domain's path, and an own domain shows the partner's home page for any path it does not know.
 /** A card saved with the Google check on it keeps its own copy (a partner's baked page is never re-drawn): the old bare "/google-check"
  *  is brought to the full address on the way out. An address the owner typed into that button is left as it is. */
-function fixGoogleCheck(p: CardPage): CardPage {
-  const old = (b: CardBlock) => b.id === "sh-google-check" && b.kind === "cta" && (b.joinUrl ?? "").trim() === "/google-check";
-  return p.blocks.some(old) ? { ...p, blocks: p.blocks.map((b) => (old(b) && b.kind === "cta" ? { ...b, joinUrl: `${SITE_URL}/google-check` } : b)) } : p;
+function fixGoogleCheck(p: CardPage, username?: string): CardPage {
+  // The partner's name rides along (?by=): a visitor's number from the check goes to that partner's leads (owner, 25 Nov 2026).
+  const want = `${SITE_URL}/google-check${username ? `?by=${encodeURIComponent(username)}` : ""}`;
+  const ours = (u: string) => u === "/google-check" || u === `${SITE_URL}/google-check` || u.startsWith(`${SITE_URL}/google-check?by=`);
+  const hit = (b: CardBlock) => b.id === "sh-google-check" && b.kind === "cta" && ours((b.joinUrl ?? "").trim()) && (b.joinUrl ?? "").trim() !== want;
+  return p.blocks.some(hit) ? { ...p, blocks: p.blocks.map((b) => (hit(b) && b.kind === "cta" ? { ...b, joinUrl: want } : b)) } : p;
 }
 const GOOGLE_CHECK: CardBlock = { id: "sh-google-check", kind: "cta", title: "Is your business showing on Google?", body: "Free Google check: your score out of 100, where you rank on Maps and the three things to fix first. Takes a minute.", joinUrl: `${SITE_URL}/google-check`, joinLabel: "Check my Google profile", referralCode: "" };
 
@@ -404,7 +407,8 @@ function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolea
   if (!seller) return card;
   const c = card as T & { site?: Card["site"]; company?: string };
   const own = (c.site as { homeOwnOrder?: boolean } | undefined)?.homeOwnOrder === true;
-  const pages = withPlansOnHome(card.pages).map(fixGoogleCheck).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p), own));
+  const uname = (card as { username?: string }).username;
+  const pages = withPlansOnHome(card.pages).map((p) => fixGoogleCheck(sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p), own), uname));
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;

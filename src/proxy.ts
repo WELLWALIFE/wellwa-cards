@@ -57,7 +57,7 @@ export async function proxy(req: NextRequest) {
   const url = req.nextUrl.clone();
   const p = url.pathname;
   // The free Google check lives on the platform (owner, 25 Nov 2026): a partner's own domain sends it there instead of showing its home page.
-  if (/^\/google-check\/?$/.test(p)) return NextResponse.redirect(`${SITE_URL}/google-check`, 302);
+  if (/^\/google-check\/?$/.test(p)) return NextResponse.redirect(`${SITE_URL}/google-check?by=${encodeURIComponent(username)}`, 302);
   // On a member's own address only the card and the app itself exist. Any
   // other path (a link a bot or a customer typed, an old page, a typo) shows
   // the card — never the platform's marketing pages, 404 page or their OG tags.
