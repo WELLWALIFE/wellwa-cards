@@ -49,7 +49,8 @@ export async function cachedReport(placeId: string): Promise<Report | null> {
   const { data } = await admin.from("google_checks").select("report").eq("place_id", placeId).gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle();
   // A report kept from before the redraw has no local list or profile: it is made again.
   const r = data?.report as Report | undefined;
-  return r && r.v === 2 ? r : null;
+  // …and one from before the review dates were read (25 Nov 2026, evening) is made again too, so it carries the newer checks.
+  return r && r.v === 2 && r.place.lastReview !== undefined ? r : null;
 }
 
 export async function buildReport(placeId: string, sells = ""): Promise<Report> {
@@ -91,7 +92,7 @@ export async function buildReport(placeId: string, sells = ""): Promise<Report> 
   const issues: Fix[] = [];
   if (local && local.ahead.length > 0) issues.push(local.rank === null
     ? { title: `Not in the first ${local.total} for "${trade} in ${city}"`, why: `${local.total} businesses of your kind show before you when people search nearby.`, plan: "growth", hi: `"${trade} in ${city}" search mein pehle ${local.total} mein nahi - ${local.total} businesses aapse pehle dikhte hain` }
-    : { title: `#${local.rank} for "${trade} in ${city}"`, why: `${local.ahead.length} ${local.ahead.length === 1 ? "business shows" : "businesses show"} before you. Most people call one of the first three.`, plan: "growth", hi: `"${trade} in ${city}" search mein #${local.rank} - ${local.ahead.length} businesses aapse pehle dikhte hain` });
+    : { title: `#${local.rank} for "${trade} in ${city}"`, why: `${local.ahead.length} ${local.ahead.length === 1 ? "business shows" : "businesses show"} before you. Most people call one of the first three.`, plan: "growth", hi: `"${trade} in ${city}" search mein #${local.rank} - ${local.ahead.length} ${local.ahead.length === 1 ? "business aapse pehle dikhta hai" : "businesses aapse pehle dikhte hain"}` });
   issues.push(...s.issues);
   if (generic) issues.push({ title: "No clear business category on Google", why: "Google does not know what you sell, so it cannot show you for any search of your trade. Pick the exact category.", plan: "growth", hi: "Google par business category saaf nahi hai - Google ko pata nahi aap kya bechte hain" });
   else if ((place.types ?? []).length < 2) issues.push({ title: "Additional categories are not set", why: "Google uses them to show you for nearby searches of related things.", plan: "growth", hi: "Additional categories set nahi hain - nearby searches mein rank karne ke liye Google inhe use karta hai" });
