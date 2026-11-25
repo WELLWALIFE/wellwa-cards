@@ -28,7 +28,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { isScreenKey, screenHref } from "@/lib/setup-steps";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
-type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; paused?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
+type Status = { hasCard: false } | { hasCard: true; /** a website package is running (api/site/status) */ pkg?: boolean; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; paused?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
 
 type Panel = "share" | "edit" | null;
 /** Which edit page: the phone card's, the website's, or (?edit=1, an older link) the question which one. */
@@ -124,7 +124,8 @@ export default function WebsitePage() {
     } catch { /* ignore */ }
   }, []);
   const { plan, loading: planLoading } = usePlan();
-  const paid = planLoading || plan !== "free";
+  // A running website package counts as paid here, whatever the plan (a Website Standard comes with no Growth Plan).
+  const paid = planLoading || plan !== "free" || !!(s && s.hasCard && s.pkg);
   /** The Premium website on this card (the Grow tile says live / waiting / upgrade instead of one fixed line — owner, 31 Oct 2026). */
   const [adv, setAdv] = useState<AdvState | null>(null);
   const [advPaid, setAdvPaid] = useState(false);

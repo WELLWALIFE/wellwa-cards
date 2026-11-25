@@ -1,5 +1,6 @@
 // GET (bearer) → website status for the user's card (`?full=1` adds the whole card, for the website editor's
 // live preview). PATCH { enabled?, hidden?, hideProfile?, logoUrl?, hero?, style?, home?, reference? }.
+import { packageRunning } from "@/lib/site-tier";
 import { HEADING_FONTS, HERO_IDS, SECTION_KEYS, SHAPES, VARIANT_IDS, repairOrder } from "@/lib/site-advanced";
 import { PALETTE_KEYS } from "@/lib/site-style";
 import { NextResponse } from "next/server";
@@ -14,7 +15,11 @@ export async function GET(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const q = new URL(request.url).searchParams;
-  return NextResponse.json(await siteStatus(me.id, q.get("card") ?? undefined, { full: q.get("full") === "1" }));
+  const st = await siteStatus(me.id, q.get("card") ?? undefined, { full: q.get("full") === "1" });
+  // `pkg`: a website package is running (Website Standard / Premium / Custom, bought or given by the Super Admin). Card & Website reads
+  // it: a Website Standard has no Growth Plan with it, so the account's plan is still "free" — and the hub showed such an owner the
+  // card alone, with no way to the website the admin had made for them (owner, 25 Nov 2026: "maine admin se website banai hai").
+  return NextResponse.json(st.hasCard ? { ...st, pkg: await packageRunning(me.id).catch(() => false) } : st);
 }
 export async function PATCH(request: Request) {
   const me = await userFromRequest(request);
