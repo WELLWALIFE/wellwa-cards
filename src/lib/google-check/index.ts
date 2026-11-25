@@ -15,11 +15,16 @@ export type Report = {
   score: number; breakdown: Breakdown[]; fixes: Fix[]; at: string;
 };
 
+const GENERIC = /^(business|point of interest|establishment|premise|corporate office|company|)$/i;
+
 export function cityOf(address: string): string {
   // "12, MG Road, Jaipur, Rajasthan 302001, India" → "Jaipur"
   const parts = address.split(",").map((s) => s.trim()).filter(Boolean);
   const idx = parts.findIndex((p) => /\b\d{6}\b/.test(p));
-  const pick = idx > 1 ? parts[idx - 2] : parts[Math.max(0, parts.length - 3)];
+  // The PIN shares its part with the state ("Rajasthan 302001"): the city is the part before it. A PIN on its own ("…, Jaipur, Rajasthan,
+  // 302001"): two before. (The old rule always took two before and gave "MG Road" or "Sector 24" — 25 Nov 2026, Wellwa Life's report.)
+  const pinAlone = idx >= 0 && /^\d{6}$/.test(parts[idx].replace(/\s+/g, ""));
+  const pick = idx < 0 ? parts[Math.max(0, parts.length - 3)] : pinAlone ? parts[idx - 2] : parts[idx - 1];
   return (pick ?? "").replace(/\b\d{6}\b/, "").trim() || "your city";
 }
 
@@ -34,7 +39,9 @@ export async function buildReport(placeId: string): Promise<Report> {
   const place = await placeDetails(placeId);
   const city = cityOf(place.address);
   const [rivals, ranks, site] = await Promise.all([
-    competitors(place, city).catch(() => [] as Candidate[]),
+    // A place Google files under no trade ("business") has no real rivals: "business in Gurugram" brought malls and office parks,
+    // and the report compared a company's 17 reviews with a mall's 28,000. No trade, no comparison.
+    GENERIC.test(place.category.trim()) ? Promise.resolve([] as Candidate[]) : competitors(place, city).catch(() => [] as Candidate[]),
     rankConfigured() ? mapsRanks(place, keywordsFor(place.category, city)).catch(() => null) : Promise.resolve(null),
     place.website ? siteCheck(place.website).catch(() => NO_SITE) : Promise.resolve(NO_SITE),
   ]);
