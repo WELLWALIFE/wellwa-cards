@@ -172,12 +172,21 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const appOn = premiumTier(stored0.site, username, await packageOf(ownerId).catch(() => null));
   // Always written here (true or false), so a value saved on the card itself is never what decides.
   // A shop with Shubhora Jewellery shows today's rate (Jewellery → Settings → "Show today's rate"); for this request only, like staffLogin.
+  // …but only on a jeweller's own card (owner, 25 Nov 2026: "koi site mix nahi honi chahiye"): one account can run Shubhora Jewellery and
+  // also a card for another business (a saree shop showed 24K / silver rates under its banner). A card whose trade is not jewellery, and
+  // whose name and title say nothing of gold, shows neither the rate nor the jewellery stock.
+  const jewelCard = (() => {
+    const k = (stored0.seo?.categoryKey ?? "").trim().toLowerCase();
+    if (k === "jewellery") return true;
+    const words = [stored0.company, stored0.jobTitle, stored0.name, stored0.seo?.category].filter(Boolean).join(" ");
+    return /jewel|gold|silver|sonar|sunar|सुनार|ज्वेल|सोना|चाँदी|चांदी/i.test(words) && (!k || !/garments|textile|tailor|boutique|saree/.test(k));
+  })();
   const jewelRate = await (async () => {
-    try { return ownerId && (await addonOn(ownerId, "jewellery")) ? await publicRateFor(ownerId) : null; } catch { return null; }
+    try { return jewelCard && ownerId && (await addonOn(ownerId, "jewellery")) ? await publicRateFor(ownerId) : null; } catch { return null; }
   })();
   const stored1: Card = stored0.site ? { ...stored0, site: { ...stored0.site, staffLogin: ordersOn, premiumOn: appOn } as Card["site"] } : stored0;
   const jewelCatalog = await (async () => {
-    try { return ownerId && (await addonOn(ownerId, "jewellery")) ? await publicCatalogFor(ownerId, 12) : null; } catch { return null; }
+    try { return jewelCard && ownerId && (await addonOn(ownerId, "jewellery")) ? await publicCatalogFor(ownerId, 12) : null; } catch { return null; }
   })();
   const stored: Card = { ...stored1, jewelRate, jewelCatalog };
   // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
