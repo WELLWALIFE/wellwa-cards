@@ -271,7 +271,7 @@ function pageWithoutFreeCard(p: CardPage): CardPage {
 
 export function withoutFreeCard<T extends { pages: CardPage[]; popup?: Card["popup"] }>(card: T, seller: boolean): T {
   // Written as drawn once (sellerBaked): nothing is re-sorted, renamed, added or taken away any more — the partner edits it all.
-  if (seller && sellerBaked(card)) return card;
+  if (seller && sellerBaked(card)) return card.pages.some((p) => p.blocks.some((b) => b.id === "sh-google-check")) ? { ...card, pages: card.pages.map(fixGoogleCheck) } : card;
   const pages = card.pages.map((p) => (seller ? homeWithStory(pageWithoutFreeCard(p)) : p.slug === SHUBHORA_PAGE_SLUG ? pageWithoutFreeCard(p) : p));
   const pp = card.popup;
   const old = !!pp && (/^(make free card|see your own card, free)$/i.test(pp.title.trim()) || (seller && FREE_CARD.test(`${pp.title} | ${pp.subtitle ?? ""} | ${pp.ctaLabel} | ${pp.terms ?? ""}`)));
@@ -392,17 +392,19 @@ function withPlansOnHome(pages: CardPage[]): CardPage[] {
 /** "Check your Google profile free" (the free tool at /google-check), after the plans: the SaaS sites' free tools that bring leads. */
 // The full address (owner, 25 Nov 2026: "Check my Google profile" did nothing on a partner's own domain): on jaidevrajwal.com a bare
 // "/google-check" is that domain's path, and an own domain shows the partner's home page for any path it does not know.
+/** A card saved with the Google check on it keeps its own copy (a partner's baked page is never re-drawn): the old bare "/google-check"
+ *  is brought to the full address on the way out. An address the owner typed into that button is left as it is. */
+function fixGoogleCheck(p: CardPage): CardPage {
+  const old = (b: CardBlock) => b.id === "sh-google-check" && b.kind === "cta" && (b.joinUrl ?? "").trim() === "/google-check";
+  return p.blocks.some(old) ? { ...p, blocks: p.blocks.map((b) => (old(b) && b.kind === "cta" ? { ...b, joinUrl: `${SITE_URL}/google-check` } : b)) } : p;
+}
 const GOOGLE_CHECK: CardBlock = { id: "sh-google-check", kind: "cta", title: "Is your business showing on Google?", body: "Free Google check: your score out of 100, where you rank on Maps and the three things to fix first. Takes a minute.", joinUrl: `${SITE_URL}/google-check`, joinLabel: "Check my Google profile", referralCode: "" };
 
 function withSellerHome<T extends { pages: CardPage[] }>(card: T, seller: boolean): T {
   if (!seller) return card;
   const c = card as T & { site?: Card["site"]; company?: string };
   const own = (c.site as { homeOwnOrder?: boolean } | undefined)?.homeOwnOrder === true;
-  // A card saved with the Google check on it keeps its copy: the old bare "/google-check" is brought to the full address (an owner's own
-  // address in that button is left as it is).
-  const fixGc = (p: CardPage): CardPage => (p.blocks.some((b) => b.id === GOOGLE_CHECK.id && b.kind === "cta" && (b.joinUrl ?? "").trim() === "/google-check")
-    ? { ...p, blocks: p.blocks.map((b) => (b.id === GOOGLE_CHECK.id && b.kind === "cta" && (b.joinUrl ?? "").trim() === "/google-check" ? { ...b, joinUrl: GOOGLE_CHECK.kind === "cta" ? GOOGLE_CHECK.joinUrl : b.joinUrl } : b)) } : p);
-  const pages = withPlansOnHome(card.pages).map(fixGc).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p), own));
+  const pages = withPlansOnHome(card.pages).map(fixGoogleCheck).map((p) => sellerHomePage(sellerInnerPage(p.slug === "home" && !p.blocks.some((b) => b.id === GOOGLE_CHECK.id) ? { ...p, blocks: [...p.blocks, GOOGLE_CHECK] } : p), own));
   const home = pages.find((p) => p.slug === "home");
   const site = c.site;
   const hero = site?.hero;
