@@ -23,6 +23,8 @@ export type Report = {
   /** What the local list was searched by: Google's own category, or — when Google files the place under no trade — what the visitor
    *  said they sell ("water purifier"). */
   trade?: string;
+  /** The website's speed has not been read yet: the page asks for it right after showing the report. */
+  sitePending?: boolean;
   /** Everything found, not only the first three. */
   issues?: Fix[];
 };
@@ -50,10 +52,14 @@ export async function cachedReport(placeId: string): Promise<Report | null> {
   // A report kept from before the redraw has no local list or profile: it is made again.
   const r = data?.report as Report | undefined;
   // …and one from before the review dates were read (25 Nov 2026, evening) is made again too, so it carries the newer checks.
-  return r && r.v === 2 && r.place.lastReview !== undefined ? r : null;
+  if (!r || r.v !== 2 || r.place.lastReview === undefined) return null;
+  // A website whose speed was never read (the test was cut short, or no key then): asked for again when the report is opened.
+  return r.place.website && !r.site.checked ? { ...r, sitePending: true } : r;
 }
 
-export async function buildReport(placeId: string, sells = ""): Promise<Report> {
+/** `withSite` false: the website's speed is left for later (`withSiteSpeed`), so the report is ready in a few seconds — the speed test
+ *  alone takes 20 to 40 (owner, 25 Nov 2026). */
+export async function buildReport(placeId: string, sells = "", withSite = true): Promise<Report> {
   const place = await placeDetails(placeId);
   const city = cityOf(place.address);
   const generic = GENERIC.test(place.category.trim());
@@ -66,7 +72,7 @@ export async function buildReport(placeId: string, sells = ""): Promise<Report> 
     // and the report compared a company's 17 reviews with a mall's 28,000. No trade, no comparison.
     trade ? localList(place, city, trade).catch(() => null) : Promise.resolve(null),
     rankConfigured() ? mapsRanks(place, keywordsFor(place.category, city)).catch(() => null) : Promise.resolve(null),
-    place.website ? siteCheck(place.website).catch(() => NO_SITE) : Promise.resolve(NO_SITE),
+    place.website && withSite ? siteCheck(place.website).catch(() => NO_SITE) : Promise.resolve(NO_SITE),
   ]);
   const others = (near?.list ?? []).filter((c) => c.id !== place.id);
   const weight = (c: Candidate) => c.rating * Math.log10(c.reviews + 1);
@@ -75,7 +81,21 @@ export async function buildReport(placeId: string, sells = ""): Promise<Report> 
     ? { rank: near.rank, total: near.list.length, ahead: near.rank === null ? others : near.list.slice(0, near.rank - 1) }
     : undefined;
   const rankRows = ranks ?? keywordsFor(place.category, city).map((keyword) => ({ keyword, rank: null, top: [] }));
-  const s = scoreOf(place, rankRows, site, rivals, ranks !== null);
+  return compose({ place, city, trade, local, rivals, rankRows, rankChecked: ranks !== null }, site, !!place.website && !withSite);
+}
+
+/** The report with the website's speed read now: nothing else is asked of Google again. */
+export async function withSiteSpeed(r: Report): Promise<Report> {
+  const site = r.place.website ? await siteCheck(r.place.website).catch(() => NO_SITE) : NO_SITE;
+  return compose({ place: r.place, city: r.city, trade: r.trade ?? "", local: r.local, rivals: r.rivals, rankRows: r.ranks, rankChecked: r.rankChecked }, site, false);
+}
+
+type Base = { place: Place; city: string; trade: string; local: Report["local"]; rivals: Candidate[]; rankRows: RankRow[]; rankChecked: boolean };
+/** Score, profile and issues from what was gathered. */
+function compose(b: Base, site: SiteCheck, sitePending: boolean): Report {
+  const { place, city, trade, local, rivals, rankRows } = b;
+  const generic = GENERIC.test(place.category.trim());
+  const s = scoreOf(place, rankRows, site, rivals, b.rankChecked);
 
   const profile = [
     { label: "Title", ok: !!place.name },
@@ -122,7 +142,14 @@ export async function buildReport(placeId: string, sells = ""): Promise<Report> 
   const seen = new Set<string>();
   // No reviews at all: said once ("No reviews yet"), not also as "Fewer than 30 reviews".
   const all = issues.filter((f) => !(place.reviews === 0 && f.title === "Fewer than 30 reviews")).filter((f) => !seen.has(f.title) && !!seen.add(f.title));
-  return { place, city, ranks: rankRows, rankChecked: ranks !== null, site, rivals, score: s.score, breakdown: s.breakdown, fixes: all.slice(0, 3), issues: all, local, profile, ...(trade ? { trade } : {}), v: 2, at: new Date().toISOString() };
+  return { place, city, ranks: rankRows, rankChecked: b.rankChecked, site, rivals, score: s.score, breakdown: s.breakdown, fixes: all.slice(0, 3), issues: all, local, profile, ...(trade ? { trade } : {}), ...(sitePending ? { sitePending: true } : {}), v: 2, at: new Date().toISOString() };
+}
+
+/** The newest kept report of a place, replaced (the speed arrived). */
+export async function replaceReport(r: Report) {
+  const admin = getAdminSupabase(); if (!admin) return;
+  const { data } = await admin.from("google_checks").select("id").eq("place_id", r.place.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (data?.id) await admin.from("google_checks").update({ report: r, score: r.score }).eq("id", data.id);
 }
 
 export async function saveReport(r: Report, meta: { ip: string; userId?: string; phone?: string; query: string }) {

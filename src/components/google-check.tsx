@@ -11,7 +11,7 @@ type Report = {
   city: string; ranks: { keyword: string; rank: number | null; top: { name: string; rating: number; reviews: number }[] }[]; rankChecked: boolean;
   site: { performance: number; seo: number; checked: boolean }; rivals: Candidate[];
   score: number; breakdown: { label: string; got: number; max: number }[]; fixes: Fix[];
-  local?: { rank: number | null; total: number; ahead: Candidate[] }; profile?: { label: string; ok: boolean }[]; issues?: Fix[]; trade?: string;
+  local?: { rank: number | null; total: number; ahead: Candidate[] }; profile?: { label: string; ok: boolean }[]; issues?: Fix[]; trade?: string; sitePending?: boolean;
 };
 type Fix = { title: string; why: string; plan: "website" | "growth"; hi?: string };
 /** The partner whose website sent the visitor: the report's buttons open their WhatsApp. */
@@ -41,7 +41,10 @@ export function GoogleCheck() {
     e.preventDefault(); if (!pick) return; setError(""); setBusy("report");
     // The partner whose website sent the visitor here (?by=<card>): the lead is theirs.
     let by = ""; try { by = new URLSearchParams(window.location.search).get("by") ?? ""; } catch { /* old browser */ }
-    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${city}`.trim(), ...(sells.trim() ? { sells: sells.trim() } : {}), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setReport(j.report); }
+    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${city}`.trim(), ...(sells.trim() ? { sells: sells.trim() } : {}), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setReport(j.report);
+      // The website's speed comes a little later and is put into the report shown.
+      if (j.report?.sitePending) void post({ step: "speed", placeId: pick.id }).then((s) => { if (s.report) setReport((cur) => (cur && cur.place.id === s.report.place.id ? s.report : cur)); }).catch(() => setReport((cur) => (cur ? { ...cur, sitePending: false } : cur)));
+    }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
 
@@ -91,7 +94,7 @@ export function GoogleCheck() {
               {busy === "report" ? <><Loader2 className="h-5 w-5 animate-spin" /> Checking…</> : "See my score"}
             </button>
           </div>
-          {busy === "report" && <p className="mt-3 text-sm text-muted">Checking Google, Maps rank and your website — about 30 seconds.</p>}
+          {busy === "report" && <p className="mt-3 text-sm text-muted">Checking your Google profile and who ranks above you — a few seconds.</p>}
         </form>
       )}
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
@@ -165,6 +168,8 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
           <a href={`https://wa.me/?text=${encodeURIComponent(`${r.place.name} - Google report: score ${r.score}/100, ${issues.length} issues.\n${pic}`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold hover:border-brand">📤 {T("Share on WhatsApp", "WhatsApp par share karein")}</a>
         </div>
       </div>
+
+      {r.sitePending && <p className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" /> {T("Checking your website's speed on a phone - it joins the report in a moment.", "Aapki website ki phone par speed check ho rahi hai - thodi der mein report mein jud jayegi.")}</p>}
 
       {/* ---- who is ahead ---- */}
       {ahead.length > 0 && (

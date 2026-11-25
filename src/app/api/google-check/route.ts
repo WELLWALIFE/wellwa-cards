@@ -5,7 +5,7 @@
 // Limits per IP a day: find 20; report 3 (visitor) / 20 (signed in). A report already made in the last 7 days costs nothing.
 import { clientIp, clientKey, rateLimited, requireUser, sameOrigin } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { buildReport, cachedReport, findPlaces, placesConfigured, saveReport } from "@/lib/google-check";
+import { buildReport, cachedReport, findPlaces, placesConfigured, replaceReport, saveReport, withSiteSpeed } from "@/lib/google-check";
 import { isShubhoraSellerCard } from "@/lib/shubhora-page";
 import { bridge, ownerPlanExpiry } from "@/lib/crm-server";
 import { notify } from "@/lib/notify";
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     // A kept report with no local list, and now the visitor says what they sell: made again with it.
     if (report && !report.local && sells) report = null;
     if (!report) {
-      try { report = await buildReport(placeId, sells); fresh = true; }
+      try { report = await buildReport(placeId, sells, false); fresh = true; }
       catch (e) { console.error("google-check report", e); return Response.json({ ok: false, error: "Could not build the report. Try again in a minute." }, { status: 502 }); }
     }
     await saveReport(report, { ip: clientIp(request), userId: me?.user.id, phone: phone || undefined, query }).catch(() => {});
@@ -55,6 +55,18 @@ export async function POST(request: Request) {
     // Came from a partner's website: the report's "Fix my Google profile" button opens THAT partner's WhatsApp (their public number).
     const partner = await partnerOf(clean(b.by, 60).toLowerCase()).catch(() => null);
     return Response.json({ ok: true, report, fresh, ...(partner ? { partner } : {}) });
+  }
+  // The website's speed, asked by the page right after it shows the report (it takes 20 to 40 seconds). Only for a report already
+  // made and still waiting for it: nothing new is asked of Google Places, and nobody's number is needed again.
+  if (b.step === "speed") {
+    const placeId = clean(b.placeId, 300); if (!placeId) return Response.json({ ok: false }, { status: 400 });
+    if (rateLimited(clientKey(request, "gcheck-speed"), 30, DAY)) return Response.json({ ok: false, error: "Daily limit reached." }, { status: 429 });
+    const kept = await cachedReport(placeId);
+    if (!kept) return Response.json({ ok: false }, { status: 404 });
+    if (!kept.sitePending) return Response.json({ ok: true, report: kept });
+    const report = await withSiteSpeed(kept);
+    await replaceReport(report).catch(() => {});
+    return Response.json({ ok: true, report });
   }
   return Response.json({ ok: false, error: "Unknown step." }, { status: 400 });
 }
