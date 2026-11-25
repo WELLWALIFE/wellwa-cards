@@ -13,7 +13,10 @@ export function useEditHistory(value: string | null, apply: (v: string) => void,
   const applyRef = useRef(apply);
   useEffect(() => { applyRef.current = apply; });
   // A fresh start after loading or saving.
-  useEffect(() => { last.current = null; setPast([]); setFuture([]); }, [reset]);
+  // `last` starts from the copy as it is NOW, not from nothing: started from nothing, the first change after every Save was not a step
+  // (Hide a section right after saving → "Unsaved changes" with Undo greyed out; review, 25 Nov 2026).
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new start resets it; `value` is read as it is at that moment
+  useEffect(() => { last.current = value; setPast([]); setFuture([]); }, [reset]);
   useEffect(() => {
     if (value === null) return;
     if (skip.current) { skip.current = false; last.current = value; return; }

@@ -95,6 +95,20 @@ export async function PATCH(request: Request) {
     }
     if (Object.keys(po).length) patch.pageOrders = po;
   }
+  // The top of a page (website editor → Page heading): its name, its own photo or none, a short line, the shape. Text only, checked here.
+  if (b.pageHeads && typeof b.pageHeads === "object") {
+    const ph: NonNullable<SitePatch["pageHeads"]> = {};
+    for (const [k, v] of Object.entries(b.pageHeads as Record<string, unknown>).slice(0, 30)) {
+      if (!/^[\w-]{1,60}$/.test(k) || !v || typeof v !== "object") continue;
+      const o = v as Record<string, unknown>;
+      const label = typeof o.label === "string" ? o.label.trim().slice(0, 40) : "";
+      const photo = typeof o.photo === "string" && o.photo.length <= 600 && /^(https:\/\/|\/)[^\s"'<>]+$/.test(o.photo) ? o.photo : "";
+      const line = typeof o.line === "string" ? o.line.trim().slice(0, 160) : "";
+      const kind = o.kind === "ink" || o.kind === "split" || o.kind === "type" || o.kind === "poster" ? o.kind : undefined;
+      ph[k] = { ...(label ? { label } : {}), ...(photo ? { photo } : {}), ...(o.noPhoto === true ? { noPhoto: true } : {}), ...(line ? { line } : {}), ...(kind ? { kind } : {}) };
+    }
+    if (Object.keys(ph).length) patch.pageHeads = ph;
+  }
   if (Array.isArray(b.homeBlocks)) { const ids = (b.homeBlocks as unknown[]).filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 80).slice(0, 200); if (ids.length > 1) patch.homeBlocks = ids; }
   // "Make it look like this website": one public URL, read on the server (same safety rules as the AI builder).
   if (typeof b.reference === "string" && b.reference.trim()) patch.referenceUrl = b.reference.trim().slice(0, 300);

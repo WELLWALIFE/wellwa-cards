@@ -73,7 +73,7 @@ export function AboutPage({ c, spec, x, chrome, slot, has, entry }: Props & { en
   const showOwner = !!x.card.avatarUrl && !!person && person.toLowerCase() !== c.name.toLowerCase() && spec.sections.about !== "owner-card";
   return (
     <>
-      <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)}
+      <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)}
         lede={has("about") ? undefined : x.t(firstSentence(c.about?.paras[0] ?? c.hm.sub ?? ""))} image={[c.hm.photo?.src, ...c.photos].find((u) => u && u !== c.about?.image) ?? c.about?.image}
         trail={[{ label: x.t(entry.label) }]} />
       {has("about") && slot("about", i++)}
@@ -147,7 +147,7 @@ export function GalleryPage({ c, spec, x, chrome, slot, has, entry }: Props & { 
   let i = 1;
   return (
     <>
-      <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={(shots.length > 1 ? shots[shots.length - 1] : shots[0])?.url}
+      <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={(shots.length > 1 ? shots[shots.length - 1] : shots[0])?.url}
         lede={x.hi ? `${shots.length} फ़ोटो` : `${shots.length} photographs`} trail={[{ label: x.t(entry.label) }]} />
       <section className="gl" aria-label={x.t(entry.label)}>
         <div className="adv-wrap adv-wide">
@@ -196,7 +196,7 @@ export function ContactPage({ c, x, chrome, slot, has, entry, page }: Props & { 
   let i = 1;
   return (
     <>
-      <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]}
+      <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]}
         lede={x.t(note || (c.city ? x.ui(`Come and see us in ${c.city}, or write to us here.`, `${c.city} में आइए, या यहीं लिखिए।`) : x.ui("Come and see us, or write to us here.", "आइए, या यहीं लिखिए।")))}
         aside={open ? <span className="ct-open" data-state={open.state}><i className="open-dot" aria-hidden="true" />{open.state === "open" ? x.ui("Open now", "अभी खुला है") : x.ui("Closed right now", "अभी बंद है")}</span> : undefined}
         trail={[{ label: x.t(entry.label) }]} />
@@ -276,7 +276,7 @@ const dateOf = (iso: string, hi: boolean) => { const d = new Date(iso); return N
 export function UpdatesPage({ c, x, chrome, entry, updates }: Pick<Props, "c" | "x" | "chrome"> & { entry: AdvPageEntry; updates: SiteUpdate[] }) {
   return (
     <>
-      <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={entry.label} image={updates[0]?.url}
+      <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={entry.label} image={updates[0]?.url}
         lede={x.ui("What is new with us, as we post it.", "हमारे यहाँ क्या नया है।")} trail={[{ label: entry.label }]} />
       <section className="up" aria-label={entry.label}>
         <div className="adv-wrap adv-wide">
@@ -428,7 +428,7 @@ export function GenericPage({ c, x, chrome, slot, has, entry, page }: Props & { 
   let i = 0;
   return (
     <>
-      <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]}
+      <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]}
         lede={lede && lede.kind === "about" ? x.t(firstSentence(lede.body)) : undefined} trail={[{ label: x.t(entry.label) }]} />
       {blocks.map((b) => <Block key={b.id} b={b} x={x} c={c} i={i++} />)}
       <div className="gb-share adv-wrap adv-wide"><ShareBtn x={x} title={`${x.t(entry.label)} — ${c.name}`} /></div>

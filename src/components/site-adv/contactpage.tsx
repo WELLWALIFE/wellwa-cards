@@ -240,7 +240,7 @@ export function ContactPage({ c, x, chrome, slot, has, entry, page }: PageProps 
   let i = 1;
   return (
     <>
-      <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]}
+      <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]}
         lede={x.t(note || (c.city ? x.ui(`Come and see us in ${c.city}, or write to us here.`, `${c.city} में आइए, या यहीं लिखिए।`) : x.ui("Come and see us, or write to us here.", "आइए, या यहीं लिखिए।")))}
         aside={hours.length ? <OpenPill rows={hours} x={x} /> : undefined}
         trail={[{ label: x.t(entry.label) }]} />

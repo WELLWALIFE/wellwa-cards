@@ -59,7 +59,7 @@ export function CataloguePage({ c, spec, x, chrome, entry, items, bare = false }
 
   return (
     <>
-      {!bare && <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={lead}
+      {!bare && <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={lead}
         trail={[{ label: x.t(entry.label) }]}
         lede={x.hi ? `${main.length} ${word}${range ? ` · ${range}` : ""}` : `${main.length} ${word.toLowerCase()}${range ? ` · ${range}` : ""}`}
         aside={x.wa ? <a className="btn-primary" href={x.waHref()} target="_blank" rel="noreferrer" onClick={() => x.track("cat-enquire")}><Icon name="whatsapp" /> {enquireLabel(x, {}, x.card.seo?.categoryKey)}</a> : undefined} />}

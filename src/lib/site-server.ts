@@ -394,6 +394,8 @@ export type SitePatch = {
   homeBlocks?: string[];
   /** The other pages' sections in the order the owner wants, page by page (slug → ids). */
   pageOrders?: Record<string, string[]>;
+  /** The top of a page, page by page (slug → its name, photo, line and shape): CardPage.label and CardPage.head. */
+  pageHeads?: Record<string, { label?: string; photo?: string; noPhoto?: boolean; line?: string; kind?: "ink" | "split" | "type" | "poster" }>;
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -474,6 +476,17 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
       const named = p.blocks.filter((b) => pos.has(b.id)).sort((x, y) => pos.get(x.id)! - pos.get(y.id)!);
       let n = 0;
       return { ...p, blocks: p.blocks.map((b) => (pos.has(b.id) ? named[n++] : b)) };
+    });
+  }
+  if (patch.pageHeads && Array.isArray(pages)) {
+    pages = pages.map((p) => {
+      const h = patch.pageHeads![p.slug];
+      if (!h) return p;
+      const { label, ...rest } = h;
+      // Only what is set is kept; a page put back to "automatic" carries no `head` at all, exactly as before this existed.
+      const head = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined && v !== "" && v !== false)) as NonNullable<typeof p.head>;
+      const { head: _was, ...bare } = p; void _was;
+      return { ...bare, ...(label ? { label } : {}), ...(Object.keys(head).length ? { head } : {}) };
     });
   }
   // Sections moved by the owner: his order is the page's from now on (a partner's home is no longer re-sorted when drawn).

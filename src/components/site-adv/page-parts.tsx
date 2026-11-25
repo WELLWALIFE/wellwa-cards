@@ -44,13 +44,20 @@ export function enquireLabel(x: AdvCtxPlus, it: { ctaLabel?: string }, cat: stri
 
 /* ================= masthead ================= */
 
-export function Masthead({ x, chrome, kicker, title, lede, trail, image, aside, name }: {
+export function Masthead({ x, chrome, kicker, title, lede: lede0, trail, image: image0, aside, name, slug }: {
   x: AdvCtxPlus; chrome: Chrome; kicker?: string; title: string; lede?: string; trail: { label: string; slug?: string }[]; image?: string; aside?: ReactNode;
+  /** The page this is the top of: its own photo, line and shape (CardPage.head) win over what the page and the design give. */
+  slug?: string;
   /** The business's name: the type style's ribbon repeats it. */
   name: string;
 }) {
   // A split masthead needs a picture; without one it becomes the type style (never an empty frame).
-  const kind = chrome.mast === "split" && !image ? "type" : chrome.mast;
+  const head = slug ? x.card.pages.find((p) => p.slug === slug)?.head : undefined;
+  const image = head?.noPhoto ? undefined : head?.photo || image0;
+  const lede = head?.line?.trim() ? x.t(head.line.trim()) : lede0;
+  // The owner's own photo is always seen: a design whose page tops are letters only gives way to the photo band for that page.
+  const want = head?.kind ?? (head?.photo && !head.noPhoto && (chrome.mast === "type" || chrome.mast === "poster") ? "ink" : chrome.mast);
+  const kind = want === "split" && !image ? "type" : want;
   const ribbon = [name, kicker, title].filter(Boolean) as string[];
   return (
     <section className={`mh ${kind === "ink" ? "hero-dark" : ""}`} data-kind={kind} aria-labelledby="mh-title">

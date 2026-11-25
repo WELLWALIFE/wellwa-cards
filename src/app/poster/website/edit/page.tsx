@@ -36,7 +36,7 @@ import { useEditHistory } from "@/lib/use-edit-history";
 import { type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
-import type { Card, CardBlock, HeroSlide, SiteStyle } from "@/lib/types";
+import type { Card, CardBlock, CardPage, HeroSlide, SiteStyle } from "@/lib/types";
 
 const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
@@ -96,12 +96,15 @@ function Seg<T extends string>({ value, options, onChange, label }: { value: T; 
 /** "Saved" / an error under the top bar; "Saved" goes by itself after a moment, an error stays longer. */
 function SaveToast({ note }: { note: { text: string; bad: boolean } | null }) {
   const [shown, setShown] = useState<{ text: string; bad: boolean } | null>(null);
+  // Keyed on the words, not on the object: the caller hands a new object on every draw, so the note used to come back each time the
+  // screen drew again and "Website saved" stayed up for minutes (review, 25 Nov 2026).
+  const text = note?.text ?? "", bad = !!note?.bad;
   useEffect(() => {
-    setShown(note);
-    if (!note) return;
-    const t = setTimeout(() => setShown(null), note.bad ? 7000 : 2800);
+    setShown(text ? { text, bad } : null);
+    if (!text) return;
+    const t = setTimeout(() => setShown(null), bad ? 7000 : 2800);
     return () => clearTimeout(t);
-  }, [note]);
+  }, [text, bad]);
   return shown ? <p role={shown.bad ? "alert" : "status"} className={`absolute inset-x-3 top-[calc(100%+6px)] z-40 rounded-lg px-3 py-1.5 text-center text-xs font-semibold text-white shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)] ${shown.bad ? "bg-danger/95" : "bg-good/95"}`}>{shown.text}</p> : null;
 }
 /** What a design that does not fit yet needs, and where to add it. */
@@ -234,12 +237,24 @@ export default function WebsiteEditPage() {
   /** ↶ ↷ on the bar: each change on this screen is a step; loading or a Save starts afresh. */
   const [histReset, setHistReset] = useState(0);
   // Undo / Redo cover the website settings and the order of the Home page's sections (moved from the Sections tab).
-  const histSnap = card ? JSON.stringify({ site: card.site ?? null, orders: Object.fromEntries(card.pages.map((p) => [p.slug, p.blocks.map((b) => b.id)])) }) : null;
+  const histSnap = card ? JSON.stringify({ site: card.site ?? null, orders: Object.fromEntries(card.pages.map((p) => [p.slug, p.blocks.map((b) => b.id)])), heads: Object.fromEntries(card.pages.map((p) => [p.slug, { label: p.label, head: p.head ?? null }])) }) : null;
   const history = useEditHistory(histSnap, (v) => {
-    const o = JSON.parse(v) as { site: Card["site"]; orders: Record<string, string[]> };
+    const o = JSON.parse(v) as { site: Card["site"]; orders: Record<string, string[]>; heads?: Record<string, { label: string; head: CardPage["head"] | null }> };
     touched.current.add("homeBlocks");
     for (const sl of Object.keys(o.orders ?? {})) touched.current.add(`order:${sl}`);
-    setCard((cur) => (cur ? { ...cur, site: o.site, pages: Object.entries(o.orders ?? {}).reduce((pg, [sl, ids]) => orderHome(pg, sl, ids), cur.pages) } : cur)); setDirty(true);
+    // The tops of the pages (Page heading) step back too: the name, the photo, the line and the shape as they were.
+    const heads = o.heads ?? {};
+    setCard((cur) => {
+      if (!cur) return cur;
+      const pages = Object.entries(o.orders ?? {}).reduce((pg, [sl, ids]) => orderHome(pg, sl, ids), cur.pages).map((p) => {
+        const h = heads[p.slug];
+        if (!h || (h.label === p.label && JSON.stringify(h.head ?? null) === JSON.stringify(p.head ?? null))) return p;
+        touched.current.add(`head:${p.slug}`);
+        const { head: _was, ...bare } = p; void _was;
+        return { ...bare, label: h.label, ...(h.head ? { head: h.head } : {}) };
+      });
+      return { ...cur, site: o.site, pages };
+    }); setDirty(true);
   }, `${card?.id ?? ""}-${histReset}`);
   const [refUrl, setRefUrl] = useState("");
   const [unlock, setUnlock] = useState(false);
@@ -569,7 +584,7 @@ export default function WebsiteEditPage() {
   };
   /** Which screen holds the photo of a part (none: the part has no photo of its own). */
   const SHEET_PHOTO: Partial<Record<SectionKey, string>> = { hero: "photos", about: "about", gallery: "photos", services: "products" };
-  const sheetGo = (i: number) => { const r = homeRows[i]; if (!r) return; if (r.id === "masthead") { sheetOpen("text"); return; } const f = rowFocus(r); sheetFocus.current = f; setSheet({ id: r.id }); focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); window.scrollTo({ top: 0 }); };
+  const sheetGo = (i: number) => { const r = homeRows[i]; if (!r) return; const f = rowFocus(r); sheetFocus.current = f; setSheet({ id: r.id }); focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page: "home" }); window.scrollTo({ top: 0 }); };
   /** Hides one of the Home page's sections (it stays stored) or shows it again; goes to the website with Save. */
   function hideHomeBlock(id: string, hide: boolean) {
     const h = new Set(site.home?.hidden ?? []);
@@ -584,6 +599,14 @@ export default function WebsiteEditPage() {
   }
   const sheetClose = () => { sheetFocus.current = null; setSheet(null); focus({ top: true }); setSync({ text: "", page: "home" }); };
   /** One of the Home page's own sections changes place with the one above / below it; goes to the website with Save. */
+  /** The top of a page other than Home (its name, photo, line and shape): changed in the "Page heading" sheet, shown in the window at
+   *  once, kept by the one Save (owner, 25 Nov 2026: the Edit on this row used to open the list of all pages and nothing for the photo). */
+  function setHead(slug: string, patch: Partial<NonNullable<CardPage["head"]>> & { label?: string }) {
+    if (!card) return;
+    const { label, ...h } = patch;
+    touched.current.add(`head:${slug}`); setNote((n) => (n?.k === "save" ? null : n));
+    setCard({ ...card, pages: card.pages.map((p) => (p.slug === slug ? { ...p, ...(label !== undefined ? { label } : {}), head: { ...(p.head ?? {}), ...h } } : p)) }); setDirty(true);
+  }
   function moveHomeBlock(id: string, dir: -1 | 1) {
     if (!card) return;
     const slug = curSlug, hp = card.pages.find((p) => p.slug === slug);
@@ -711,6 +734,13 @@ export default function WebsiteEditPage() {
           const po = Object.fromEntries(sl.filter((x) => x !== homeSlugOf(src)).map((x) => [x, (src.pages.find((p) => p.slug === x)?.blocks ?? []).map((b) => b.id)]));
           return Object.keys(po).length ? { pageOrders: po } : {};
         })(),
+        // The tops of the pages that were changed (Page heading): name, photo, line and shape, page by page.
+        ...(() => {
+          if (from) return {};
+          const sl = [...touched.current].filter((k) => k.startsWith("head:")).map((k) => k.slice(5));
+          const ph = Object.fromEntries(sl.map((x) => { const p = card.pages.find((q) => q.slug === x); return [x, { ...(p?.label?.trim() ? { label: p.label.trim() } : {}), ...(p?.head ?? {}) }]; }));
+          return sl.length ? { pageHeads: ph } : {};
+        })(),
         ...(from || touched.current.has("homeBlocks") ? { homeBlocks: ((from ?? card).pages.find((p) => p.slug === homeSlugOf(from ?? card))?.blocks ?? []).map((b) => b.id) } : {}),
         ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}), ...((adv.palette as { own?: boolean }).own ? { own: true } : {}) } } : {}),
         ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone, ...((adv.palette as { corners?: boolean } | undefined)?.corners ? { corners: true } : {}), ...(Array.isArray(adv.order) ? { order: adv.order as string[] } : {}), ...(adv.sections && typeof adv.sections === "object" ? { sections: adv.sections as Record<string, string> } : {}) } } : {}),
@@ -776,14 +806,15 @@ export default function WebsiteEditPage() {
     } catch { say("ref", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
-  async function upload(file: File | null, kind: "hero" | "logo") {
+  async function upload(file: File | null, kind: "hero" | "logo" | "head") {
     if (!file) return; setBusy(kind); setNote(null);
     const failed = hi ? "Photo upload नहीं हुई। दोबारा try करें।" : "Could not upload the photo. Please try again.";
     try {
-      const u = await uploadImage(await compressToFile(file, `${kind}.png`, kind === "hero" ? 1400 : 800, kind === "hero" ? 0.9 : 1, "png"), "logo");
-      if (!u) { say(kind, failed); return; }
-      if (kind === "hero") setHero({ imageUrl: u }); else set({ logoUrl: u });
-    } catch { say(kind, failed); }
+      const wide = kind !== "logo";
+      const u = await uploadImage(await compressToFile(file, `${kind}.png`, wide ? 1400 : 800, wide ? 0.9 : 1, "png"), "logo");
+      if (!u) { say(kind === "head" ? "save" : kind, failed); return; }
+      if (kind === "hero") setHero({ imageUrl: u }); else if (kind === "head") setHead(curSlug, { photo: u, noPhoto: false }); else set({ logoUrl: u });
+    } catch { say(kind === "head" ? "save" : kind, failed); }
     finally { setBusy(""); }
   }
   async function aiHeroPhoto() {
@@ -1021,6 +1052,55 @@ export default function WebsiteEditPage() {
       {/* eslint-disable-next-line react-hooks/refs -- the picks and moves run on the tap, never while drawing */}
       {!open && sheet && adv && card && (() => {
         const i = homeRows.findIndex((r) => r.id === sheet.id); const row = homeRows[i]; if (!row) return null;
+        if (row.id === "masthead") {
+          const pg = card.pages.find((p) => p.slug === curSlug); if (!pg) return null;
+          const hd = pg.head ?? {};
+          const mode = hd.noPhoto ? "none" : hd.photo ? "own" : "auto";
+          // The website's own pictures to pick from: the gallery, the product photos, the story's photo.
+          const picks = [...new Set(card.pages.flatMap((p) => p.blocks).flatMap((b) => b.kind === "gallery" ? b.images.map((q) => q.url ?? "") : b.kind === "image" || b.kind === "carousel" ? b.images.map((q) => q.url) : b.kind === "product" ? b.items.flatMap((it) => [it.imageUrl ?? "", ...(it.images ?? [])]) : b.kind === "about" ? [b.imageUrl ?? ""] : []).filter((u) => /^(https:\/\/|\/)/.test(u)))].slice(0, 10);
+          const CH = (on: boolean) => `rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink hover:border-brand/50"}`;
+          const CAP = "text-[11px] font-semibold uppercase tracking-wide text-muted";
+          const KINDS: [NonNullable<CardPage["head"]>["kind"] | undefined, string][] = [[undefined, "As the design"], ["ink", "Photo band"], ["split", "Photo card beside the name"], ["type", "Big letters"], ["poster", "Centred letters"]];
+          return (
+          <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
+            <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
+              <div className="min-w-0 flex-1 pl-1"><p className="text-[11px] text-muted">Section {i + 1} of {homeRows.length}</p><p className="truncate text-sm font-bold text-ink">Page heading — {pg.label}</p></div>
+              <button type="button" disabled className={TBW}>Previous</button>
+              <button type="button" onClick={() => sheetGo(i + 1)} className={TBW}>Next</button>
+            </div>
+            <div className="space-y-4 p-3">
+              <label className="block"><span className={CAP}>Page name</span>
+                <input value={pg.label} maxLength={40} onChange={(e) => setHead(curSlug, { label: e.target.value })} className="ed-input mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" /></label>
+              <label className="block"><span className={CAP}>Short line under the name (optional)</span>
+                <input value={hd.line ?? ""} maxLength={160} placeholder="e.g. Fresh arrivals every Friday" onChange={(e) => setHead(curSlug, { line: e.target.value })} className="ed-input mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" /></label>
+              <div>
+                <p className={CAP}>Photo on top</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <button type="button" aria-pressed={mode === "auto"} onClick={() => setHead(curSlug, { photo: "", noPhoto: false })} className={CH(mode === "auto")}>Automatic</button>
+                  <label className={`${CH(mode === "own")} inline-flex cursor-pointer items-center gap-1.5`}>{busy === "head" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />} Upload a photo<input type="file" accept="image/*" className="hidden" onChange={(e) => { void upload(e.target.files?.[0] ?? null, "head"); e.target.value = ""; }} /></label>
+                  <button type="button" aria-pressed={mode === "none"} onClick={() => setHead(curSlug, { noPhoto: true })} className={CH(mode === "none")}>No photo</button>
+                </div>
+                <p className="mt-1.5 text-[12px] text-muted">{mode === "auto" ? "Automatic: this page’s own first photo, or the Home banner." : mode === "own" ? "This page shows the photo you chose." : "This page’s top is words only."}</p>
+                {picks.length > 0 && <>
+                  <p className="mt-2 text-[12px] text-muted">Or pick one of your photos — best is a wide photo, 1600 × 900 px:</p>
+                  <div className="mt-1.5 grid grid-cols-5 gap-1.5">
+                    {picks.map((u) => (
+                      // eslint-disable-next-line @next/next/no-img-element -- a small tile of the owner's own photo to pick from
+                      <button key={u} type="button" aria-pressed={hd.photo === u && !hd.noPhoto} onClick={() => setHead(curSlug, { photo: u, noPhoto: false })} className={`overflow-hidden rounded-lg border-2 ${hd.photo === u && !hd.noPhoto ? "border-brand" : "border-transparent"}`}><img src={u} alt="" loading="lazy" className="aspect-square w-full object-cover" /></button>
+                    ))}
+                  </div>
+                </>}
+              </div>
+              <div>
+                <p className={CAP}>Shape of the heading</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {KINDS.map(([k, name]) => <button key={name} type="button" aria-pressed={hd.kind === k} onClick={() => setHead(curSlug, { kind: k })} className={CH(hd.kind === k)}>{name}</button>)}
+                </div>
+              </div>
+              <p className="flex items-center gap-1.5 text-[12px] text-muted"><Info className="h-3.5 w-3.5" /> The window shows it at once; press Save to keep it. The Home page has its own banner.</p>
+            </div>
+          </section>);
+        }
         const sec = row.sec;
         const w = row.blk ? partFor(card, { kind: "block", blockId: row.blk }, true) : sheetWords(sec ?? "hero");
         const ph = sec ? SHEET_PHOTO[sec] : undefined;
@@ -1259,7 +1339,7 @@ export default function WebsiteEditPage() {
         <section className="space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <label className="flex items-center justify-between gap-3 rounded-xl bg-surface2 px-3 py-2.5">
             <span><span className="block text-sm font-semibold">{hi ? "Computer पर website" : "Website on computers"}</span>
-              <span className="text-[11px] text-muted">{siteOn ? (hi ? "ON — computer पर website, phone पर card" : "ON — website on computers, card on phones") : (hi ? "OFF — हर जगह card दिखता है" : "OFF — the card shows everywhere")}</span></span>
+              <span className="text-[11px] text-muted">{siteOn ? (adv ? (hi ? "ON — computer और phone दोनों पर website" : "ON — the website shows on computers and phones") : hi ? "ON — computer पर website, phone पर card" : "ON — website on computers, card on phones") : (hi ? "OFF — हर जगह card दिखता है" : "OFF — the card shows everywhere")}</span></span>
             <input type="checkbox" className="h-5 w-5" checked={siteOn} disabled={busy === "enabled"} onChange={(e) => void setEnabled(e.target.checked)} />
           </label>
           {line("ref")}

@@ -67,7 +67,7 @@ export function AdvPageBody({ route, c, spec, x, chrome, slot, has, items, updat
     const pagePhoto = page.blocks.flatMap((b) => b.kind === "gallery" ? b.images.map((q) => q.url ?? "") : b.kind === "image" || b.kind === "carousel" ? b.images.map((q) => q.url) : b.kind === "about" ? [b.imageUrl ?? ""] : []).find(Boolean);
     return (
       <>
-        <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={pagePhoto || c.hm.photo?.src || c.photos[0]}
+        <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={pagePhoto || c.hm.photo?.src || c.photos[0]}
           lede={firstAbout && firstAbout.kind === "about" ? x.t(firstSentence(firstAbout.body)) : undefined} trail={[{ label: x.t(entry.label) }]} />
         <FlowSections card={x.card} page={page} c={c} spec={spec} x={x} chrome={chrome} lang={lang} hasContact={hasContact} slotWith={slotWith} items={items} home={false} start={1} />
         <div className="gb-share adv-wrap adv-wide"><ShareBtn x={x} title={`${x.t(entry.label)} — ${c.name}`} /></div>
@@ -82,7 +82,7 @@ export function AdvPageBody({ route, c, spec, x, chrome, slot, has, items, updat
     case "contact": return <ContactPage {...common} entry={entry} page={page} />;
     case "faq": return (
       <>
-        <Masthead x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]} trail={[{ label: x.t(entry.label) }]} />
+        <Masthead slug={entry.slug} x={x} chrome={chrome} name={c.name} kicker={x.t(c.trade)} title={x.t(entry.label)} image={c.hm.photo?.src ?? c.photos[0]} trail={[{ label: x.t(entry.label) }]} />
         {has("faq") ? slot("faq", 1) : <GenericPage {...common} entry={entry} page={page} />}
         {has("cta") && slot("cta", 2)}
       </>
