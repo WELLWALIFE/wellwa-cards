@@ -6,7 +6,7 @@ import "server-only";
 //   health       the latest result, shown in Social → Google and used by the Monday report
 //   health_hist  the last 12 scores, for the "up / down since last week" line
 // Nothing is changed on the profile or the website: it only reads and lists what to fix.
-import { googleRow, googleToken, listLocalPosts, listReviews, patchRow, placeIdFor, replyCount } from "@/lib/google-server";
+import { getProfile, googleRow, googleToken, listLocalPosts, listReviews, patchRow, placeIdFor, replyCount } from "@/lib/google-server";
 import { buildReport, cachedReport, saveReport, type Report } from "@/lib/google-check";
 
 export type HealthIssue = { title: string; hi: string; why: string };
@@ -44,9 +44,16 @@ export async function runHealth(userId: string, fresh = true): Promise<Health | 
   const placeId = await placeIdFor(userId);
   if (!placeId) return { error: "Google did not give us your profile's place id yet. Tap Refresh above and try again." };
 
+  // The category the owner set on Google (read through the connection). The public Places data often files a business under no
+  // trade even when it has one ("Water Purification Company" on Wellwa showed as no category, 26 Nov 2026): the profile's own
+  // category is what the nearby list is searched by, and the "no category" fix is not shown when one is set.
+  const tok0 = await googleToken(g).catch(() => "");
+  const prof = tok0 ? await getProfile(tok0, g.location_name).catch(() => null) : null;
+  const ownCat = prof?.primaryCategory?.displayName ?? "";
   let r: Report | null = fresh ? null : await cachedReport(placeId);
+  if (r && ownCat && !r.local) r = null;
   if (!r || r.sitePending) {
-    r = await buildReport(placeId, "", true);
+    r = await buildReport(placeId, ownCat, true);
     await saveReport(r, { ip: "", userId, query: "weekly health" }).catch(() => {});
   }
 
@@ -68,12 +75,22 @@ export async function runHealth(userId: string, fresh = true): Promise<Health | 
   if (web && open === false) issues.push({ title: "Your website does not open", hi: "Aapki website khul nahi rahi", why: "Everyone Google sends to it leaves. Ask whoever runs it to check the hosting and the domain." });
   if (rp && rp.of > rp.answered) { const n = rp.of - rp.answered; issues.push({ title: `${n} Google review${n > 1 ? "s" : ""} not answered`, hi: `${n} Google review ka jawab nahi diya`, why: "Answered reviews build trust and Google shows active businesses higher. Answer them in Reviews, or turn on AI auto-reply." }); }
   if (lastPostDays !== null && lastPostDays > 7) issues.push({ title: lastPostDays >= 9999 ? "No Google posts yet" : `No Google post for ${lastPostDays} days`, hi: lastPostDays >= 9999 ? "Google par abhi tak koi post nahi" : `${lastPostDays} din se Google par koi post nahi`, why: "Turn on the 4 AM auto-post: today's poster goes up as a Google update by itself." });
-  for (const f of r.issues ?? r.fixes) issues.push({ title: f.title, hi: f.hi ?? f.title, why: f.why });
+  // With the profile read through the connection, its own category and description are the truth, not the outside guess.
+  if (prof) {
+    if (!prof.primaryCategory) issues.push({ title: "No main category on Google", hi: "Google par main category nahi hai", why: "Google does not know what you sell. Set it in Edit Google profile above." });
+    if (!prof.additionalCategories.length) issues.push({ title: "No additional categories", hi: "Aur categories nahi daali", why: "Add the other things you sell or do (Edit Google profile above) — Google then shows you for those searches too." });
+    if (!prof.description.trim()) issues.push({ title: "No business description", hi: "Business ki jaankari nahi likhi", why: "Write it in Edit Google profile above (AI can draft it): what you do, for whom, where." });
+    if (!prof.periods.length) issues.push({ title: "Opening hours are not set", hi: "Khulne ka samay nahi daala", why: "People skip a shop whose hours they cannot see. Set them in Edit Google profile above." });
+  }
+  for (const f of r.issues ?? r.fixes) {
+    if (prof && /categor|opening hours|hours are not/i.test(f.title)) continue;
+    issues.push({ title: f.title, hi: f.hi ?? f.title, why: f.why });
+  }
 
   const h: Health = {
     at: new Date().toISOString(), score: r.score, place: r.place.name, mapsUrl: r.place.mapsUrl,
     rank: r.local ? { rank: r.local.rank, total: r.local.total, trade: r.trade ?? r.place.category } : null,
-    profile: r.profile ?? [],
+    profile: (r.profile ?? []).map((x) => !prof ? x : /primary category/i.test(x.label) ? { ...x, ok: !!prof.primaryCategory } : /additional categor/i.test(x.label) ? { ...x, ok: prof.additionalCategories.length > 0 } : x),
     website: web ? { url: web, opens: open, speed: r.site.checked ? r.site.performance : null, seo: r.site.checked ? r.site.seo : null, https: r.site.checked ? r.site.https : null } : null,
     replies: rp, lastPostDays: lastPostDays !== null && lastPostDays >= 9999 ? null : lastPostDays,
     issues: issues.slice(0, 12),
