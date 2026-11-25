@@ -23,7 +23,7 @@ import { LayoutThumb } from "@/components/site-adv/layout-thumb";
 import { allowedByFit, fitOf, groupOfCard, tradeAllows } from "@/lib/site-advanced-archetypes";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
-import { flowParts, sectionOf } from "@/components/site-adv/flow";
+import { flowParts } from "@/components/site-adv/flow";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
@@ -413,6 +413,26 @@ export default function WebsiteEditPage() {
   const storeDesign = !!adv && typeof adv.seed === "string" && /\|fix:bridal-(couture-house|lookbook)/.test(adv.seed);
   // The Premium home page, top to bottom, as the website draws it (its design owns the order — the sections of "Text & pages" feed it but do
   // not order it; owner, 19 Nov 2026: "right side ka sequence screen jaisa nahi hai"). Only the sections that have something to show.
+  // Where each design section is REALLY drawn — the first page that draws it, Home first, read with the renderer's own rule (flowParts:
+  // a hidden section, an empty one, a gallery of more than nine photos or more than eight questions is NOT a design section). The list
+  // of "Section designs" shows exactly these (owner, 25 Nov 2026: "aisa na ho ki section page par na ho tab bhi dikh raha ho, aur aisa
+  // na ho ki section ho aur dikh hi na raha ho"): before this it listed every kind the card had words for, drawn or not.
+  const drawnAt = useMemo(() => {
+    const m = new Map<SectionKey, { slug: string; blk: string; name: string }>();
+    if (!adv || storeDesign || !card) return m;
+    const lang = card.language === "hi" ? "hi" : "en";
+    const dc = isShubhoraSellerCard(card) ? withoutFreeCard(card, true) : card;
+    const c = buildContent(dc, lang);
+    const hasContact = card.links.some((l) => l.type === "phone" || l.type === "whatsapp");
+    const homeSl = homeSlugOf(dc), off = new Set(dc.site?.hidden ?? []);
+    const live = dc.pages.filter((p) => !p.hidden && !off.has(p.slug));
+    for (const p of [...live.filter((x) => x.slug === homeSl), ...live.filter((x) => x.slug !== homeSl)]) {
+      for (const part of flowParts(dc, p, c, lang, hasContact)) {
+        if (part.key && !m.has(part.key)) m.set(part.key, { slug: p.slug, blk: part.b.id, name: "title" in part.b ? (part.b.title ?? "").trim() : "" });
+      }
+    }
+    return m;
+  }, [adv, storeDesign, card]);
   const advRows = useMemo(() => {
     if (!adv || storeDesign || !card) return [] as { key: SectionKey; name: string; fixed: boolean }[];
     const c = buildContent(card, card.language === "hi" ? "hi" : "en");
@@ -426,8 +446,10 @@ export default function WebsiteEditPage() {
       process: ["Step by step", "Step by step"], faq: [titleOf("faq") || "Questions", titleOf("faq") || "सवाल-जवाब"],
       visit: ["Visit us (address, map, timings)", "पता, map और समय"], cta: ["Contact strip", "Contact पट्टी (WhatsApp / Call)"], footer: ["Footer", "सबसे नीचे"],
     };
-    return repairOrder(adv.order).filter((k) => sectionHasContent(k, c, hasContact)).map((k) => ({ key: k, name: (names[k] ?? [k, k])[hi ? 1 : 0], fixed: k === "hero" || k === "footer" }));
-  }, [adv, storeDesign, card, hi]);
+    const always = new Set<SectionKey>(["hero", "trust", "cta", "footer"]);
+    return repairOrder(adv.order).filter((k) => (always.has(k) ? sectionHasContent(k, c, hasContact) : drawnAt.has(k)))
+      .map((k) => ({ key: k, name: (!always.has(k) && k !== "visit" && k !== "process" && drawnAt.get(k)?.name) || (names[k] ?? [k, k])[hi ? 1 : 0], fixed: k === "hero" || k === "footer" }));
+  }, [adv, storeDesign, card, hi, drawnAt]);
   // "Build your own design" (owner, 24 Nov 2026): each part of the home page can wear any of its layouts, so the owner can take the
   // top of one design, the About of another, the footer of a third. The designs of the "choose" screen are read once, only to
   // say which design uses which layout ("Design 2").
@@ -526,20 +548,13 @@ export default function WebsiteEditPage() {
   }
   /** A row tapped: the window above shows that part of the website (owner, 19 Nov 2026). */
   // The window may be on another page (About, Plans…): it comes back to Home first, then goes to the part.
-  /** Show a section in the window. A section that is not on the Home page (the gallery on its own page, the address on Contact, the
-   *  questions on FAQ) is shown on the page that has it: asked for on Home, the window found nothing there and jumped to the top or
-   *  did not move at all (owner, 25 Nov 2026: "Real screens par click karne se screen top me chali jaati hai… ye kaam nahi kar raha"). */
+  /** Show a section in the window, on the page where the website really draws it (drawnAt): the gallery on its own page, the address
+   *  on Contact, the questions on FAQ. Asked for on Home, the window found nothing there and jumped to the top or did not move at all
+   *  (owner, 25 Nov 2026: "Real screens par click karne se screen top me chali jaati hai… ye kaam nahi kar raha"). */
   const showAdv = (k: SectionKey) => {
-    const f = k === "hero" ? { top: true } : { sec: k };
-    let page = "home";
-    if (card && k !== "hero" && k !== "trust" && k !== "cta" && k !== "footer") {
-      const homeSl = homeSlugOf(card), off = new Set(card.site?.hidden ?? []);
-      const has = (p: CardPage) => p.blocks.some((b) => sectionOf(b) === k);
-      const live = card.pages.filter((p) => !p.hidden && !off.has(p.slug));
-      const hp = live.find((p) => p.slug === homeSl);
-      const at = hp && has(hp) ? hp : live.find(has);
-      if (at && at.slug !== homeSl) page = at.slug;
-    }
+    const at = drawnAt.get(k);
+    const f = k === "hero" ? { top: true } : at ? { blk: at.blk, sec: k } : { sec: k };
+    const page = card && at && at.slug !== homeSlugOf(card) ? at.slug : "home";
     focusAsk.current = f; lastFocus.current = f; setSync({ text: "", page });
   };
   // The order of the home page is now the Home page's own sections (Text & pages → Home): this panel is not drawn any more.
