@@ -16,6 +16,9 @@ type Info = {
   error?: string;
 };
 
+/** The Shubhora tag (api/crm/tag): one line that copies a website's own enquiry forms into the CRM. */
+const tagLine = (hookUrl: string) => `<script src="${hookUrl.replace("/api/crm/hook/", "/api/crm/tag/")}" async></script>`;
+
 function websiteForm(url: string, hi: boolean) {
   const L = hi
     ? { name: "आपका नाम", phone: "मोबाइल नंबर", msg: "आपको क्या चाहिए?", btn: "भेजें", ok: "धन्यवाद! हम जल्द आपसे संपर्क करेंगे। 🙏", bad: "कृपया सही 10 अंकों का मोबाइल नंबर लिखें।" }
@@ -142,7 +145,16 @@ export function LeadSourcesSheet({ onClose, onImport }: { onClose: () => void; o
               T("Publish. Fill it once yourself — the lead shows here.", "Publish करें। एक बार खुद भरकर देखें — lead यहाँ दिखेगी।"),
             ]} />
             <CopyBox text={websiteForm(url, hi)} label={T("Copy form code", "Form code copy करें")} code />
-            <p className="pt-1 font-semibold text-ink">{T("B — Your own form", "B — आपका अपना form")}</p>
+            <p className="pt-1 font-semibold text-ink">{T("B — Keep your website as it is: one line", "B — Website जैसी है वैसी रहे: बस एक line")}</p>
+            <p>{T("Your website's own forms keep working as they do; this line also copies every enquiry (with a mobile number) into this CRM. Login and payment forms are never read.", "आपकी website के अपने forms पहले जैसे ही चलेंगे; ये line हर enquiry (जिसमें mobile नंबर हो) इस CRM में भी ले आएगी। Login और payment वाले forms कभी नहीं पढ़े जाते।")}</p>
+            <Steps items={[
+              T("Copy the line below.", "नीचे की line copy करें।"),
+              T("Paste it once in your website's header / footer code (WordPress: a “header and footer scripts” plugin; Wix: Settings → Custom code; Shopify: theme.liquid; a custom site: ask your developer to add it before </body>).", "इसे website के header / footer code में एक बार paste करें (WordPress: “header and footer scripts” plugin; Wix: Settings → Custom code; Shopify: theme.liquid; खुद बनी website: developer से </body> से पहले लगवाएँ)।"),
+              T("Fill your website's form once with your number — the lead shows here.", "अपनी website का form एक बार अपने नंबर से भरें — lead यहाँ दिखेगी।"),
+            ]} />
+            <CopyBox text={tagLine(url)} label={T("Copy the line", "Line copy करें")} code />
+            <a href={`https://wa.me/?text=${encodeURIComponent(T("Please add this one line to our website, just before </body>, on every page. It only copies enquiry forms to our CRM; nothing on the site changes:\n\n", "कृपया ये एक line हमारी website के हर page पर </body> से ठीक पहले लगा दें। ये सिर्फ enquiry forms को हमारे CRM में copy करती है; website में कुछ नहीं बदलता:\n\n") + tagLine(url))}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink">{T("Send it to my developer on WhatsApp →", "Developer को WhatsApp पर भेजें →")}</a>
+            <p className="pt-1 font-semibold text-ink">{T("C — Your own form", "C — आपका अपना form")}</p>
             <p>{T("If your website already has a form, set its “send to / action / webhook URL” to this link. Field names: name, phone (needed), message, city.", "अगर आपकी website पर पहले से form है, तो उसके “send to / action / webhook URL” में यह link डालें। Field के नाम: name, phone (ज़रूरी), message, city।")}</p>
             <CopyBox text={url} label={T("Copy my lead link", "मेरा lead link copy करें")} />
             <p className="text-[11px] text-faint">{T("WordPress: Contact Form 7 → “CF7 to Webhook” plugin, or WPForms / Elementor Forms → Webhook action → paste the link.", "WordPress: Contact Form 7 → “CF7 to Webhook” plugin, या WPForms / Elementor Forms → Webhook action → link paste करें।")}</p>

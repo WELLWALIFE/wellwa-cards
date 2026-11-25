@@ -58,6 +58,8 @@ export async function proxy(req: NextRequest) {
   const p = url.pathname;
   // The free Google check lives on the platform (owner, 25 Nov 2026): a partner's own domain sends it there instead of showing its home page.
   if (/^\/google-check\/?$/.test(p)) return NextResponse.redirect(`${SITE_URL}/google-check?by=${encodeURIComponent(username)}`, 302);
+  // The review helper on the member's own address (owner, 26 Nov 2026): /r is THEIR review page — never another card's.
+  if (/^\/r(\/.*)?$/.test(p)) { url.pathname = `/r/${username}`; return NextResponse.rewrite(url); }
   // On a member's own address only the card and the app itself exist. Any
   // other path (a link a bot or a customer typed, an old page, a typo) shows
   // the card — never the platform's marketing pages, 404 page or their OG tags.

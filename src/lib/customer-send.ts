@@ -48,7 +48,11 @@ export async function googleReviewUrl(ownerId: string, c: OwnerCard | null): Pro
   return (await reviewUrlFor(ownerId).catch(() => "")) || googleLink(c);
 }
 /** The review helper page (stars, what they liked, a ready draft, then Google), when there is a Google address to send them on to. */
-export const reviewPage = (c: OwnerCard) => `${SITE_URL}/r/${encodeURIComponent(c.username)}`;
+/** On the owner's own domain when they have one (review.theirshop.com/r), else on ours. */
+export const reviewPage = (c: OwnerCard) => {
+  const home = cardHome(c.username, c.data?.customDomain);
+  return home.startsWith(`${SITE_URL}/`) ? `${SITE_URL}/r/${encodeURIComponent(c.username)}` : `${home}/r`;
+};
 export async function reviewLinkOf(ownerId: string, c: OwnerCard | null): Promise<string> {
   const g = await googleReviewUrl(ownerId, c);
   return g && c ? reviewPage(c) : g;
