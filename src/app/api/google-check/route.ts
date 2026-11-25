@@ -49,25 +49,40 @@ export async function POST(request: Request) {
     // A number typed in is a lead — also when the one checking is signed in (a partner checking a shop with its owner beside them; the
     // owner tested with his own number while signed in and nothing arrived — 25 Nov 2026). Ten digits at least.
     if (phone.replace(/\D/g, "").length >= 10) await saveLead(phone, clean(b.name, 100) || report.place.name, report, clean(b.by, 60).toLowerCase(), me?.user.id).catch((e) => console.error("google-check lead", e));
-    return Response.json({ ok: true, report, fresh });
+    // Came from a partner's website: the report's "Fix my Google profile" button opens THAT partner's WhatsApp (their public number).
+    const partner = await partnerOf(clean(b.by, 60).toLowerCase()).catch(() => null);
+    return Response.json({ ok: true, report, fresh, ...(partner ? { partner } : {}) });
   }
   return Response.json({ ok: false, error: "Unknown step." }, { status: 400 });
 }
 
-/** The report as one WhatsApp message: the score, what to fix first, and the link to check again. */
-function reportText(r: { place: { name: string }; city: string; score: number; fixes: { title: string; why: string }[] }, from: string): string {
+/** A Shubhora partner's name and WhatsApp number as their own card shows them; null for any other card. */
+async function partnerOf(by: string): Promise<{ name: string; wa: string } | null> {
+  const admin = getAdminSupabase();
+  if (!admin || !/^[a-z0-9_.-]{2,60}$/.test(by)) return null;
+  const { data } = await admin.from("cards").select("data").eq("username", by).maybeSingle();
+  const d = (data?.data ?? {}) as { company?: string; name?: string; jobTitle?: string; tagline?: string; links?: { type?: string; value?: string }[] };
+  if (!data || !isShubhoraSellerCard(d)) return null;
+  const wa = ((d.links ?? []).find((l) => l.type === "whatsapp")?.value ?? "").replace(/\D/g, "");
+  return wa.length >= 10 ? { name: (d.name || d.company || "").trim(), wa: wa.length === 10 ? `91${wa}` : wa } : null;
+}
+
+/** The report as one WhatsApp message: where they stand, the score, what to fix first, and the link to check again. */
+function reportText(r: { place: { name: string }; city: string; score: number; fixes: { title: string; why: string }[]; issues?: unknown[]; local?: { rank: number | null; total: number; ahead: unknown[] }; profile?: { ok: boolean }[] }, from: string): string {
   const fixes = r.fixes.slice(0, 3).map((f, i) => `${i + 1}. *${f.title}*\n   ${f.why}`).join("\n");
+  const pct = r.profile?.length ? Math.round((r.profile.filter((x) => x.ok).length / r.profile.length) * 100) : null;
   return [
-    `🔎 *Google check — ${r.place.name}*${r.city ? ` (${r.city})` : ""}`,
-    `Score: *${r.score}/100*`,
+    `🔎 *Google report — ${r.place.name}*${r.city ? ` (${r.city})` : ""}`,
+    r.local && r.local.ahead.length ? `🏆 *${r.local.ahead.length}${r.local.rank === null ? "+" : ""} businesses* show before you on Google` : "",
+    `📊 Score: *${r.score}/100*${pct !== null ? ` · Profile ${pct}% complete` : ""}${r.issues?.length ? ` · ${r.issues.length} issues found` : ""}`,
     fixes ? `\n*Fix these first:*\n${fixes}` : "",
-    `\nCheck again any time: ${SITE_URL}/google-check`,
+    `\nSee the full report: ${SITE_URL}/google-check`,
     `— ${from}`,
   ].filter(Boolean).join("\n");
 }
 
 /** The visitor's number goes to the company's own leads (same as the contact form), with the score in the message. */
-async function saveLead(phone: string, name: string, r: { place: { name: string; address: string }; city: string; score: number; fixes: { title: string; why: string }[] }, by = "", signedIn?: string) {
+async function saveLead(phone: string, name: string, r: Parameters<typeof reportText>[0] & { place: { name: string; address: string } }, by = "", signedIn?: string) {
   const admin = getAdminSupabase();
   if (!admin) return;
   // Opened from a Shubhora partner's website (?by=<their card>): the visitor is that partner's lead (owner, 25 Nov 2026). Only a real

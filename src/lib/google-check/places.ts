@@ -9,14 +9,21 @@ const BASE = "https://places.googleapis.com/v1";
 export type Candidate = { id: string; name: string; address: string; rating: number; reviews: number; lat: number; lng: number };
 export type Place = Candidate & {
   category: string; website: string; phone: string; photos: number; hoursSet: boolean; open: boolean; mapsUrl: string; status: string;
+  /** Google's own type keys of the place besides the catch-alls ("jewelry_store", "store"): more than one = additional categories. */
+  types?: string[];
+  /** Any service option / attribute is filled in on the profile (delivery, takeaway, payment options, parking, accessibility…). */
+  options?: boolean;
 };
 
 type RawPlace = {
   id?: string; displayName?: { text?: string }; formattedAddress?: string; rating?: number; userRatingCount?: number;
   location?: { latitude?: number; longitude?: number }; primaryTypeDisplayName?: { text?: string }; primaryType?: string;
   websiteUri?: string; nationalPhoneNumber?: string; photos?: unknown[]; regularOpeningHours?: { periods?: unknown[] };
-  googleMapsUri?: string; businessStatus?: string;
+  googleMapsUri?: string; businessStatus?: string; types?: string[];
+  delivery?: boolean; takeout?: boolean; dineIn?: boolean; curbsidePickup?: boolean; reservable?: boolean;
+  paymentOptions?: Record<string, unknown>; parkingOptions?: Record<string, unknown>; accessibilityOptions?: Record<string, unknown>;
 };
+const CATCH_ALL = new Set(["point_of_interest", "establishment", "premise", "subpremise", "political", "geocode"]);
 const toCandidate = (p: RawPlace): Candidate => ({
   id: p.id ?? "", name: p.displayName?.text ?? "", address: p.formattedAddress ?? "", rating: Number(p.rating ?? 0),
   reviews: Number(p.userRatingCount ?? 0), lat: Number(p.location?.latitude ?? 0), lng: Number(p.location?.longitude ?? 0),
@@ -43,14 +50,30 @@ export async function findPlaces(query: string): Promise<Candidate[]> {
 /** The full public profile of one place. */
 export async function placeDetails(id: string): Promise<Place> {
   const p = await call<RawPlace>(`/places/${encodeURIComponent(id)}?regionCode=IN&languageCode=en`, undefined,
-    "id,displayName,formattedAddress,rating,userRatingCount,location,primaryType,primaryTypeDisplayName,websiteUri,nationalPhoneNumber,photos,regularOpeningHours,googleMapsUri,businessStatus", "GET");
+    "id,displayName,formattedAddress,rating,userRatingCount,location,primaryType,primaryTypeDisplayName,websiteUri,nationalPhoneNumber,photos,regularOpeningHours,googleMapsUri,businessStatus,types,delivery,takeout,dineIn,curbsidePickup,reservable,paymentOptions,parkingOptions,accessibilityOptions", "GET");
   const c = toCandidate(p);
   return {
     ...c, category: p.primaryTypeDisplayName?.text || (p.primaryType ?? "").replace(/_/g, " ") || "business",
     website: p.websiteUri ?? "", phone: p.nationalPhoneNumber ?? "", photos: Array.isArray(p.photos) ? p.photos.length : 0,
     hoursSet: !!p.regularOpeningHours?.periods?.length, open: (p.businessStatus ?? "OPERATIONAL") === "OPERATIONAL",
     mapsUrl: p.googleMapsUri ?? "", status: p.businessStatus ?? "",
+    types: (p.types ?? []).filter((t) => !CATCH_ALL.has(t)),
+    options: [p.delivery, p.takeout, p.dineIn, p.curbsidePickup, p.reservable].some((v) => typeof v === "boolean")
+      || [p.paymentOptions, p.parkingOptions, p.accessibilityOptions].some((o) => !!o && Object.keys(o).length > 0),
   };
+}
+
+/** The same-trade businesses Google lists for "<category> in <city>" around the place, in GOOGLE'S OWN ORDER (up to 20), and where
+ *  the place itself comes in that list (1 = first; null = not in the first 20). One text search: the place's local standing without a
+ *  paid rank service. An estimate — the order moves a little with the searcher's exact spot — and the report says so. */
+export async function localList(place: Place, city: string): Promise<{ list: Candidate[]; rank: number | null }> {
+  const j = await call<{ places?: RawPlace[] }>("/places:searchText", {
+    textQuery: `${place.category} in ${city}`, regionCode: "IN", languageCode: "en", maxResultCount: 20,
+    locationBias: { circle: { center: { latitude: place.lat, longitude: place.lng }, radius: 5000 } },
+  }, "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.location");
+  const list = (j.places ?? []).map(toCandidate).filter((c) => c.id && c.name);
+  const at = list.findIndex((c) => c.id === place.id);
+  return { list, rank: at < 0 ? null : at + 1 };
 }
 
 /** Nearby businesses of the same kind, best first (rating weighted by how many people rated), the place itself left out. */
