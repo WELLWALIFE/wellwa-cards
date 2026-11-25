@@ -97,7 +97,8 @@ export async function buildReport(placeId: string, sells = ""): Promise<Report> 
   else if ((place.types ?? []).length < 2) issues.push({ title: "Additional categories are not set", why: "Google uses them to show you for nearby searches of related things.", plan: "growth", hi: "Additional categories set nahi hain - nearby searches mein rank karne ke liye Google inhe use karta hai" });
   if (!place.phone) issues.push({ title: "No phone number on the profile", why: "People cannot call you from Google.", plan: "growth", hi: "Profile par phone number nahi hai - customers Google se call nahi kar sakte" });
   if (!place.options) issues.push({ title: "Service options are not filled in", why: "Delivery, payment and other options help Google match you to what people ask for.", plan: "growth", hi: "Service options bhare nahi hain - delivery, payment jaise options se Google aapko sahi search se jodta hai" });
-  if (place.reviews === 0) issues.push({ title: "No reviews yet", why: "A profile with no reviews is rarely chosen. Ask your first ten happy customers.", plan: "growth", hi: "Abhi ek bhi review nahi hai - bina reviews wali profile ko log kam chunte hain" });
+  // Said once: with competitors to compare to, "0 reviews vs 318" already says it.
+  if (place.reviews === 0 && !issues.some((f) => / reviews vs /.test(f.title))) issues.push({ title: "No reviews yet", why: "A profile with no reviews is rarely chosen. Ask your first ten happy customers.", plan: "growth", hi: "Abhi ek bhi review nahi hai - bina reviews wali profile ko log kam chunte hain" });
   const seen = new Set<string>();
   // No reviews at all: said once ("No reviews yet"), not also as "Fewer than 30 reviews".
   const all = issues.filter((f) => !(place.reviews === 0 && f.title === "Fewer than 30 reviews")).filter((f) => !seen.has(f.title) && !!seen.add(f.title));
