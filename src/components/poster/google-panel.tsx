@@ -9,6 +9,7 @@ import { api, currentProfileId, type Profile, type Poster } from "@/lib/poster-c
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { ReviewAsk } from "@/components/poster/review-ask";
+import { GoogleHealth } from "@/components/poster/google-health";
 
 type Loc = { name: string; title: string; address: string; phone: string; maps: string };
 type Ins = { days?: number; impressions?: number; website?: number; calls?: number; directions?: number; series?: { day: string; impressions: number }[]; replies?: { of: number; answered: number } };
@@ -160,6 +161,8 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
               </div>
             </section>
           ); })()}
+
+          <GoogleHealth hi={hi} />
 
           <ReviewAsk hi={hi} />
 

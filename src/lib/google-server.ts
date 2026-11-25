@@ -115,21 +115,25 @@ export async function listReviews(token: string, locationName: string): Promise<
   const r = await gget<{ reviews?: GReview[]; averageRating?: number; totalReviewCount?: number }>(`${V4}/${locationName}/reviews?pageSize=50&orderBy=updateTime%20desc`, token);
   return { reviews: r.reviews ?? [], averageRating: r.averageRating ?? null, totalReviewCount: r.totalReviewCount ?? 0 };
 }
-/** Google's own "write a review" box of the connected location (Business Information metadata.newReviewUri, else built from its
- *  place id). Kept in insights.review_url so Google is asked once. "" when Google is not connected or does not say. */
-export async function reviewUrlFor(userId: string): Promise<string> {
+/** What Google says about the connected location that we keep: its "write a review" box (metadata.newReviewUri, else built from
+ *  the place id) and its Maps place id (the weekly profile check reads the public profile by it). Kept in insights so Google is asked
+ *  once; a location switch clears insights, so they are read again. Empty when Google is not connected or does not say. */
+async function locationMeta(userId: string): Promise<{ review_url: string; place_id: string }> {
   const g = await googleRow(userId);
-  if (!g?.refresh_token || !g.location_name || g.status !== "ok") return "";
-  const kept = (g.insights as { review_url?: unknown } | null)?.review_url;
-  if (typeof kept === "string" && kept) return kept;
+  if (!g?.refresh_token || !g.location_name || g.status !== "ok") return { review_url: "", place_id: "" };
+  const kept = (g.insights ?? {}) as { review_url?: unknown; place_id?: unknown };
+  if (typeof kept.review_url === "string" && kept.review_url && typeof kept.place_id === "string" && kept.place_id) return { review_url: kept.review_url, place_id: kept.place_id };
   try {
     const loc = g.location_name.replace(/^accounts\/[^/]+\//, "");
     const m = await gget<{ metadata?: { newReviewUri?: string; placeId?: string } }>(`${INFO}/${loc}?readMask=metadata`, await googleToken(g));
-    const url = m.metadata?.newReviewUri || (m.metadata?.placeId ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(m.metadata.placeId)}` : "");
-    if (url) await patchRow(userId, { insights: { ...(g.insights ?? {}), review_url: url } });
-    return url;
-  } catch (e) { console.error("[google] review url", e instanceof Error ? e.message : e); return ""; }
+    const place_id = m.metadata?.placeId ?? "";
+    const review_url = m.metadata?.newReviewUri || (place_id ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(place_id)}` : "");
+    if (review_url || place_id) await patchRow(userId, { insights: { ...(g.insights ?? {}), review_url, place_id } });
+    return { review_url, place_id };
+  } catch (e) { console.error("[google] location meta", e instanceof Error ? e.message : e); return { review_url: "", place_id: "" }; }
 }
+export const reviewUrlFor = async (userId: string) => (await locationMeta(userId)).review_url;
+export const placeIdFor = async (userId: string) => (await locationMeta(userId)).place_id;
 export const replyReview = (token: string, reviewName: string, comment: string) => gsend(`${V4}/${reviewName}/reply`, token, "PUT", { comment: comment.slice(0, 4000) });
 export const deleteReply = (token: string, reviewName: string) => gsend(`${V4}/${reviewName}/reply`, token, "DELETE");
 

@@ -96,6 +96,8 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-cleanup || printf '%s\n' 'PATH=/usr
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-card-renewals || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '15 5 * * * root bash $APP/scripts/card-renewals.sh >> /var/log/shubhora-card-renewals.log 2>&1' > /etc/cron.d/shubhora-card-renewals"
 # Weekly website report (views, WhatsApp taps, enquiries, orders) to every owner, Monday 9:30 IST. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-weekly-report || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '0 4 * * 1 root bash $APP/scripts/weekly-report.sh >> /var/log/shubhora-weekly-report.log 2>&1' > /etc/cron.d/shubhora-weekly-report"
+# Google + website check of every connected business, Monday 1:30 IST (before the 9:30 weekly report). One cron file, written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-google-health || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '0 20 * * 0 root bash $APP/scripts/google-health.sh >> /var/log/shubhora-google-health.log 2>&1' > /etc/cron.d/shubhora-google-health && chmod 644 /etc/cron.d/shubhora-google-health"
 # Booking reminders (customer a day and two hours before, owner two hours before), every 15 minutes. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-booking-reminders || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '*/15 * * * * root bash $APP/scripts/booking-reminders.sh >> /var/log/shubhora-booking-reminders.log 2>&1' > /etc/cron.d/shubhora-booking-reminders"
 # Premium website expiry: one year after the Premium payment (or while Standard runs); then the basic website and card carry on. Daily 11:00 IST. One cron file, written once.

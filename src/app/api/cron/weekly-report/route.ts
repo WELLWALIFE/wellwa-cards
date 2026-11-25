@@ -27,6 +27,12 @@ export async function GET(request: Request) {
   const byOwner = new Map<string, CardRow>();
   for (const c of cards) if (!byOwner.has(c.owner_id)) byOwner.set(c.owner_id, c);
 
+  // The Monday Google + website check (cron/google-health, 1:30 am) — its score rides along for connected businesses.
+  type H = { score: number; issues: unknown[]; at: string };
+  const health = new Map<string, H>();
+  for (const g of await rest("google_accounts?status=eq.ok&select=user_id,health:insights->health").then((r) => (r.ok ? r.json() : [])).catch(() => []) as { user_id: string; health: H | null }[])
+    if (g.health && typeof g.health.score === "number" && Date.now() - new Date(g.health.at).getTime() < 8 * 86400_000) health.set(g.user_id, g.health);
+
   let sent = 0, quiet = 0;
   for (const [owner, c] of byOwner) {
     const u = encodeURIComponent(c.username);
@@ -37,7 +43,8 @@ export async function GET(request: Request) {
       count(`leads?owner_id=eq.${owner}&created_at=gte.${since}&tags=ov.{order,booking,callback}`),
     ]);
     // A week with nothing at all is not worth a message (a card nobody has shared yet).
-    if (!views && !taps && !enquiries) { quiet++; continue; }
+    const gh = health.get(owner);
+    if (!views && !taps && !enquiries && !gh) { quiet++; continue; }
     const hindi = c.data?.language !== "en";
     const biz = c.company || c.name || c.username;
     const link = `${SITE_URL}/c/${c.username}`;
@@ -47,9 +54,10 @@ export async function GET(request: Request) {
     const tip = hindi
       ? (views < 20 ? "\n\n💡 लिंक अपने WhatsApp स्टेटस और ग्रुप में डालें — हर हफ़्ते नए ग्राहक आएँगे।" : enquiries && !orders ? "\n\n💡 पूछताछ आई पर ऑर्डर नहीं — CRM में फ़ॉलो-अप करें, एक टैप में मैसेज तैयार है।" : "")
       : (views < 20 ? "\n\n💡 Put the link on your WhatsApp status and in groups — new customers every week." : enquiries && !orders ? "\n\n💡 Enquiries but no orders yet — follow up from the CRM, the message is ready in one tap." : "");
+    const gLine = gh ? (hindi ? `\n\n🔎 Google profile: ${gh.score}/100${gh.issues.length ? ` · ${gh.issues.length} सुधार बाकी` : " · सब ठीक"}\n${SITE_URL}/poster/social?tab=google` : `\n\n🔎 Google profile: ${gh.score}/100${gh.issues.length ? ` · ${gh.issues.length} to fix` : " · all good"}\n${SITE_URL}/poster/social?tab=google`) : "";
     const whatsappText = hindi
-      ? `📊 *${biz} — इस हफ़्ते की रिपोर्ट*\n\n👀 ${views} लोगों ने वेबसाइट देखी\n💬 ${taps} ने WhatsApp / कॉल बटन दबाया\n📥 ${enquiries} पूछताछ\n🛒 ${orders} ऑर्डर / बुकिंग AI सेल्समैन ने लिए\n\n${link}${tip}\n\n— Shubhora`
-      : `📊 *${biz} — this week's report*\n\n👀 ${views} people saw the website\n💬 ${taps} tapped WhatsApp / call\n📥 ${enquiries} enquiries\n🛒 ${orders} orders / bookings taken by the AI salesman\n\n${link}${tip}\n\n— Shubhora`;
+      ? `📊 *${biz} — इस हफ़्ते की रिपोर्ट*\n\n👀 ${views} लोगों ने वेबसाइट देखी\n💬 ${taps} ने WhatsApp / कॉल बटन दबाया\n📥 ${enquiries} पूछताछ\n🛒 ${orders} ऑर्डर / बुकिंग AI सेल्समैन ने लिए\n\n${link}${tip}${gLine}\n\n— Shubhora`
+      : `📊 *${biz} — this week's report*\n\n👀 ${views} people saw the website\n💬 ${taps} tapped WhatsApp / call\n📥 ${enquiries} enquiries\n🛒 ${orders} orders / bookings taken by the AI salesman\n\n${link}${tip}${gLine}\n\n— Shubhora`;
     const res = await notify(owner, "weekly_report", { title: hindi ? `📊 ${biz} — इस हफ़्ते` : `📊 ${biz} — this week`, body, path: "/leads", ref: `week:${week}`, whatsappText });
     if (res.push?.ok || res.whatsapp?.ok) sent++;
   }
