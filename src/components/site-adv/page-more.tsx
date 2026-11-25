@@ -540,6 +540,7 @@ export const MORE_CSS = `
 /* ---- gallery ---- */
 .gl{padding-block:clamp(1.5rem,4vw,3rem) var(--section-pad);background:var(--paper)}
 .gl-albums{margin-bottom:var(--s6)}
+.site .gl-albums{justify-content:flex-start}
 .gl-albums a{flex:none;display:inline-flex;align-items:center;gap:.5em;min-height:44px;padding:0 1.1em;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);font-size:14px;font-weight:500;text-decoration:none;transition:border-color .25s}
 .gl-albums a small{font-size:11.5px;opacity:.6}.gl-albums a:hover{border-color:var(--ink)}
 .gl-album{scroll-margin-top:96px}.gl-album+.gl-album{margin-top:var(--s7,3.5rem)}
