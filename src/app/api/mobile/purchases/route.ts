@@ -78,17 +78,18 @@ export async function POST(request: Request) {
     if (had.length) return NextResponse.json({ error: `IMEI ${had[0].imei1} is already in your stock.` }, { status: 400 });
   }
   const total = lines.reduce((a, l) => a + l.qty * l.cost, 0);
-  const r = await restAsService<{ id: string }[]>("ms_purchases?select=id", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({
+  // Goods of an order: the order row itself becomes the purchase (so it is not counted twice).
+  const po = poId ? list(await restAsService<{ id: string }[]>(`ms_purchases?id=eq.${poId}&owner_id=eq.${o}&status=eq.ordered&select=id&limit=1`))[0] : undefined;
+  const r = await restAsService<{ id: string }[]>(po ? `ms_purchases?id=eq.${po.id}&owner_id=eq.${o}&select=id` : "ms_purchases?select=id", { method: po ? "PATCH" : "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({
     owner_id: o, supplier_name: txt(b.supplier_name, 80), supplier_phone: cleanPhone(b.supplier_phone), supplier_gstin: txt(b.supplier_gstin, 15).toUpperCase(),
     bill_no: txt(b.bill_no, 40), bill_date: typeof b.bill_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.bill_date) ? b.bill_date : null,
-    lines, total_paise: total, paid_paise: order ? 0 : Math.max(0, Math.min(total, Math.round(Number(b.paid_paise) || 0))), notes: txt(b.notes, 300),
+    lines, total_paise: total, paid_paise: order ? 0 : Math.max(0, Math.min(total, Math.round(Number(b.paid_paise) || 0))), notes: [txt(b.notes, 300), po ? `Ordered earlier, goods received (${access.name})` : ""].filter(Boolean).join(" · "),
     status: order ? "ordered" : "received", store,
-    created_by: scope.userId, created_by_name: access.name,
+    created_by: scope.userId, created_by_name: access.name, ...(po ? { created_at: new Date().toISOString() } : {}),
   }) });
   const pid = list(r)[0]?.id;
   if (!pid) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 500 });
   if (order) return NextResponse.json({ ok: true, id: pid, total_paise: total, order: true });
-  if (poId) await restAsService(`ms_purchases?id=eq.${poId}&owner_id=eq.${o}&status=eq.ordered`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "received", notes: `Goods received on purchase ${pid.slice(0, 8)} (${access.name})` }) });
   for (const l of lines) {
     if (l.imeis.length) {
       await restAsService("ms_units", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(l.imeis.map((x) => ({ owner_id: o, item_id: l.itemId, imei1: x, cost_paise: l.cost, purchase_id: pid, store }))) });
