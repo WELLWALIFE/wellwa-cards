@@ -259,7 +259,7 @@ const TUTORIALS = {
         { id: "intro", say: "क्या आपकी मोबाइल दुकान में भी उधार की कॉपी खो जाती है, किस ग्राहक को कौन-सा फ़ोन बेचा याद नहीं रहता, और शाम को हिसाब नहीं मिलता? Shubhora की Mobile दुकान ये सब एक ही app में संभालती है — बिल, उधार, IMEI वाला स्टॉक, रिपेयर और रोज़ का हिसाब। बिल, 'फ़ोन तैयार है' और उधार की याद ग्राहक को WhatsApp पर अपने-आप जाती है। ये video पूरा देखिए — इसके बाद आप पूरी दुकान खुद चला लेंगे। My Shop में Mobile दुकान खोलिए; सबसे ऊपर शुरुआत के सात step हैं, हर step दबाने पर वही screen खुलती है।",
           between: async () => { await u.cleanMobile(); await u.login(); await u.goto(`${SITE}/poster/mobile`); await u.waitText("How to start", 30000); },
           act: async () => { await u.cue(0); await pause(1500); await u.cue(1); await pause(1200); await u.cue(2); await pause(800); await u.cue(3); await pause(600); await u.cue(4); await u.scrollBy(350, 2500); await pause(800); await u.scrollBy(-350, 1200); } },
-        { id: "settings", say: "Step एक — दुकान की जानकारी। Settings में दुकान का नाम, फ़ोन और पता लिखिए; ये हर बिल पर छपते हैं। अपनी UPI ID भी डालिए — फिर हर बिल पर सही रक़म का QR अपने-आप बनता है। Printer का size चुनिए, और GST number हो तभी GST चालू करें। फिर Save।",
+        { id: "settings", say: "Step एक — दुकान की जानकारी भरिए; Mobile दुकान की Settings खोलिए। Settings में दुकान का नाम, फ़ोन और पता लिखिए; ये हर बिल पर छपते हैं। अपनी UPI ID भी डालिए — फिर हर बिल पर सही रक़म का QR अपने-आप बनता है। Printer का size चुनिए, और GST number हो तभी GST चालू करें। सब भरने के बाद नीचे Save दबाइए, और दुकान तैयार।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000); },
           act: async () => {
             await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000);
@@ -269,7 +269,7 @@ const TUTORIALS = {
             await u.cue(3); await u.scrollBy(250, 1200); await pause(600);
             await u.cue(4); await u.hold(4, 0.7); await save("Saved");
           } },
-        { id: "items", say: "Step दो — जो बेचते हैं वो जोड़िए। Add item दबाइए और चुनिए: Accessory, Phone, Spare part या Service। नाम, बेचने का दाम और लागत लिखिए — लागत सिर्फ़ आपको दिखती है। 'किस फ़ोन का है' में model लिखिए, और कितने हैं, वो लिखकर Save।",
+        { id: "items", say: "Step दो — जो सामान आप बेचते हैं, उसे एक बार Items में जोड़िए। Add item दबाइए और चुनिए: Accessory, Phone, Spare part या Service। नाम, बेचने का दाम और लागत लिखिए — लागत सिर्फ़ आपको दिखती है। 'किस फ़ोन का है' में model लिखिए, और कितने हैं, वो लिखकर Save।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/items`); await u.waitText("Add item", 30000); },
           act: async () => {
             await u.goto(`${SITE}/poster/mobile/items`); await u.waitText("Add item", 30000);
@@ -289,7 +289,7 @@ const TUTORIALS = {
               await u.tapText("Save", { exact: true }); await u.waitText(name, 20000); await pause(500);
             }
           } },
-        { id: "bill", say: "Step तीन — बिल। New bill दबाइए। Item का नाम या फ़ोन का model लिखिए — 'glass redmi 13' लिखते ही वही glass मिल जाता है जो उस फ़ोन में लगता है। Barcode scanner हो तो बस scan कीजिए। ग्राहक का mobile लिखते ही उसका पुराना उधार और loyalty points भी दिख जाते हैं।",
+        { id: "bill", say: "Step तीन — बिल बनाना; इसके लिए home पर New bill दबाइए। Item का नाम या फ़ोन का model लिखिए — 'glass redmi 13' लिखते ही वही glass मिल जाता है जो उस फ़ोन में लगता है। अगर आपके पास barcode scanner है, तो item scan करते ही वो बिल में अपने-आप जुड़ जाता है। ग्राहक का mobile लिखते ही उसका पुराना उधार और loyalty points भी दिख जाते हैं।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/bill`); await u.waitText("Search or scan", 30000); },
           act: async () => {
             await u.goto(`${SITE}/poster/mobile/bill`); await u.waitText("Search or scan", 30000);
@@ -306,19 +306,19 @@ const TUTORIALS = {
             await u.cue(2); await P().select('select[aria-label="Received by"]', "upi").catch(() => undefined); await pause(800); await u.scrollBy(300, 1500); await u.hold(2, 0.8);
             await u.cue(3); await u.hold(3, 0.5); await u.tapThen("Save", "Udhaar left", { exact: true, timeout: 30000 }); await pause(1200); await u.scrollBy(400, 2000);
           } },
-        { id: "payment", say: "उधार वाले ग्राहक को याद दिलाना है? Remind on WhatsApp दबाइए — उसके सारे बाकी बिल और पेमेंट का लिंक एक ही message में जाते हैं। Settings में चुनें तो हर कुछ दिन में ये याद अपने-आप जाती है। ग्राहक पैसे दे, तो Full दबाइए और Take payment — उधार ख़त्म।",
+        { id: "payment", say: "उधार वाले ग्राहक को याद दिलाना हो, तो बिल पर Remind on WhatsApp दबाइए। उसके सारे बाकी बिल और पेमेंट का लिंक एक ही message में चले जाते हैं। Settings में चुनें तो हर कुछ दिन में ये याद अपने-आप जाती है। ग्राहक पैसे दे, तो Full दबाइए और Take payment — उधार ख़त्म।",
           act: async () => {
             await u.scrollBy(-400, 800); await u.cue(0); await pause(1500); await u.cue(1); await pause(1200);
             await u.cue(2); await pause(800);
             await u.cue(3); await u.tapText("Full", { exact: true }); await pause(500); await u.tapText("Take payment", { exact: true }); await pause(1800);
           } },
-        { id: "return", say: "ग्राहक कुछ वापस लाए? Return items दबाइए, कितने वापस आए वो लिखिए, और पैसे किस तरह लौटाए वो चुनिए। Return का बिल बनता है और माल stock में वापस आ जाता है।",
+        { id: "return", say: "ग्राहक कुछ सामान वापस लाए, तो बिल पर Return items दबाइए। कितने वापस आए वो लिखिए, और पैसे किस तरह लौटाए वो चुनिए। Return का बिल बनता है और माल stock में वापस आ जाता है।",
           act: async () => {
             await u.cue(0); await u.tapText("Return items", { exact: true }); await pause(800);
             await u.type(u.field(/Silicone back cover/), "1"); await pause(400);
             await u.cue(1); await pause(600); await u.tapThen("Take the return", "RETURN", { timeout: 30000 }); await u.cue(2); await pause(2000);
           } },
-        { id: "purchase", say: "नया माल आया? Purchase खोलिए। सप्लायर का नाम लिखिए, आया हुआ item खोजिए, कितने आए और एक की लागत लिखिए, और सप्लायर को अभी कितना दिया। Save करते ही stock बढ़ जाता है, और सप्लायर का बाकी पैसा भी याद रहता है। माल मँगाना हो तो 'Order to supplier' से list बनाइए और एक tap में WhatsApp पर भेजिए।",
+        { id: "purchase", say: "नया माल आया हो तो Purchase खोलिए और सप्लायर का नाम लिखिए। आया हुआ item खोजिए, कितने आए और एक की लागत लिखिए, और सप्लायर को अभी कितना दिया। Save करते ही stock बढ़ जाता है, और सप्लायर का बाकी पैसा भी याद रहता है। माल मँगाना हो तो 'Order to supplier' से list बनाइए और एक tap में WhatsApp पर भेजिए।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/purchase`); await u.waitText("Purchase", 30000); },
           act: async () => {
             await u.goto(`${SITE}/poster/mobile/purchase`); await u.waitText("Paid to supplier", 30000);
@@ -328,7 +328,7 @@ const TUTORIALS = {
             await u.cue(2); await u.hold(2, 0.6); await save("stock has gone up"); await pause(1200);
             await u.scrollBy(-600, 800); await u.cue(3); await u.tapText("Order to supplier (PO)", { exact: true }); await pause(2500);
           } },
-        { id: "repair", say: "Step चार — रिपेयर। New repair job खोलिए। ग्राहक का mobile, नाम और फ़ोन का model लिखिए। खराबी और फ़ोन की हालत बस tap करके चुनिए। फ़ोन की photo लीजिए और ग्राहक से screen पर ही sign करवाइए — बाद में कोई बहस नहीं। Estimate और advance लिखकर Save — ग्राहक के लिए slip तैयार।",
+        { id: "repair", say: "Step चार — रिपेयर; फ़ोन आए तो New repair job खोलिए। ग्राहक का mobile नंबर, उसका नाम और फ़ोन का model लिखिए। खराबी और फ़ोन की अभी की हालत, दोनों बस tap करके चुनिए। फ़ोन की photo लीजिए और ग्राहक से screen पर ही sign करवाइए — बाद में कोई बहस नहीं। Estimate और advance लिखकर Save — ग्राहक के लिए slip तैयार।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/repair`); await u.waitText("Display broken", 30000); },
           act: async () => {
             await u.goto(`${SITE}/poster/mobile/repair`); await u.waitText("Display broken", 30000);
@@ -339,7 +339,7 @@ const TUTORIALS = {
             await u.cue(4); await fill(/^Estimate/, "2500"); await fill(/^Advance/, "500"); await u.hold(4, 0.7);
             await save("Print the slip"); await pause(1500);
           } },
-        { id: "repairdone", say: "काम शुरू हो तो Being repaired दबाइए। लगा हुआ part stock से चुनिए और repair charge लिखिए। फ़ोन ठीक हो जाए तो Ready — ग्राहक को WhatsApp पर अपने-आप ख़बर जाती है। फ़ोन लेने आए तो Give the phone back — advance कटकर बिल अपने-आप बन जाता है।",
+        { id: "repairdone", say: "काम शुरू हो तो Being repaired दबाइए, ताकि सबको पता रहे। लगा हुआ part stock से चुनिए और repair charge लिखिए। फ़ोन ठीक हो जाए तो Ready — ग्राहक को WhatsApp पर अपने-आप ख़बर जाती है। फ़ोन लेने आए तो Give the phone back — advance कटकर बिल अपने-आप बन जाता है।",
           act: async () => {
             await u.cue(0); await u.tapText("Being repaired", { exact: true }); await pause(1500);
             await u.cue(1); await u.type('[placeholder^="Add a part"]', "display"); await pause(900); await u.tapText("Display Redmi 13"); await pause(1500);
@@ -349,7 +349,7 @@ const TUTORIALS = {
             await u.cue(2); await u.tapText("Ready", { exact: true }); await pause(1500);
             await u.cue(3); await u.tapText("Give the phone back"); await pause(900); await u.tapThen("Make the bill", "BILL", { timeout: 30000 }); await pause(1500);
           } },
-        { id: "repairs", say: "Repair jobs में दिखता है कि दुकान में कितने फ़ोन हैं, कितने तैयार हैं और कितने देर से। नाम, mobile, model या IMEI से खोजिए।",
+        { id: "repairs", say: "Repair jobs में दिखता है कि दुकान में कितने फ़ोन हैं, कितने तैयार हैं और कितने देर से। नाम, mobile, model या IMEI से कोई भी job तुरंत खोजिए।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/repairs`); await pause(2000); },
           act: async () => { await u.goto(`${SITE}/poster/mobile/repairs`); await pause(1500); await u.cue(0); await pause(1500); await u.cue(1); await u.scrollBy(300, 1500); } },
         { id: "expenses", say: "दुकान का किराया, बिजली, तनख़्वाह या चाय — Expenses में मद दबाइए, रक़म लिखिए और Save। ऊपर दिखता है कि आज दराज़ में कितना cash होना चाहिए — शाम को गिनती तुरंत मिल जाती है।",
@@ -360,7 +360,7 @@ const TUTORIALS = {
             await u.tapThen("Save expense", "Saved", { timeout: 30000 }); await pause(800);
             await u.cue(1); await u.scrollBy(-300, 800); await pause(2500);
           } },
-        { id: "reports", say: "Step सात — दिन का हिसाब। Reports में आज की बिक्री, cash और UPI अलग, मुनाफ़ा, ख़र्चे और उनके बाद बचा मुनाफ़ा, उधार और रिपेयर की कमाई। किसी भी दिन, महीने या साल की रिपोर्ट। एक tap में हिसाब WhatsApp पर, Excel की files CA के लिए, और Tally में import भी।",
+        { id: "reports", say: "Step सात — दिन का हिसाब देखने के लिए Reports खोलिए। यहाँ आज की बिक्री, cash और UPI अलग, मुनाफ़ा, ख़र्चे और उनके बाद बचा मुनाफ़ा, उधार और रिपेयर की कमाई। किसी भी दिन, महीने या साल की रिपोर्ट एक tap में देखिए। एक tap में हिसाब WhatsApp पर, Excel की files CA के लिए, और Tally में import भी।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/reports`); await u.waitText("Sale", 30000); },
           act: async () => { await u.goto(`${SITE}/poster/mobile/reports`); await u.waitText("Sale", 30000); await u.cue(0); await pause(800); await u.cue(1); await u.scrollBy(500, 3000); await u.cue(2); await pause(600); await u.cue(3); await u.scrollBy(700, 3500); await pause(800); } },
         { id: "stock", say: "Items में हर चीज़ का stock दिखता है, और कम होने पर चेतावनी। Bills में IMEI डालिए — वो फ़ोन किससे ख़रीदा, किसे बेचा और कितनी बार रिपेयर हुआ, सब दिख जाता है। Shelf के लिए barcode label print कीजिए, और महीने में एक बार Count the stock से stock मिलान कर लीजिए।",
@@ -374,10 +374,10 @@ const TUTORIALS = {
         { id: "staff", say: "ग्राहक को वापस लाने के लिए Settings में loyalty points चालू कीजिए, और cover-glass जैसे combo offer बनाइए — बिल पर छूट अपने-आप लगती है। Staff हो तो हर एक का अलग login बनाइए, और तय कीजिए कि कौन बिल बनाए, कौन छूट दे और लागत-मुनाफ़ा कौन देखे; हर staff का commission और महीने का target भी। एक से ज़्यादा दुकान हो तो ब्रांच जोड़िए और Stock transfer से माल भेजिए। बिल कभी delete नहीं होता — सिर्फ़ वजह लिखकर रद्द होता है, और किसने किया वो नाम रहता है।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000); },
           act: async () => { await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000); await u.scrollBy(1100, 2500); await u.cue(0); await pause(1500); await u.cue(1); await u.scrollBy(500, 2500); await u.cue(2); await u.scrollBy(300, 1500); await u.cue(3); await pause(1200); } },
-        { id: "automate", say: "Step पाँच और छह — सब अपने-आप। Connections में अपना WhatsApp जोड़िए: बिल, 'फ़ोन तैयार है', उधार की याद और Google review की माँग आपके नंबर से अपने-आप जाएगी। Google profile जोड़िए: reviews के जवाब, रोज़ का poster और हर हफ़्ते की जाँच।",
+        { id: "automate", say: "Step पाँच और छह — सब अपने-आप होने दीजिए, बस एक बार जोड़ना है। Connections में अपना WhatsApp जोड़िए: बिल, 'फ़ोन तैयार है', उधार की याद और Google review की माँग आपके नंबर से अपने-आप जाएगी। Google profile जोड़िए: reviews के जवाब, रोज़ का poster और हर हफ़्ते की जाँच।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/connect`); await u.waitText("Connections", 30000); },
           act: async () => { await u.goto(`${SITE}/poster/connect`); await u.waitText("Connections", 30000); await u.cue(0); await pause(800); await u.cue(1); await u.scrollBy(300, 2000); await u.cue(2); await u.scrollBy(400, 2500); } },
-        { id: "outro", say: "बस इतना ही! बिल, उधार, स्टॉक, रिपेयर, ख़र्चे और हिसाब — सब एक app में, आपके फ़ोन पर। आज ही shubhora.com पर अपनी Mobile दुकान शुरू कीजिए — हमारी team आपकी दुकान पर setup भी करवा देगी। कोई सवाल हो तो app में नीचे वाला गोल सवाल का button दबाइए।",
+        { id: "outro", say: "बस इतना ही — बिल, उधार, स्टॉक, रिपेयर, ख़र्चे और हिसाब, सब एक app में, आपके फ़ोन पर। आज ही shubhora.com पर अपनी Mobile दुकान शुरू कीजिए — हमारी team आपकी दुकान पर setup भी करवा देगी। कोई सवाल हो तो app में नीचे वाला गोल सवाल का button दबाइए।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile`); await pause(2000); },
           act: async () => { await u.goto(`${SITE}/poster/mobile`); await u.cue(0); await pause(1500); await u.cue(1); await pause(1200); await u.cue(2); await pause(800); } },
       ];
