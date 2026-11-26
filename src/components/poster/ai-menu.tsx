@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUp, LoaderCircle, Plus, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
-type Act = "menu" | "text" | "ai" | "human" | "status" | "due" | "bill" | "book" | "address" | "offer" | "products" | "form";
+type Act = "menu" | "text" | "ai" | "human" | "status" | "due" | "bill" | "book" | "address" | "offer" | "products" | "form" | "order";
 type Opt = { label: string; action: Act; target?: string; reply?: string };
 type Node = { id: string; title: string; text: string; options: Opt[] };
 type Flow = { greetNew: boolean; triggers: string[]; nodes: Node[] };
@@ -24,15 +24,16 @@ function readyMenus(hi: boolean): { key: string; name: string; flow: Flow }[] {
   const mk = (options: Opt[]): Flow => ({ greetNew: true, triggers: [], nodes: [{ id: "main", title: "Main menu", text: top, options }] });
   return [
     { key: "shop", name: H("Shop", "दुकान"), flow: mk([
-      { label: H("See products", "Products dekhne hain"), action: "text", reply: H("All our products with photos and prices: {card}", "Hamare saare products, photo aur daam ke saath: {card}") },
+      { label: H("See products", "Products dekhne hain"), action: "products" },
       { label: H("Prices and offers", "Daam aur offer"), action: "ai", reply: H("Sure — which item's price would you like?", "Ji, kis cheez ka daam jaanna hai?") },
-      { label: H("Place an order", "Order karna hai"), action: "ai", reply: H("Great! What would you like, and how many?", "Zaroor! Kya chahiye aur kitna?") },
-      { label: H("Address and timings", "Pata aur samay"), action: "ai" },
+      { label: H("Place an order", "Order karna hai"), action: "order" },
+      { label: H("Address and timings", "Pata aur samay"), action: "address" },
       { label: H("Talk to us", "Aapse baat karni hai"), action: "human" },
     ]) },
     // Shops that run their work in the app: the menu answers from the shop's own books (status, money due, bill).
     { key: "mobile", name: H("Mobile shop", "मोबाइल दुकान"), flow: mk([
       { label: H("Phones and accessories, with prices", "Phone aur accessories, daam ke saath"), action: "ai", reply: H("Sure — which phone or accessory are you looking for?", "Ji, kaun sa phone ya accessory chahiye?") },
+      { label: H("Place an order", "Order karna hai"), action: "order" },
       { label: H("Is my repair ready?", "Mera repair ban gaya?"), action: "status" },
       { label: H("My balance / pay by UPI", "Mera baaki paisa / UPI se dena hai"), action: "due" },
       { label: H("Send my bill", "Mera bill bhej do"), action: "bill" },
@@ -194,10 +195,12 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
                         {actChip(i, "address", "Address, map, timings", "पता, map, समय")}
                         {actChip(i, "offer", "Today's offer", "आज का offer")}
                         {actChip(i, "form", "Ask enquiry questions", "Enquiry के सवाल पूछे")}
+                        {actChip(i, "order", "Take an order", "Order ले")}
                       </div>
                       {o.action === "products" && <p className="mt-1.5 text-[11px] text-muted">{T("Sends the products on your card with their prices, up to 3 photos and your website link. No products on the card: the AI answers.", "आपके card के products दाम के साथ, 3 photo तक और website का link भेजता है। Card पर products न हों तो AI जवाब देता है।")}</p>}
                       {o.action === "address" && <p className="mt-1.5 text-[11px] text-muted">{T("Sends the address, Google Maps link, timings and phone from your card. Nothing on the card: the AI answers.", "आपके card से पता, Google Maps का link, समय और फ़ोन भेजता है। Card पर न हो तो AI जवाब देता है।")}</p>}
                       {o.action === "offer" && <p className="mt-1.5 text-[11px] text-muted">{T("Sends the notice and offers on your card (only while their date has not passed). None: the AI answers.", "आपके card का notice और offer भेजता है (जब तक उनकी तारीख़ न निकली हो)। न हो तो AI जवाब देता है।")}</p>}
+                      {o.action === "order" && <p className="mt-1.5 text-[11px] text-muted">{T("Takes the order in the chat: what, how many, and the delivery address (or pickup). The list comes from your card's products, or your Mobile shop items that are in stock. The order goes onto the customer in your CRM, you get a WhatsApp alert, and the customer gets your UPI id with the amount.", "Chat में ही order लेता है: क्या, कितने, और delivery का पता (या दुकान से लेना)। List आपके card के products से आती है, या Mobile shop के जो items stock में हैं। Order CRM में customer पर चढ़ता है, आपको WhatsApp alert आता है, और customer को रकम के साथ आपकी UPI id मिलती है।")}</p>}
                       {o.action === "form" && <p className="mt-1.5 text-[11px] text-muted">{T("Asks the questions you chose in AI Training → More settings → “Find out from a new customer”, one at a time. The answers go onto the customer in your CRM and you get a WhatsApp alert.", "AI Training → और settings → “नए customer से पूछे” में चुने सवाल एक-एक करके पूछता है। जवाब CRM में customer पर चढ़ जाते हैं और आपको WhatsApp पर alert आता है।")}</p>}
                       {o.action === "status" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer is told where their repair, tailoring job or jewellery order stands — found by the number they write from, or by the job number they type.", "Customer को बताया जाता है कि उनका रिपेयर, सिलाई का काम या ज्वेलरी order कहाँ तक पहुँचा — जिस नंबर से लिख रहे हैं उससे, या उनके लिखे job नंबर से।")}</p>}
                       {o.action === "due" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer gets their total udhaar, bill by bill, with the bill link (it has your UPI QR). Only their own number's bills.", "Customer को उनका कुल उधार मिलता है, बिल-दर-बिल, बिल के link के साथ (उस पर आपका UPI QR है)। सिर्फ़ उनके अपने नंबर के बिल।")}</p>}

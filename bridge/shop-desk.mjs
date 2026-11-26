@@ -21,6 +21,7 @@ const STATUS_RE = /\b(status|ban\s*gaya|ban\s*gay[ia]|bana\s*kya|ready\s*(hai|hu
 const DUE_RE = /\b(kitn[ae]\s*(paise?\s*)?(baa?ki|udhaa?r|dene|dena|bakaya)|(baa?ki|udhaa?r|bakaya)\s*(kitn[ae]|hai\s*kya|batao|bata\s*do)|mera\s*(baa?ki|udhaa?r|hisaa?b|balance)|balance\s*(kitna|batao|due)|due\s*amount|pending\s*(amount|payment))\b|कितन[ाे]\s*(पैसे?\s*)?(बाकी|उधार|देने|देना|बकाया)|(बाकी|उधार|बकाया)\s*(कितन[ाे]|है\s*क्या|बताओ|बता\s*दो)|मेरा\s*(बाकी|उधार|हिसाब|बैलेंस)/i;
 const BILL_RE = /\b((bill|invoice|receipt|raseed)\s*(bhej|send|chahiye|de\s*do|do\b|dobara|again|copy)|(bhej|send)\w*\s*(mera\s*)?(bill|invoice|receipt)|bill\s*ki\s*copy)\b|(बिल|रसीद|इनवॉइस)\s*(भेज|चाहिए|दे\s*दो|दो|दोबारा|की\s*कॉपी)|(भेज)\S*\s*(मेरा\s*)?(बिल|रसीद)/i;
 const BOOK_RE = /\b(appointment|appoint?ment|slot\s*(book|chahiye|do)|book\s*(a\s*)?(slot|appointment|time)|time\s*(book|lena|chahiye)|booking\s*(karni|karna|chahiye|kar\s*do))\b|अपॉइंटमेंट|अपाइंटमेंट|समय\s*(लेना|चाहिए|बुक)|बुकिंग\s*(करनी|करना|चाहिए|कर\s*दो)|स्लॉट/i;
+const ORDER_RE = /\b(order\s*(karna|karni|dena|deni|chahiye|kar\s*do|kar\s*dijiye|place|book)|place\s*(an\s*)?order|khar[ie]dn[ai]\s*(hai|h)|mangwan[ai]\s*(hai|h)|buy\s*now)\b|ऑर्डर\s*(करना|करनी|देना|चाहिए|कर\s*दो|कर\s*दीजिए)|ख़?रीदना\s*है|मँ?गवाना\s*है|मंगवाना\s*है/i;
 
 /** A job / order number in the text: "MJ/2026-27/14", "ORD/2026-27/4", or "#102" / "job 102" (the tailoring jobs' own number). */
 export function findCode(text) {
@@ -32,7 +33,7 @@ export function findCode(text) {
 }
 
 /** What a free-typed message asks the counter for, or null (the AI answers). Long messages are conversation, not a counter question. */
-export function deskIntent(text, { book = false } = {}) {
+export function deskIntent(text, { book = false, order = false } = {}) {
   const t = String(text ?? "").trim();
   if (!t || t.length > 90) return null;
   if (DUE_RE.test(t)) return "due";
@@ -40,6 +41,7 @@ export function deskIntent(text, { book = false } = {}) {
   if (findCode(t) && t.length <= 40) return "status";
   if (STATUS_RE.test(t)) return "status";
   if (book && BOOK_RE.test(t)) return "book";
+  if (order && ORDER_RE.test(t)) return "order";
   return null;
 }
 
@@ -263,4 +265,140 @@ export function parseRating(text) {
 export function ratingReply(n, link) {
   if (n >= 4) return link ? `बहुत-बहुत धन्यवाद 🙏😊 अगर 1 मिनट हो तो Google पर भी यही बता दीजिए, इससे हमें बहुत मदद मिलती है:\n${link}` : "बहुत-बहुत धन्यवाद 🙏😊 आपसे फिर मिलने का इंतज़ार रहेगा।";
   return "माफ़ कीजिए कि अनुभव अच्छा नहीं रहा 🙏 क्या कमी रही, यहीं लिख दीजिए। हम खुद आपसे बात करके इसे ठीक करेंगे।";
+}
+
+/* ---------------- "X hai kya?" from the shop's stock, and an order taken in the chat (phase 4) ---------------- */
+
+const STOCK_RE = /\b(hai\s*kya|h\s*kya|hai\s*\?|available|availability|mil(ega|egi|ta|ti)|mil\s*jayeg[ai]|stock|rakhte|price|rate|daam|kitne\s*(ka|ki|ke|me|mein)|kitna\s*(ka|hai))\b|है\s*क्या|मिलेगा|मिलेगी|मिलता|उपलब्ध|स्टॉक|दाम|रेट|कितने\s*(का|की|के|में)/i;
+const STOP = new Set(("hai h kya ka ki ke ko available availability milega milegi milta milti mil jayega jayegi stock price rate daam kitne kitna me mein aapke apke paas pass chahiye bhai bhaiya sir ji please pls the is for do you have and wala wali rakhte ho aur ya bata batao dijiye mujhe hume koi ek new naya nayi"
+  + " का की के को है क्या मिलेगा मिलेगी कितने कितना दाम रेट में पास चाहिए वाला वाली और या बताओ बताइए मुझे कोई एक नया नयी").split(" "));
+const norm = (s) => String(s ?? "").toLowerCase().replace(/[^\p{L}\p{M}\p{N}+]+/gu, " ").trim();
+const paiseOf = (v) => { const n = Number(String(v ?? "").replace(/[^\d.]/g, "")); return Number.isFinite(n) && n > 0 && n < 1e8 ? Math.round(n * 100) : 0; };
+
+/** The Mobile shop's items as the counter sees them: a name, the selling price and whether it is in stock (never how many). */
+export async function shopItems({ owner, rest }) {
+  const items = await rest(`ms_items?owner_id=eq.${owner}&active=is.true&select=id,name,brand,model,variant,category,price_paise,qty,fits,serial&order=updated_at.desc&limit=800`);
+  if (!items.length) return [];
+  const units = items.some((i) => i.serial) ? await rest(`ms_units?owner_id=eq.${owner}&status=eq.in_stock&select=item_id&limit=5000`) : [];
+  const n = {};
+  for (const u of units) n[u.item_id] = (n[u.item_id] || 0) + 1;
+  return items.map((i) => {
+    const name = tidy(i.name) || tidy([i.brand, i.model, i.variant].filter(Boolean).join(" "));
+    return { id: i.id, name, price: Math.max(0, Number(i.price_paise) || 0), stock: i.serial ? n[i.id] || 0 : Math.max(0, Number(i.qty) || 0), hay: ` ${norm([i.name, i.brand, i.model, i.variant, i.category, ...(Array.isArray(i.fits) ? i.fits : [])].join(" "))} ` };
+  }).filter((i) => i.name);
+}
+/** The card's own products in the same shape (stock is not known for them: taken as available). */
+export function cardItems(card) {
+  return blocksOf(card).filter((b) => b.kind === "product").flatMap((b) => b.items ?? []).filter((p) => tidy(p?.name))
+    .map((p, i) => ({ id: `card-${i}`, name: tidy(p.name), price: paiseOf(p.price || p.mrp), stock: 1, hay: ` ${norm(p.name)} ` }));
+}
+/** The items a message names, best first. Empty: nothing matched well enough (the AI answers). */
+export function matchItems(text, items) {
+  const toks = norm(text).split(" ").filter((w) => w && !STOP.has(w) && (w.length >= 2 || /\d/.test(w)));
+  if (!toks.length || toks.length > 7) return [];
+  const hit = (hay, w) => (/^\d+$/.test(w) ? hay.includes(` ${w} `) : hay.includes(` ${w}`));
+  const need = toks.length === 1 ? 1 : Math.max(2, Math.ceil(toks.length * 0.6));
+  if (toks.length === 1 && toks[0].length < 4) return [];
+  const scored = (Array.isArray(items) ? items : []).map((i) => ({ i, s: toks.filter((w) => hit(i.hay, w)).length })).filter((x) => x.s >= need);
+  if (!scored.length) return [];
+  const best = Math.max(...scored.map((x) => x.s));
+  return scored.filter((x) => x.s === best).sort((a, b) => (b.i.stock > 0) - (a.i.stock > 0)).slice(0, 4).map((x) => x.i);
+}
+/** "Redmi 13 ka cover hai kya?" — is this a question the stock can answer? */
+export const asksStock = (text) => { const t = String(text ?? "").trim(); return t.length >= 4 && t.length <= 80 && STOCK_RE.test(t); };
+/** The answer: what is there with its price, or "not in stock right now". `out` true → the owner is told someone asked. */
+export function stockAnswer(found, { order = false } = {}) {
+  if (!found.length) return null;
+  const have = found.filter((i) => i.stock > 0);
+  if (have.length) {
+    const rows = have.map((i) => `• ${i.name}${i.price ? ` — ${rs(i.price)}` : ""}`);
+    return { out: false, text: [`✅ हाँ जी, उपलब्ध है:`, ...rows, order ? "\nलेना हो तो *order* लिख दीजिए, या दुकान आ जाइए 🙂" : "\nदुकान आ जाइए, या कोई और सवाल हो तो लिख दीजिए 🙂"].join("\n") };
+  }
+  return { out: true, text: `*${found[0].name}* अभी stock में नहीं है 🙏\nमँगवाना हो तो बता दीजिए, आते ही हम आपको यहीं खबर कर देंगे।` };
+}
+
+/** What an order can be picked from: the card's products, else the shop's priced items that are in stock (nine at most). */
+export function orderList(card, shop = []) {
+  const own = cardItems(card);
+  return (own.length ? own : shop.filter((i) => i.stock > 0 && i.price > 0)).slice(0, 9);
+}
+export const orderMenu = (items) => items.length
+  ? `🛒 क्या मँगवाना है?\n\n${items.map((i, n) => `${n + 1}. ${i.name}${i.price ? ` — ${rs(i.price)}` : ""}`).join("\n")}\n\n_नंबर भेजिए, या जो चाहिए उसका नाम लिख दीजिए · 0 = रद्द_`
+  : "🛒 ज़रूर! क्या मँगवाना है? उसका नाम लिख दीजिए।\n\n_0 = रद्द_";
+const WORD_QTY = { ek: 1, one: 1, एक: 1, do: 2, two: 2, दो: 2, teen: 3, three: 3, तीन: 3, char: 4, chaar: 4, four: 4, चार: 4, paanch: 5, panch: 5, five: 5, पाँच: 5, पांच: 5 };
+/** "2", "2 pcs", "do" → 2; 0 when it is not a quantity. */
+export function parseQty(text) {
+  const t = String(text ?? "").trim().toLowerCase();
+  const m = t.match(/^(\d{1,3})\s*(pcs?|pieces?|nos?|piece|पीस|नग|qty)?[\s.!]*$/);
+  if (m) { const n = Number(m[1]); return n >= 1 && n <= 999 ? n : 0; }
+  return WORD_QTY[t.replace(/\s*(pcs?|pieces?|piece|पीस|नग)$/, "")] || 0;
+}
+const YES_RE = /^(1|y|yes|ok|okay|haa?n|han|ji|ji\s*haa?n|confirm|pakka|done|हाँ|हां|जी|पक्का|ठीक)[\s.!]*$/i;
+const NO_RE = /^(0|2|n|no|nahi|nahin|cancel|radd|नहीं|रद्द|कैंसल)[\s.!]*$/i;
+const PICKUP_RE = /^(pick\s*up|pickup|dukaa?n|shop|store|khud|self|दुकान|खुद|पिकअप)/i;
+const orderTotal = (st) => (st.item?.price || 0) * (st.qty || 1);
+const orderLines = (st) => [`• ${st.item.name} × ${st.qty}${st.item.price ? ` — ${rs(orderTotal(st))}` : ""}`, st.pickup ? "• दुकान से खुद लेंगे" : `• पता: ${st.addr}`];
+/** One step of the order talk. → { st, say } (goes on) | { done: order, say? } | { end: true, say? } (stopped; `pass` → the AI answers this message). */
+export function orderTurn(st, text, { all = [] } = {}) {
+  const t = String(text ?? "").trim();
+  if (t === "0" || /^(cancel|radd|रद्द|कैंसल)[\s.!]*$/i.test(t)) return { end: true, say: "ठीक है 🙂 order रद्द कर दिया। कुछ और चाहिए तो लिख दीजिए।" };
+  const again = (say) => ((st.miss || 0) >= 1 ? { end: true, pass: true } : { st: { ...st, miss: (st.miss || 0) + 1 }, say });
+  if (st.step === "item") {
+    const n = /^\d{1,2}$/.test(t) ? Number(t) : 0;
+    const item = (n && st.items[n - 1]) || (!n && (matchItems(t, st.items)[0] || matchItems(t, all).find((i) => i.stock > 0))) || (!n && t.length >= 3 && t.length <= 80 && !/\?/.test(t) ? { id: "", name: tidy(t), price: 0, stock: 1 } : null);
+    if (!item) return again(orderMenu(st.items));
+    return { st: { ...st, step: "qty", item, miss: 0 }, say: `*${item.name}*${item.price ? ` — ${rs(item.price)}` : ""}\nकितने चाहिए? (जैसे 1, 2)` };
+  }
+  if (st.step === "qty") {
+    const q = parseQty(t);
+    if (!q) return again("कितने चाहिए? बस संख्या लिख दीजिए (जैसे 1, 2) · 0 = रद्द");
+    return { st: { ...st, step: "addr", qty: q, miss: 0 }, say: "Delivery का पूरा पता लिख दीजिए 🏠\nदुकान से खुद लेना हो तो *pickup* लिखिए।" };
+  }
+  if (st.step === "addr") {
+    const pickup = PICKUP_RE.test(t);
+    if (!pickup && t.length < 8) return again("पूरा पता लिख दीजिए (मकान, गली, इलाक़ा, शहर) — या *pickup* लिखिए · 0 = रद्द");
+    const next = { ...st, step: "ok", pickup, addr: pickup ? "" : tidy(t).slice(0, 240), miss: 0 };
+    return { st: next, say: [`आपका order:`, ...orderLines(next), orderTotal(next) ? `कुल: *${rs(orderTotal(next))}*` : "", "\n1. ✅ पक्का करें\n2. ❌ रद्द करें"].filter(Boolean).join("\n") };
+  }
+  if (YES_RE.test(t)) return { done: { name: st.item.name, itemId: st.item.id || "", qty: st.qty, price: st.item.price || 0, total: orderTotal(st), pickup: !!st.pickup, addr: st.addr || "" } };
+  if (NO_RE.test(t)) return { end: true, say: "ठीक है 🙂 order रद्द कर दिया। कुछ और चाहिए तो लिख दीजिए।" };
+  return again("पक्का करने के लिए *1* भेजिए, रद्द करने के लिए *2*।");
+}
+/** What the customer reads once the order is in; with a UPI id the amount can be paid at once. */
+export function orderDoneText(o, { upi = "", shop = "" } = {}) {
+  return [`✅ आपका order दर्ज हो गया${shop ? ` — ${shop}` : ""}`, `• ${o.name} × ${o.qty}${o.total ? ` — ${rs(o.total)}` : ""}`, o.pickup ? "• दुकान से खुद लेंगे" : `• पता: ${o.addr}`,
+    upi && o.total ? `\n💳 UPI से भुगतान: *${upi}* (${rs(o.total)})\nभुगतान करके screenshot यहीं भेज दीजिए।` : "", "\nहम जल्द ही पुष्टि करके आपको बताएँगे 🙏"].filter(Boolean).join("\n");
+}
+/** The owner's one-line alert / CRM note. */
+export const orderOwnerLine = (o) => `${o.name} × ${o.qty}${o.total ? ` = ${rs(o.total)}` : ""} · ${o.pickup ? "pickup from shop" : `deliver to: ${o.addr}`}`;
+
+/* ---------------- the form and the appointment as plain steps (the Business API path uses these) ---------------- */
+
+/** → { st, say } | { done: { patch, summary } } | { end: true } */
+export function formTurn(st, text) {
+  const t = String(text ?? "").trim();
+  if (t === "0") return { end: true };
+  const answers = [...st.answers, /^(skip|chhodo|छोड़ो|-)$/i.test(t) ? "" : t];
+  if (answers.length < st.qs.length) return { st: { ...st, answers }, say: st.qs[answers.length].q };
+  return { done: formResult(st.qs, answers) };
+}
+/** → { st, say } | { done: { day, slot } } | { end: true } (they started talking: the AI answers). `rest` reads the calendar. */
+export async function bookTurn(st, text, { owner, rest, start = 9, end = 20, now = Date.now() }) {
+  const t = String(text ?? "").trim();
+  if (!/^\d{1,2}$/.test(t)) return { end: true };
+  const n = Number(t);
+  if (st.step === "day") {
+    const day = st.days[n - 1];
+    if (!day) return { st, say: dayMenu(st.days) };
+    const taken = (await rest(`bookings?owner_id=eq.${owner}&status=eq.booked&starts_at=gte.${day.ymd}T00:00:00%2B05:30&starts_at=lt.${day.ymd}T23:59:59%2B05:30&select=starts_at&limit=200`)).map((b) => b.starts_at);
+    const slots = freeSlots({ ymd: day.ymd, taken, start, end, now }).slice(0, 12);
+    if (!slots.length) return { st, say: `${day.label} को सारे समय भर चुके हैं 🙏 कोई और दिन चुनिए।\n\n${dayMenu(st.days)}` };
+    return { st: { ...st, step: "slot", day: day.ymd, slots }, say: slotMenu(day.ymd, slots) };
+  }
+  if (n === 0) return { st: { step: "day", days: st.days }, say: dayMenu(st.days) };
+  const slot = st.slots[n - 1];
+  if (!slot) return { st, say: slotMenu(st.day, st.slots) };
+  const clash = await rest(`bookings?owner_id=eq.${owner}&status=eq.booked&starts_at=eq.${enc(slot.iso)}&select=id&limit=1`);
+  if (clash.length) { const left = st.slots.filter((s) => s.iso !== slot.iso); return { st: { ...st, slots: left }, say: `ये समय अभी-अभी भर गया 🙏\n\n${slotMenu(st.day, left)}` }; }
+  return { done: { day: st.day, slot } };
 }

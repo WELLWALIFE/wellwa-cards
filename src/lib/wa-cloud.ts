@@ -9,6 +9,7 @@ import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUr
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
 import type { Card } from "@/lib/types";
+import { asksStock, bookDays, bookedText, bookTurn, cardAnswer, dayMenu, deskBill, deskDue, deskIntent, deskNothing, deskStatus, formQuestions, formTurn, matchItems, orderDoneText, orderList, orderMenu, orderOwnerLine, orderTurn, shopItems, stockAnswer } from "../../bridge/shop-desk.mjs";
 
 export const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -49,7 +50,9 @@ export type SendPayload =
   | { imageUrl: string; caption?: string }
   | { videoUrl: string; caption?: string }
   | { documentUrl: string; fileName?: string; caption?: string }
-  | { template: string; lang: string; components?: unknown[] };
+  | { template: string; lang: string; components?: unknown[] }
+  /** A menu the customer taps: up to 3 reply buttons (20 letters each), or a list of up to 10 rows (24 letters each). */
+  | { interactive: { body: string; buttons?: string[]; rows?: string[]; button?: string } };
 
 /** Send one message; returns the WhatsApp message id. Throws GraphError (131047 = outside 24h window → use a template). */
 export async function sendCloud(acc: Pick<CloudAccount, "access_token" | "phone_number_id">, to: string, p: SendPayload): Promise<string> {
@@ -59,6 +62,12 @@ export async function sendCloud(acc: Pick<CloudAccount, "access_token" | "phone_
   else if ("imageUrl" in p) Object.assign(body, { type: "image", image: { link: p.imageUrl, caption: p.caption?.slice(0, 1024) || undefined } });
   else if ("videoUrl" in p) Object.assign(body, { type: "video", video: { link: p.videoUrl, caption: p.caption?.slice(0, 1024) || undefined } });
   else if ("documentUrl" in p) Object.assign(body, { type: "document", document: { link: p.documentUrl, filename: p.fileName?.slice(0, 80) || "document.pdf", caption: p.caption?.slice(0, 1024) || undefined } });
+  else if ("interactive" in p) {
+    const text = p.interactive.body.slice(0, 1024);
+    Object.assign(body, { type: "interactive", interactive: p.interactive.buttons?.length
+      ? { type: "button", body: { text }, action: { buttons: p.interactive.buttons.slice(0, 3).map((t, i) => ({ type: "reply", reply: { id: `b${i + 1}`, title: t.slice(0, 20) } })) } }
+      : { type: "list", body: { text }, action: { button: (p.interactive.button || "Choose").slice(0, 20), sections: [{ title: "Menu", rows: (p.interactive.rows ?? []).slice(0, 10).map((t, i) => ({ id: `r${i + 1}`, title: t.slice(0, 24) })) }] } } });
+  }
   else Object.assign(body, { type: "template", template: { name: p.template, language: { code: p.lang }, components: p.components ?? [] } });
   const j = await graph<{ messages?: { id: string }[] }>(acc.access_token, `${acc.phone_number_id}/messages`, { body });
   return j.messages?.[0]?.id ?? "";
@@ -124,7 +133,7 @@ export async function alreadyLogged(ownerId: string, waId: string): Promise<bool
 }
 
 /* ---------------- menu bot (same JSON as the QR bridge) ---------------- */
-type FOpt = { label: string; action: "menu" | "text" | "ai" | "human"; target?: string; reply?: string };
+type FOpt = { label: string; action: "menu" | "text" | "ai" | "human" | DeskAction; target?: string; reply?: string };
 type FNode = { id: string; title: string; text: string; options: FOpt[] };
 type Flow = { greetNew?: boolean; triggers?: string[]; nodes: FNode[] };
 const flowCache = new Map<string, { at: number; flow: Flow | null }>();
@@ -143,17 +152,25 @@ function fill(t: string, card: Card, site: string) {
 }
 const renderMenu = (n: FNode, root: boolean, card: Card, site: string) => `${fill(n.text || n.title, card, site)}\n\n${n.options.slice(0, 9).map((o, i) => `${NUM[i]} ${o.label}`).join("\n")}\n\n_Reply with a number${root ? "" : " · 0 for main menu"}_`;
 
-/** Returns the reply text (+ optional alert / handover) when the menu bot handled this message, else null. */
-async function runFlow(ownerId: string, card: Card, site: string, from: string, text: string, firstContact: boolean): Promise<{ text: string; alert?: string; human?: boolean } | null> {
+const MAIN_MENU = "Main menu";
+type MenuOut = { body: string; labels: string[] };
+type FlowOut = { text: string; alert?: string; human?: boolean; menu?: MenuOut; askAi?: string };
+/** Returns the reply text (+ optional alert / handover) when the menu bot handled this message, else null.
+ *  `menu`: the same menu as things to tap (buttons / a list). `askAi`: the card had nothing for the option — the AI answers these words. */
+async function runFlow(c: DeskCtx, text: string, firstContact: boolean): Promise<FlowOut | null> {
+  const { ownerId, card, site, from } = c;
   const flow = await flowFor(ownerId); if (!flow) return null;
   const key = `${ownerId}:${from}`, nodes = flow.nodes, root = nodes[0];
   const t = text.trim().toLowerCase().replace(/[!.?\s]+$/g, "");
   const triggers = (flow.triggers?.length ? flow.triggers : ["hi", "hello", "hey", "menu", "start", "namaste", "namaskar", "help"]).map((x) => x.toLowerCase());
   const st = flowState.get(key); const live = st && Date.now() - st.at < 30 * 60_000 ? st : null;
-  const show = (n: FNode) => { flowState.set(key, { nodeId: n.id, at: Date.now() }); return { text: renderMenu(n, n === root, card, site) }; };
+  const show = (n: FNode): FlowOut => {
+    flowState.set(key, { nodeId: n.id, at: Date.now() });
+    return { text: renderMenu(n, n === root, card, site), menu: { body: fill(n.text || n.title, card, site), labels: [...n.options.slice(0, 9).map((o) => o.label), ...(n === root ? [] : [MAIN_MENU])] } };
+  };
   if (triggers.includes(t) || (firstContact && flow.greetNew !== false && !live)) return show(root);
   if (!live) return null;
-  if (t === "0") return show(root);
+  if (t === "0" || t === MAIN_MENU.toLowerCase()) return show(root);
   const node = nodes.find((n) => n.id === live.nodeId) ?? root;
   const n = /^\d{1,2}$/.test(t) ? parseInt(t, 10) : 0;
   const opt = (n >= 1 && node.options[n - 1]) || node.options.find((o) => o.label.toLowerCase() === t);
@@ -161,9 +178,108 @@ async function runFlow(ownerId: string, card: Card, site: string, from: string, 
   const target = nodes.find((x) => x.id === opt.target);
   if (opt.action === "menu" && target) return show(target);
   if (opt.action === "text" && opt.reply) { flowState.set(key, { nodeId: node.id, at: Date.now() }); return { text: `${fill(opt.reply, card, site)}\n\n_0 for main menu_` }; }
+  if (opt.action !== "menu" && opt.action !== "text" && opt.action !== "ai" && opt.action !== "human") {
+    const card3 = opt.action === "address" || opt.action === "offer" || opt.action === "products";
+    if (card3) flowState.set(key, { nodeId: node.id, at: Date.now() }); else flowState.delete(key);
+    const out = await deskStart(opt.action, c, text, true);
+    if (out) return out;
+    flowState.delete(key);
+    return { text: "", askAi: opt.label };
+  }
   flowState.delete(key);
   if (opt.action === "human") return { text: fill(opt.reply ?? "", card, site) || `Ji, ${card.name.split(" ")[0]} aapse jald hi khud baat karenge 🙏 Tab tak aap apna sawaal yahin likh sakte hain.`, alert: `Customer chose "${opt.label}" — wants to talk to you.`, human: true };
   return { text: fill(opt.reply ?? "", card, site) || "Zaroor! Aap apna sawaal likhiye, main turant jawab dunga 🙂" };
+}
+
+/* ---------------- the shop's own counter on the Business API number (same answers as the QR bridge: bridge/shop-desk.mjs) ----------------
+ * Status / dues / bill from the shop's books, the card's address / offer / products, the enquiry form, an appointment, an order
+ * and "X hai kya?" from the stock. A talk in progress (form, appointment, order) is kept here per customer for 20 minutes. */
+type DeskAction = "status" | "due" | "bill" | "book" | "form" | "order" | "address" | "offer" | "products";
+type DeskCtx = { ownerId: string; card: Card; site: string; from: string; phone: string; name: string; leadId: string | null };
+type DeskOut = { text: string; alert?: string };
+type Turn<D> = { st?: Record<string, unknown>; say?: string; done?: D; end?: boolean; pass?: boolean };
+type OrderDone = { name: string; qty: number; total: number; pickup: boolean; addr: string };
+type Conv = { kind: "form" | "book" | "order"; st: Record<string, unknown>; at: number };
+const convState = new Map<string, Conv>();
+const CONV_TTL = 20 * 60_000;
+const APP = (process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com").replace(/\/$/, "");
+const UPI_RE = /^[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9]{1,30}$/;
+const deskRest = async (q: string): Promise<Record<string, unknown>[]> => { const r = await restAsService<Record<string, unknown>[]>(q); return Array.isArray(r.data) ? r.data : []; };
+const stockCache = new Map<string, { at: number; v: Awaited<ReturnType<typeof shopItems>> }>();
+async function stockOf(ownerId: string) {
+  const c = stockCache.get(ownerId);
+  if (c && Date.now() - c.at < 120_000) return c.v;
+  const v = await shopItems({ owner: ownerId, rest: deskRest }).catch(() => []);
+  stockCache.set(ownerId, { at: Date.now(), v });
+  if (stockCache.size > 500) stockCache.clear();
+  return v;
+}
+async function ownerUpi(ownerId: string, card: Card): Promise<string> {
+  const rows = await deskRest(`owner_prefs?owner_id=eq.${ownerId}&select=crm`);
+  const shop = String((rows[0]?.crm as { mobileSetup?: { upi?: string } } | undefined)?.mobileSetup?.upi ?? "").trim();
+  const own = String(card.links.find((l) => l.type === "upi")?.value ?? "").trim();
+  return UPI_RE.test(shop) ? shop : UPI_RE.test(own) ? own : "";
+}
+/** Fields and tags onto the lead (the tags it already has are kept). */
+async function leadPatch(leadId: string | null, fields: Record<string, unknown>, tags: string[]) {
+  if (!leadId) return;
+  const have = one(await restAsService<{ tags: string[] | null }[]>(`leads?id=eq.${leadId}&select=tags`))?.tags ?? [];
+  const add = tags.filter((t) => !have.includes(t));
+  const body = { ...fields, ...(add.length ? { tags: [...have, ...add].slice(0, 30) } : {}) };
+  if (Object.keys(body).length) await restAsService(`leads?id=eq.${leadId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(body) });
+}
+const setConv = (key: string, kind: Conv["kind"], st: Record<string, unknown>) => { convState.set(key, { kind, st, at: Date.now() }); if (convState.size > 5000) for (const [k, c] of convState) if (Date.now() - c.at > CONV_TTL) convState.delete(k); };
+
+/** A menu option's action (or a free-typed counter question). Null: nothing to say from the books — the AI answers. */
+async function deskStart(action: DeskAction, c: DeskCtx, text: string, forced: boolean): Promise<DeskOut | null> {
+  const key = `${c.ownerId}:${c.from}`;
+  if (action === "form") { const qs = formQuestions(c.card.botRules); setConv(key, "form", { qs, answers: [] }); return { text: `ज़रूर 🙂 बस ${qs.length} छोटे सवाल:\n\n${qs[0].q}` }; }
+  if (action === "book") { const days = bookDays({}); setConv(key, "book", { step: "day", days }); return { text: dayMenu(days) }; }
+  if (action === "order") { const items = orderList(c.card, await stockOf(c.ownerId)); setConv(key, "order", { step: "item", items }); return { text: orderMenu(items) }; }
+  if (action === "address" || action === "offer" || action === "products") { const a = cardAnswer(action, c.card, { link: c.site }); return a ? { text: `${a}\n\n_0 for main menu_` } : null; }
+  const args = { owner: c.ownerId, phone: c.phone, text, rest: deskRest, site: APP };
+  const out = action === "status" ? await deskStatus(args) : action === "due" ? await deskDue({ ...args, upi: await ownerUpi(c.ownerId, c.card) }) : await deskBill(args);
+  return out ? { text: out } : forced ? { text: deskNothing(action) } : null;
+}
+/** A talk in progress, then a free-typed counter question, then a stock question. Null: not for the counter. */
+async function deskCloud(c: DeskCtx, text: string, flow: Flow | null): Promise<DeskOut | null> {
+  const key = `${c.ownerId}:${c.from}`;
+  const conv = convState.get(key);
+  if (conv && Date.now() - conv.at < CONV_TTL) {
+    convState.delete(key);
+    if (conv.kind === "form") {
+      const r = formTurn(conv.st as Parameters<typeof formTurn>[0], text) as unknown as Turn<{ patch: Record<string, unknown>; summary: string }>;
+      if (r.st) { setConv(key, "form", r.st); return { text: r.say ?? "" }; }
+      if (r.done) {
+        await leadPatch(c.leadId, r.done.patch, ["form"]);
+        return { text: `धन्यवाद 🙏 आपकी जानकारी मिल गई। ${c.card.name.split(" ")[0] || "हम"} जल्द ही आपसे बात करेंगे। तब तक कोई सवाल हो तो यहीं लिख दीजिए।`, alert: r.done.summary ? `Enquiry form filled — ${r.done.summary}` : undefined };
+      }
+    } else if (conv.kind === "book") {
+      const r = await bookTurn(conv.st as Parameters<typeof bookTurn>[0], text, { owner: c.ownerId, rest: deskRest }) as unknown as Turn<{ day: string; slot: { iso: string; label: string } }>;
+      if (r.st) { setConv(key, "book", r.st); return { text: r.say ?? "" }; }
+      if (r.done) {
+        const id = await createBooking({ ownerId: c.ownerId, cardId: c.card.id, leadId: c.leadId, name: c.name, phone: c.phone, service: "", startsAt: new Date(r.done.slot.iso), note: "WhatsApp पर खुद चुना समय", source: "whatsapp" });
+        if (!id) return { text: "माफ़ कीजिए, अभी booking दर्ज नहीं हो पाई 🙏 हम आपसे खुद बात करके समय पक्का करेंगे।", alert: `Wanted an appointment on ${r.done.day} at ${r.done.slot.label} — it could not be saved, please confirm with them.` };
+        return { text: bookedText(r.done.day, r.done.slot, c.card.company || ""), alert: `New appointment booked on WhatsApp: ${r.done.day}, ${r.done.slot.label}` };
+      }
+    } else {
+      const r = orderTurn(conv.st as Parameters<typeof orderTurn>[0], text, { all: conv.st.step === "item" ? await stockOf(c.ownerId) : [] }) as unknown as Turn<OrderDone>;
+      if (r.st) { setConv(key, "order", r.st); return { text: r.say ?? "" }; }
+      if (r.end && !r.pass) return { text: r.say ?? "" };
+      if (r.done) {
+        const o = r.done;
+        await leadPatch(c.leadId, { ai_intent: "Order", ...(o.total ? { value_paise: o.total } : {}), ...(o.addr ? { address: o.addr.slice(0, 200) } : {}), updated_at: new Date().toISOString() }, ["order"]);
+        return { text: orderDoneText(o, { upi: await ownerUpi(c.ownerId, c.card), shop: c.card.company || "" }), alert: `🛒 New order on WhatsApp — ${orderOwnerLine(o)}. Please confirm with the customer.` };
+      }
+    }
+  }
+  const has = (a: string) => !!flow?.nodes.some((n) => n.options.some((o) => o.action === a));
+  const intent = deskIntent(text, { book: has("book"), order: has("order") }) as DeskAction | null;
+  if (intent) return deskStart(intent, c, text, false);
+  if (!asksStock(text)) return null;
+  const found = matchItems(text, await stockOf(c.ownerId));
+  const ans = stockAnswer(found, { order: has("order") });
+  return ans ? { text: ans.text, alert: ans.out ? `Asked for "${found[0].name}" — it is out of stock.` : undefined } : null;
 }
 
 /* ---------------- inbound webhook handling ---------------- */
@@ -235,25 +351,36 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     const lastIn = recent.filter((r) => r.direction === "in").slice(-5);
     if (botRecent >= 6 && lastIn.length === 5 && lastIn.every((r) => (r.text ?? "").trim().length > 80)) { console.warn("[wa-cloud] loop guard: no reply to", phone.slice(0, 6) + "…"); continue; }
     const firstContact = rows.filter((r) => r.direction === "in").length <= 1;
-    const flow = text ? await runFlow(acc.owner_id, card, site, m.from, text, firstContact) : null;
-    if (flow) {
-      await reply(acc, card, phone, flow.text);
+    const ctx: DeskCtx = { ownerId: acc.owner_id, card, site, from: m.from, phone, name, leadId };
+    // The shop's own counter first (a talk in progress, "mera phone ban gaya?", "X hai kya?"), then the menu.
+    const desk = text ? await deskCloud(ctx, text, await flowFor(acc.owner_id)).catch((e) => { console.error("[wa-cloud] desk", e); return null; }) : null;
+    if (desk) {
+      await reply(acc, card, phone, desk.text);
+      if (desk.alert && leadId) await note(acc.owner_id, leadId, `🔔 ${desk.alert}`, true);
+      continue;
+    }
+    const flow = text ? await runFlow(ctx, text, firstContact) : null;
+    let ask = text;
+    if (flow && !flow.askAi) {
+      if (!flow.menu || !(await replyMenu(acc, card, phone, flow.menu, flow.text))) await reply(acc, card, phone, flow.text);
       if (flow.alert && leadId) await note(acc.owner_id, leadId, `🔔 ${flow.alert}`, true);
       continue;
     }
-    if (!acc.ai_enabled) continue;
+    if (flow?.askAi) ask = flow.askAi;
+    if (!acc.ai_enabled) { if (flow?.askAi) await reply(acc, card, phone, "ज़रूर! आप अपना सवाल लिख दीजिए 🙂"); continue; }
     if (!text) { // media without caption
       await reply(acc, card, phone, kind === "audio" ? "माफ़ कीजिए 🙏 मैं voice message अभी सुन नहीं पाता। आप टाइप करके भेज दें, तुरंत जवाब दूँगा।" : "धन्यवाद, मिल गया 🙏 बस ये बता दीजिए, आप इसके बारे में क्या जानना चाहते हैं?");
       continue;
     }
     const history: ChatMsg[] = rows.filter((r) => r.text && !r.text.startsWith("[")).map((r) => ({ role: r.direction === "in" ? "user" : "assistant", content: r.text }));
-    if (!history.length || history[history.length - 1].content !== text) history.push({ role: "user", content: text });
+    if (ask !== text && history.length && history[history.length - 1].role === "user") history.pop();   // the menu number → the option's own words
+    if (!history.length || history[history.length - 1].content !== ask) history.push({ role: "user", content: ask });
     const ai = await aiReply(card, history, "whatsapp");
     const { text: out0, alert } = splitAlert(ai);
     const { text: out1, order } = splitOrder(out0);
     // Demo talk → the demo video link goes along (once per chat: an earlier bot message already carrying it counts).
     const demoShared = !!demoLink(card.botFiles) && rows.some((r) => r.direction === "out" && r.text?.includes(demoLink(card.botFiles)!.url));
-    const out = ensureDemoLink(out1, text, card.botFiles, demoShared);
+    const out = ensureDemoLink(out1, ask, card.botFiles, demoShared);
     if (out || order) {
       if (out) await reply(acc, card, phone, out);
       if (alert && leadId) await note(acc.owner_id, leadId, `🔔 AI alert: ${alert}`, true);
@@ -272,6 +399,19 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
       await reply(acc, card, phone, `नमस्ते 🙏 ${card.name.split(" ")[0]} जी आपको जल्दी ही खुद जवाब देंगे।${site ? `\nतब तक डिटेल्स यहाँ देखें: ${site}` : ""}${wa ? `` : ""}`);
     }
   }
+}
+/** The menu as things to tap: up to three short options → reply buttons, up to ten → a list. False: it does not fit
+ *  (long or repeated labels) or WhatsApp refused it — the caller sends the numbered text menu instead. */
+async function replyMenu(acc: CloudAccount, card: Card | null, phone: string, menu: MenuOut, asText: string): Promise<boolean> {
+  const labels = menu.labels.map((l) => l.trim()), body = menu.body.trim();
+  if (!body || body.length > 1000 || !labels.length || labels.length > 10 || new Set(labels.map((l) => l.toLowerCase())).size !== labels.length) return false;
+  const buttons = labels.length <= 3 && labels.every((l) => l.length >= 1 && l.length <= 20);
+  if (!buttons && !labels.every((l) => l.length >= 1 && l.length <= 24)) return false;
+  try {
+    const id = await sendCloud(acc, phone, { interactive: buttons ? { body, buttons: labels } : { body, rows: labels, button: "Choose" } });
+    if (id) await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, waId: id, direction: "out", sender: "bot", text: asText });
+    return !!id;
+  } catch (e) { console.warn("[wa-cloud] menu as buttons refused, sending text:", friendlyGraphError(e).slice(0, 120)); return false; }
 }
 /** "[MEDIA] url" lines in an AI reply → the text, then each file as a real photo / video / document message. */
 async function reply(acc: CloudAccount, card: Card | null, phone: string, raw: string) {

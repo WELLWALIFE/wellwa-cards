@@ -36,6 +36,7 @@ import { rulesBlock, alertBlock, ownLanguage } from "./ai-rules.mjs";
 import {
   autoTags, bookDays, bookedText, cardAnswer, dayMenu, deskBill, deskDue, deskIntent, deskNothing, deskStatus, formQuestions, formResult, freeSlots,
   parseRating, ratingReply, slotMenu,
+  shopItems, matchItems, asksStock, stockAnswer, orderList, orderMenu, orderTurn, orderDoneText, orderOwnerLine,
 } from "./shop-desk.mjs";
 import QRCode from "qrcode";
 import pino from "pino";
@@ -507,9 +508,12 @@ let stats = {}; try { stats = JSON.parse(readFileSync(STATS_PATH, "utf8")) || {}
 let asks = []; try { const a = JSON.parse(readFileSync(ASKS_PATH, "utf8")); asks = Array.isArray(a) ? a : []; } catch { asks = []; }
 const istDay = (ts = Date.now()) => new Date(ts + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
 let statsTimer = null;
-function bump(key) {
+function bump(key, pick = "") {
   const d = istDay();
-  stats[d] = { ...(stats[d] || {}), [key]: ((stats[d] || {})[key] || 0) + 1 };
+  const day = stats[d] || {};
+  // `pick`: the menu option's own words, so the report can show which option customers press the most
+  if (pick) { const k = String(pick).slice(0, 40); stats[d] = { ...day, picks: { ...(day.picks || {}), [k]: ((day.picks || {})[k] || 0) + 1 } }; }
+  else stats[d] = { ...day, [key]: (day[key] || 0) + 1 };
   if (statsTimer) return;
   statsTimer = setTimeout(() => {
     statsTimer = null;
@@ -981,6 +985,7 @@ async function runFlow(jid, name, text, firstContact) {
   const n = /^\d{1,2}$/.test(t) ? parseInt(t, 10) : 0;
   const opt = (n >= 1 && opts[n - 1]) || opts.find((o) => String(o.label || "").toLowerCase() === t);
   if (!opt) { flowState.delete(jid); return false; } // free text → AI
+  bump("", opt.label);
   const target = nodes.find((x) => x.id === opt.target);
   switch (opt.action) {
     case "menu":
@@ -989,7 +994,7 @@ async function runFlow(jid, name, text, firstContact) {
     case "text":
       if (opt.reply) { await sendReply(jid, `${flowVars(opt.reply)}\n\n_0 for main menu_`); noteReply(jid); flowState.set(jid, { nodeId: node.id, at: Date.now() }); return true; }
       break;
-    case "status": case "due": case "bill": case "book": case "form":
+    case "status": case "due": case "bill": case "book": case "form": case "order":
       // the shop's own counter: answered from its books (bridge/shop-desk.mjs)
       flowState.delete(jid);
       if (await runDesk(jid, name, text, opt.action)) return true;
@@ -1044,7 +1049,8 @@ async function shopUpi() {
 }
 const bookState = new Map();   // jid -> { step: "day" | "slot", days, day, slots, at }
 const BOOK_TTL = 15 * 60 * 1000;
-const flowHasBook = () => !!flow?.enabled && (flow.nodes ?? []).some((n) => (n.options ?? []).some((o) => o.action === "book"));
+const flowHas = (action) => !!flow?.enabled && (flow.nodes ?? []).some((n) => (n.options ?? []).some((o) => o.action === action));
+const flowHasBook = () => flowHas("book");
 async function deskSay(jid, reply) { await sendReply(jid, reply); noteReply(jid); bump("replies"); bump("desk"); rememberTurn(jid, "assistant", reply); }
 
 async function bookStep(jid, name, text) {
@@ -1077,13 +1083,14 @@ async function bookStep(jid, name, text) {
   }).catch(() => null);
   bookState.delete(jid);
   if (!r?.ok) { console.error("[desk] booking not saved", r?.status); await deskSay(jid, "माफ़ कीजिए, अभी booking दर्ज नहीं हो पाई 🙏 हम आपसे खुद बात करके समय पक्का करेंगे।"); alertOwner(jid, name, `Wanted an appointment on ${st.day} at ${slot.label} — it could not be saved, please confirm with them.`, text).catch(() => {}); return true; }
+  bump("bookings");
   await deskSay(jid, bookedText(st.day, slot, cardContext?.data?.company || config.businessName || ""));
   alertOwner(jid, name, `New appointment booked on WhatsApp: ${st.day}, ${slot.label}`, "").catch(() => {});
   return true;
 }
 
 /** The lead of this chat gets these fields / tags (the row is made by the message log a moment earlier: looked for twice). */
-async function patchLead(jid, { fields = {}, tags = [] }) {
+async function patchLead(jid, { fields = {}, tags = [], note = "" }) {
   if (!cardContext || !SUPA_URL || !SUPA_KEY) return;
   const pn = await phoneOf(jid);
   const phone = pn ? "+" + pn : jid;
@@ -1096,8 +1103,8 @@ async function patchLead(jid, { fields = {}, tags = [] }) {
   const have = Array.isArray(row.tags) ? row.tags : [];
   const add = tags.filter((t) => !have.includes(t));
   const body = { ...fields, ...(add.length ? { tags: [...have, ...add].slice(0, 30) } : {}) };
-  if (!Object.keys(body).length) return;
-  await fetch(`${SUPA_URL}/rest/v1/leads?id=eq.${row.id}`, { method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify(body) }).catch(() => {});
+  if (Object.keys(body).length) await fetch(`${SUPA_URL}/rest/v1/leads?id=eq.${row.id}`, { method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify(body) }).catch(() => {});
+  if (note) await fetch(`${SUPA_URL}/rest/v1/lead_events`, { method: "POST", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: cardContext.owner_id, lead_id: row.id, kind: "ai", text: String(note).slice(0, 500) }) }).catch(() => {});
 }
 /** AI Training → More settings → "Tags by the customer's words": the lead is tagged by what they wrote. */
 function tagByWords(jid, text) {
@@ -1116,6 +1123,7 @@ async function formStep(jid, name, text) {
   st.at = Date.now();
   if (st.answers.length < st.qs.length) { await deskSay(jid, st.qs[st.answers.length].q); return true; }
   formState.delete(jid);
+  bump("forms");
   const { patch, summary } = formResult(st.qs, st.answers);
   await patchLead(jid, { fields: patch, tags: ["form"] }).catch(() => {});
   const seller = cardContext?.data?.name?.split(" ")[0] || config.businessName || "हम";
@@ -1124,7 +1132,34 @@ async function formStep(jid, name, text) {
   return true;
 }
 
-/** `forced`: the menu option's action ("status" | "due" | "bill" | "book" | "form"); without it the message itself is read. */
+/* Stock answers and an order in the chat (phase 4). The shop's items are read once in two minutes. */
+let shopCache = { at: 0, v: [] };
+async function shopStock() {
+  if (Date.now() - shopCache.at < 2 * 60 * 1000) return shopCache.v;
+  shopCache = { at: Date.now(), v: await shopItems({ owner: TENANT_ID, rest: deskRest }).catch(() => []) };
+  return shopCache.v;
+}
+const cardUpi = () => { const v = String(cardContext?.data?.links?.find?.((l) => l.type === "upi")?.value ?? "").trim(); return /^[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9]{1,30}$/.test(v) ? v : ""; };
+const orderState = new Map();   // jid -> { step, items, item, qty, addr, pickup, miss, at }
+const ORDER_TTL = 20 * 60 * 1000;
+async function orderStep(jid, name, text) {
+  const st = orderState.get(jid);
+  if (!st || Date.now() - st.at > ORDER_TTL) { orderState.delete(jid); return false; }
+  const r = orderTurn(st, text, { all: st.step === "item" ? await shopStock() : [] });
+  if (r.st) { orderState.set(jid, { ...r.st, at: Date.now() }); await deskSay(jid, r.say); return true; }
+  orderState.delete(jid);
+  if (r.end) { if (r.pass) return false; await deskSay(jid, r.say); return true; }
+  const o = r.done;
+  bump("orders");
+  const ist = new Date(Date.now() + 5.5 * 3600_000);
+  const followUp = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + (ist.getUTCHours() >= 18 ? 1 : 0), ist.getUTCHours() >= 18 ? 11 : ist.getUTCHours() + 2, 0) - 5.5 * 3600_000).toISOString();
+  await patchLead(jid, { fields: { ai_intent: "Order", ...(o.total ? { value_paise: o.total } : {}), ...(o.addr ? { address: o.addr.slice(0, 200) } : {}), next_follow_up: followUp, reminded_at: null, updated_at: new Date().toISOString() }, tags: ["order"], note: `🛒 Order on WhatsApp: ${orderOwnerLine(o)}` }).catch(() => {});
+  await deskSay(jid, orderDoneText(o, { upi: (await shopUpi()) || cardUpi(), shop: cardContext?.data?.company || config.businessName || "" }));
+  alertOwner(jid, name, `🛒 New order on WhatsApp — ${orderOwnerLine(o)}. Please confirm with the customer.`, "").catch(() => {});
+  return true;
+}
+
+/** `forced`: the menu option's action ("status" | "due" | "bill" | "book" | "form" | "order"); without it the message itself is read. */
 async function runDesk(jid, name, text, forced = "") {
   if (!SUPA_URL || !TENANT_ID || TENANT_ID === "legacy") return false;
   // A rating asked after the work was handed over (askForReview, "rating first"): a bare 1–5 within three days answers it.
@@ -1148,8 +1183,26 @@ async function runDesk(jid, name, text, forced = "") {
     return true;
   }
   if (!forced && bookState.has(jid) && await bookStep(jid, name, text)) return true;
-  const intent = forced || deskIntent(text, { book: flowHasBook() });
-  if (!intent) return false;
+  if (!forced && orderState.has(jid)) { if (await orderStep(jid, name, text)) return true; }
+  const intent = forced || deskIntent(text, { book: flowHasBook(), order: flowHas("order") });
+  if (!intent) {
+    // "Redmi 13 ka cover hai kya?" → from the shop's stock: the name and the price, never how many are left
+    if (!asksStock(text)) return false;
+    const found = matchItems(text, await shopStock());
+    const ans = stockAnswer(found, { order: flowHas("order") });
+    if (!ans) return false;
+    bump("stock");
+    await deskSay(jid, ans.text);
+    if (ans.out) alertOwner(jid, name, `Asked for "${found[0].name}" — it is out of stock.`, text).catch(() => {});
+    return true;
+  }
+  if (intent === "order") {
+    const items = orderList(ownCard(cardContext?.data), await shopStock());
+    orderState.set(jid, { step: "item", items, at: Date.now() });
+    flowState.delete(jid); bookState.delete(jid); formState.delete(jid);
+    await deskSay(jid, orderMenu(items));
+    return true;
+  }
   if (intent === "book") {
     const { end } = planHours();
     const days = bookDays({ end });
@@ -2615,8 +2668,12 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/stats") {
       // The last 7 days (IST), oldest first, and their totals.
       const days = Array.from({ length: 7 }, (_, i) => istDay(Date.now() - (6 - i) * DAY)).map((d) => ({ day: d, in: 0, replies: 0, followups: 0, alerts: 0, ...(stats[d] || {}) }));
-      const total = days.reduce((t, d) => ({ in: t.in + d.in, replies: t.replies + d.replies, followups: t.followups + d.followups, alerts: t.alerts + d.alerts }), { in: 0, replies: 0, followups: 0, alerts: 0 });
-      return json(res, 200, { days, total, today: days[6] });
+      const KEYS = ["in", "replies", "followups", "alerts", "desk", "stock", "orders", "bookings", "forms", "ratings"];
+      const total = Object.fromEntries(KEYS.map((k) => [k, days.reduce((t, d) => t + (Number(d[k]) || 0), 0)]));
+      const picked = {};
+      for (const d of days) for (const [k, n] of Object.entries(d.picks || {})) picked[k] = (picked[k] || 0) + (Number(n) || 0);
+      const picks = Object.entries(picked).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([label, n]) => ({ label, n }));
+      return json(res, 200, { days: days.map(({ picks: _p, ...d }) => d), total, today: days[6], picks });
     }
     if (req.method === "GET" && url.pathname === "/asks") return json(res, 200, { asks });
     if (req.method === "POST" && url.pathname === "/asks/done") {

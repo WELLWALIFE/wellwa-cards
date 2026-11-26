@@ -115,3 +115,91 @@ test("rating: only a bare 1–5 or stars counts; happy ones get the review link,
   assert.equal(parseRating("5 cover chahiye"), null); assert.equal(parseRating("6"), null); assert.equal(parseRating("ok"), null);
   assert.match(ratingReply(5, "https://g.page/r/x"), /g\.page/); assert.doesNotMatch(ratingReply(2, "https://g.page/r/x"), /g\.page/); assert.match(ratingReply(2, ""), /माफ़/);
 });
+
+/* ---------------- phase 4: stock answers and an order in the chat ---------------- */
+import { shopItems, cardItems, matchItems, asksStock, stockAnswer, orderList, orderMenu, parseQty, orderTurn, orderDoneText, orderOwnerLine, formTurn, bookTurn } from "./shop-desk.mjs";
+
+const stockRest = async (q) => {
+  if (q.startsWith("ms_items")) return [
+    { id: "a", name: "Back Cover Redmi 13", brand: "", model: "", variant: "", category: "Cover", price_paise: 19900, qty: 4, fits: ["Redmi 13"], serial: false },
+    { id: "b", name: "Tempered Glass", brand: "", model: "", variant: "", category: "Glass", price_paise: 9900, qty: 0, fits: ["Redmi 13", "Redmi 13C"], serial: false },
+    { id: "c", name: "", brand: "Samsung", model: "Galaxy A15", variant: "6/128", category: "Phone", price_paise: 1499900, qty: 0, fits: [], serial: true },
+  ];
+  if (q.startsWith("ms_units")) return [{ item_id: "c" }, { item_id: "c" }];
+  return [];
+};
+
+test("stock: the shop's items, matched by the customer's words, answered without the count", async () => {
+  const items = await shopItems({ owner: "o", rest: stockRest });
+  assert.equal(items.length, 3);
+  assert.equal(items[2].name, "Samsung Galaxy A15 6/128");
+  assert.equal(items[2].stock, 2);                                  // a serial item is counted by its IMEIs in stock
+  assert.ok(asksStock("Redmi 13 ka cover hai kya?"));
+  assert.ok(asksStock("Redmi 13 का cover है क्या"));
+  assert.ok(!asksStock("kal aata hu"));
+  const f = matchItems("Redmi 13 ka cover hai kya?", items);
+  assert.equal(f[0].id, "a");
+  const a = stockAnswer(f, { order: true });
+  assert.ok(a.text.includes("Back Cover Redmi 13") && a.text.includes("₹199") && !a.out);
+  assert.ok(!/\b4\b/.test(a.text));                                 // never how many are left
+  const g = stockAnswer(matchItems("tempered glass redmi 13 available?", items));
+  assert.ok(g.out && g.text.includes("stock में नहीं"));
+  assert.deepEqual(matchItems("iphone 15 hai kya", items), []);     // not kept → the AI answers
+  assert.deepEqual(matchItems("13", items), []);
+  assert.equal(matchItems("samsung a15 price", items)[0].id, "c");
+  assert.equal(stockAnswer([]), null);
+});
+
+test("order: item → quantity → address → confirm", async () => {
+  const shop = await shopItems({ owner: "o", rest: stockRest });
+  const items = orderList({ pages: [] }, shop);
+  assert.deepEqual(items.map((i) => i.id), ["a", "c"]);            // only what is in stock and priced
+  assert.ok(orderMenu(items).includes("1. Back Cover Redmi 13 — ₹199"));
+  let r = orderTurn({ step: "item", items }, "1");
+  assert.equal(r.st.step, "qty");
+  r = orderTurn(r.st, "pata nahi");
+  assert.equal(r.st.miss, 1);                                       // asked once more
+  r = orderTurn(r.st, "2 pcs");
+  assert.equal(r.st.step, "addr");
+  r = orderTurn(r.st, "12, Gandhi Nagar, Jaipur");
+  assert.equal(r.st.step, "ok");
+  assert.ok(r.say.includes("₹398"));
+  r = orderTurn(r.st, "haan");
+  assert.deepEqual(r.done, { name: "Back Cover Redmi 13", itemId: "a", qty: 2, price: 19900, total: 39800, pickup: false, addr: "12, Gandhi Nagar, Jaipur" });
+  assert.ok(orderDoneText(r.done, { upi: "shop@upi" }).includes("shop@upi"));
+  assert.ok(orderOwnerLine(r.done).includes("× 2 = ₹398"));
+  // by name, pickup, cancel
+  r = orderTurn({ step: "item", items }, "samsung a15");
+  assert.equal(r.st.item.id, "c");
+  r = orderTurn({ ...r.st, step: "addr", qty: 1 }, "pickup");
+  assert.equal(r.st.pickup, true);
+  assert.equal(orderTurn(r.st, "2").end, true);
+  assert.equal(orderTurn({ step: "qty", items, item: items[0] }, "0").end, true);
+  assert.equal(orderTurn({ step: "qty", items, item: items[0], miss: 1 }, "kya rate hai").pass, true);
+  assert.equal(parseQty("do"), 2); assert.equal(parseQty("3"), 3); assert.equal(parseQty("abc"), 0); assert.equal(parseQty("0"), 0);
+  // the card's own products come first
+  const card = { pages: [{ blocks: [{ kind: "product", items: [{ name: "Kurti", price: "1,299" }] }] }] };
+  assert.deepEqual(cardItems(card).map((i) => [i.name, i.price]), [["Kurti", 129900]]);
+  assert.equal(orderList(card, shop)[0].name, "Kurti");
+  // nothing to list → the customer types what they want
+  r = orderTurn({ step: "item", items: [] }, "2 kg kaju katli");
+  assert.equal(r.st.item.name, "2 kg kaju katli");
+});
+
+test("form and appointment as plain steps (Business API path)", async () => {
+  const qs = [{ key: "name", q: "नाम?" }, { key: "city", q: "शहर?" }];
+  let f = formTurn({ qs, answers: [] }, "Ravi");
+  assert.equal(f.say, "शहर?");
+  f = formTurn(f.st, "Jaipur");
+  assert.deepEqual(f.done.patch, { name: "Ravi", address: "Jaipur" });
+  assert.equal(formTurn({ qs, answers: [] }, "0").end, true);
+  const now = new Date("2026-11-26T10:00:00+05:30").getTime();
+  const days = [{ ymd: "2026-11-27", label: "कल" }];
+  const rest = async (q) => (q.includes("starts_at=eq.") ? [] : [{ starts_at: "2026-11-27T04:30:00.000Z" }]);   // 10:00 IST is taken
+  let b = await bookTurn({ step: "day", days }, "1", { owner: "o", rest, now });
+  assert.equal(b.st.step, "slot");
+  assert.ok(!b.st.slots.some((s) => s.hour === 10));
+  b = await bookTurn(b.st, "1", { owner: "o", rest, now });
+  assert.equal(b.done.day, "2026-11-27");
+  assert.equal((await bookTurn({ step: "day", days }, "kal aaunga", { owner: "o", rest, now })).end, true);
+});

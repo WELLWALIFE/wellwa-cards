@@ -121,7 +121,7 @@ export function AiAway({ card, onSaved, hi }: P) {
   );
 }
 
-type Stats = { total: { in: number; replies: number; followups: number; alerts: number }; today: { in: number; replies: number } };
+type Stats = { total: { in: number; replies: number; followups: number; alerts: number; desk?: number; stock?: number; orders?: number; bookings?: number; forms?: number; ratings?: number }; today: { in: number; replies: number }; picks?: { label: string; n: number }[] };
 type Ask = { at: number; name: string; why: string; text: string };
 
 /** The week on WhatsApp in four numbers, and the messages where the AI called the owner — each can become a taught answer. */
@@ -166,7 +166,19 @@ export function AiReport({ card, onSaved, hi }: P) {
             <div className="grid grid-cols-4 gap-2">
               {box(st.total.in, T("messages in", "message आए"))}{box(st.total.replies, T("AI replies", "AI के जवाब"))}{box(st.total.followups, T("follow-ups", "follow-up"))}{box(st.total.alerts, T("called you", "आपको बुलाया"))}
             </div>
-            <p className="text-[10px] text-muted">{T("Counted from today on; earlier days show 0.", "गिनती आज से शुरू हुई है; पहले के दिन 0 दिखेंगे।")}</p>
+            <p className="text-[11px] font-semibold text-muted">{T("Done by the bot on its own", "Bot ने खुद किया")}</p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {box(st.total.desk ?? 0, T("answers from your books", "आपके हिसाब से जवाब"))}{box(st.total.stock ?? 0, T("stock answers", "stock के जवाब"))}{box(st.total.orders ?? 0, T("orders taken", "order लिए"))}{box(st.total.bookings ?? 0, T("appointments", "appointment"))}{box(st.total.forms ?? 0, T("enquiry forms", "enquiry form"))}{box(st.total.ratings ?? 0, T("ratings", "rating"))}
+            </div>
+            {!!st.picks?.length && (
+              <div>
+                <p className="text-[11px] font-semibold text-muted">{T("Menu options pressed the most", "Menu में सबसे ज़्यादा दबाए गए option")}</p>
+                <ul className="mt-1 space-y-1">
+                  {st.picks.map((p) => <li key={p.label} className="flex items-center justify-between gap-2 rounded-lg bg-surface2 px-2.5 py-1.5 text-xs"><span className="min-w-0 truncate">{p.label}</span><b>{p.n}</b></li>)}
+                </ul>
+              </div>
+            )}
+            <p className="text-[10px] text-muted">{T("Counted from today on; earlier days show 0. Counted for the WhatsApp linked by QR.", "गिनती आज से शुरू हुई है; पहले के दिन 0 दिखेंगे। QR से जुड़े WhatsApp की गिनती।")}</p>
           </>
         )}
       <div className="border-t border-border pt-3">
