@@ -15,7 +15,11 @@ type Report = {
 };
 type Fix = { title: string; why: string; plan: "website" | "growth"; hi?: string };
 /** The partner whose website sent the visitor: the report's buttons open their WhatsApp. */
-type Partner = { name: string; wa: string; card?: string };
+type Partner = { name: string; wa: string; card?: string; join?: string };
+/** Join Shubhora from the check (owner, 26 Nov 2026: "maksad hai wo hamare saath jude"): the sign-up, under the partner who sent the
+ *  visitor (their account username as the sponsor), then the set-up filled from what Google shows about the business (?gc=). */
+const joinHref = (join: string, placeId?: string) =>
+  `/signup?${join ? `by=${encodeURIComponent(join)}&` : ""}${placeId ? `next=${encodeURIComponent(`/poster/onboard?gc=${placeId}`)}` : ""}`.replace(/[?&]$/, "");
 
 const post = async (body: unknown) => {
   const r = await fetch("/api/google-check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -36,6 +40,7 @@ export function GoogleCheck() {
   const [asked, setAsked] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [partner, setPartner] = useState<Partner | null>(null);
+  const [join, setJoin] = useState("");
 
   async function find(e: React.FormEvent) {
     e.preventDefault(); setError(""); setBusy("find"); setPlaces(null); setPick(null); setReport(null); setAsked(false);
@@ -46,7 +51,7 @@ export function GoogleCheck() {
     e.preventDefault(); if (!pick) return; setError(""); setBusy("report");
     // The partner whose website sent the visitor here (?by=<card>): the lead is theirs.
     let by = ""; try { by = new URLSearchParams(window.location.search).get("by") ?? ""; } catch { /* old browser */ }
-    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${where}`.trim(), ...(sells.trim() ? { sells: sells.trim() } : {}), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setReport(j.report);
+    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${where}`.trim(), ...(sells.trim() ? { sells: sells.trim() } : {}), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setJoin(j.join ?? ""); setReport(j.report);
       // The website's speed comes a little later and is put into the report shown.
       if (j.report?.sitePending) void post({ step: "speed", placeId: pick.id }).then((s) => { if (s.report) setReport((cur) => (cur && cur.place.id === s.report.place.id ? s.report : cur)); }).catch(() => setReport((cur) => (cur ? { ...cur, sitePending: false } : cur)));
     }
@@ -56,11 +61,11 @@ export function GoogleCheck() {
   async function askProfile(e: React.FormEvent) {
     e.preventDefault(); setError(""); setBusy("ask");
     let by = ""; try { by = new URLSearchParams(window.location.search).get("by") ?? ""; } catch { /* old browser */ }
-    try { const j = await post({ step: "noprofile", q, city: where, phone, name, ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setAsked(true); }
+    try { const j = await post({ step: "noprofile", q, city: where, phone, name, ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setJoin(j.join ?? ""); setAsked(true); }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
 
-  if (report) return <ReportView r={report} partner={partner} onReset={() => { setReport(null); setPlaces(null); setPick(null); }} />;
+  if (report) return <ReportView r={report} partner={partner} join={join} onReset={() => { setReport(null); setPlaces(null); setPick(null); }} />;
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-5 md:p-7">
@@ -105,6 +110,7 @@ export function GoogleCheck() {
           {asked ? (
             <div className="mt-4 rounded-lg bg-white/70 p-3 text-sm dark:bg-black/20">
               <p className="font-semibold text-good">✅ Done — we will call you on WhatsApp. / हम WhatsApp पर संपर्क करेंगे।</p>
+              <a href={joinHref(join)} className="mt-2 mr-2 inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 font-semibold text-white">Join Shubhora now / अभी जुड़ें <ArrowRight className="h-4 w-4" /></a>
               {partner && <a href={`https://wa.me/${partner.wa}?text=${encodeURIComponent(`Hi ${partner.name}, please make a Google profile for ${q}${city.trim() ? ` (${city.trim()})` : ""}.`)}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-4 py-2 font-semibold text-white">Talk to {partner.name} on WhatsApp <ArrowRight className="h-4 w-4" /></a>}
             </div>
           ) : (
@@ -147,7 +153,7 @@ export function GoogleCheck() {
 
 /** The report, drawn as a story (25 Nov 2026, after the owner put a competitor's report beside ours): who is ahead of you on Google,
  *  how complete your profile is, every issue found, and how Shubhora fixes them. Only what Google really shows us from outside. */
-function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | null; onReset: () => void }) {
+function ReportView({ r, partner, join, onReset }: { r: Report; partner: Partner | null; join: string; onReset: () => void }) {
   const [lang, setLang] = useState<"hi" | "en">("hi");
   const T = (en: string, hi: string) => (lang === "hi" ? hi : en);
   const issues = r.issues?.length ? r.issues : r.fixes;
@@ -321,6 +327,7 @@ function ReportView({ r, partner, onReset }: { r: Report; partner: Partner | nul
           <p className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#a9c8ff]" /> Growth Plan ₹2,999 / month: Google posts &amp; review replies, daily posters, WhatsApp AI, CRM</p>
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
+          <a href={joinHref(join, r.place.id)} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-base font-semibold text-[#171447] hover:opacity-90">{T("Join Shubhora — fix my Google", "Shubhora se judein — Google theek karein")} <ArrowRight className="h-5 w-5" /></a>
           <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-base font-semibold text-white hover:opacity-90">{partner?.name ? T(`Talk to ${partner.name} on WhatsApp`, `${partner.name} se WhatsApp par baat karein`) : T("Talk on WhatsApp", "WhatsApp par baat karein")} <ArrowRight className="h-5 w-5" /></a>
           <a href="/pricing" className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-5 py-3 text-base font-semibold text-white hover:bg-white/10">{T("See plans", "Plans dekhein")}</a>
         </div>

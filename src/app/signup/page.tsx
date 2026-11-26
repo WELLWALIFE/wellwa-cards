@@ -40,7 +40,8 @@ function age(d: string): number | null {
 
 /** A same-site path to go to after sign-up (the staff invite); "" for anything else. */
 function safeNext(n: string | null): string {
-  return n && /^\/poster\/orders\/join\?code=[A-Z0-9]{4,12}$/i.test(n) ? n : "";
+  // A staff invite, or the set-up filled from the free Google check's report (?gc=<place id>, owner, 26 Nov 2026).
+  return n && (/^\/poster\/orders\/join\?code=[A-Z0-9]{4,12}$/i.test(n) || /^\/poster\/onboard\?gc=[\w-]{10,300}$/.test(n)) ? n : "";
 }
 
 const FRANCHISE_KEY = "shubhora-franchise";

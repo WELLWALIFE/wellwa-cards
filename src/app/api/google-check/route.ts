@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     if (admin && card) { const { data: u } = await admin.from("cards").select("username").eq("id", card.id).maybeSingle(); cardName = u?.username ?? ""; }
     await saveSiteLead({ source: "google-check", name, phone, message, card: cardName }).catch(() => false);
     if (admin && card) {
-      await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email: "", message, source: "form", src: "google-check" });
+      await addLead(admin, card, name, phone, message, biz);
       const digits = phone.replace(/\D/g, ""); const to = digits.length === 10 ? `91${digits}` : digits;
       await notify(card.owner_id, "new_lead", {
         title: `New lead: ${name} — no Google profile`.slice(0, 80), body: `${biz}${city ? `, ${city}` : ""} · ${phone}`.slice(0, 160),
@@ -59,7 +59,8 @@ export async function POST(request: Request) {
       }).catch(() => undefined);
     }
     const partner = await partnerOf(by).catch(() => null);
-    return Response.json({ ok: true, ...(partner ? { partner } : {}) });
+    const join = partner?.join ?? (me ? await usernameOf(me.user.id) : "");
+    return Response.json({ ok: true, ...(partner ? { partner } : {}), ...(join ? { join } : {}) });
   }
 
   if (b.step === "report") {
@@ -84,7 +85,10 @@ export async function POST(request: Request) {
     if (phone.replace(/\D/g, "").length >= 10) await saveLead(phone, clean(b.name, 100) || report.place.name, report, clean(b.by, 60).toLowerCase(), me?.user.id).catch((e) => console.error("google-check lead", e));
     // Came from a partner's website: the report's "Fix my Google profile" button opens THAT partner's WhatsApp (their public number).
     const partner = await partnerOf(clean(b.by, 60).toLowerCase()).catch(() => null);
-    return Response.json({ ok: true, report, fresh, ...(partner ? { partner } : {}) });
+    // Who the shop joins under from the report: the partner whose website sent it, else the signed-in partner checking it with the
+    // shop owner beside them.
+    const join = partner?.join ?? (me ? await usernameOf(me.user.id) : "");
+    return Response.json({ ok: true, report, fresh, ...(partner ? { partner } : {}), ...(join ? { join } : {}) });
   }
   // The website's speed, asked by the page right after it shows the report (it takes 20 to 40 seconds). Only for a report already
   // made and still waiting for it: nothing new is asked of Google Places, and nobody's number is needed again.
@@ -101,15 +105,39 @@ export async function POST(request: Request) {
   return Response.json({ ok: false, error: "Unknown step." }, { status: 400 });
 }
 
-/** A Shubhora partner's name and WhatsApp number as their own card shows them; null for any other card. */
-async function partnerOf(by: string): Promise<{ name: string; wa: string; card: string } | null> {
+/** The lead in the CRM, with a follow-up two days later (owner, 26 Nov 2026: the check is there to bring businesses to Shubhora — a
+ *  visitor who has not joined by then is called). A "call" task: the owner is reminded; nothing is sent to the customer by itself. */
+async function addLead(admin: NonNullable<ReturnType<typeof getAdminSupabase>>, card: { id: string; owner_id: string }, name: string, phone: string, message: string, biz: string) {
+  const { data } = await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email: "", message, source: "form", src: "google-check" }).select("id").maybeSingle();
+  if (!data?.id) return;
+  // 11 am IST, two days on.
+  const d = new Date(Date.now() + 5.5 * 3600_000 + 2 * 86_400_000); d.setUTCHours(11, 0, 0, 0);
+  const due = new Date(d.getTime() - 5.5 * 3600_000).toISOString();
+  await admin.from("crm_tasks").insert({ owner_id: card.owner_id, lead_id: data.id, kind: "call", source: "auto", due_at: due,
+    title: `Google check follow-up: ${biz}`.slice(0, 120),
+    text: `Checked "${biz}" on the free Google check 2 days ago. Call: has he joined? Offer to fix the Google profile with the Growth plan.`.slice(0, 1000) });
+  await admin.from("leads").update({ next_follow_up: due }).eq("id", data.id);
+}
+
+async function usernameOf(userId: string): Promise<string> {
+  const admin = getAdminSupabase(); if (!admin) return "";
+  const { data } = await admin.from("profiles").select("username").eq("id", userId).maybeSingle();
+  return (data?.username as string | undefined) ?? "";
+}
+
+/** A Shubhora partner's name and WhatsApp number as their own card shows them; null for any other card. `join`: the partner's own
+ *  account username — the sponsor on the sign-up link, so a shop that joins from the report sits under that partner. */
+async function partnerOf(by: string): Promise<{ name: string; wa: string; card: string; join?: string } | null> {
   const admin = getAdminSupabase();
   if (!admin || !/^[a-z0-9_.-]{2,60}$/.test(by)) return null;
   const { data } = await admin.from("cards").select("data").eq("username", by).maybeSingle();
   const d = (data?.data ?? {}) as { company?: string; name?: string; jobTitle?: string; tagline?: string; links?: { type?: string; value?: string }[] };
   if (!data || !isShubhoraSellerCard(d)) return null;
   const wa = ((d.links ?? []).find((l) => l.type === "whatsapp")?.value ?? "").replace(/\D/g, "");
-  return wa.length >= 10 ? { name: (d.name || d.company || "").trim(), wa: wa.length === 10 ? `91${wa}` : wa, card: by } : null;
+  if (wa.length < 10) return null;
+  const { data: u } = await admin.rpc("card_owner_username", { p_card: by });
+  const join = Array.isArray(u) ? (u[0] as { username?: string } | undefined)?.username : undefined;
+  return { name: (d.name || d.company || "").trim(), wa: wa.length === 10 ? `91${wa}` : wa, card: by, ...(join ? { join } : {}) };
 }
 
 /** The report as one WhatsApp message: where they stand, the score, what to fix first, and the link to check again. */
@@ -166,7 +194,7 @@ async function deliverLead(admin: NonNullable<ReturnType<typeof getAdminSupabase
   if (card) { const { data: u } = await admin.from("cards").select("username").eq("id", card.id).maybeSingle(); cardName = u?.username ?? ""; }
   await saveSiteLead({ source: "google-check", name, phone, message, card: cardName });
   if (!card) return;
-  await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email: "", message, source: "form", src: "google-check" });
+  await addLead(admin, card, name, phone, message, r.place.name);
 
   // The page says "we send the full report there too": it goes from the lead owner's own WhatsApp when it is linked (the same
   // bridge as booking reminders). Not linked: the owner gets the report with the customer's number, to forward in one tap.

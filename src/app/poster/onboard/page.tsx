@@ -487,6 +487,17 @@ function Onboard() {
         const liveAbout = live ? (live.pages.flatMap((pg) => pg.blocks).find((bl) => bl.kind === "about")?.body || live.about || "").trim() : "";
         if (liveAbout) { setBiz((b) => ({ ...b, about: liveAbout })); atLoad.current.about = liveAbout; }
       }
+      // Joined from the free Google check (?gc=<place id>): what Google shows about the business fills what is still empty — name,
+      // address, city, website, the Maps pin (owner, 26 Nov 2026: joining from the report must take a minute).
+      const gc = params.get("gc");
+      if (gc && /^[\w-]{10,300}$/.test(gc)) {
+        const g = await api<{ name?: string; address?: string; city?: string; website?: string; map?: string }>(`/api/google-check/prefill?p=${encodeURIComponent(gc)}`).catch(() => null);
+        if (g?.ok && g.data.name) {
+          const x = g.data;
+          setBiz((b) => ({ ...b, name: b.name || x.name, address: b.address || x.address || "", city: b.city || x.city || "", map: b.map || x.map || "", website: b.website || x.website || "" }));
+          if (x.website && !storedUrl) setSite({ kind: "own", url: x.website, assertedAt: "" });
+        }
+      }
       draftReady.current = true;
       setLoading(false);
     } catch {
