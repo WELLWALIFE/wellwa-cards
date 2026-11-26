@@ -258,7 +258,14 @@ const TUTORIALS = {
       return [
         { id: "intro", say: "क्या आपकी मोबाइल दुकान में भी उधार की कॉपी खो जाती है, किस ग्राहक को कौन-सा फ़ोन बेचा याद नहीं रहता, और शाम को हिसाब नहीं मिलता? Shubhora की Mobile दुकान ये सब एक ही app में संभालती है — बिल, उधार, IMEI वाला स्टॉक, रिपेयर और रोज़ का हिसाब। बिल, 'फ़ोन तैयार है' और उधार की याद ग्राहक को WhatsApp पर अपने-आप जाती है। ये video पूरा देखिए — इसके बाद आप पूरी दुकान खुद चला लेंगे। My Shop में Mobile दुकान खोलिए; सबसे ऊपर शुरुआत के सात step हैं, हर step दबाने पर वही screen खुलती है।",
           between: async () => { await u.cleanMobile(); await u.login(); await u.goto(`${SITE}/poster/mobile`); await u.waitText("How to start", 30000); },
-          act: async () => { await u.cue(0); await pause(1500); await u.cue(1); await pause(1200); await u.cue(2); await pause(800); await u.cue(3); await pause(600); await u.cue(4); await u.scrollBy(350, 2500); await pause(800); await u.scrollBy(-350, 1200); } },
+          // a moving tour, not one still screen: the guide's list of jobs while the words say what the app does
+          act: async () => {
+            await u.cue(0); await u.scrollBy(450, 4000); await u.scrollBy(-450, 1500);
+            await u.cue(1); await u.goto(`${SITE}/poster/mobile/guide`); await u.scrollBy(900, 6000);
+            await u.cue(2); await u.scrollBy(900, 5000);
+            await u.cue(3); await u.goto(`${SITE}/poster/mobile`); await pause(800);
+            await u.cue(4); await u.scrollBy(350, 2500); await pause(800); await u.scrollBy(-350, 1200);
+          } },
         { id: "settings", say: "Step एक — दुकान की जानकारी भरिए; Mobile दुकान की Settings खोलिए। Settings में दुकान का नाम, फ़ोन और पता लिखिए; ये हर बिल पर छपते हैं। अपनी UPI ID भी डालिए — फिर हर बिल पर सही रक़म का QR अपने-आप बनता है। Printer का size चुनिए, और GST number हो तभी GST चालू करें। सब भरने के बाद नीचे Save दबाइए, और दुकान तैयार।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000); },
           act: async () => {
@@ -559,7 +566,13 @@ async function backgroundPng(file, W, H, { title, subtitle, logo, titleAt, size 
 /* ============================== helpers: the phone ============================== */
 export function ui(page, { work, email, uid }) {
   const u = { page };
-  u.goto = async (url) => { await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 }); await pause(600); };
+  // A page is shown only once it has loaded its own data: no spinner on camera while the words run (owner, 26 Nov 2026 — the
+  // mobile video showed a white page with a spinner for whole sentences).
+  u.goto = async (url) => {
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+    await page.waitForFunction(() => { const sp = [...document.querySelectorAll(".animate-spin")].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0; }); return sp.length === 0 && (document.body?.innerText || "").trim().length > 40; }, { timeout: 20000, polling: 200 }).catch(() => undefined);
+    await pause(600);
+  };
   /** Waits until the screen says `text` (or any of several). Done in slices of 20 s: one long wait inside the browser
    *  dies at Chrome's own 3-minute call limit ("Runtime.callFunctionOn timed out"), long before a website build ends.
    *  body can be missing for an instant while the page swaps documents, hence the ?. */
@@ -941,7 +954,28 @@ async function compose(work, outDir) {
     // (the AI working, a page loading) are played fast (owner, 18 Oct 2026: "jaha sirf processing ho rahi, voice nahi, fast forward kar do").
     const SR = 24000, bytes = (sec) => Math.round(sec * SR) * 2, FAST_MIN = 1.4;
     const segFiles = [], audioBits = []; let outSec = 0, sped = 0;
+    // The mobile shop video (owner, 26 Nov 2026: "professional lage"): a title card first, the step's name on top, the words as
+    // subtitles at the bottom (most people watch with the sound off), and a closing card with how to start. Each piece is put on
+    // one short segment at a time, so the server's memory is never strained.
+    const dressed = meta.tutorial === "mobile";
+    const headsOf = dressed ? MS_HEADS : null;
+    const CAP = { width: 1000, size: 44, x: 40 };
+    const card = async (tag, title, subtitle, sec) => {
+      const png = path.join(work, `card-${tag}.png`), mp4 = path.join(work, `card-${tag}.mp4`);
+      await backgroundPng(png, W, H, { title, subtitle, logo: { x: 460, y: 640, size: 160 }, titleAt: { x: 540, y: 940, anchor: "middle" }, size: 68 });
+      ff(["-loop", "1", "-t", sec.toFixed(2), "-i", png, "-vf", "fps=30,format=yuv420p,setsar=1", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", mp4], `card ${tag}`);
+      segFiles.push(mp4); audioBits.push(Buffer.alloc(bytes(sec))); outSec += sec;
+    };
+    if (dressed) await card("open", meta.title, meta.subtitle, 3);
     for (const [i, x] of scenes.entries()) {
+      const headFile = headsOf?.[x.id] ? path.join(work, `fhead-${i}.png`) : "";
+      if (headFile) await headPng(headFile, W, H, { label: headsOf[x.id], frac: (i + 1) / scenes.length, y: 26 });
+      const capFiles = [];
+      if (dressed) for (const [k, c] of (x.caps ?? []).entries()) {
+        const file = path.join(work, `fcap-${i}-${k}.png`);
+        const size = await captionPng(file, c.text, CAP);
+        capFiles.push({ file, y: H - size.h - 170, from: c.from - x.start, to: c.to - x.start });
+      }
       const tag = String(i).padStart(2, "0");
       const full = path.join(work, `full-${tag}.mp4`);
       ff(["-i", x.clip, "-vf", `scale=${W}:${H}:flags=lanczos,fps=30,format=yuv420p,setsar=1`, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-threads", "1", "-pix_fmt", "yuv420p", full], `clip ${x.id}`);
@@ -956,13 +990,25 @@ async function compose(work, outDir) {
       }
       for (const [j, g] of segs.entries()) {
         const seg = path.join(work, `seg-${tag}-${String(j).padStart(2, "0")}.mp4`);
-        ff(["-ss", g.from.toFixed(3), "-t", (g.to - g.from).toFixed(3), "-i", full, "-vf", g.speed > 1 ? `setpts=PTS/${g.speed.toFixed(3)},fps=30` : "fps=30", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", seg], `cut ${x.id}`);
+        const base = g.speed > 1 ? `setpts=PTS/${g.speed.toFixed(3)},fps=30` : "fps=30";
+        const segLen = (g.to - g.from) / g.speed;
+        // what lies over this piece: the step's name always; a sentence's subtitle while it is spoken (not over the fast parts)
+        const over = [];
+        if (headFile) over.push({ file: headFile, x: 0, y: 0, a: 0, b: segLen });
+        if (g.speed === 1) for (const c of capFiles) { const a = c.from - g.from, b = c.to - g.from; if (b > 0.05 && a < segLen - 0.05) over.push({ file: c.file, x: CAP.x, y: c.y, a: Math.max(0, a), b: Math.min(segLen, b) }); }
+        if (!over.length) ff(["-ss", g.from.toFixed(3), "-t", (g.to - g.from).toFixed(3), "-i", full, "-vf", base, "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", seg], `cut ${x.id}`);
+        else {
+          let fc = `[0:v]${base}[o0]`;
+          over.forEach((o, k) => { fc += `;[o${k}][${k + 1}:v]overlay=${o.x}:${o.y}:enable='between(t,${o.a.toFixed(2)},${o.b.toFixed(2)})'[o${k + 1}]`; });
+          ff(["-ss", g.from.toFixed(3), "-t", (g.to - g.from).toFixed(3), "-i", full, ...over.flatMap((o) => ["-i", o.file]), "-filter_complex", fc, "-map", `[o${over.length}]`, "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", seg], `cut ${x.id}`);
+        }
         segFiles.push(seg);
         const len = (g.to - g.from) / g.speed; outSec += len; if (g.speed > 1) sped += g.to - g.from;
         audioBits.push(g.speed > 1 ? Buffer.alloc(bytes(len)) : pcm[i].subarray(bytes(g.from), bytes(g.to)));
       }
       fs.rmSync(full, { force: true });
     }
+    if (dressed) await card("close", "आज ही शुरू करें", "shubhora.com  ·  WhatsApp +91 76656 69888", 5);
     log(`phone: ${sped.toFixed(0)} s of silent waiting played fast; ${total.toFixed(0)} s → ${outSec.toFixed(0)} s`);
     const list = path.join(work, "full-list.txt"); fs.writeFileSync(list, segFiles.map((x) => `file '${x}'`).join("\n"));
     const video = path.join(work, "full-video.mp4");
