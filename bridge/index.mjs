@@ -33,6 +33,7 @@ import { fileURLToPath } from "node:url";
 import * as baileys from "@whiskeysockets/baileys";
 import { cardDigest } from "./card-digest.mjs";
 import { rulesBlock, alertBlock, ownLanguage } from "./ai-rules.mjs";
+import { bookDays, bookedText, dayMenu, deskBill, deskDue, deskIntent, deskNothing, deskStatus, freeSlots, slotMenu } from "./shop-desk.mjs";
 import QRCode from "qrcode";
 import pino from "pino";
 
@@ -984,6 +985,11 @@ async function runFlow(jid, name, text, firstContact) {
     case "text":
       if (opt.reply) { await sendReply(jid, `${flowVars(opt.reply)}\n\n_0 for main menu_`); noteReply(jid); flowState.set(jid, { nodeId: node.id, at: Date.now() }); return true; }
       break;
+    case "status": case "due": case "bill": case "book":
+      // the shop's own counter: answered from its books (bridge/shop-desk.mjs)
+      flowState.delete(jid);
+      if (await runDesk(jid, name, text, opt.action)) return true;
+      break;
     case "human": {
       flowState.delete(jid);
       humanActive.set(jid, Date.now()); // bot steps aside for 15 min, same as a manual reply
@@ -1002,6 +1008,92 @@ async function runFlow(jid, name, text, firstContact) {
   }
   flowState.delete(jid);
   return false;
+}
+
+
+/* ---------------- the shop's own counter (bridge/shop-desk.mjs) ----------------
+ * Status of a repair / tailoring job / jewellery order, what the customer owes, their last bill, and an appointment — answered
+ * from the shop's own books, before the menu and the AI. true → answered here. */
+const deskRest = async (q) => {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${q}`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
+    const d = r.ok ? await r.json() : [];
+    return Array.isArray(d) ? d : [];
+  } catch { return []; }
+};
+let deskUpi = { at: 0, v: "" };
+async function shopUpi() {
+  if (Date.now() - deskUpi.at < 5 * 60 * 1000) return deskUpi.v;
+  const rows = await deskRest(`owner_prefs?owner_id=eq.${TENANT_ID}&select=crm`);
+  const upi = String(rows[0]?.crm?.mobileSetup?.upi ?? "").trim();
+  deskUpi = { at: Date.now(), v: /^[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9]{1,30}$/.test(upi) ? upi : "" };
+  return deskUpi.v;
+}
+const bookState = new Map();   // jid -> { step: "day" | "slot", days, day, slots, at }
+const BOOK_TTL = 15 * 60 * 1000;
+const flowHasBook = () => !!flow?.enabled && (flow.nodes ?? []).some((n) => (n.options ?? []).some((o) => o.action === "book"));
+async function deskSay(jid, reply) { await sendReply(jid, reply); noteReply(jid); bump("replies"); bump("desk"); rememberTurn(jid, "assistant", reply); }
+
+async function bookStep(jid, name, text) {
+  const st = bookState.get(jid);
+  if (!st || Date.now() - st.at > BOOK_TTL) { bookState.delete(jid); return false; }
+  const t = text.trim();
+  if (!/^\d{1,2}$/.test(t)) { bookState.delete(jid); return false; }   // they started talking → the AI answers
+  const n = parseInt(t, 10);
+  const { start, end } = planHours();
+  if (st.step === "day") {
+    const day = st.days[n - 1];
+    if (!day) { await deskSay(jid, dayMenu(st.days)); return true; }
+    const taken = (await deskRest(`bookings?owner_id=eq.${TENANT_ID}&status=eq.booked&starts_at=gte.${day.ymd}T00:00:00%2B05:30&starts_at=lt.${day.ymd}T23:59:59%2B05:30&select=starts_at&limit=200`)).map((b) => b.starts_at);
+    const slots = freeSlots({ ymd: day.ymd, taken, start, end }).slice(0, 12);
+    if (!slots.length) { await deskSay(jid, `${day.label} को सारे समय भर चुके हैं 🙏 कोई और दिन चुनिए।\n\n${dayMenu(st.days)}`); st.at = Date.now(); return true; }
+    bookState.set(jid, { ...st, step: "slot", day: day.ymd, slots, at: Date.now() });
+    await deskSay(jid, slotMenu(day.ymd, slots));
+    return true;
+  }
+  if (n === 0) { bookState.set(jid, { step: "day", days: st.days, at: Date.now() }); await deskSay(jid, dayMenu(st.days)); return true; }
+  const slot = st.slots[n - 1];
+  if (!slot) { await deskSay(jid, slotMenu(st.day, st.slots)); return true; }
+  // the hour may have been taken while they were choosing
+  const clash = await deskRest(`bookings?owner_id=eq.${TENANT_ID}&status=eq.booked&starts_at=eq.${encodeURIComponent(slot.iso)}&select=id&limit=1`);
+  if (clash.length) { const left = st.slots.filter((s) => s.iso !== slot.iso); bookState.set(jid, { ...st, slots: left, at: Date.now() }); await deskSay(jid, `ये समय अभी-अभी भर गया 🙏\n\n${slotMenu(st.day, left)}`); return true; }
+  const phone = await phoneOf(jid);
+  const r = await fetch(`${SUPA_URL}/rest/v1/bookings`, {
+    method: "POST", headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ owner_id: TENANT_ID, card_id: cardContext?.id ?? null, name: String(name || "").slice(0, 80), phone: phone ? `+${phone}` : "", service: "", starts_at: slot.iso, note: "WhatsApp पर खुद चुना समय", source: "whatsapp" }),
+  }).catch(() => null);
+  bookState.delete(jid);
+  if (!r?.ok) { console.error("[desk] booking not saved", r?.status); await deskSay(jid, "माफ़ कीजिए, अभी booking दर्ज नहीं हो पाई 🙏 हम आपसे खुद बात करके समय पक्का करेंगे।"); alertOwner(jid, name, `Wanted an appointment on ${st.day} at ${slot.label} — it could not be saved, please confirm with them.`, text).catch(() => {}); return true; }
+  await deskSay(jid, bookedText(st.day, slot, cardContext?.data?.company || config.businessName || ""));
+  alertOwner(jid, name, `New appointment booked on WhatsApp: ${st.day}, ${slot.label}`, "").catch(() => {});
+  return true;
+}
+
+/** `forced`: the menu option's action ("status" | "due" | "bill" | "book"); without it the message itself is read. */
+async function runDesk(jid, name, text, forced = "") {
+  if (!SUPA_URL || !TENANT_ID || TENANT_ID === "legacy") return false;
+  if (!forced && bookState.has(jid) && await bookStep(jid, name, text)) return true;
+  const intent = forced || deskIntent(text, { book: flowHasBook() });
+  if (!intent) return false;
+  if (intent === "book") {
+    const { end } = planHours();
+    const days = bookDays({ end });
+    bookState.set(jid, { step: "day", days, at: Date.now() });
+    flowState.delete(jid);
+    await deskSay(jid, dayMenu(days));
+    return true;
+  }
+  const phone = await phoneOf(jid);
+  const args = { owner: TENANT_ID, phone: phone || "", text, rest: deskRest, site: PUBLIC_URL };
+  const reply = intent === "status" ? await deskStatus(args) : intent === "due" ? await deskDue({ ...args, upi: await shopUpi() }) : await deskBill(args);
+  if (!reply) {
+    if (!forced) return false;                     // free text and nothing on record → the AI answers as before
+    await deskSay(jid, deskNothing(intent));
+    return true;
+  }
+  console.log(`[desk] ${jid}: ${intent}`);
+  await deskSay(jid, reply);
+  return true;
 }
 
 /* ---------------- reply engine ---------------- */
@@ -1677,6 +1769,7 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd,
   rememberTurn(jid, "user", text);
   if (q.kind === "social" && (hist.length || known)) { console.log(`[v2] ${jid}: greeting from a known contact — silent`); return; }
   const firstContact = hist.length === 0;
+  if (await runDesk(jid, name, text).catch((e) => { console.error("[desk]", e?.message ?? e); return false; })) { saveLead(jid, name, text); return; }
   if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { saveLead(jid, name, text); noteFollowupInbound(jid, name, text); return; }
   if (await ownWelcome(jid, name, text, firstContact).catch(() => false)) { saveLead(jid, name, text); noteFollowupInbound(jid, name, text); return; }
   const botOut = firstContact && AD_OPENER_RE.test(text)
@@ -2007,6 +2100,7 @@ async function startWhatsApp() {
         noteFollowupInbound(jid, name, text); // (re)start the AI follow-up sequence
 
         const firstContact = (history.get(jid)?.length ?? 0) === 0;
+        if (await runDesk(jid, name, text).catch((e) => { console.error("[desk]", e?.message ?? e); return false; })) continue;
         if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { console.log(`[flow] handled ${jid}: ${text.slice(0, 30)}`); continue; }
         if (await ownWelcome(jid, name, text, firstContact).catch(() => false)) continue;
         const botOut = firstContact && AD_OPENER_RE.test(text)

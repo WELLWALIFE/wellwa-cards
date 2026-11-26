@@ -989,7 +989,7 @@ function PaySheet({ ctx, lead, onClose, onUse }: { ctx: Ctx; lead: Lead; onClose
 }
 
 /* ---------------- menu bot (flow builder) ---------------- */
-type FOpt = { label: string; action: "menu" | "text" | "ai" | "human"; target?: string; reply?: string };
+type FOpt = { label: string; action: "menu" | "text" | "ai" | "human" | "status" | "due" | "bill" | "book"; target?: string; reply?: string };
 type FNode = { id: string; title: string; text: string; options: FOpt[] };
 type FlowData = { greetNew: boolean; triggers: string[]; nodes: FNode[] };
 // The ready-made menu, for any business (19 Nov 2026: it spoke of a "free demo", which only one trade has).
@@ -1058,7 +1058,7 @@ export function FlowSheet({ onClose }: { onClose: () => void }) {
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6 text-xs">
                       <ArrowRight className="h-3 w-3 text-faint" />
                       <select value={o.action} onChange={(e) => setOpt(i, { action: e.target.value as FOpt["action"] })} className="rounded-lg border border-border bg-surface px-2 py-1">
-                        <option value="menu">Open another menu</option><option value="text">Send a fixed reply</option><option value="ai">Hand over to AI assistant</option><option value="human">Hand over to me (human)</option>
+                        <option value="menu">Open another menu</option><option value="text">Send a fixed reply</option><option value="ai">Hand over to AI assistant</option><option value="human">Hand over to me (human)</option><option value="status">Tell the status of their repair / order</option><option value="due">Tell what they owe (with the bill link)</option><option value="bill">Send their latest bill</option><option value="book">Book an appointment (day and time)</option>
                       </select>
                       {o.action === "menu" && <select value={o.target ?? ""} onChange={(e) => setOpt(i, { target: e.target.value })} className="rounded-lg border border-border bg-surface px-2 py-1"><option value="">choose menu…</option>{data.nodes.filter((_, j) => j !== sel).map((n) => <option key={n.id} value={n.id}>{n.title}</option>)}</select>}
                     </div>

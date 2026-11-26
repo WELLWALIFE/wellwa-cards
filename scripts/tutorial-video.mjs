@@ -386,7 +386,7 @@ const TUTORIALS = {
           act: async () => { await u.goto(`${SITE}/poster/connect`); await u.waitText("Connections", 30000); await u.cue(0); await pause(800); await u.cue(1); await u.scrollBy(300, 2000); await u.cue(2); await u.scrollBy(400, 2500); } },
         { id: "outro", say: "बस इतना ही — बिल, उधार, स्टॉक, रिपेयर, ख़र्चे और हिसाब, सब एक app में, आपके फ़ोन पर। आज ही shubhora.com पर अपनी Mobile दुकान शुरू कीजिए — हमारी team आपकी दुकान पर setup भी करवा देगी। कोई सवाल हो तो app में नीचे वाला गोल सवाल का button दबाइए।",
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile`); await pause(2000); },
-          act: async () => { await u.goto(`${SITE}/poster/mobile`); await u.cue(0); await pause(1500); await u.cue(1); await pause(1200); await u.cue(2); await pause(800); } },
+          act: async () => { await u.goto(`${SITE}/poster/mobile`); await u.waitText("New bill", 30000); await pause(800); await u.cue(0); await pause(1500); await u.cue(1); await pause(1200); await u.cue(2); await pause(800); } },
       ];
     },
   },
@@ -494,6 +494,18 @@ async function tts(text) {
   return { file, seconds: (fs.statSync(file).size - 44) / 48000 };
 }
 
+/** The server's Chrome draws emoji (📱 ✅ 🔧 ⭐ in the app) only with a colour-emoji font; without it they show as empty boxes
+ *  (owner, 26 Nov 2026). Put Noto Color Emoji in ~/.fonts once if fontconfig does not have it. */
+function ensureEmojiFont() {
+  const has = () => /Noto Color Emoji/i.test(spawnSync("fc-list", [":family"], { encoding: "utf8" }).stdout || "");
+  if (has()) { log("emoji font: ok"); return; }
+  const dir = path.join(os.homedir(), ".fonts"); fs.mkdirSync(dir, { recursive: true });
+  const f = path.join(dir, "NotoColorEmoji.ttf");
+  const d = spawnSync("curl", ["-fsSL", "-m", "180", "-o", f, "https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"], { encoding: "utf8" });
+  spawnSync("fc-cache", ["-f"]);
+  log(has() ? "emoji font: installed" : `!! emoji font could not be installed (${(d.stderr || "").trim().slice(0, 120)}) — emoji will show as boxes`);
+}
+
 /* ============================== helpers: ffmpeg ============================== */
 function ff(args, what) {
   const r = spawnSync(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", ...args], { encoding: "utf8", maxBuffer: 64 << 20 });
@@ -570,8 +582,12 @@ export function ui(page, { work, email, uid }) {
   // mobile video showed a white page with a spinner for whole sentences).
   u.goto = async (url) => {
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
-    await page.waitForFunction(() => { const sp = [...document.querySelectorAll(".animate-spin")].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0; }); return sp.length === 0 && (document.body?.innerText || "").trim().length > 40; }, { timeout: 20000, polling: 200 }).catch(() => undefined);
-    await pause(600);
+    // twice, half a second apart: a page often draws its spinner a moment after it has "loaded"
+    for (let k = 0; k < 2; k++) {
+      await pause(500);
+      await page.waitForFunction(() => { const sp = [...document.querySelectorAll(".animate-spin")].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0; }); return sp.length === 0 && (document.body?.innerText || "").trim().length > 40; }, { timeout: 20000, polling: 200 }).catch(() => undefined);
+    }
+    await pause(300);
   };
   /** Waits until the screen says `text` (or any of several). Done in slices of 20 s: one long wait inside the browser
    *  dies at Chrome's own 3-minute call limit ("Runtime.callFunctionOn timed out"), long before a website build ends.
@@ -761,6 +777,7 @@ async function record(t, work) {
   for (const [i, v] of voices.entries()) for (const p of v.parts) if (p.seconds > p.text.length * 0.16 + 2.5) log(`!! voice line is unusually long (${p.seconds.toFixed(1)} s for ${p.text.length} letters), listen to it: ${scenes[i].id} "${p.text.slice(0, 40)}"`);
   log(`voice: ${scenes.length} scenes, ${voices.reduce((a, v) => a + v.seconds, 0).toFixed(1)} s`);
 
+  ensureEmojiFont();
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, protocolTimeout: 600000, args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--lang=en-IN", "--font-render-hinting=none", "--disable-gpu"] });
   browser.on("disconnected", () => log("!! Chrome closed"));
   const page = await browser.newPage();
@@ -960,9 +977,15 @@ async function compose(work, outDir) {
     const dressed = meta.tutorial === "mobile";
     const headsOf = dressed ? MS_HEADS : null;
     const CAP = { width: 1000, size: 44, x: 40 };
-    const card = async (tag, title, subtitle, sec) => {
+    const card = async (tag, title, subtitle, sec, lines = []) => {
       const png = path.join(work, `card-${tag}.png`), mp4 = path.join(work, `card-${tag}.mp4`);
-      await backgroundPng(png, W, H, { title, subtitle, logo: { x: 460, y: 640, size: 160 }, titleAt: { x: 540, y: 940, anchor: "middle" }, size: 68 });
+      await backgroundPng(png, W, H, { title, subtitle, logo: { x: 440, y: 560, size: 200 }, titleAt: { x: 540, y: 900, anchor: "middle" }, size: 84 });
+      if (lines.length) {
+        // the closing card's how-to-start, big enough to read on a phone
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${lines.map((l, i) => `<rect x="140" y="${1060 + i * 130}" width="800" height="100" rx="50" fill="${i === lines.length - 1 ? "#25D366" : "#ffffff"}" fill-opacity="${i === lines.length - 1 ? 1 : 0.12}"/><text x="540" y="${1060 + i * 130 + 66}" text-anchor="middle" font-family="${FONT}" font-size="46" font-weight="700" fill="#ffffff">${esc(l)}</text>`).join("")}</svg>`;
+        const buf = await sharp(png).composite([{ input: Buffer.from(svg) }]).png().toBuffer();
+        fs.writeFileSync(png, buf);
+      }
       ff(["-loop", "1", "-t", sec.toFixed(2), "-i", png, "-vf", "fps=30,format=yuv420p,setsar=1", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", mp4], `card ${tag}`);
       segFiles.push(mp4); audioBits.push(Buffer.alloc(bytes(sec))); outSec += sec;
     };
@@ -1008,7 +1031,7 @@ async function compose(work, outDir) {
       }
       fs.rmSync(full, { force: true });
     }
-    if (dressed) await card("close", "आज ही शुरू करें", "shubhora.com  ·  WhatsApp +91 76656 69888", 5);
+    if (dressed) await card("close", "आज ही शुरू करें", "मोबाइल दुकान का पूरा काम, एक ही app में", 6, ["shubhora.com", "WhatsApp +91 76656 69888"]);
     log(`phone: ${sped.toFixed(0)} s of silent waiting played fast; ${total.toFixed(0)} s → ${outSec.toFixed(0)} s`);
     const list = path.join(work, "full-list.txt"); fs.writeFileSync(list, segFiles.map((x) => `file '${x}'`).join("\n"));
     const video = path.join(work, "full-video.mp4");

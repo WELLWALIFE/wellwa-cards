@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUp, LoaderCircle, Plus, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
-type Act = "menu" | "text" | "ai" | "human";
+type Act = "menu" | "text" | "ai" | "human" | "status" | "due" | "bill" | "book";
 type Opt = { label: string; action: Act; target?: string; reply?: string };
 type Node = { id: string; title: string; text: string; options: Opt[] };
 type Flow = { greetNew: boolean; triggers: string[]; nodes: Node[] };
@@ -30,10 +30,33 @@ function readyMenus(hi: boolean): { key: string; name: string; flow: Flow }[] {
       { label: H("Address and timings", "Pata aur samay"), action: "ai" },
       { label: H("Talk to us", "Aapse baat karni hai"), action: "human" },
     ]) },
+    // Shops that run their work in the app: the menu answers from the shop's own books (status, money due, bill).
+    { key: "mobile", name: H("Mobile shop", "मोबाइल दुकान"), flow: mk([
+      { label: H("Phones and accessories, with prices", "Phone aur accessories, daam ke saath"), action: "ai", reply: H("Sure — which phone or accessory are you looking for?", "Ji, kaun sa phone ya accessory chahiye?") },
+      { label: H("Is my repair ready?", "Mera repair ban gaya?"), action: "status" },
+      { label: H("My balance / pay by UPI", "Mera baaki paisa / UPI se dena hai"), action: "due" },
+      { label: H("Send my bill", "Mera bill bhej do"), action: "bill" },
+      { label: H("Address and timings", "Pata aur samay"), action: "ai" },
+      { label: H("Talk to the shopkeeper", "Dukaandaar se baat karni hai"), action: "human" },
+    ]) },
+    { key: "tailor", name: H("Tailor / boutique", "सिलाई / boutique"), flow: mk([
+      { label: H("Is my order ready?", "Mera order taiyaar hai?"), action: "status" },
+      { label: H("Stitching rates", "Silai ke rate"), action: "ai", reply: H("Sure — which garment?", "Ji, kaun sa kapda silwana hai?") },
+      { label: H("Book a time for measurement", "Naap ke liye samay lena hai"), action: "book" },
+      { label: H("Address and timings", "Pata aur samay"), action: "ai" },
+      { label: H("Talk to us", "Aapse baat karni hai"), action: "human" },
+    ]) },
+    { key: "jeweller", name: H("Jeweller", "ज्वेलर"), flow: mk([
+      { label: H("Today's gold and silver rate", "Aaj ka sona-chaandi ka rate"), action: "ai" },
+      { label: H("Is my order / repair ready?", "Mera order / repair taiyaar hai?"), action: "status" },
+      { label: H("My balance", "Mera baaki paisa"), action: "due" },
+      { label: H("Send my bill", "Mera bill bhej do"), action: "bill" },
+      { label: H("Talk to us", "Aapse baat karni hai"), action: "human" },
+    ]) },
     { key: "service", name: H("Service / appointment", "Service / appointment"), flow: mk([
       { label: H("Our services", "Hamari services"), action: "ai", reply: H("Which service are you looking for?", "Aapko kaun si service chahiye?") },
       { label: H("Charges", "Charges / fees"), action: "ai" },
-      { label: H("Book an appointment", "Appointment book karni hai"), action: "ai", reply: H("Sure! Which day and what time suits you?", "Zaroor! Kaunsa din aur kitne baje theek rahega?") },
+      { label: H("Book an appointment", "Appointment book karni hai"), action: "book" },
       { label: H("Address and timings", "Pata aur samay"), action: "ai" },
       { label: H("Talk to us", "Aapse baat karni hai"), action: "human" },
     ]) },
@@ -158,6 +181,17 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
                         {actChip(i, "text", "Send my reply", "मेरा जवाब भेजे")}
                         {actChip(i, "human", "Call me", "मुझे बुलाए")}
                       </div>
+                      <p className="mt-2 text-[11px] font-semibold text-muted">{T("Or answer from your shop's own records:", "या आपकी दुकान के अपने हिसाब से जवाब:")}</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {actChip(i, "status", "Repair / order status", "रिपेयर / order का हाल")}
+                        {actChip(i, "due", "What they owe", "उनका बाकी पैसा")}
+                        {actChip(i, "bill", "Send their bill", "उनका बिल भेजे")}
+                        {actChip(i, "book", "Book an appointment", "Appointment बुक करे")}
+                      </div>
+                      {o.action === "status" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer is told where their repair, tailoring job or jewellery order stands — found by the number they write from, or by the job number they type.", "Customer को बताया जाता है कि उनका रिपेयर, सिलाई का काम या ज्वेलरी order कहाँ तक पहुँचा — जिस नंबर से लिख रहे हैं उससे, या उनके लिखे job नंबर से।")}</p>}
+                      {o.action === "due" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer gets their total udhaar, bill by bill, with the bill link (it has your UPI QR). Only their own number's bills.", "Customer को उनका कुल उधार मिलता है, बिल-दर-बिल, बिल के link के साथ (उस पर आपका UPI QR है)। सिर्फ़ उनके अपने नंबर के बिल।")}</p>}
+                      {o.action === "bill" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer gets the link of their latest bill.", "Customer को उनके सबसे नए बिल का link मिलता है।")}</p>}
+                      {o.action === "book" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer picks a day, then a free hour inside your message hours. It lands in your Bookings, you get a WhatsApp alert, and the reminders go by themselves.", "Customer दिन चुनता है, फिर आपके message के समय के अंदर खाली घंटा। ये आपकी Bookings में आ जाता है, आपको WhatsApp पर alert जाता है, और reminder अपने-आप जाते हैं।")}</p>}
                       {o.action === "text" && <textarea value={o.reply ?? ""} onChange={(e) => setOpt(i, { reply: e.target.value })} rows={2} maxLength={800} placeholder={T("Your reply, e.g. All our products: {card}", "आपका जवाब, जैसे: Hamare saare products: {card}")} className="mt-1.5 w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" />}
                       {o.action === "ai" && <input value={o.reply ?? ""} onChange={(e) => setOpt(i, { reply: e.target.value })} maxLength={300} placeholder={T("First line before the AI (optional), e.g. Which item?", "AI से पहले की line (ज़रूरी नहीं), जैसे: Kis cheez ka?")} className="mt-1.5 w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" />}
                       {o.action === "human" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer is told you will talk to them; you get a WhatsApp alert and the AI stays quiet for 15 minutes.", "Customer को बताया जाता है कि आप खुद बात करेंगे; आपको WhatsApp पर alert जाता है और AI 15 मिनट चुप रहता है।")}</p>}

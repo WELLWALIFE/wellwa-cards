@@ -1,8 +1,9 @@
+// The counter actions (status, due, bill, book) are answered from the shop's own books by the WhatsApp worker (bridge/shop-desk.mjs).
 // Menu bot. GET → { enabled, data }. PUT { enabled, data } (owner only; bridge picks it up within a minute).
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser } from "@/lib/poster-server";
 
-type Opt = { label: string; action: "menu" | "text" | "ai" | "human"; target?: string; reply?: string };
+type Opt = { label: string; action: "menu" | "text" | "ai" | "human" | "status" | "due" | "bill" | "book"; target?: string; reply?: string };
 type Node = { id: string; title: string; text: string; options: Opt[] };
 const S = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
 
@@ -11,7 +12,7 @@ function clean(data: unknown): { greetNew: boolean; triggers: string[]; nodes: N
   const nodes = (Array.isArray(d.nodes) ? d.nodes : []).slice(0, 20).map((n: Record<string, unknown>, i: number): Node => ({
     id: S(n.id, 20) || `n${i + 1}`, title: S(n.title, 40), text: S(n.text, 800),
     options: (Array.isArray(n.options) ? n.options : []).slice(0, 9).map((o: Record<string, unknown>): Opt => ({
-      label: S(o.label, 40), action: (["menu", "text", "ai", "human"] as const).includes(o.action as Opt["action"]) ? (o.action as Opt["action"]) : "ai",
+      label: S(o.label, 40), action: (["menu", "text", "ai", "human", "status", "due", "bill", "book"] as const).includes(o.action as Opt["action"]) ? (o.action as Opt["action"]) : "ai",
       target: S(o.target, 20) || undefined, reply: S(o.reply, 800) || undefined,
     })).filter((o) => o.label),
   })).filter((n) => n.text || n.options.length);
