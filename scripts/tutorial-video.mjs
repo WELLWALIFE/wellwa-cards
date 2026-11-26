@@ -471,8 +471,17 @@ async function tts(text) {
       b64 = d?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data ?? "";
       why = d?.error ? JSON.stringify(d.error).slice(0, 160) : d?.candidates?.[0]?.finishReason || "no audio";
     }
-    if (!b64) throw new Error(`TTS failed: ${why}`);
-    const pcm = Buffer.from(b64, "base64");
+    let pcm;
+    if (b64) pcm = Buffer.from(b64, "base64");
+    else {
+      // Still refused: say it in two halves (cut at a comma or dash near the middle) and join them with a short breath.
+      const cuts = [...text.matchAll(/[,;:]\s+|\s+—\s+/g)].map((m) => m.index + m[0].length).filter((i) => i > 8 && i < text.length - 8);
+      if (!cuts.length || text.length < 30) throw new Error(`TTS failed (${why}) for: "${text}"`);
+      const mid = cuts.reduce((a, b) => (Math.abs(b - text.length / 2) < Math.abs(a - text.length / 2) ? b : a));
+      log(`TTS: "${text.slice(0, 50)}…" refused (${why}) — saying it in two halves`);
+      const one = await tts(text.slice(0, mid).trim()), two = await tts(text.slice(mid).trim());
+      pcm = Buffer.concat([fs.readFileSync(one.file).subarray(44), Buffer.alloc(12000), fs.readFileSync(two.file).subarray(44)]);
+    }
     fs.writeFileSync(file, Buffer.concat([wavHeader(pcm.length), pcm]));
   }
   return { file, seconds: (fs.statSync(file).size - 44) / 48000 };
