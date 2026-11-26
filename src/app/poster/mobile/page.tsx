@@ -16,6 +16,7 @@ import { FieldTip } from "@/components/field-tip";
 import { BookOpen } from "lucide-react";
 import { BillLink } from "@/components/mobile/bill-link";
 import { OfflineBar } from "@/components/mobile/offline-bar";
+import { MobileStartList } from "@/components/mobile/start-list";
 
 type Home = { shop: string; setup: MsSetup; access: MsAccess; today: string; day: string; close: DayClose; items: number; low: { id: string; name: string; brand: string; variant: string; stock: number; low: number }[]; due: { count: number; paise: number }; recent: BillRow[]; jobs?: { open: number; ready: number; late: number }; seeJobs?: boolean; error?: string };
 
@@ -61,6 +62,7 @@ export default function MobileHome() {
       </div>
       <div className="flex flex-wrap items-center gap-2"><MsHelp k="home" /><Link href={`/poster/mobile/guide${q}`} className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-ink"><BookOpen className="h-3.5 w-3.5" /> {T("Full guide: how to use", "पूरी guide: कैसे चलाएँ")}</Link></div>
       <OfflineBar as={ws.as} onSynced={() => void load()} />
+      {access.owner && <MobileStartList hi={hi} q={ws.q ?? ""} auto={[!!(d.setup.shopName && d.setup.phone && d.setup.address), d.items > 0, d.recent.some((b) => b.kind === "sale"), !!d.jobs && d.jobs.open > 0, false, false, false]} />}
       {d.items === 0 && can("stock") && <Link href={`/poster/mobile/items${q}`} className="block rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900">{T("Start here: add the items you sell (name and price) →", "यहाँ से शुरू करें: जो बेचते हैं वो items जोड़ें (नाम और दाम) →")}</Link>}
 
       <div className="grid grid-cols-2 gap-3">

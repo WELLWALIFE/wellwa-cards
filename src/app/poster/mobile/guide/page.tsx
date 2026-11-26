@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
+import { MS_START as START } from "@/components/mobile/start-list";
 
 type Sec = { icon: string; en: string; hi: string; href?: string; openEn?: string; openHi?: string; steps: [string, string][] };
 const GUIDE: Sec[] = [
@@ -97,7 +98,7 @@ export default function MobileGuide() {
   const { lang } = useT(); const hi = lang !== "en";
   const T = (en: string, h: string) => (hi ? h : en);
   const ws = useWorkspace();
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
   const withAs = (href: string) => (ws.q ? `${href}${href.includes("?") ? "&" : "?"}${ws.q}` : href);
   return (
     <div className="space-y-3">
@@ -106,6 +107,25 @@ export default function MobileGuide() {
         <h1 className="text-lg font-extrabold">📖 {T("How to use Mobile shop", "मोबाइल दुकान कैसे चलाएँ")}</h1>
         <p className="mt-1 text-sm opacity-95">{T("Tap any heading. Each has a few steps and a button that opens that screen. On every screen, the small “?” beside a field tells what to type there.", "कोई भी heading दबाएँ। हर एक में कुछ steps हैं और वो screen खोलने का बटन। हर screen पर field के पास का छोटा “?” बताता है वहाँ क्या लिखना है।")}</p>
       </header>
+      <section className="rounded-3xl border border-border bg-surface p-4 shadow-card">
+        <h2 className="text-base font-extrabold">🚀 {T("How to start — step by step", "शुरुआत कैसे करें — एक-एक step")}</h2>
+        <p className="mt-0.5 text-xs text-muted">{T("Do them in this order. Steps 5 and 6 make the rest run by itself.", "इसी क्रम में करें। Step 5 और 6 के बाद बाकी काम अपने-आप चलते हैं।")}</p>
+        <ol className="mt-3">
+          {START.map((s, i) => (
+            <li key={s.en} className="relative flex gap-3 pb-4 last:pb-0">
+              {i < START.length - 1 && <span className="absolute left-[15px] top-9 bottom-0 w-px bg-border" aria-hidden />}
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full grad-brand text-sm font-extrabold text-white">{i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-brand-ink">{T(`Step ${i + 1}`, `Step ${i + 1}`)}</p>
+                <p className="text-sm font-bold text-ink">{hi ? s.hi : s.en}</p>
+                <p className="mt-0.5 text-[13px] text-muted">{hi ? s.whyHi : s.whyEn}</p>
+                <Link href={withAs(s.href)} className="mt-1.5 inline-flex items-center gap-1 rounded-xl border border-brand/30 bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand-ink">{hi ? s.btnHi : s.btnEn} <ChevronRight className="h-3.5 w-3.5" /></Link>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+      <h2 className="px-1 pt-2 text-sm font-bold text-muted">{T("Help for every job", "हर काम की मदद")}</h2>
       {GUIDE.map((s, i) => (
         <section key={s.en} className="rounded-2xl border border-border bg-surface">
           <button type="button" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left"><span className="text-sm font-bold">{s.icon} {hi ? s.hi : s.en}</span><ChevronDown className={`h-4 w-4 shrink-0 text-muted transition-transform ${open === i ? "rotate-180" : ""}`} /></button>
