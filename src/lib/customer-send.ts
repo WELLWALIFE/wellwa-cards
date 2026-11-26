@@ -76,14 +76,25 @@ export async function askForReview(ownerId: string, who: { name: string; phone: 
     const [c, prefs] = await Promise.all([cardOf(ownerId), prefsOf(ownerId)]);
     if (!prefs.review_ask) return;
     const hindi = hindiCard(c);
-    const text = reviewText(c, who.name, hindi, await reviewLinkOf(ownerId, c));
+    const link = await reviewLinkOf(ownerId, c);
+    // "Rating first" (AI Training → More settings): a number is asked; the WhatsApp worker sends the review link only to 4–5 and
+    // alerts the owner on 1–3 (bridge/shop-desk.mjs). Needs the linked number; without it the usual message goes as before.
+    if (c?.data?.botRules?.rateFirst) {
+      const first = (who.name || "").split(" ")[0];
+      const ask = hindi
+        ? `नमस्ते${first ? ` ${first} जी` : ""} 🙏 *${businessOf(c)}* को चुनने के लिए धन्यवाद!\nहमारी सेवा आपको कैसी लगी? 1 से 5 में एक नंबर भेज दीजिए ⭐\n(5 = बहुत अच्छी, 1 = ख़राब)`
+        : `Hi${first ? ` ${first}` : ""} 🙏 Thank you for choosing *${businessOf(c)}*!\nHow was our service? Please reply with a number from 1 to 5 ⭐\n(5 = very good, 1 = poor)`;
+      const to = digitsOf(who.phone), expiry = await ownerPlanExpiry(ownerId);
+      if (to && expiry && (await bridge(ownerId, expiry, "send", { to, text: ask, expect: "rating", reviewLink: link })).ok) return;
+    }
+    const text = reviewText(c, who.name, hindi, link);
     if (await sendCustomer(ownerId, who.phone, text)) return;
-    const link = tapLink(who.phone, text);
+    const tap = tapLink(who.phone, text);
     await notify(ownerId, "review_ask", {
       title: hindi ? `⭐ ${who.name || "ग्राहक"} से रिव्यू माँगें` : `⭐ Ask ${who.name || "the customer"} for a review`,
       body: hindi ? "धन्यवाद + Google रिव्यू लिंक तैयार है — एक टैप में भेजें।" : "Thank-you + Google review link is ready — send in one tap.",
       path: "/poster/leads", ref: `review:${ref}`,
-      whatsappText: hindi ? `⭐ *रिव्यू माँगें*\n${who.name || who.phone} को धन्यवाद और रिव्यू लिंक एक टैप में भेजें:\n${link}` : `⭐ *Ask for a review*\nSend ${who.name || who.phone} the thank-you and review link in one tap:\n${link}`,
+      whatsappText: hindi ? `⭐ *रिव्यू माँगें*\n${who.name || who.phone} को धन्यवाद और रिव्यू लिंक एक टैप में भेजें:\n${tap}` : `⭐ *Ask for a review*\nSend ${who.name || who.phone} the thank-you and review link in one tap:\n${tap}`,
     });
   } catch (e) { console.error("[review-ask]", e instanceof Error ? e.message : e); }
 }

@@ -457,4 +457,8 @@ export type BotRules = {
   never?: string;
   /** Outside the message hours: answer with this one line instead of the AI (WhatsApp). */
   night?: { on: boolean; text: string };
+  /** After the work is handed over: ask "how was it, 1–5?" first; only 4–5 get the Google review link, 1–3 alert the owner (WhatsApp). */
+  rateFirst?: boolean;
+  /** Tag a lead by the customer's own words: each rule's words (comma separated) give its tag (WhatsApp). */
+  tags?: { tag: string; words: string }[];
 };

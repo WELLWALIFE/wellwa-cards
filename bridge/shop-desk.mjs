@@ -160,3 +160,107 @@ export function freeSlots({ ymd, taken = [], start = 9, end = 20, now = Date.now
 export const dayMenu = (days) => `📅 किस दिन आना चाहेंगे?\n\n${days.map((d, i) => `${i + 1}. ${d.label}`).join("\n")}\n\n_दिन का नंबर लिखिए_`;
 export const slotMenu = (day, slots) => `${niceDay(day)} — कौन-सा समय ठीक रहेगा?\n\n${slots.map((s, i) => `${i + 1}. ${s.label}`).join("\n")}\n\n_समय का नंबर लिखिए · 0 = दूसरा दिन_`;
 export const bookedText = (day, slot, shop) => `✅ आपकी appointment पक्की हो गई\n📅 ${niceDay(day)}, ${slot.label}${shop ? `\n📍 ${shop}` : ""}\n\nसमय बदलना हो तो यहीं लिख दीजिए 🙏`;
+
+/* ---------------- answers from the card: address and timings, the offer, products with prices ---------------- */
+
+const tidy = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+const blocksOf = (card) => (card?.pages ?? []).filter((p) => !p?.hidden).flatMap((p) => p?.blocks ?? []);
+const priceOf = (p) => (p ? (/^\s*[\d,.]/.test(p) ? `₹${tidy(p)}` : tidy(p)) : "");
+
+/** A menu option answered from the card itself. Null: the card has nothing for it (the AI answers instead). */
+export function cardAnswer(kind, card, { link = "" } = {}) {
+  const blocks = blocksOf(card);
+  if (kind === "address") {
+    const loc = blocks.find((b) => b.kind === "location" && (b.address || b.mapUrl));
+    const map = loc?.mapUrl || (card?.links ?? []).find((l) => l.type === "location")?.value || "";
+    const hours = blocks.find((b) => b.kind === "hours" && (b.rows ?? []).length);
+    const phone = (card?.links ?? []).find((l) => l.type === "phone")?.value || "";
+    const out = [];
+    if (loc?.address) out.push(`📍 ${tidy(loc.address)}`);
+    if (map) out.push(`🗺️ ${tidy(map)}`);
+    if (hours) out.push(`🕘 ${hours.rows.map((r) => `${tidy(r.day)} ${tidy(r.time)}`.trim()).filter(Boolean).join("\n     ")}`);
+    if (!out.length) return null;
+    if (phone) out.push(`📞 ${tidy(phone)}`);
+    return out.join("\n");
+  }
+  if (kind === "offer") {
+    const today = dayOf(Date.now());
+    const out = [];
+    const n = card?.notice;
+    if (n?.text && (!n.until || n.until >= today)) out.push(`📢 ${tidy(n.text)}${n.sub ? ` — ${tidy(n.sub)}` : ""}`);
+    for (const b of blocks) if (b.kind === "offer" && (b.text || b.code)) out.push(`🎁 ${tidy(b.text)}${b.code ? `\n   Code: *${tidy(b.code)}*` : ""}${b.expires ? `\n   ${tidy(b.expires)} तक` : ""}`);
+    return out.length ? out.slice(0, 4).join("\n\n") : null;
+  }
+  if (kind === "products") {
+    const items = blocks.filter((b) => b.kind === "product").flatMap((b) => b.items ?? []).filter((p) => tidy(p?.name));
+    if (!items.length) return null;
+    const rows = items.slice(0, 10).map((p) => `• ${tidy(p.name)}${p.price || p.mrp ? ` — ${priceOf(p.price || p.mrp)}` : ""}${p.badge ? ` (${tidy(p.badge)})` : ""}`);
+    if (items.length > 10) rows.push(`…और ${items.length - 10}`);
+    const photos = items.map((p) => (p.images ?? [])[0] || p.imageUrl || "").filter((u) => /^https?:\/\//.test(u)).slice(0, 3);
+    return [`हमारे products:`, ...rows, link ? `\nसब कुछ photo और दाम के साथ: ${link}` : "", "जो पसंद आए उसका नाम लिख दीजिए 🙂", ...photos.map((u) => `[MEDIA] ${u}`)].filter(Boolean).join("\n");
+  }
+  return null;
+}
+
+/* ---------------- the enquiry form: one question at a time, the answers into the CRM ---------------- */
+
+const FORM_Q = { name: "आपका शुभ नाम?", city: "आप किस शहर / इलाक़े से हैं?", budget: "आपका budget लगभग कितना है?", when: "आपको ये कब तक चाहिए?" };
+/** The questions, from AI Training → "Find out from a new customer" (botRules.ask + the owner's own question). */
+export function formQuestions(rules) {
+  const out = (Array.isArray(rules?.ask) ? rules.ask : []).filter((k) => FORM_Q[k]).map((k) => ({ key: k, q: FORM_Q[k] }));
+  const own = tidy(rules?.askOwn);
+  if (own) out.push({ key: "own", q: own });
+  return out.length ? out : [{ key: "name", q: FORM_Q.name }, { key: "city", q: FORM_Q.city }, { key: "need", q: "आपको क्या चाहिए? थोड़ा बता दीजिए।" }];
+}
+/** "50 hazar", "1.5 lakh", "₹20,000", "25k" → paise (0 when no amount is in it). */
+export function budgetPaise(text) {
+  const t = String(text ?? "").toLowerCase().replace(/,/g, "");
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(lakh|lac|लाख|k\b|hazaa?r|हज़ार|हजार|thousand)?/);
+  if (!m) return 0;
+  const mult = !m[2] ? 1 : /lakh|lac|लाख/.test(m[2]) ? 100000 : 1000;
+  const rupees = Number(m[1]) * mult;
+  return Number.isFinite(rupees) && rupees > 0 && rupees < 1e9 ? Math.round(rupees * 100) : 0;
+}
+/** What the answers change on the lead, and the owner's one-glance summary. */
+export function formResult(qs, answers) {
+  const patch = {};
+  const lines = [];
+  qs.forEach((q, i) => {
+    const a = tidy(answers[i]).slice(0, 200);
+    if (!a) return;
+    if (q.key === "name") patch.name = a.slice(0, 80);
+    if (q.key === "city") patch.address = a.slice(0, 200);
+    if (q.key === "budget") { const p = budgetPaise(a); if (p) patch.budget_paise = p; }
+    lines.push(`${q.key === "name" ? "Name" : q.key === "city" ? "City" : q.key === "budget" ? "Budget" : q.key === "when" ? "When" : q.key === "need" ? "Needs" : q.q.slice(0, 30)}: ${a}`);
+  });
+  return { patch, summary: lines.join(" · ") };
+}
+
+/* ---------------- tags by the customer's own words ---------------- */
+
+/** rules: [{ tag, words: "repair, display, screen" }] (AI Training → More settings). The tags whose words are in the message. */
+export function autoTags(text, rules) {
+  const t = ` ${String(text ?? "").toLowerCase()} `;
+  const out = [];
+  for (const r of Array.isArray(rules) ? rules.slice(0, 12) : []) {
+    const tag = tidy(r?.tag).toLowerCase().replace(/[^a-z0-9ऀ-ॿ _-]/g, "").slice(0, 24);
+    const words = String(r?.words ?? "").toLowerCase().split(/[,\n]/).map((w) => w.trim()).filter((w) => w.length >= 2);
+    if (tag && words.some((w) => t.includes(w)) && !out.includes(tag)) out.push(tag);
+  }
+  return out;
+}
+
+/* ---------------- "how was it?" — a number first, the Google review link only to the happy ones ---------------- */
+
+/** 1–5 from "5", "4 star", "⭐⭐⭐", "5/5"; null when the message is not a rating. */
+export function parseRating(text) {
+  const t = String(text ?? "").trim();
+  const stars = (t.match(/⭐|🌟|★/g) ?? []).length;
+  if (stars >= 1 && stars <= 5 && t.replace(/⭐|🌟|★|\s|️/g, "") === "") return stars;
+  const m = t.match(/^([1-5])\s*(?:\/\s*5|stars?|स्टार|⭐)?[\s.!]*$/i);
+  return m ? Number(m[1]) : null;
+}
+export function ratingReply(n, link) {
+  if (n >= 4) return link ? `बहुत-बहुत धन्यवाद 🙏😊 अगर 1 मिनट हो तो Google पर भी यही बता दीजिए, इससे हमें बहुत मदद मिलती है:\n${link}` : "बहुत-बहुत धन्यवाद 🙏😊 आपसे फिर मिलने का इंतज़ार रहेगा।";
+  return "माफ़ कीजिए कि अनुभव अच्छा नहीं रहा 🙏 क्या कमी रही, यहीं लिख दीजिए। हम खुद आपसे बात करके इसे ठीक करेंगे।";
+}

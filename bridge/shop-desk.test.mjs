@@ -73,3 +73,45 @@ test("appointment: days start today only while an hour is left; taken and past h
   assert.equal(today[0].iso, "2026-11-26T06:30:00.000Z");
   assert.equal(freeSlots({ ymd: "2026-11-27", start: 10, end: 13, now: at(11) }).length, 3);
 });
+
+import { autoTags, budgetPaise, cardAnswer, formQuestions, formResult, parseRating, ratingReply } from "./shop-desk.mjs";
+
+test("card answers: address with map and timings, a live offer, products with prices and photos; null when the card has none", () => {
+  const card = { links: [{ type: "phone", value: "9000000021" }], notice: { text: "Diwali sale", until: "2099-01-01" }, pages: [
+    { blocks: [{ kind: "location", address: "Shop 12, MI Road", mapUrl: "https://maps.app/x" }, { kind: "hours", rows: [{ day: "Mon-Sat", time: "10-8" }] }, { kind: "offer", text: "10% off covers", code: "COV10" }] },
+    { blocks: [{ kind: "product", items: [{ name: "Cover", price: "199", images: ["https://x/c.jpg"] }, { name: "Glass", mrp: "149" }] }] },
+    { hidden: true, blocks: [{ kind: "product", items: [{ name: "Hidden", price: "1" }] }] },
+  ] };
+  const a = cardAnswer("address", card);
+  assert.match(a, /MI Road/); assert.match(a, /maps\.app/); assert.match(a, /Mon-Sat 10-8/); assert.match(a, /9000000021/);
+  const o = cardAnswer("offer", card);
+  assert.match(o, /Diwali sale/); assert.match(o, /COV10/);
+  const p = cardAnswer("products", card, { link: "https://shop.test" });
+  assert.match(p, /• Cover — ₹199/); assert.match(p, /• Glass — ₹149/); assert.match(p, /\[MEDIA\] https:\/\/x\/c\.jpg/); assert.doesNotMatch(p, /Hidden/);
+  assert.equal(cardAnswer("address", { pages: [] }), null);
+  assert.equal(cardAnswer("offer", { notice: { text: "old", until: "2020-01-01" }, pages: [] }), null);
+  assert.equal(cardAnswer("products", { pages: [] }), null);
+});
+
+test("enquiry form: the owner's questions, the budget as money, the answers onto the lead", () => {
+  const qs = formQuestions({ ask: ["name", "city", "budget"], askOwn: "Kaun sa size?" });
+  assert.deepEqual(qs.map((q) => q.key), ["name", "city", "budget", "own"]);
+  assert.equal(formQuestions({}).length, 3);
+  assert.equal(budgetPaise("50 hazar"), 5000000); assert.equal(budgetPaise("1.5 lakh tak"), 15000000); assert.equal(budgetPaise("₹20,000"), 2000000); assert.equal(budgetPaise("25k"), 2500000); assert.equal(budgetPaise("pata nahi"), 0);
+  const r = formResult(qs, ["Rahul Sharma", "Jaipur, Malviya Nagar", "20 hazar", "XL"]);
+  assert.deepEqual(r.patch, { name: "Rahul Sharma", address: "Jaipur, Malviya Nagar", budget_paise: 2000000 });
+  assert.match(r.summary, /Name: Rahul Sharma · City: Jaipur, Malviya Nagar · Budget: 20 hazar · Kaun sa size\?: XL/);
+});
+
+test("auto tags: a rule's word in the message gives its tag; nothing matches → none", () => {
+  const rules = [{ tag: "Repair", words: "repair, display, screen" }, { tag: "wholesale", words: "thok, wholesale\nbulk" }, { tag: "", words: "x" }];
+  assert.deepEqual(autoTags("meri screen toot gayi", rules), ["repair"]);
+  assert.deepEqual(autoTags("Thok me rate kya hai, display bhi", rules), ["repair", "wholesale"]);
+  assert.deepEqual(autoTags("hello", rules), []);
+});
+
+test("rating: only a bare 1–5 or stars counts; happy ones get the review link, the others an apology", () => {
+  assert.equal(parseRating("5"), 5); assert.equal(parseRating("4 star"), 4); assert.equal(parseRating("⭐⭐⭐"), 3); assert.equal(parseRating("5/5"), 5); assert.equal(parseRating("2."), 2);
+  assert.equal(parseRating("5 cover chahiye"), null); assert.equal(parseRating("6"), null); assert.equal(parseRating("ok"), null);
+  assert.match(ratingReply(5, "https://g.page/r/x"), /g\.page/); assert.doesNotMatch(ratingReply(2, "https://g.page/r/x"), /g\.page/); assert.match(ratingReply(2, ""), /माफ़/);
+});

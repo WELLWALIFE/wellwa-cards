@@ -30,6 +30,9 @@ function clean(r: BotRules): BotRules | undefined {
   if (r.pay?.length) o.pay = r.pay;
   if (r.never?.trim()) o.never = r.never.trim().slice(0, 400);
   if (r.night?.on || r.night?.text?.trim()) o.night = { on: !!r.night.on, text: (r.night.text ?? "").trim().slice(0, 400) };
+  if (r.rateFirst) o.rateFirst = true;
+  const tags = (r.tags ?? []).map((x) => ({ tag: (x.tag ?? "").trim().slice(0, 24), words: (x.words ?? "").trim().slice(0, 200) })).filter((x) => x.tag && x.words).slice(0, 12);
+  if (tags.length) o.tags = tags;
   return Object.keys(o).length ? o : undefined;
 }
 
@@ -138,7 +141,7 @@ export function AiQuickSetup(props: P) {
 
 /** Everything else, folded away until wanted. */
 export function AiMoreSettings(props: P) {
-  const { r, setR, dirty, busy, note, save, T } = useRules(props, ["name", "ask", "askOwn", "alertOn", "discount", "pay", "never", "night"]);
+  const { r, setR, dirty, busy, note, save, T } = useRules(props, ["name", "ask", "askOwn", "alertOn", "discount", "pay", "never", "night", "rateFirst", "tags"]);
   const [open, setOpen] = useState(false);
   const toggle = <K extends "ask" | "alertOn" | "pay">(k: K, v: NonNullable<BotRules[K]>[number]) => {
     const cur = (r[k] ?? []) as string[];
@@ -183,6 +186,23 @@ export function AiMoreSettings(props: P) {
               <button type="button" role="switch" aria-checked={!!r.night?.on} onClick={() => setR({ ...r, night: { text: r.night?.text ?? "", on: !r.night?.on } })} className={sw(!!r.night?.on)} aria-label={T("On / off", "चालू / बंद")}><span className={knob(!!r.night?.on)} /></button>
             </div>
             {r.night?.on && <textarea value={r.night.text} onChange={(e) => setR({ ...r, night: { on: true, text: e.target.value } })} rows={2} maxLength={400} placeholder={T("e.g. Thank you {naam} 🙏 We will reply in the morning after 10.", "जैसे: धन्यवाद {naam} 🙏 हम सुबह 10 बजे के बाद जवाब देंगे।")} className={`${field} mt-2`} />}</div>
+
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1"><p className="text-sm font-bold">{T("Ask for a rating first", "पहले rating पूछे")}</p><p className="text-[11px] text-muted">{T("After the work is handed over, the customer is asked “how was it, 1 to 5?”. 4–5: they get your Google review link. 1–3: no link — you get a WhatsApp alert to talk to them. Off: the review link goes straight away, as now.", "काम देने के बाद customer से पूछा जाता है “कैसा लगा, 1 से 5?”। 4–5: उन्हें आपका Google review link जाता है। 1–3: link नहीं — आपको WhatsApp पर alert आता है कि उनसे बात करें। बंद: review link सीधे जाता है, जैसा अभी है।")}</p></div>
+            <button type="button" role="switch" aria-checked={!!r.rateFirst} onClick={() => setR({ ...r, rateFirst: !r.rateFirst })} className={sw(!!r.rateFirst)} aria-label={T("On / off", "चालू / बंद")}><span className={knob(!!r.rateFirst)} /></button>
+          </div>
+
+          <div><p className="text-sm font-bold">{T("Tags by the customer's words", "Customer के शब्दों से tag")}</p>
+            <p className="text-[11px] text-muted">{T("When a customer's WhatsApp message has one of the words, the tag is put on them in your CRM — so you can find and message that group later.", "Customer के WhatsApp message में इन में से कोई शब्द हो तो CRM में उन पर tag लग जाता है — बाद में उसी group को ढूँढकर message कर सकें।")}</p>
+            {(r.tags ?? []).map((x, i) => (
+              <div key={i} className="mt-1.5 flex gap-2">
+                <input value={x.tag} onChange={(e) => setR({ ...r, tags: (r.tags ?? []).map((y, k) => (k === i ? { ...y, tag: e.target.value } : y)) })} maxLength={24} placeholder={T("Tag, e.g. repair", "Tag, जैसे: repair")} className={`${field} w-32 shrink-0`} />
+                <input value={x.words} onChange={(e) => setR({ ...r, tags: (r.tags ?? []).map((y, k) => (k === i ? { ...y, words: e.target.value } : y)) })} maxLength={200} placeholder={T("Words, with commas: repair, display, screen", "शब्द, comma लगाकर: repair, display, screen")} className={field} />
+                <button type="button" onClick={() => setR({ ...r, tags: (r.tags ?? []).filter((_, k) => k !== i) })} aria-label={T("Remove", "हटाएँ")} className="px-1 text-muted">✕</button>
+              </div>
+            ))}
+            {(r.tags ?? []).length < 12 && <button type="button" onClick={() => setR({ ...r, tags: [...(r.tags ?? []), { tag: "", words: "" }] })} className="mt-1.5 text-sm font-semibold text-brand-ink">+ {T("Add a tag", "Tag जोड़ें")}</button>}
+          </div>
 
           <SaveBar dirty={dirty} busy={busy} note={note} save={() => void save()} T={T} />
         </div>

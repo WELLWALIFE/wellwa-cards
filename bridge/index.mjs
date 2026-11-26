@@ -33,7 +33,10 @@ import { fileURLToPath } from "node:url";
 import * as baileys from "@whiskeysockets/baileys";
 import { cardDigest } from "./card-digest.mjs";
 import { rulesBlock, alertBlock, ownLanguage } from "./ai-rules.mjs";
-import { bookDays, bookedText, dayMenu, deskBill, deskDue, deskIntent, deskNothing, deskStatus, freeSlots, slotMenu } from "./shop-desk.mjs";
+import {
+  autoTags, bookDays, bookedText, cardAnswer, dayMenu, deskBill, deskDue, deskIntent, deskNothing, deskStatus, formQuestions, formResult, freeSlots,
+  parseRating, ratingReply, slotMenu,
+} from "./shop-desk.mjs";
 import QRCode from "qrcode";
 import pino from "pino";
 
@@ -951,14 +954,15 @@ async function refreshFlow() {
 refreshFlow();
 setInterval(refreshFlow, 60 * 1000);
 const NUM_EMOJI = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
-const flowVars = (t) => String(t ?? "").replace(/\{business\}/gi, cardContext?.data?.company || config.businessName || "").replace(/\{card\}/gi, sellerLink() || "").replace(/\{phone\}/gi, cardContext?.data?.links?.find?.((l) => l.type === "phone")?.value || "");
-function renderMenu(node, isRoot) {
+const flowFirst = (name) => String(name ?? "").replace(/[^\p{L}\p{M} .'-]/gu, "").trim().split(/\s+/)[0] || "";
+const flowVars = (t, name = "") => String(t ?? "").replace(/\s*\{(naam|name)\}/gi, flowFirst(name) ? ` ${flowFirst(name)}` : "").replace(/\{business\}/gi, cardContext?.data?.company || config.businessName || "").replace(/\{card\}/gi, sellerLink() || "").replace(/\{phone\}/gi, cardContext?.data?.links?.find?.((l) => l.type === "phone")?.value || "");
+function renderMenu(node, isRoot, name = "") {
   const opts = (node.options ?? []).slice(0, 9).map((o, i) => `${NUM_EMOJI[i]} ${o.label}`).join("\n");
-  return `${flowVars(node.text || node.title || "")}\n\n${opts}\n\n_Reply with a number${isRoot ? "" : " · 0 for main menu"}_`;
+  return `${flowVars(node.text || node.title || "", name)}\n\n${opts}\n\n_Reply with a number${isRoot ? "" : " · 0 for main menu"}_`;
 }
-async function showMenu(jid, node, isRoot) {
+async function showMenu(jid, node, isRoot, name = "") {
   flowState.set(jid, { nodeId: node.id, at: Date.now() });
-  await sendReply(jid, renderMenu(node, isRoot));
+  await sendReply(jid, renderMenu(node, isRoot, name));
   noteReply(jid);
 }
 // true → handled here (no AI); false → let the AI answer.
@@ -969,9 +973,9 @@ async function runFlow(jid, name, text, firstContact) {
   const triggers = (Array.isArray(flow.triggers) && flow.triggers.length ? flow.triggers : ["hi", "hello", "hey", "menu", "start", "namaste", "namaskar", "help"]).map((x) => String(x).toLowerCase());
   const st = flowState.get(jid);
   const live = st && Date.now() - st.at < FLOW_TTL ? st : null;
-  if (triggers.includes(t) || (firstContact && flow.greetNew !== false && !live)) { await showMenu(jid, root, true); return true; }
+  if (triggers.includes(t) || (firstContact && flow.greetNew !== false && !live)) { await showMenu(jid, root, true, name); return true; }
   if (!live) return false;
-  if (t === "0") { await showMenu(jid, root, true); return true; }
+  if (t === "0") { await showMenu(jid, root, true, name); return true; }
   const node = nodes.find((n) => n.id === live.nodeId) ?? root;
   const opts = node.options ?? [];
   const n = /^\d{1,2}$/.test(t) ? parseInt(t, 10) : 0;
@@ -980,16 +984,25 @@ async function runFlow(jid, name, text, firstContact) {
   const target = nodes.find((x) => x.id === opt.target);
   switch (opt.action) {
     case "menu":
-      if (target) { await showMenu(jid, target, target === root); return true; }
+      if (target) { await showMenu(jid, target, target === root, name); return true; }
       break;
     case "text":
       if (opt.reply) { await sendReply(jid, `${flowVars(opt.reply)}\n\n_0 for main menu_`); noteReply(jid); flowState.set(jid, { nodeId: node.id, at: Date.now() }); return true; }
       break;
-    case "status": case "due": case "bill": case "book":
+    case "status": case "due": case "bill": case "book": case "form":
       // the shop's own counter: answered from its books (bridge/shop-desk.mjs)
       flowState.delete(jid);
       if (await runDesk(jid, name, text, opt.action)) return true;
       break;
+    case "address": case "offer": case "products": {
+      // answered from the card itself; a card with nothing for it → the AI answers the option's own words
+      const ans = cardAnswer(opt.action, ownCard(cardContext?.data), { link: sellerLink() });
+      if (ans) { await deskSay(jid, `${ans}\n\n_0 for main menu_`); flowState.set(jid, { nodeId: node.id, at: Date.now() }); return true; }
+      flowState.delete(jid);
+      const out = splitAlert(await buildReply(jid, opt.label), opt.label);
+      if (out.reply) await deliver(jid, out.reply);
+      return true;
+    }
     case "human": {
       flowState.delete(jid);
       humanActive.set(jid, Date.now()); // bot steps aside for 15 min, same as a manual reply
@@ -1069,9 +1082,71 @@ async function bookStep(jid, name, text) {
   return true;
 }
 
-/** `forced`: the menu option's action ("status" | "due" | "bill" | "book"); without it the message itself is read. */
+/** The lead of this chat gets these fields / tags (the row is made by the message log a moment earlier: looked for twice). */
+async function patchLead(jid, { fields = {}, tags = [] }) {
+  if (!cardContext || !SUPA_URL || !SUPA_KEY) return;
+  const pn = await phoneOf(jid);
+  const phone = pn ? "+" + pn : jid;
+  const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" };
+  const read = () => fetch(`${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=id,tags,name&order=created_at&limit=1`, { headers }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  let rows = await read();
+  if (!Array.isArray(rows) || !rows.length) { await new Promise((r) => setTimeout(r, 4000)); rows = await read(); }
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return;
+  const have = Array.isArray(row.tags) ? row.tags : [];
+  const add = tags.filter((t) => !have.includes(t));
+  const body = { ...fields, ...(add.length ? { tags: [...have, ...add].slice(0, 30) } : {}) };
+  if (!Object.keys(body).length) return;
+  await fetch(`${SUPA_URL}/rest/v1/leads?id=eq.${row.id}`, { method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify(body) }).catch(() => {});
+}
+/** AI Training → More settings → "Tags by the customer's words": the lead is tagged by what they wrote. */
+function tagByWords(jid, text) {
+  const tags = autoTags(text, cardContext?.data?.botRules?.tags);
+  if (tags.length) patchLead(jid, { tags }).catch(() => {});
+}
+
+const formState = new Map();   // jid -> { qs, answers, at }
+const FORM_TTL = 20 * 60 * 1000;
+async function formStep(jid, name, text) {
+  const st = formState.get(jid);
+  if (!st || Date.now() - st.at > FORM_TTL) { formState.delete(jid); return false; }
+  const t = text.trim();
+  if (t === "0") { formState.delete(jid); return false; }                       // back to the menu
+  st.answers.push(/^(skip|chhodo|छोड़ो|-)$/i.test(t) ? "" : t);
+  st.at = Date.now();
+  if (st.answers.length < st.qs.length) { await deskSay(jid, st.qs[st.answers.length].q); return true; }
+  formState.delete(jid);
+  const { patch, summary } = formResult(st.qs, st.answers);
+  await patchLead(jid, { fields: patch, tags: ["form"] }).catch(() => {});
+  const seller = cardContext?.data?.name?.split(" ")[0] || config.businessName || "हम";
+  await deskSay(jid, `धन्यवाद${patch.name ? ` ${flowFirst(patch.name)} जी` : ""} 🙏 आपकी जानकारी मिल गई। ${seller} जल्द ही आपसे बात करेंगे। तब तक कोई सवाल हो तो यहीं लिख दीजिए।`);
+  if (summary) alertOwner(jid, patch.name || name, `Enquiry form filled — ${summary}`, "").catch(() => {});
+  return true;
+}
+
+/** `forced`: the menu option's action ("status" | "due" | "bill" | "book" | "form"); without it the message itself is read. */
 async function runDesk(jid, name, text, forced = "") {
   if (!SUPA_URL || !TENANT_ID || TENANT_ID === "legacy") return false;
+  // A rating asked after the work was handed over (askForReview, "rating first"): a bare 1–5 within three days answers it.
+  const rate = agentState[jid]?.rate;
+  if (!forced && rate && Date.now() - rate.at < 3 * DAY) {
+    const n = parseRating(text);
+    if (n) {
+      const { rate: _done, ...rest } = agentState[jid]; agentState[jid] = { ...rest, updatedAt: Date.now() }; saveAgentState();
+      await deskSay(jid, ratingReply(n, rate.link || ""));
+      patchLead(jid, { tags: [`rated-${n}`] }).catch(() => {});
+      if (n <= 3) alertOwner(jid, name, `Gave ${n}/5 after your work — not happy. Please talk to them.`, text).catch(() => {});
+      bump("ratings");
+      return true;
+    }
+  }
+  if (!forced && formState.has(jid) && await formStep(jid, name, text)) return true;
+  if (forced === "form") {
+    const qs = formQuestions(cardContext?.data?.botRules);
+    formState.set(jid, { qs, answers: [], at: Date.now() });
+    await deskSay(jid, `ज़रूर 🙂 बस ${qs.length} छोटे सवाल:\n\n${qs[0].q}`);
+    return true;
+  }
   if (!forced && bookState.has(jid) && await bookStep(jid, name, text)) return true;
   const intent = forced || deskIntent(text, { book: flowHasBook() });
   if (!intent) return false;
@@ -1769,6 +1844,7 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd,
   rememberTurn(jid, "user", text);
   if (q.kind === "social" && (hist.length || known)) { console.log(`[v2] ${jid}: greeting from a known contact — silent`); return; }
   const firstContact = hist.length === 0;
+  tagByWords(jid, text);
   if (await runDesk(jid, name, text).catch((e) => { console.error("[desk]", e?.message ?? e); return false; })) { saveLead(jid, name, text); return; }
   if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { saveLead(jid, name, text); noteFollowupInbound(jid, name, text); return; }
   if (await ownWelcome(jid, name, text, firstContact).catch(() => false)) { saveLead(jid, name, text); noteFollowupInbound(jid, name, text); return; }
@@ -2100,6 +2176,7 @@ async function startWhatsApp() {
         noteFollowupInbound(jid, name, text); // (re)start the AI follow-up sequence
 
         const firstContact = (history.get(jid)?.length ?? 0) === 0;
+        tagByWords(jid, text);
         if (await runDesk(jid, name, text).catch((e) => { console.error("[desk]", e?.message ?? e); return false; })) continue;
         if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { console.log(`[flow] handled ${jid}: ${text.slice(0, 30)}`); continue; }
         if (await ownWelcome(jid, name, text, firstContact).catch(() => false)) continue;
@@ -2643,9 +2720,11 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "POST" && url.pathname === "/send") {
       if (!planActive()) return json(res, 402, { error: "plan_expired" });
-      const { to, text, imageUrl, videoUrl, documentUrl, fileName, asOwner, sentBy } = await readBody(req);
+      const { to, text, imageUrl, videoUrl, documentUrl, fileName, asOwner, sentBy, expect, reviewLink } = await readBody(req);
       if (state !== "connected") return json(res, 409, { error: "not connected" });
       const jid = to.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
+      // "How was it? 1–5" (askForReview, rating first): the customer's number answer is read by runDesk for three days.
+      if (expect === "rating") { agentState[jid] = { ...(agentState[jid] || {}), rate: { link: String(reviewLink || "").slice(0, 300), at: Date.now() }, updatedAt: Date.now() }; saveAgentState(); }
       let sent;
       if (!asOwner) automationInFlight.set(jid, (automationInFlight.get(jid) ?? 0) + 1);
       try {

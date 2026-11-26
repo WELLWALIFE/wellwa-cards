@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUp, LoaderCircle, Plus, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
-type Act = "menu" | "text" | "ai" | "human" | "status" | "due" | "bill" | "book";
+type Act = "menu" | "text" | "ai" | "human" | "status" | "due" | "bill" | "book" | "address" | "offer" | "products" | "form";
 type Opt = { label: string; action: Act; target?: string; reply?: string };
 type Node = { id: string; title: string; text: string; options: Opt[] };
 type Flow = { greetNew: boolean; triggers: string[]; nodes: Node[] };
@@ -36,14 +36,14 @@ function readyMenus(hi: boolean): { key: string; name: string; flow: Flow }[] {
       { label: H("Is my repair ready?", "Mera repair ban gaya?"), action: "status" },
       { label: H("My balance / pay by UPI", "Mera baaki paisa / UPI se dena hai"), action: "due" },
       { label: H("Send my bill", "Mera bill bhej do"), action: "bill" },
-      { label: H("Address and timings", "Pata aur samay"), action: "ai" },
+      { label: H("Address and timings", "Pata aur samay"), action: "address" },
       { label: H("Talk to the shopkeeper", "Dukaandaar se baat karni hai"), action: "human" },
     ]) },
     { key: "tailor", name: H("Tailor / boutique", "सिलाई / boutique"), flow: mk([
       { label: H("Is my order ready?", "Mera order taiyaar hai?"), action: "status" },
       { label: H("Stitching rates", "Silai ke rate"), action: "ai", reply: H("Sure — which garment?", "Ji, kaun sa kapda silwana hai?") },
       { label: H("Book a time for measurement", "Naap ke liye samay lena hai"), action: "book" },
-      { label: H("Address and timings", "Pata aur samay"), action: "ai" },
+      { label: H("Address and timings", "Pata aur samay"), action: "address" },
       { label: H("Talk to us", "Aapse baat karni hai"), action: "human" },
     ]) },
     { key: "jeweller", name: H("Jeweller", "ज्वेलर"), flow: mk([
@@ -156,7 +156,7 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
               <label className="block">
                 <span className="text-sm font-bold">{T("Line on top", "सबसे ऊपर की line")}</span>
                 <textarea value={main.text} onChange={(e) => setMain({ ...main, text: e.target.value })} rows={2} maxLength={500} className="mt-1 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand" />
-                <span className="text-[11px] text-muted">{T("{business} becomes your business name.", "{business} की जगह आपके business का नाम आएगा।")}</span>
+                <span className="text-[11px] text-muted">{T("{business} becomes your business name; {naam} the customer's first name.", "{business} की जगह आपके business का नाम आएगा।")}</span>
               </label>
 
               {/* 3 — the options */}
@@ -188,6 +188,17 @@ export function AiMenuSheet({ onClose }: { onClose: () => void }) {
                         {actChip(i, "bill", "Send their bill", "उनका बिल भेजे")}
                         {actChip(i, "book", "Book an appointment", "Appointment बुक करे")}
                       </div>
+                      <p className="mt-2 text-[11px] font-semibold text-muted">{T("Or answer from your card / website:", "या आपके card / website से जवाब:")}</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {actChip(i, "products", "Products with prices", "Products दाम सहित")}
+                        {actChip(i, "address", "Address, map, timings", "पता, map, समय")}
+                        {actChip(i, "offer", "Today's offer", "आज का offer")}
+                        {actChip(i, "form", "Ask enquiry questions", "Enquiry के सवाल पूछे")}
+                      </div>
+                      {o.action === "products" && <p className="mt-1.5 text-[11px] text-muted">{T("Sends the products on your card with their prices, up to 3 photos and your website link. No products on the card: the AI answers.", "आपके card के products दाम के साथ, 3 photo तक और website का link भेजता है। Card पर products न हों तो AI जवाब देता है।")}</p>}
+                      {o.action === "address" && <p className="mt-1.5 text-[11px] text-muted">{T("Sends the address, Google Maps link, timings and phone from your card. Nothing on the card: the AI answers.", "आपके card से पता, Google Maps का link, समय और फ़ोन भेजता है। Card पर न हो तो AI जवाब देता है।")}</p>}
+                      {o.action === "offer" && <p className="mt-1.5 text-[11px] text-muted">{T("Sends the notice and offers on your card (only while their date has not passed). None: the AI answers.", "आपके card का notice और offer भेजता है (जब तक उनकी तारीख़ न निकली हो)। न हो तो AI जवाब देता है।")}</p>}
+                      {o.action === "form" && <p className="mt-1.5 text-[11px] text-muted">{T("Asks the questions you chose in AI Training → More settings → “Find out from a new customer”, one at a time. The answers go onto the customer in your CRM and you get a WhatsApp alert.", "AI Training → और settings → “नए customer से पूछे” में चुने सवाल एक-एक करके पूछता है। जवाब CRM में customer पर चढ़ जाते हैं और आपको WhatsApp पर alert आता है।")}</p>}
                       {o.action === "status" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer is told where their repair, tailoring job or jewellery order stands — found by the number they write from, or by the job number they type.", "Customer को बताया जाता है कि उनका रिपेयर, सिलाई का काम या ज्वेलरी order कहाँ तक पहुँचा — जिस नंबर से लिख रहे हैं उससे, या उनके लिखे job नंबर से।")}</p>}
                       {o.action === "due" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer gets their total udhaar, bill by bill, with the bill link (it has your UPI QR). Only their own number's bills.", "Customer को उनका कुल उधार मिलता है, बिल-दर-बिल, बिल के link के साथ (उस पर आपका UPI QR है)। सिर्फ़ उनके अपने नंबर के बिल।")}</p>}
                       {o.action === "bill" && <p className="mt-1.5 text-[11px] text-muted">{T("The customer gets the link of their latest bill.", "Customer को उनके सबसे नए बिल का link मिलता है।")}</p>}
