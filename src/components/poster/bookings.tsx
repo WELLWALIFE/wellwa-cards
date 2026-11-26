@@ -113,7 +113,7 @@ export function Bookings({ business }: { business?: string }) {
               <div key={b.id} className="rounded-2xl border border-border bg-surface p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-base font-semibold leading-tight">{fmtWhen(b.starts_at, hi).split(", ")[1]} <span className="text-sm font-medium text-ink">· {b.name || T("ग्राहक", "Customer")}</span></p>
+                    <p className="text-base font-semibold leading-tight">{fmtWhen(b.starts_at, hi).split(", ").slice(1).join(", ")} <span className="text-sm font-medium text-ink">· {b.name || T("ग्राहक", "Customer")}</span></p>
                     <p className="mt-0.5 text-xs text-muted truncate">{[b.service, b.phone, b.note].filter(Boolean).join(" · ")}</p>
                     <p className="mt-0.5 text-[11px] text-muted">{b.source === "chat" ? T("वेबसाइट चैट से", "from website chat") : b.source === "whatsapp" ? T("WhatsApp से", "from WhatsApp") : T("आपने जोड़ी", "added by you")}{b.reminded_customer_24h || b.reminded_customer_2h ? ` · ${T("रिमाइंडर गया", "reminder sent")}` : ""}</p>
                   </div>

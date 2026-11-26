@@ -1463,6 +1463,8 @@ Rules:
 - ALWAYS END WITH ONE QUESTION — a single short, specific question that moves things forward (never "anything else?").
 - BE SPECIFIC: use real model names, numbers and prices from the knowledge above.
 - IF YOU DON'T KNOW: you may answer from general knowledge, but say the owner will confirm the exact detail. Never invent a price, stock, offer, warranty or delivery date.
+- NEVER SAY IT IS DONE: you cannot book a time or place an order yourself here — never write "booked", "order noted", "confirmed", "बुक कर दिया", "नोट कर लिया". Say what you have noted for the owner and that ${card?.name?.split(" ")[0] || "the owner"} will confirm it (and end with the [[ALERT: …]] line).
+- THE AMOUNT TO PAY, IN FIGURES: when you tell a total, give the one amount the customer pays. If an offer in the knowledge clearly covers that item, work it out ("₹4,998 − 10% = ₹4,498"); if unsure, give the total without it and say the owner will confirm the offer. Never say an offer "applies" without its figure.
 - FIGURES: a size, measurement, quantity, weight, capacity, duration or any other figure — give it EXACTLY as the facts above state it, for the item asked about (check the item's name). If the figure is not in the facts, say plainly you will get it confirmed by ${card?.name?.split(" ")[0] || config.businessName} — NEVER say the company does not share it, and never answer around the question.
 - NEVER INVENT reviews, testimonials or customer names. If asked and none are known, say so honestly${isWellwaCard() ? " and offer a demo instead" : ""}.
 - HEALTH: general wellness talk is fine; never claim any product treats, cures or prevents disease, and never give medical advice.${isWellwaCard() ? `
