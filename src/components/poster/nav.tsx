@@ -29,6 +29,10 @@ function isActive(href: string, p: string): boolean {
   return p.startsWith(href);
 }
 
+/** The computer sidebar's items: the open screen filled (the brand gradient), every other one plain. */
+const SIDE = "flex items-center gap-3 rounded-xl px-3 transition outline-none focus-visible:ring-2 focus-visible:ring-brand/50";
+const SIDE_ON = "grad-brand font-bold text-white shadow-card";
+
 export function PosterNav() {
   const p = usePathname();
   const { t, lang } = useT();
@@ -108,20 +112,17 @@ export function PosterNav() {
           <span className="text-[1.15rem] font-extrabold tracking-tight text-ink">Shubhora</span>
         </Link>
         <nav className="flex-1 overflow-y-auto px-3 pb-4">
+          {/* One pattern for every item (owner, 26 Nov 2026: "jis par click karein wo highlight ho — My Shop hamesha highlight lagta hai ki
+              wahi khula hai"): only the screen that is open is filled; the rest are plain and light up on hover. A click leaves no outline
+              (keyboard focus still shows one). */}
           <ul className="space-y-0.5">
             {tabs.map((x) => {
-              const active = isActive(x.href, p);
-              if (x.href === DUKAAN) return (
-                <li key={x.href}>
-                  <Link href={x.href} className={`my-1 flex items-center gap-3 rounded-xl grad-brand px-3 py-2.5 text-sm font-bold text-white shadow-card ${active ? "ring-2 ring-brand/40" : ""}`}>
-                    <x.icon className="h-5 w-5" /> {x.label}
-                  </Link>
-                </li>
-              );
+              // A Quick-open item that is the open screen (Orders · Silai under My Shop) is the one lit, not both.
+              const active = isActive(x.href, p) && !quick.some((q) => p.startsWith(q.href));
               return (
                 <li key={x.href}>
-                  <Link href={x.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? "bg-brand-soft text-brand-ink" : "text-ink hover:bg-surface2"}`}>
-                    <x.icon className={`h-5 w-5 ${active ? "text-brand" : "text-muted"}`} /> {x.label}
+                  <Link href={x.href} aria-current={active ? "page" : undefined} className={`${SIDE} py-2.5 text-sm font-semibold ${active ? SIDE_ON : "text-ink hover:bg-surface2"}`}>
+                    <x.icon className={`h-5 w-5 ${active ? "text-white" : "text-muted"}`} /> {x.label}
                   </Link>
                 </li>
               );
@@ -133,8 +134,8 @@ export function PosterNav() {
               const active = p.startsWith(x.href);
               return (
                 <li key={x.href}>
-                  <Link href={x.href} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition ${active ? "bg-brand-soft text-brand-ink" : "text-muted hover:bg-surface2 hover:text-ink"}`}>
-                    <x.icon className={`h-4 w-4 ${active ? "text-brand" : ""}`} /> {x.label}
+                  <Link href={x.href} aria-current={active ? "page" : undefined} className={`${SIDE} py-2 text-[13px] font-medium ${active ? SIDE_ON : "text-muted hover:bg-surface2 hover:text-ink"}`}>
+                    <x.icon className={`h-4 w-4 ${active ? "text-white" : ""}`} /> {x.label}
                   </Link>
                 </li>
               );
