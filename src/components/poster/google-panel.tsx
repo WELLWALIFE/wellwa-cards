@@ -91,15 +91,18 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
         <section className="rounded-xl border border-border p-4 space-y-3">
           <div className="text-center space-y-2">
             <span className="mx-auto h-12 w-12 rounded-full bg-white border border-border grid place-items-center text-xl font-black text-[#4285F4]">G</span>
-            <p className="text-sm text-muted">{"Google Business is not connected"}</p>
+            <p className="text-sm text-muted">{T("Google Business is not connected", "Google Business अभी जुड़ा नहीं है")}</p>
             <ConnectConsent kind="google" />
             <button type="button" onClick={() => connect(false)} disabled={busy === "connect" || !s.configured} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#4285F4] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
-              {busy === "connect" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {"Connect Google Business"}
+              {busy === "connect" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {T("Connect Google Business", "Google Business जोड़ें")}
             </button>
             {here("connect")}
-            <p className="text-[11px] text-faint">{"Log in with the Google account that owns your Business Profile. One click, no API keys."}</p>
+            <p className="text-[11px] text-faint">{T("Log in with the Google account that owns your Business Profile. One click, no API keys.", "उसी Google account से login करें जिसकी Business Profile है। एक click, कोई key नहीं।")}</p>
+            {/* Until Google finishes verifying the app (applied, Nov 2026) its sign-in shows a warning first: say what to tap. */}
+            <p className="rounded-lg bg-surface2 px-3 py-2 text-left text-[11px] text-muted">{T("If Google shows “Google hasn't verified this app”, tap Advanced → Go to Shubhora. It is Shubhora's own app; Google's check of it is in progress.", "अगर Google “Google hasn't verified this app” दिखाए, तो Advanced → Go to Shubhora दबाएँ। ये Shubhora का अपना app है; Google की जाँच चल रही है।")}</p>
             {!s.configured && <p className="rounded-lg bg-lead/10 px-3 py-2 text-[11px] text-lead">{"The platform's Google setup is pending (admin adds the Google Cloud client). Until then you can use your own client under Advanced."}</p>}
-            <a href="https://business.google.com/" target="_blank" rel="noreferrer" className="block text-xs text-brand-ink">{"How to create a Google Business Profile (free)"} ↗</a>
+            <a href="https://business.google.com/" target="_blank" rel="noreferrer" className="block text-xs text-brand-ink">{T("No Google Business Profile yet? Create one free", "Google Business Profile नहीं है? Free में बनाएँ")} ↗</a>
+            <a href="/google-check" target="_blank" rel="noreferrer" className="block text-xs text-brand-ink">{T("See how your shop looks on Google now (free check)", "देखें Google पर आपकी दुकान अभी कैसी दिखती है (free जाँच)")} ↗</a>
           </div>
           <details open={adv} onToggle={(e) => setAdv((e.target as HTMLDetailsElement).open)} className="rounded-lg border border-dashed border-border px-3 py-2 text-xs">
             <summary className="cursor-pointer font-semibold text-muted">{"Advanced: use your own Google Cloud OAuth client"}</summary>
@@ -123,7 +126,7 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
                 <p className="text-[11px] text-muted flex flex-wrap items-center gap-2">
                   {s.rating !== null && <span className="inline-flex items-center gap-0.5 text-ink font-semibold"><Star className="h-3 w-3 fill-lead text-lead" />{Number(s.rating).toFixed(1)} <span className="font-normal text-muted">({s.review_count} {hi ? "reviews" : "reviews"})</span></span>}
                   {s.maps_url && <a href={s.maps_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-brand-ink">Maps <ExternalLink className="h-3 w-3" /></a>}
-                  {s.status === "reconnect" && <span className="text-lead">⚠️ {"reconnect needed"}</span>}
+                  {s.status === "reconnect" && <button type="button" onClick={() => connect(false, "reconnect")} className="font-semibold text-lead underline">⚠️ {T("Reconnect needed — tap here", "फिर से जोड़ना है — यहाँ दबाएँ")}</button>}
                 </p>
               </div>
               <button type="button" onClick={() => patch({ refresh: true })} className="p-1 text-muted" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${busy === "patch" ? "animate-spin" : ""}`} /></button>
@@ -163,9 +166,9 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
             </section>
           ); })()}
 
-          <GoogleProfileEdit hi={hi} />
+          {s.status === "ok" && <GoogleProfileEdit hi={hi} />}
 
-          <GoogleHealth hi={hi} />
+          {s.status === "ok" && <GoogleHealth hi={hi} />}
 
           <ReviewAsk hi={hi} />
 

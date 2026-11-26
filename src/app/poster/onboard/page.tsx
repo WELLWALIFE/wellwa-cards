@@ -2092,7 +2092,9 @@ function Onboard() {
                 {site.kind === "own" && !!cleanSiteUrl(site.url) && (
                   <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-ai/10 px-3 py-2 text-xs text-ink">
                     <Globe className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ai" />
-                    <span>{T(`${hostOf(site.url)} stays your website: a Website button on your card, and the AI sends customers this link. Change it any time in Card & Website.`, `${hostOf(site.url)} आपकी website रहेगी: card पर Website button, और AI ग्राहकों को यही link भेजेगा। बाद में Card & Website में बदल सकते हैं।`)}</span>
+                    <span className="flex-1"><span className="block">{T(`${hostOf(site.url)} stays your website: a Website button on your card, and the AI sends customers this link. Change it any time in Card & Website.`, `${hostOf(site.url)} आपकी website रहेगी: card पर Website button, और AI ग्राहकों को यही link भेजेगा। बाद में Card & Website में बदल सकते हैं।`)}</span>
+                    {/* Kept as it is, it can still bring its enquiries in (owner, 26 Nov 2026: "website hamari wahi rahegi"). */}
+                    <span className="mt-1 block text-muted">{T("Its enquiry forms can come into your CRM too: one line on the site, nothing else changes — CRM → Settings → Lead sources (after setup).", "उसके enquiry forms भी आपके CRM में आ सकते हैं: website पर बस एक line, बाकी कुछ नहीं बदलता — CRM → Settings → Lead sources (setup के बाद)।")}</span></span>
                   </p>
                 )}
                 {site.kind === "dealer" && peek.state === "found" && peek.url === cleanSiteUrl(site.url) && peek.data?.name && (

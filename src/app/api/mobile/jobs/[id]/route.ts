@@ -8,6 +8,7 @@ import { billTotals } from "@/lib/mobile";
 import { cleanJobFields, jobBillLines, jobOpen, jobStatus, jobTotals, type JobPart, type JobRow, type JobStatus } from "@/lib/mobile-repair";
 import { createBill, itemsByIds, msCtx, msDenied, msHas, qtyAdd, shopOf, trueLines } from "@/lib/mobile-server";
 import { hideJobCost, jobById, jobEvent, jobLink, partsBack, saveJob, sendJob } from "@/lib/mobile-repair-server";
+import { askForReview } from "@/lib/customer-send";
 
 type Ctx = { params: Promise<{ id: string }> };
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -133,6 +134,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const bill = await createBill(scope, setup, "sale", { customer_name: job.customer_name, customer_phone: job.customer_phone, customer_gstin: "", customer_state: "", lines, payments, discount_paise: 0, notes: notes.slice(0, 300), due_date: null, client_id: `job-${job.id}-${(job.events ?? []).length}`, created_by: scope.userId, created_by_name: access.name }, true);
       if (!bill) return NextResponse.json({ error: "Could not make the bill. Please try again." }, { status: 500 });
       const next = await saveJob(o, job.id, { status: "delivered", labour_paise: labour, bill_id: bill.id, delivered_at: now, events: ev(`Given back · bill ${bill.code} ${rs(bill.total_paise)}${excess > 0 ? ` · ${rs(excess)} of the advance returned` : ""}`) });
+      // Given back: thank-you + review link (owner, 26 Nov 2026; the owner's switch decides).
+      if (next && job.customer_phone) void askForReview(scope.ownerId, { name: job.customer_name ?? "", phone: job.customer_phone }, `mjob:${job.id}`);
       return out(next, { billId: bill.id });
     }
     default:
