@@ -31,13 +31,15 @@ export function GoogleCheck() {
   const where = reach === "india" ? "India" : city.trim();
   const [places, setPlaces] = useState<Candidate[] | null>(null); const [pick, setPick] = useState<Candidate | null>(null);
   const [phone, setPhone] = useState(""); const [name, setName] = useState(""); const [sells, setSells] = useState("");
-  const [busy, setBusy] = useState<"" | "find" | "report">(""); const [error, setError] = useState("");
+  const [busy, setBusy] = useState<"" | "find" | "report" | "ask">(""); const [error, setError] = useState("");
+  // Nothing found on Google: the visitor can ask for a profile to be made (a lead); `asked` once it is sent.
+  const [asked, setAsked] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [partner, setPartner] = useState<Partner | null>(null);
 
   async function find(e: React.FormEvent) {
-    e.preventDefault(); setError(""); setBusy("find"); setPlaces(null); setPick(null); setReport(null);
-    try { const j = await post({ step: "find", q, city: where }); setPlaces(j.places); if (!j.places.length) setError(reach === "india" ? "No business found on Google with that name. Check the spelling, or pick Local and add the city." : "No business found on Google with that name. Check the spelling or the city."); }
+    e.preventDefault(); setError(""); setBusy("find"); setPlaces(null); setPick(null); setReport(null); setAsked(false);
+    try { const j = await post({ step: "find", q, city: where }); setPlaces(j.places); }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
   async function run(e: React.FormEvent) {
@@ -48,6 +50,13 @@ export function GoogleCheck() {
       // The website's speed comes a little later and is put into the report shown.
       if (j.report?.sitePending) void post({ step: "speed", placeId: pick.id }).then((s) => { if (s.report) setReport((cur) => (cur && cur.place.id === s.report.place.id ? s.report : cur)); }).catch(() => setReport((cur) => (cur ? { ...cur, sitePending: false } : cur)));
     }
+    catch (err) { setError((err as Error).message); } finally { setBusy(""); }
+  }
+
+  async function askProfile(e: React.FormEvent) {
+    e.preventDefault(); setError(""); setBusy("ask");
+    let by = ""; try { by = new URLSearchParams(window.location.search).get("by") ?? ""; } catch { /* old browser */ }
+    try { const j = await post({ step: "noprofile", q, city: where, phone, name, ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setAsked(true); }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
 
@@ -85,6 +94,29 @@ export function GoogleCheck() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {places && places.length === 0 && (
+        <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-ink md:p-5 dark:bg-amber-950/30">
+          <p className="text-base font-semibold">“{q}” is not on Google{reach === "local" && city.trim() ? ` in ${city.trim()}` : ""}.</p>
+          <p className="mt-1 text-sm">आपकी दुकान Google पर नहीं मिली — यही सबसे बड़ी कमी है: आस-पास खोजने वाले ग्राहक आपको देख ही नहीं पाते.</p>
+          <p className="mt-1 text-xs text-muted">Spelling different on Google? Try again above{reach === "india" ? ", or pick Local and add the city" : ""}.</p>
+          {asked ? (
+            <div className="mt-4 rounded-lg bg-white/70 p-3 text-sm dark:bg-black/20">
+              <p className="font-semibold text-good">✅ Done — we will call you on WhatsApp. / हम WhatsApp पर संपर्क करेंगे।</p>
+              {partner && <a href={`https://wa.me/${partner.wa}?text=${encodeURIComponent(`Hi ${partner.name}, please make a Google profile for ${q}${city.trim() ? ` (${city.trim()})` : ""}.`)}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-4 py-2 font-semibold text-white">Talk to {partner.name} on WhatsApp <ArrowRight className="h-4 w-4" /></a>}
+            </div>
+          ) : (
+            <form onSubmit={askProfile} className="mt-4">
+              <p className="text-sm font-semibold">Get your Google Business Profile made — we set it up for you. / हम आपकी Google profile बनवा देंगे।</p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} required inputMode="tel" placeholder="WhatsApp number" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />
+                <button disabled={busy === "ask"} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-base font-semibold text-white disabled:opacity-60">{busy === "ask" ? <Loader2 className="h-5 w-5 animate-spin" /> : "Make my profile"}</button>
+              </div>
+            </form>
+          )}
         </div>
       )}
 

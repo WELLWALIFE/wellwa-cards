@@ -1,5 +1,6 @@
 // Google Health Check API (owner, 4 Nov 2026).
 //   POST { step: "find", q, city }                 → up to 5 matching businesses (cheap: one Places text search)
+//   POST { step: "noprofile", q, city, phone, name } → nothing found on Google: the visitor asks for a profile to be made (a lead)
 //   POST { step: "report", placeId, phone?, name? } → the full report. A visitor leaves a phone number (the lead); a signed-in
 //                                                    account (every account is a partner) needs none and gets a bigger daily limit.
 // Limits per IP a day: find 20; report 3 (visitor) / 20 (signed in). A report already made in the last 7 days costs nothing.
@@ -30,6 +31,35 @@ export async function POST(request: Request) {
       const places = await findPlaces(city ? `${q} ${city}` : q);
       return Response.json({ ok: true, places });
     } catch (e) { console.error("google-check find", e); return Response.json({ ok: false, error: "Google did not answer. Try again." }, { status: 502 }); }
+  }
+
+  // Not on Google at all (owner, 26 Nov 2026: a business with a website but no Google profile is not found by name, and those are
+  // the ones who need it most): the visitor leaves a number and the profile is made for them. A lead like the report's, no report.
+  if (b.step === "noprofile") {
+    const me = await requireUser();
+    const phone = clean(b.phone, 20).replace(/[^\d+]/g, "");
+    if (phone.replace(/\D/g, "").length < 10) return Response.json({ ok: false, error: "Enter your WhatsApp number." }, { status: 400 });
+    if (rateLimited(clientKey(request, "gcheck-noprofile"), 5, DAY)) return Response.json({ ok: false, error: "Daily limit reached. Try again tomorrow." }, { status: 429 });
+    const biz = clean(b.q, 80), city = clean(b.city, 60), name = clean(b.name, 100) || biz;
+    if (biz.length < 2) return Response.json({ ok: false, error: "Type the business name." }, { status: 400 });
+    const by = clean(b.by, 60).toLowerCase();
+    const card = await leadCard(by, me?.user.id).catch(() => null);
+    const message = `Google check: "${biz}"${city ? ` (${city})` : ""} — not found on Google. Wants a Google Business Profile made.`;
+    const admin = getAdminSupabase();
+    let cardName = "";
+    if (admin && card) { const { data: u } = await admin.from("cards").select("username").eq("id", card.id).maybeSingle(); cardName = u?.username ?? ""; }
+    await saveSiteLead({ source: "google-check", name, phone, message, card: cardName }).catch(() => false);
+    if (admin && card) {
+      await admin.from("leads").insert({ card_id: card.id, owner_id: card.owner_id, name, phone, email: "", message, source: "form", src: "google-check" });
+      const digits = phone.replace(/\D/g, ""); const to = digits.length === 10 ? `91${digits}` : digits;
+      await notify(card.owner_id, "new_lead", {
+        title: `New lead: ${name} — no Google profile`.slice(0, 80), body: `${biz}${city ? `, ${city}` : ""} · ${phone}`.slice(0, 160),
+        path: "/poster/leads", ref: `gcheck-np:${digits}:${biz}`.slice(0, 120),
+        whatsappText: `🔎 *New lead from the Google check*\n${name} — ${phone}\n"${biz}"${city ? ` (${city})` : ""} is not on Google. They want a Google Business Profile.\n\nMessage them: https://wa.me/${to}`,
+      }).catch(() => undefined);
+    }
+    const partner = await partnerOf(by).catch(() => null);
+    return Response.json({ ok: true, ...(partner ? { partner } : {}) });
   }
 
   if (b.step === "report") {
@@ -101,6 +131,15 @@ function reportText(r: { place: { name: string; id?: string }; city: string; sco
 async function saveLead(phone: string, name: string, r: Parameters<typeof reportText>[0] & { place: { name: string; address: string } }, by = "", signedIn?: string) {
   const admin = getAdminSupabase();
   if (!admin) return;
+  const card = await leadCard(by, signedIn);
+  const message = [`Google check: ${r.place.name} — score ${r.score}/100`, r.place.address, ...r.fixes.map((f) => `• ${f.title}`)].join("\n");
+  return deliverLead(admin, card, phone, name, message, r);
+}
+
+/** Whose lead a visitor is: the partner whose website sent them, else the signed-in account, else the company's own card. */
+async function leadCard(by: string, signedIn?: string): Promise<{ id: string; owner_id: string } | null> {
+  const admin = getAdminSupabase();
+  if (!admin) return null;
   // Opened from a Shubhora partner's website (?by=<their card>): the visitor is that partner's lead (owner, 25 Nov 2026). Only a real
   // partner card counts — any other name, or none, and the lead goes to the company's own card as before.
   let card: { id: string; owner_id: string } | null = null;
@@ -118,7 +157,10 @@ async function saveLead(phone: string, name: string, r: Parameters<typeof report
     const username = (process.env.SITE_LEAD_CARD ?? "").trim().toLowerCase();
     if (username) { const { data } = await admin.from("cards").select("id,owner_id").eq("username", username).maybeSingle(); card = data ?? null; }
   }
-  const message = [`Google check: ${r.place.name} — score ${r.score}/100`, r.place.address, ...r.fixes.map((f) => `• ${f.title}`)].join("\n");
+  return card;
+}
+
+async function deliverLead(admin: NonNullable<ReturnType<typeof getAdminSupabase>>, card: { id: string; owner_id: string } | null, phone: string, name: string, message: string, r: Parameters<typeof reportText>[0]) {
   // Always kept for Admin → Leads, with the card it also went to.
   let cardName = "";
   if (card) { const { data: u } = await admin.from("cards").select("username").eq("id", card.id).maybeSingle(); cardName = u?.username ?? ""; }
