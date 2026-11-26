@@ -305,8 +305,8 @@ function NewBill() {
               {mode === "part" && (
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span>{T("Received now ₹", "अभी मिला ₹")}</span>
-                  <input className={`${small} w-28`} inputMode="decimal" value={part.amount} onChange={(e) => setPart({ ...part, amount: e.target.value })} placeholder="0" />
-                  <select className={small} value={part.mode} onChange={(e) => setPart({ ...part, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select>
+                  <input aria-label="Received now" className={`${small} w-28`} inputMode="decimal" value={part.amount} onChange={(e) => setPart({ ...part, amount: e.target.value })} placeholder="0" />
+                  <select aria-label="Received by" className={small} value={part.mode} onChange={(e) => setPart({ ...part, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select>
                   <span className="font-semibold text-danger">{T("Udhaar", "उधार")}: {inr(Math.max(0, totals.total - (ex.open ? paiseOf(ex.value) : 0) - ptsPaise - paiseOf(part.amount)))}</span>
                 </div>
               )}
