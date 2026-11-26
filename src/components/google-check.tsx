@@ -38,12 +38,14 @@ export function GoogleCheck() {
   const [busy, setBusy] = useState<"" | "find" | "report" | "ask">(""); const [error, setError] = useState("");
   // Nothing found on Google: the visitor can ask for a profile to be made (a lead); `asked` once it is sent.
   const [asked, setAsked] = useState(false);
+  // Google always offers something close (live, 26 Nov 2026: a made-up name in Jaipur listed four other shops): "none of these".
+  const [none, setNone] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [partner, setPartner] = useState<Partner | null>(null);
   const [join, setJoin] = useState("");
 
   async function find(e: React.FormEvent) {
-    e.preventDefault(); setError(""); setBusy("find"); setPlaces(null); setPick(null); setReport(null); setAsked(false);
+    e.preventDefault(); setError(""); setBusy("find"); setPlaces(null); setPick(null); setReport(null); setAsked(false); setNone(false);
     try { const j = await post({ step: "find", q, city: where }); setPlaces(j.places); }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
@@ -69,9 +71,9 @@ export function GoogleCheck() {
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-5 md:p-7">
-      <p className="mb-2 text-sm font-semibold text-ink">Your business is… <span className="font-normal text-muted">/ आपका business…</span></p>
+      <p className="mb-2 text-sm font-semibold text-ink">Where do you serve customers?</p>
       <div className="mb-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Business reach">
-        {([["local", "Local — one city", "एक शहर में"], ["india", "All India", "पूरे भारत में"]] as const).map(([k, en, hi]) => (
+        {([["local", "In one city", "A shop, clinic or service in your city"], ["india", "Across India", "A brand or business serving all of India"]] as const).map(([k, en, hi]) => (
           <button key={k} type="button" role="radio" aria-checked={reach === k} onClick={() => setReach(k)} className={`rounded-xl border px-3 py-2.5 text-left text-sm ${reach === k ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border text-ink"}`}>
             {en}<span className="block text-xs font-normal text-muted">{hi}</span>
           </button>
@@ -86,7 +88,7 @@ export function GoogleCheck() {
         <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
       </form>
 
-      {places && places.length > 0 && !pick && (
+      {places && places.length > 0 && !pick && !none && (
         <div className="mt-6">
           <p className="text-sm font-semibold text-muted">Which one is yours?</p>
           <div className="mt-2 grid gap-2">
@@ -98,28 +100,29 @@ export function GoogleCheck() {
                 {(p.rating > 0 || p.reviews > 0) && <span className="text-sm"><Stars r={p.rating} /> <span className="text-muted">({p.reviews})</span></span>}
               </button>
             ))}
+            <button type="button" onClick={() => setNone(true)} className="rounded-xl border border-dashed border-border p-4 text-left text-base font-semibold text-muted hover:border-brand hover:text-ink">None of these is my business</button>
           </div>
         </div>
       )}
 
-      {places && places.length === 0 && (
+      {places && (places.length === 0 || none) && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-ink md:p-5 dark:bg-amber-950/30">
-          <p className="text-base font-semibold">“{q}” is not on Google{reach === "local" && city.trim() ? ` in ${city.trim()}` : ""}.</p>
-          <p className="mt-1 text-sm">आपकी दुकान Google पर नहीं मिली — यही सबसे बड़ी कमी है: आस-पास खोजने वाले ग्राहक आपको देख ही नहीं पाते.</p>
-          <p className="mt-1 text-xs text-muted">Spelling different on Google? Try again above{reach === "india" ? ", or pick Local and add the city" : ""}.</p>
+          <p className="text-base font-semibold">We could not find “{q}” on Google{reach === "local" && city.trim() ? ` in ${city.trim()}` : ""}.</p>
+          <p className="mt-1 text-sm">Without a Google Business Profile, customers searching nearby cannot find you on Google Search or Maps. It is the single most important listing for a local business.</p>
+          <p className="mt-1 text-xs text-muted">Listed under a different spelling? Search again above{reach === "india" ? ", or choose “In one city” and add the city" : ""}.</p>
           {asked ? (
             <div className="mt-4 rounded-lg bg-white/70 p-3 text-sm dark:bg-black/20">
-              <p className="font-semibold text-good">✅ Done — we will call you on WhatsApp. / हम WhatsApp पर संपर्क करेंगे।</p>
-              <a href={joinHref(join)} className="mt-2 mr-2 inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 font-semibold text-white">Join Shubhora now / अभी जुड़ें <ArrowRight className="h-4 w-4" /></a>
+              <p className="font-semibold text-good">✅ Thank you. Our team will contact you on WhatsApp shortly.</p>
+              <a href={joinHref(join)} className="mt-2 mr-2 inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 font-semibold text-white">Get started with Shubhora <ArrowRight className="h-4 w-4" /></a>
               {partner && <a href={`https://wa.me/${partner.wa}?text=${encodeURIComponent(`Hi ${partner.name}, please make a Google profile for ${q}${city.trim() ? ` (${city.trim()})` : ""}.`)}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-4 py-2 font-semibold text-white">Talk to {partner.name} on WhatsApp <ArrowRight className="h-4 w-4" /></a>}
             </div>
           ) : (
             <form onSubmit={askProfile} className="mt-4">
-              <p className="text-sm font-semibold">Get your Google Business Profile made — we set it up for you. / हम आपकी Google profile बनवा देंगे।</p>
+              <p className="text-sm font-semibold">Let us create and set up your Google Business Profile for you.</p>
               <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} required inputMode="tel" placeholder="WhatsApp number" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />
-                <button disabled={busy === "ask"} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-base font-semibold text-white disabled:opacity-60">{busy === "ask" ? <Loader2 className="h-5 w-5 animate-spin" /> : "Make my profile"}</button>
+                <button disabled={busy === "ask"} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-base font-semibold text-white disabled:opacity-60">{busy === "ask" ? <Loader2 className="h-5 w-5 animate-spin" /> : "Set up my profile"}</button>
               </div>
             </form>
           )}
@@ -154,8 +157,9 @@ export function GoogleCheck() {
 /** The report, drawn as a story (25 Nov 2026, after the owner put a competitor's report beside ours): who is ahead of you on Google,
  *  how complete your profile is, every issue found, and how Shubhora fixes them. Only what Google really shows us from outside. */
 function ReportView({ r, partner, join, onReset }: { r: Report; partner: Partner | null; join: string; onReset: () => void }) {
-  const [lang, setLang] = useState<"hi" | "en">("hi");
-  const T = (en: string, hi: string) => (lang === "hi" ? hi : en);
+  // English only (owner, 26 Nov 2026: the site is in English, so is this page). T keeps the second text only as a note.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const T = (en: string, _hi?: string) => en;
   const issues = r.issues?.length ? r.issues : r.fixes;
   const ahead = r.local?.ahead ?? [];
   const more = r.local && r.local.rank === null ? "+" : "";
@@ -179,9 +183,7 @@ function ReportView({ r, partner, join, onReset }: { r: Report; partner: Partner
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold">{T("Your profile report", "Aapki Profile Report")}</h2>
         <div className="flex items-center gap-3">
-          <div className="inline-flex overflow-hidden rounded-full border border-border text-sm font-semibold" role="group" aria-label="Language">
-            {(["hi", "en"] as const).map((k) => <button key={k} type="button" aria-pressed={lang === k} onClick={() => setLang(k)} className={`px-3 py-1.5 ${lang === k ? "bg-brand text-white" : "bg-surface text-ink"}`}>{k === "hi" ? "Hinglish" : "English"}</button>)}
-          </div>
+          
           <button type="button" onClick={onReset} className="text-sm font-semibold text-brand hover:underline">{T("Change business", "Business badlein")}</button>
         </div>
       </div>
@@ -196,16 +198,16 @@ function ReportView({ r, partner, join, onReset }: { r: Report; partner: Partner
         <p className="mx-auto mt-5 inline-block rounded-full bg-red-50 px-4 py-1.5 text-base font-semibold text-red-600">{T(`Report ready · ${issues.length} issues found`, `Report ready · ${issues.length} issues mile`)}</p>
         <p className="mt-4 text-balance text-2xl font-extrabold leading-snug md:text-3xl">
           {ahead.length > 0
-            ? T(`${r.place.name} is losing customers to ${ahead.length}${more} competitors on Google.`, `${r.place.name} Google par ${ahead.length}${more} competitors ko customers kho raha hai.`)
+            ? T(`${ahead.length}${more} nearby businesses appear ahead of ${r.place.name} on Google.`, `${r.place.name} Google par ${ahead.length}${more} competitors ko customers kho raha hai.`)
             : r.score >= 75 ? T(`${r.place.name} stands strong on Google.`, `${r.place.name} Google par strong hai.`)
-            : T(`${r.place.name}'s Google profile is leaving customers on the table.`, `${r.place.name} ki Google profile customers chhod rahi hai.`)}
+            : T(`${r.place.name} can win more customers from Google.`, `${r.place.name} ki Google profile customers chhod rahi hai.`)}
         </p>
-        {ahead.length > 0 && <p className="mx-auto mt-3 max-w-xl text-base text-muted">{T(`Right now, when people search "${trade}" in ${r.city}, these businesses show before you.`, `Abhi - jab log ${r.city} mein "${trade}" search karte hain, ye businesses aapse pehle dikhte hain.`)} <span className="font-semibold text-brand">{T("You can start fixing this within 24 hours.", "Aap 24 hours mein ise fix karna start kar sakte hain.")}</span></p>}
+        {ahead.length > 0 && <p className="mx-auto mt-3 max-w-xl text-base text-muted">{T(`Right now, when people search "${trade}" in ${r.city}, these businesses show before you.`, `Abhi - jab log ${r.city} mein "${trade}" search karte hain, ye businesses aapse pehle dikhte hain.`)} <span className="font-semibold text-brand">{T("Most of it can be fixed within a few days.", "Aap 24 hours mein ise fix karna start kar sakte hain.")}</span></p>}
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           {ahead.length > 0
             ? <div className="rounded-2xl border border-border bg-bg p-3"><p className="text-3xl font-extrabold tabular-nums text-red-600">{ahead.length}{more}</p><p className="mt-1 text-xs text-muted">{T("Competitors ranking above you", "Competitors jo upar rank kar rahe hain")}</p></div>
             : <div className="rounded-2xl border border-border bg-bg p-3"><p className={`text-3xl font-extrabold tabular-nums ${scoreTone}`}>{r.score}</p><p className="mt-1 text-xs text-muted">{T("Google score out of 100", "Google score, 100 mein se")}</p></div>}
-          <div className="rounded-2xl border border-border bg-bg p-3"><p className="text-3xl font-extrabold tabular-nums text-red-600">{issues.length}</p><p className="mt-1 text-xs text-muted">{T("Issues hurting your ranking", "Issues jo ranking ko hurt kar rahe hain")}</p></div>
+          <div className="rounded-2xl border border-border bg-bg p-3"><p className="text-3xl font-extrabold tabular-nums text-red-600">{issues.length}</p><p className="mt-1 text-xs text-muted">{T("Issues affecting your visibility", "Issues jo ranking ko hurt kar rahe hain")}</p></div>
           {pct !== null
             ? <div className="rounded-2xl border border-border bg-bg p-3"><p className={`text-3xl font-extrabold tabular-nums ${pctTone}`}>{pct}%</p><p className="mt-1 text-xs text-muted">{T("Profile complete", "Profile complete")}</p></div>
             : <div className="rounded-2xl border border-border bg-bg p-3"><p className="text-3xl font-extrabold tabular-nums">{r.place.reviews}</p><p className="mt-1 text-xs text-muted">Reviews</p></div>}
@@ -226,7 +228,7 @@ function ReportView({ r, partner, join, onReset }: { r: Report; partner: Partner
           {head("🏆", T("Who is ahead of you on Google", "Google par kaun aapse aage hai"))}
           <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-br from-[#b91c1c] to-[#7f1d1d] p-5 text-white">
             <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white/15 text-3xl" aria-hidden>🎯</span>
-            <div><p className="text-2xl font-extrabold leading-tight">{T(`${ahead.length}${more} businesses near you`, `Aapke paas ${ahead.length}${more} businesses`)}</p><p className="mt-1 text-base text-white/90">{T("rank above you on Google - and are taking your customers.", "Google par upar rank karte hain - aur aapke customers le rahe hain.")}</p></div>
+            <div><p className="text-2xl font-extrabold leading-tight">{T(`${ahead.length}${more} businesses near you`, `Aapke paas ${ahead.length}${more} businesses`)}</p><p className="mt-1 text-base text-white/90">{T("appear above you when customers search on Google.", "Google par upar rank karte hain - aur aapke customers le rahe hain.")}</p></div>
           </div>
           <div className="mt-4 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 text-base">
             <span className="border-b border-border pb-2 text-xs font-bold uppercase tracking-wide text-muted">Business</span>
@@ -278,13 +280,13 @@ function ReportView({ r, partner, join, onReset }: { r: Report; partner: Partner
       {/* ---- every issue ---- */}
       {issues.length > 0 && (
         <div className={card}>
-          {head("⚠️", T(`Why is ${r.place.name} not ranking?`, `${r.place.name} rank kyun nahi kar raha?`))}
+          {head("⚠️", T(`What is holding ${r.place.name} back on Google`, `${r.place.name} rank kyun nahi kar raha?`))}
           <p className="mb-3 inline-block rounded-full bg-red-50 px-3.5 py-1 text-base font-semibold text-red-600">{T(`${issues.length} issues found`, `${issues.length} issues mile`)}</p>
           <ul className="space-y-3.5">
             {issues.map((f) => (
               <li key={f.title} className="flex gap-3 text-base leading-snug">
                 <X className="mt-0.5 h-5 w-5 shrink-0 text-red-500" strokeWidth={3} />
-                <span className="min-w-0 flex-1">{lang === "hi" && f.hi ? f.hi : <><b>{f.title}</b> - {f.why}</>}
+                <span className="min-w-0 flex-1"><><b>{f.title}</b> — {f.why}</>
                   {/* Which Shubhora plan fixes this one. */}
                   <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-brand-soft px-2 py-0.5 align-middle text-[11px] font-bold text-brand-ink">{T("Fixed by", "Theek karta hai")}: {PLAN[f.plan]}</span></span>
               </li>
@@ -299,7 +301,7 @@ function ReportView({ r, partner, join, onReset }: { r: Report; partner: Partner
         <p className="text-base leading-relaxed">
           {r.place.reviews === 0
             ? T("You have no reviews yet, so there is nothing to reply to. Businesses that ask every customer and reply to every review move up fastest.", "Abhi aapke paas koi review nahi hai, isliye jawab dene ko kuch nahi hai. Jo businesses har customer se review maangte hain aur har review ka jawab dete hain, wo sabse tez upar aate hain.")
-            : T(`You have ${r.place.reviews} reviews. Google itself advises owners to reply to reviews - aim to answer at least 8 of every 10. Every unanswered review is a customer who thinks nobody is listening.`, `Aapke paas ${r.place.reviews} reviews hain. Google khud owners ko reviews ka jawab dene ki salah deta hai - har 10 mein se kam se kam 8 ka jawab dein. Har bina jawab wala review ek customer hai jise lagta hai koi sun nahi raha.`)}
+            : T(`You have ${r.place.reviews} reviews. Google itself advises owners to reply to reviews - aim to answer at least 8 of every 10. Unanswered reviews tell future customers that no one is listening.`, `Aapke paas ${r.place.reviews} reviews hain. Google khud owners ko reviews ka jawab dene ki salah deta hai - har 10 mein se kam se kam 8 ka jawab dein. Har bina jawab wala review ek customer hai jise lagta hai koi sun nahi raha.`)}
         </p>
         <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
           <div className="rounded-2xl border border-border bg-bg p-4"><p className="text-sm text-muted">{T("A good target", "Achha target")}</p><p className="text-2xl font-extrabold text-good">80%+</p></div>
