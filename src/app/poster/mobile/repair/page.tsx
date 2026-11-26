@@ -1,7 +1,7 @@
 "use client";
 // New repair job: the phone comes in. What is wrong, how it looks, what came with it, the estimate and the advance — then the
 // customer gets a slip and a WhatsApp with a link to follow the repair.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, LoaderCircle, MessageCircle } from "lucide-react";
@@ -10,7 +10,8 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { FieldTip } from "@/components/field-tip";
 import { paiseOf, type Payment } from "@/lib/jewellery";
-import { CONDITIONS, PROBLEMS, type JobRow } from "@/lib/mobile-repair";
+import { CONDITIONS, JOB_PHOTOS, PROBLEMS, type JobRow } from "@/lib/mobile-repair";
+import { PhotoPicker, SignPad, uploadSignature } from "@/components/mobile/job-proof";
 import { MsHelp } from "@/components/mobile/page-help";
 
 type Staff = { id: string; name: string };
@@ -24,6 +25,9 @@ export default function NewJob() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [f, setF] = useState({ name: "", phone: "", device: "", imei: "", problems: [] as string[], problem_note: "", condition: [] as string[], accessories: "", lock_code: "", est: "", adv: "", advMode: "cash" as Payment["mode"], due: "", tech: "", notes: "" });
   const [busy, setBusy] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [signed, setSigned] = useState(false);
+  const pad = useRef<HTMLCanvasElement | null>(null);
   const [note, setNote] = useState("");
 
   const load = useCallback(async () => {
@@ -40,11 +44,15 @@ export default function NewJob() {
     if (!f.device.trim()) { setNote(T("Type the phone's model.", "फ़ोन का model लिखें।")); return; }
     if (!f.problems.length && !f.problem_note.trim()) { setNote(T("Pick or write the problem.", "ख़राबी चुनें या लिखें।")); return; }
     setBusy(send ? "send" : "save");
+    let signature = "";
+    if (signed) { signature = (await uploadSignature(pad.current)) ?? ""; if (!signature) { setBusy(""); setNote(T("The signature did not upload. Check the internet and try again.", "Signature upload नहीं हुआ। इंटरनेट देखकर फिर करें।")); return; } }
+    let store = "";
+    try { store = localStorage.getItem("shubhora.ms-store") ?? ""; } catch { /* ignore */ }
     try {
       const r = await api<{ job?: JobRow; sent?: { sent?: boolean } | null; error?: string }>("/api/mobile/jobs", { method: "POST", json: {
         as: ws.as || undefined, customer_name: f.name, customer_phone: phone, device: f.device, imei: f.imei, problems: f.problems, problem_note: f.problem_note, condition: f.condition,
         accessories: f.accessories, lock_code: f.lock_code, est_paise: paiseOf(f.est), advance: paiseOf(f.adv) ? { mode: f.advMode, paise: paiseOf(f.adv), ref: "" } : undefined,
-        due_date: f.due || undefined, tech_id: f.tech || undefined, notes: f.notes, send } });
+        due_date: f.due || undefined, tech_id: f.tech || undefined, notes: f.notes, send, photos, signature, store } });
       setBusy("");
       if (!r.ok || !r.data.job) { setNote(r.data?.error || T("Could not save.", "Save नहीं हुआ।")); return; }
       router.push(`/poster/mobile/repair/${r.data.job.id}${asQ ? `${asQ}&` : "?"}new=${send ? (r.data.sent?.sent ? "sent" : "notsent") : "1"}`);
@@ -88,6 +96,13 @@ export default function NewJob() {
           <span className="mt-1 flex gap-2"><input className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm" inputMode="decimal" value={f.adv} onChange={(e) => setF({ ...f, adv: e.target.value })} /><select className="rounded-xl border border-border bg-surface px-2 text-sm" value={f.advMode} onChange={(e) => setF({ ...f, advMode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></span></label>
         {staff.length > 0 && <label className={lab}>{T("Technician", "Technician")} <span className="font-normal">(optional)</span><select className={inp} value={f.tech} onChange={(e) => setF({ ...f, tech: e.target.value })}><option value="">—</option>{staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>}
         <label className={`${lab} sm:col-span-2`}>{T("Note for the shop", "दुकान के लिए नोट")} <span className="font-normal">(optional)</span>{tip("Only your staff see this.", "ये सिर्फ़ आपके staff को दिखता है।")}<input className={inp} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-surface p-3">
+        <div><span className={lab}>{T("Photos of the phone", "फ़ोन की photo")} <span className="font-normal">(optional)</span>{tip("Front, back and any damage — taken in front of the customer. They stay on the job as your proof.", "आगे, पीछे और जहाँ टूटा-फूटा हो — ग्राहक के सामने लें। ये job पर आपके सबूत के रूप में रहती हैं।")}</span>
+          <div className="mt-1"><PhotoPicker photos={photos} setPhotos={setPhotos} max={JOB_PHOTOS} hi={hi} /></div></div>
+        <div><span className={lab}>{T("Customer's signature", "ग्राहक के signature")} <span className="font-normal">(optional)</span>{tip("The customer signs that the phone's condition and the terms are right. It prints on the job slip.", "ग्राहक sign करता है कि फ़ोन की हालत और शर्तें सही हैं। ये job पर्ची पर छपता है।")}</span>
+          <div className="mt-1"><SignPad padRef={pad} onChange={setSigned} hi={hi} /></div></div>
       </section>
 
       {note && <p className="text-sm font-semibold text-danger">{note}</p>}

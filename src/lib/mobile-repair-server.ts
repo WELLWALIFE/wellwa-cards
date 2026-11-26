@@ -22,7 +22,7 @@ export const jobEvent = (by: string, text: string): JobEvent => ({ at: new Date(
 /** Cost of parts is for those with the "cost" right. */
 export const hideJobCost = (j: JobRow, a: MsAccess): JobRow => (msHas(a, "cost") ? j : { ...j, parts: (j.parts ?? []).map((p) => ({ ...p, cost: 0 })) });
 
-export type NewJob = Pick<JobRow, "customer_name" | "customer_phone" | "device" | "imei" | "problems" | "problem_note" | "condition" | "accessories" | "lock_code" | "est_paise" | "payments" | "due_date" | "tech_id" | "tech_name" | "notes" | "created_by" | "created_by_name">;
+export type NewJob = Partial<Pick<JobRow, "photos" | "signature" | "store">> & Pick<JobRow, "customer_name" | "customer_phone" | "device" | "imei" | "problems" | "problem_note" | "condition" | "accessories" | "lock_code" | "est_paise" | "payments" | "due_date" | "tech_id" | "tech_name" | "notes" | "created_by" | "created_by_name">;
 
 export async function createJob(scope: Scope, setup: MsSetup, f: NewJob): Promise<JobRow | null> {
   const fy = finYear(new Date(`${istDay()}T12:00:00`));
@@ -47,8 +47,8 @@ export async function saveJob(ownerId: string, id: string, patch: Partial<JobRow
 }
 
 /** The parts on a job go back on the shelf (the job is cancelled or returned unrepaired). */
-export async function partsBack(ownerId: string, j: Pick<JobRow, "parts">): Promise<void> {
-  for (const p of j.parts ?? []) if (p.itemId) await qtyAdd(ownerId, p.itemId, p.qty);
+export async function partsBack(ownerId: string, j: Pick<JobRow, "parts" | "store">): Promise<void> {
+  for (const p of j.parts ?? []) if (p.itemId) await qtyAdd(ownerId, p.itemId, p.qty, undefined, j.store || "");
 }
 
 export async function sendJob(scope: Scope, setup: MsSetup, j: JobRow, what: JobNote): Promise<{ sent: boolean; link: string; error?: string }> {

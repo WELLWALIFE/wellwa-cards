@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { ITEM_COLS, UNIT_COLS, cleanCode, cleanItemFields, validImei, type ItemRow, type UnitRow } from "@/lib/mobile";
-import { hideCost, itemsOf, msCtx, msDenied, msHas, unitByImei, unitCounts } from "@/lib/mobile-server";
+import { branchQtys, hideCost, itemsOf, msCtx, msDenied, msHas, qtyAdd, qtyAt, unitByImei, unitCounts } from "@/lib/mobile-server";
 import { isUuid } from "@/lib/jewellery-server";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -33,7 +33,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ units });
   }
   const [items, units] = await Promise.all([itemsOf(scope.ownerId, sp.get("all") === "1"), unitCounts(scope.ownerId)]);
-  return NextResponse.json({ items: items.map((i) => ({ ...hideCost(i, access), stock: i.serial ? units[i.id] ?? 0 : i.qty })), access, setup: c.setup });
+  if (!c.setup.stores.length) return NextResponse.json({ items: items.map((i) => ({ ...hideCost(i, access), stock: i.serial ? units[i.id] ?? 0 : i.qty })), access, setup: c.setup });
+  // With branches: the stock of each place, and `stock` = the place asked for (?store=; a branch login sees its own), else all.
+  const asked = sp.get("store");
+  const at = access.store || (asked !== null && (asked === "" || c.setup.stores.some((s) => s.id === asked)) ? asked : null);
+  const places = ["", ...c.setup.stores.map((s) => s.id)];
+  const [branches, unitRows] = await Promise.all([branchQtys(scope.ownerId), restAsService<{ item_id: string; store: string }[]>(`ms_units?owner_id=eq.${scope.ownerId}&status=eq.in_stock&select=item_id,store&limit=20000`)]);
+  const uAt: Record<string, Record<string, number>> = {};
+  for (const u of list(unitRows)) { const m = (uAt[u.item_id] ??= {}); m[u.store || ""] = (m[u.store || ""] ?? 0) + 1; }
+  return NextResponse.json({ store: at, access, setup: c.setup, items: items.map((i) => {
+    const byPlace = Object.fromEntries(places.map((p) => [p, i.serial ? uAt[i.id]?.[p] ?? 0 : qtyAt(i, p, branches)]));
+    return { ...hideCost(i, access), stock: at === null ? (i.serial ? units[i.id] ?? 0 : i.qty) : byPlace[at] ?? 0, places: byPlace };
+  }) });
 }
 
 export async function POST(request: Request) {
@@ -44,6 +55,14 @@ export async function POST(request: Request) {
   const { scope, access } = c;
   if (!msHas(access, "stock")) return msDenied("change items and stock");
   const o = scope.ownerId, now = new Date().toISOString();
+  // With branches, a count is the count of one place (the login's own branch, or the one picked); the whole stock moves by the difference.
+  const multi = c.setup.stores.length > 0;
+  const place = access.store || (typeof b.store === "string" && c.setup.stores.some((s) => s.id === b.store) ? b.store : "");
+  const setCount = async (it: ItemRow, qty: number, branches: Record<string, Record<string, number>>) => {
+    const delta = qty - qtyAt(it, place, branches);
+    if (delta) await qtyAdd(o, it.id, delta, undefined, place);
+    return delta !== 0;
+  };
   const one = async (id: string) => list(await restAsService<ItemRow[]>(`ms_items?id=eq.${id}&owner_id=eq.${o}&select=${ITEM_COLS}&limit=1`))[0] ?? null;
 
   if (b.action === "adjust") {
@@ -51,6 +70,11 @@ export async function POST(request: Request) {
     if (!it || it.serial) return NextResponse.json({ error: "Pick a counted item." }, { status: 400 });
     const qty = Math.round(Number(b.qty));
     if (!Number.isFinite(qty) || qty < 0 || qty > 1e6) return NextResponse.json({ error: "Type the count." }, { status: 400 });
+    if (multi) {
+      await setCount(it, qty, await branchQtys(o));
+      const after = (await one(it.id)) ?? it;
+      return NextResponse.json({ item: { ...hideCost(after, access), stock: qtyAt(after, place, await branchQtys(o)) } });
+    }
     const r = await restAsService<ItemRow[]>(`ms_items?id=eq.${it.id}&owner_id=eq.${o}&select=${ITEM_COLS}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ qty, updated_at: now }) });
     const next = list(r)[0];
     return next ? NextResponse.json({ item: { ...hideCost(next, access), stock: next.qty } }) : NextResponse.json({ error: "Could not save." }, { status: 500 });
@@ -61,6 +85,11 @@ export async function POST(request: Request) {
     if (!counts.length) return NextResponse.json({ error: "Nothing was counted." }, { status: 400 });
     const rows = list(await restAsService<ItemRow[]>(`ms_items?owner_id=eq.${o}&serial=is.false&id=in.(${counts.map((c) => c.id).join(",")})&select=${ITEM_COLS}`));
     let changed = 0;
+    if (multi) {
+      const branches = await branchQtys(o);
+      for (const it of rows) if (await setCount(it, Math.round(Number(counts.find((c) => c.id === it.id)?.qty)), branches)) changed += 1;
+      return NextResponse.json({ ok: true, changed });
+    }
     for (const it of rows) {
       const qty = Math.round(Number(counts.find((c) => c.id === it.id)?.qty));
       if (qty === it.qty) continue;
@@ -93,7 +122,7 @@ export async function POST(request: Request) {
     if (bad.length) return NextResponse.json({ error: `Check this IMEI, a digit looks wrong: ${bad[0]}` }, { status: 400 });
     const had = list(await restAsService<{ imei1: string }[]>(`ms_units?owner_id=eq.${o}&imei1=in.(${imeis.join(",")})&select=imei1`)).map((x) => x.imei1);
     const fresh = imeis.filter((x) => !had.includes(x));
-    if (fresh.length) await restAsService("ms_units", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(fresh.map((x) => ({ owner_id: o, item_id: it.id, imei1: x, cost_paise: it.cost_paise }))) });
+    if (fresh.length) await restAsService("ms_units", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(fresh.map((x) => ({ owner_id: o, item_id: it.id, imei1: x, cost_paise: it.cost_paise, store: place }))) });
     return NextResponse.json({ added: fresh.length, already: had });
   }
 
@@ -116,5 +145,7 @@ export async function POST(request: Request) {
   const open = f.serial ? 0 : Math.max(0, Math.min(1e6, Math.round(Number(b.qty) || 0)));
   const r = await restAsService<ItemRow[]>(`ms_items?select=${ITEM_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ ...f, owner_id: o, qty: open }) });
   const made = list(r)[0];
+  // Opening stock typed in a branch belongs to that branch.
+  if (made && multi && place && open) await restAsService("rpc/ms_store_qty_add", { method: "POST", body: JSON.stringify({ p_owner: o, p_item: made.id, p_store: place, p_delta: open }) });
   return made ? NextResponse.json({ item: { ...hideCost(made, access), stock: made.qty } }) : NextResponse.json({ error: "Could not save. Please try again." }, { status: 500 });
 }

@@ -57,8 +57,12 @@ export type JobRow = {
   due_date: string | null; tech_id: string | null; tech_name: string; notes: string; events: JobEvent[];
   bill_id: string | null; warranty_days: number; token: string;
   created_by: string | null; created_by_name: string; cancel_reason: string; delivered_at: string | null; created_at: string; updated_at: string;
+  /** photos of the phone when it came in, the customer's signature (links to the app's storage), and the branch ("" = main shop) */
+  photos: string[]; signature: string; store: string;
 };
-export const JOB_COLS = "id,owner_id,number,fin_year,code,status,customer_name,customer_phone,device,imei,problems,problem_note,condition,accessories,lock_code,est_paise,labour_paise,parts,payments,due_date,tech_id,tech_name,notes,events,bill_id,warranty_days,token,created_by,created_by_name,cancel_reason,delivered_at,created_at,updated_at";
+export const JOB_COLS = "id,owner_id,number,fin_year,code,status,customer_name,customer_phone,device,imei,problems,problem_note,condition,accessories,lock_code,est_paise,labour_paise,parts,payments,due_date,tech_id,tech_name,notes,events,bill_id,warranty_days,token,created_by,created_by_name,cancel_reason,delivered_at,created_at,updated_at,photos,signature,store";
+/** At most this many photos on a job. */
+export const JOB_PHOTOS = 6;
 
 const int = (v: unknown, min: number, max: number, d: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d; };
 const txt = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);

@@ -5,7 +5,9 @@ import { restAsService } from "@/lib/poster-server";
 import { cleanPhone } from "@/lib/jobs";
 import { cleanPayment } from "@/lib/jewellery";
 import { istDay, isUuid } from "@/lib/jewellery-server";
-import { JOB_COLS, cleanJobFields, type JobRow } from "@/lib/mobile-repair";
+import { JOB_COLS, JOB_PHOTOS, cleanJobFields, type JobRow } from "@/lib/mobile-repair";
+import { cleanPhotoUrl } from "@/lib/jewellery-stock";
+import { SUPA_URL } from "@/lib/admin-guard";
 import { msCtx, msDenied, msHas } from "@/lib/mobile-server";
 import { createJob, hideJobCost, sendJob } from "@/lib/mobile-repair-server";
 
@@ -48,7 +50,11 @@ export async function POST(request: Request) {
     const t = list(await restAsService<{ id: string; name: string }[]>(`crm_agents?id=eq.${b.tech_id}&owner_id=eq.${scope.ownerId}&select=id,name&limit=1`))[0];
     if (t) { tech_id = t.id; tech_name = t.name; }
   }
-  const job = await createJob(scope, setup, { ...f, customer_phone: phone, payments: adv ? [{ ...adv, at: new Date().toISOString() }] : [], tech_id, tech_name, created_by: scope.userId, created_by_name: access.name });
+  const photos = [...new Set((Array.isArray(b.photos) ? b.photos : []).map((u) => cleanPhotoUrl(u, SUPA_URL)).filter(Boolean))].slice(0, JOB_PHOTOS);
+  const signature = cleanPhotoUrl(b.signature, SUPA_URL);
+  const asked = typeof b.store === "string" ? b.store : "";
+  const store = access.store || (setup.stores.some((s) => s.id === asked) ? asked : "");
+  const job = await createJob(scope, setup, { ...f, photos, signature, store, customer_phone: phone, payments: adv ? [{ ...adv, at: new Date().toISOString() }] : [], tech_id, tech_name, created_by: scope.userId, created_by_name: access.name });
   if (!job) return NextResponse.json({ error: "Could not save the job. Please try again." }, { status: 500 });
   const sent = b.send === true ? await sendJob(scope, setup, job, "received") : null;
   return NextResponse.json({ job: hideJobCost(job, access), sent });

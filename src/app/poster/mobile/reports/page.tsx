@@ -10,12 +10,12 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { inr } from "@/lib/jewellery";
 import { toCsv } from "@/lib/jewellery-reports";
-import { itemTitle, type ItemRow } from "@/lib/mobile";
+import { expenseCat, itemTitle, storeName, type ItemRow, type MsStore, type StaffLine } from "@/lib/mobile";
 import { msCloseText, msDaysCsv, msHsnCsv, msItemsCsv, msSalesCsv, msTallyMastersXml, msTallyVouchers, msTallyVouchersXml, type MsReport } from "@/lib/mobile-reports";
 import { MsHelp } from "@/components/mobile/page-help";
 import { FieldTip } from "@/components/field-tip";
 
-type Ans = { report: MsReport; shop: string; today: string; gstOn: boolean; cost: boolean; dueTotal: number; error?: string };
+type Ans = { report: MsReport; shop: string; today: string; gstOn: boolean; cost: boolean; dueTotal: number; expenses?: { total: number; cash: number; byCat: Record<string, number> }; staff?: StaffLine[]; stores?: MsStore[]; store?: string | null; error?: string };
 type Pick = "today" | "yesterday" | "month" | "last" | "fy" | "custom";
 const shift = (day: string, n: number) => new Date(new Date(`${day}T12:00:00Z`).getTime() + n * 86_400_000).toISOString().slice(0, 10);
 function rangeOf(p: Pick, today: string, c: { from: string; to: string }) {
@@ -44,19 +44,20 @@ export default function MobileReports() {
   const [d, setD] = useState<Ans | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [place, setPlace] = useState<string | null>(null);
 
-  const load = useCallback(async (p: Pick, c: { from: string; to: string }) => {
+  const load = useCallback(async (p: Pick, c: { from: string; to: string }, at: string | null) => {
     setBusy(true);
     try {
       const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
       const r0 = rangeOf(p, today, c);
-      const r = await api<Ans>(`/api/mobile/reports?from=${r0.from}&to=${r0.to}${ws.q ? `&${ws.q}` : ""}`, { fresh: true });
+      const r = await api<Ans>(`/api/mobile/reports?from=${r0.from}&to=${r0.to}${at !== null ? `&store=${encodeURIComponent(at)}` : ""}${ws.q ? `&${ws.q}` : ""}`, { fresh: true });
       if (!r.ok) setErr(r.data?.error || "Could not load."); else { setErr(""); setD(r.data); }
     } catch { setErr("No internet."); }
     setBusy(false);
   }, [ws.q]);
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(location.pathname)}`); return; } })(); }, [router]);
-  useEffect(() => { if (pick !== "custom" || custom.from) { const t = setTimeout(() => void load(pick, custom), 0); return () => clearTimeout(t); } }, [pick, custom, load]);
+  useEffect(() => { if (pick !== "custom" || custom.from) { const t = setTimeout(() => void load(pick, custom, place), 0); return () => clearTimeout(t); } }, [pick, custom, place, load]);
 
   async function stockCsv() {
     const r = await api<{ items?: (ItemRow & { stock: number })[] }>(`/api/mobile/items?all=1${ws.q ? `&${ws.q}` : ""}`, { fresh: true }).catch(() => null);
@@ -78,6 +79,8 @@ export default function MobileReports() {
       <h1 className="text-lg font-bold">{T("Reports", "रिपोर्ट")}</h1>
       <MsHelp k="reports" />
       <div className="flex flex-wrap gap-2">{chip("today", T("Today", "आज"))}{chip("yesterday", T("Yesterday", "कल"))}{chip("month", T("This month", "ये महीना"))}{chip("last", T("Last month", "पिछला महीना"))}{chip("fy", T("This fin. year", "ये वित्त वर्ष"))}{chip("custom", T("Dates", "तारीख़ें"))}</div>
+      {(d?.stores ?? []).length > 0 && <select className="rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold" value={place === null ? "*" : place} onChange={(e) => setPlace(e.target.value === "*" ? null : e.target.value)}>
+        <option value="*">{T("All shops", "सारी दुकानें")}</option><option value="">{storeName({ shopName: d!.shop, stores: d!.stores! }, "", hi)}</option>{d!.stores!.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
       {pick === "custom" && <div className="flex flex-wrap items-center gap-2 text-sm"><input type="date" className={inp} value={custom.from} onChange={(e) => setCustom({ ...custom, from: e.target.value })} /> → <input type="date" className={inp} value={custom.to} onChange={(e) => setCustom({ ...custom, to: e.target.value })} /></div>}
       {err && <p className="py-8 text-center font-semibold">{err}</p>}
       {!err && (!r || busy) && <div className="grid place-items-center py-10"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}
@@ -89,6 +92,16 @@ export default function MobileReports() {
           {d.cost && <div className={tile}><p className="text-[11px] text-muted">{T("Profit", "मुनाफ़ा")}<FieldTip lang={lang} en="Sale (without tax) minus the cost of the goods sold. Items with no cost typed count as full profit — so keep costs filled." hi="बिक्री (बिना tax) में से बिके माल की लागत घटाकर। जिन items पर लागत नहीं लिखी वो पूरे मुनाफ़े में गिनते हैं — इसलिए लागत भरकर रखें।" /></p><p className="text-lg font-bold tabular-nums">{inr(r.profit)}</p><p className="text-[11px] text-muted">{T("sale without tax − cost", "बिना tax की बिक्री − लागत")}</p></div>}
           <div className={tile}><p className="text-[11px] text-muted">{T("Udhaar given", "उधार दिया")}<FieldTip lang={lang} en="Money still left on the bills made in this period. Below it: all udhaar outstanding today." hi="इस अवधि में बने बिलों पर जो पैसा अभी बाकी है। नीचे: आज तक का कुल बाकी उधार।" /></p><p className="text-lg font-bold tabular-nums text-danger">{inr(r.udhaarGiven)}</p><p className="text-[11px] text-muted">{T("total udhaar now", "अभी कुल उधार")} {inr(d.dueTotal)}</p></div>
         </section>
+        {d.expenses && (d.expenses.total > 0 || d.cost) && <section className={card}>
+          <h2 className="flex items-center justify-between text-sm font-bold"><span>{T("Expenses", "ख़र्चे")}<FieldTip lang={lang} en="Rent, electricity, salary, tea… written in Expenses for this period. Profit after expenses = profit on goods − expenses." hi="इस अवधि में ख़र्चे में लिखे किराया, बिजली, तनख़्वाह, चाय… ख़र्चों के बाद मुनाफ़ा = माल का मुनाफ़ा − ख़र्चे।" /></span><Link href={`/poster/mobile/expenses${asQ}`} className="text-xs font-semibold text-brand-ink">{T("Write expenses →", "ख़र्चे लिखें →")}</Link></h2>
+          <p className="text-sm">{T("Total", "कुल")} <b className="text-danger">{inr(d.expenses.total)}</b>{d.expenses.cash ? <span className="text-muted"> · cash {inr(d.expenses.cash)}</span> : null}{d.cost && <> · {T("Profit after expenses", "ख़र्चों के बाद मुनाफ़ा")} <b className={r.profit - d.expenses.total < 0 ? "text-danger" : "text-good"}>{inr(r.profit - d.expenses.total)}</b></>}</p>
+          {Object.keys(d.expenses.byCat).length > 0 && <p className="text-[12px] text-muted">{Object.entries(d.expenses.byCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${expenseCat(k, hi)} ${inr(v)}`).join(" · ")}</p>}
+        </section>}
+        {(d.staff ?? []).length > 0 && <section className={card}>
+          <h2 className="text-sm font-bold">👥 {T("Staff: sale, target, commission", "Staff: बिक्री, target, commission")}<FieldTip lang={lang} en="Bills each login made in this period (after its returns), repairs given back where it was the technician, and the commission set in Settings → Staff. The target is per month." hi="इस अवधि में हर login के बनाए बिल (उसकी वापसी घटाकर), जिन रिपेयर में वो technician था, और Settings → Staff में तय commission। Target महीने का है।" /></h2>
+          <div className="overflow-x-auto"><table className="w-full text-[13px]"><thead><tr className="text-left text-muted"><th className="py-1">{T("Name", "नाम")}</th><th className="text-right">{T("Bills", "बिल")}</th><th className="text-right">{T("Sale", "बिक्री")}</th><th className="text-right">{T("Target", "Target")}</th><th className="text-right">{T("Repairs", "रिपेयर")}</th><th className="text-right">{T("Commission", "Commission")}</th></tr></thead>
+            <tbody>{d.staff!.map((s) => <tr key={s.userId} className="border-t border-border"><td className="py-1">{s.name}</td><td className="text-right">{s.bills}</td><td className="text-right tabular-nums">{inr(s.sale)}</td><td className="text-right tabular-nums">{s.target ? <>{inr(s.target)} <span className={s.sale >= s.target ? "text-good" : "text-muted"}>({Math.round((Math.max(0, s.sale) * 100) / s.target)}%)</span></> : "—"}</td><td className="text-right">{s.repairs ? `${s.repairs} · ${inr(s.repairCharge)}` : "—"}</td><td className="text-right font-semibold tabular-nums">{s.commission ? inr(s.commission) : "—"}</td></tr>)}</tbody></table></div>
+        </section>}
         {(r.repair.received > 0 || r.repair.delivered > 0) && <section className={card}><h2 className="text-sm font-bold">🔧 {T("Repair", "रिपेयर")}</h2><p className="text-sm">{r.repair.received} {T("phones came in", "फ़ोन आए")} · {r.repair.delivered} {T("given back", "दिए")} · {T("repair charge earned", "repair charge कमाया")} <b>{inr(r.repair.income)}</b></p></section>}
         {d.gstOn && <section className={card}>
           <h2 className="text-sm font-bold">GST<FieldTip lang={lang} en="Your prices include tax. This is the tax inside the sale of this period, split by HSN — what your CA needs for the GST return." hi="आपके दाम में tax शामिल है। ये इस अवधि की बिक्री के अंदर का tax है, HSN के हिसाब से — GST return के लिए CA को यही चाहिए।" /></h2>

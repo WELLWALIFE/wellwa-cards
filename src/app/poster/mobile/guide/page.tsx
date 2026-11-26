@@ -34,6 +34,23 @@ const GUIDE: Sec[] = [
     ["On the bill pick “Part / udhaar” and type what the customer paid now. The customer's mobile is needed.", "बिल पर “कुछ / उधार” चुनें और ग्राहक ने अभी जो दिया वो लिखें। ग्राहक का मोबाइल ज़रूरी है।"],
     ["The home screen shows the total udhaar. Tap it to see every udhaar bill.", "Home पर कुल उधार दिखता है। उसे दबाकर हर उधार वाला बिल देखें।"],
     ["When the money comes: open the bill → type the amount → Take payment.", "पैसा आने पर: बिल खोलें → रक़म लिखें → Take payment।"],
+    ["Remind on WhatsApp: on the bill, or Bills → Udhaar → “Remind everyone”. Each customer gets one message with all their bills and a UPI QR link.", "WhatsApp पर याद दिलाएँ: बिल पर, या बिल → उधार → “सबको याद दिलाएँ”। हर ग्राहक को एक message जाता है जिसमें सारे बिल और UPI QR का लिंक होता है।"],
+    ["To remind by itself every few days: Settings → Udhaar reminders.", "हर कुछ दिन में अपने-आप याद दिलाने के लिए: Settings → उधार की याद-दिलाई।"],
+  ] },
+  { icon: "💳", en: "UPI QR for the exact amount", hi: "सही रक़म का UPI QR", href: "/poster/mobile/settings", openEn: "Open Settings", openHi: "Settings खोलें", steps: [
+    ["Type your shop's UPI ID once in Settings (e.g. shop@okaxis).", "Settings में एक बार दुकान की UPI ID लिखें (जैसे shop@okaxis)।"],
+    ["On a bill pick UPI — a QR for the exact amount shows; the customer scans and pays.", "बिल पर UPI चुनें — सही रक़म का QR दिखता है; ग्राहक scan करके पेमेंट करता है।"],
+    ["Bills with money due print the QR, and the customer's bill link has a Pay by UPI button.", "जिन बिलों पर पैसा बाकी है उन पर QR छपता है, और ग्राहक के बिल लिंक पर Pay by UPI बटन होता है।"],
+  ] },
+  { icon: "💸", en: "Expenses and cash book", hi: "ख़र्चे और रोकड़", href: "/poster/mobile/expenses", openEn: "Open Expenses", openHi: "ख़र्चे खोलें", steps: [
+    ["Rent, electricity, salary, tea: tap the head, type the amount, Save.", "किराया, बिजली, तनख़्वाह, चाय: मद दबाएँ, रक़म लिखें, Save।"],
+    ["The top shows the cash that should be in the drawer today.", "ऊपर दिखता है कि आज दराज़ में कितना cash होना चाहिए।"],
+    ["Reports show the expenses and the profit left after them.", "रिपोर्ट में ख़र्चे और उनके बाद बचा मुनाफ़ा दिखता है।"],
+  ] },
+  { icon: "⭐", en: "Loyalty points and combo offers", hi: "Loyalty points और combo offer", href: "/poster/mobile/settings", openEn: "Open Settings", openHi: "Settings खोलें", steps: [
+    ["Settings → Loyalty points: switch on, choose points per ₹100 and what a point is worth.", "Settings → Loyalty points: चालू करें, हर ₹100 पर points और एक point की क़ीमत चुनें।"],
+    ["On a bill, type the customer's mobile — their points show; type how many to use.", "बिल पर ग्राहक का मोबाइल लिखें — उनके points दिखते हैं; कितने लगाने हैं लिखें।"],
+    ["Settings → Combo offers: pick 2 or more items and the discount. On a bill with all of them, it comes off by itself.", "Settings → Combo offer: 2 या ज़्यादा items और छूट चुनें। जिस बिल पर ये सब हों, छूट अपने-आप लगती है।"],
   ] },
   { icon: "🚚", en: "New stock came (Purchase)", hi: "नया माल आया (ख़रीद)", href: "/poster/mobile/purchase", openEn: "Open Purchase", openHi: "ख़रीद खोलें", steps: [
     ["Type the supplier's name (optional). Search each item that came and tap it.", "सप्लायर का नाम लिखें (optional)। जो-जो item आया उसे खोजकर दबाएँ।"],
@@ -47,6 +64,7 @@ const GUIDE: Sec[] = [
     ["One IMEI can never be sold twice — the app stops it.", "एक IMEI दो बार नहीं बिक सकता — app रोक देता है।"],
   ] },
   { icon: "🔧", en: "Repair job", hi: "रिपेयर job", href: "/poster/mobile/repair", openEn: "New repair job", openHi: "नया रिपेयर job", steps: [
+    ["Take photos of the phone and let the customer sign on the screen — your proof of how it came.", "फ़ोन की photo लें और ग्राहक से screen पर sign करवाएँ — फ़ोन कैसा आया था उसका सबूत।"],
     ["New repair job: customer's mobile, phone model, what is wrong, how the phone looks now (scratches, SIM inside…).", "नया रिपेयर job: ग्राहक का मोबाइल, फ़ोन model, क्या ख़राबी है, फ़ोन अभी कैसा है (खरोंच, SIM अंदर…)।"],
     ["Type the estimate and the advance, if any. Save & WhatsApp, then print the slip for the customer.", "अंदाज़न ख़र्च और advance लिखें, हो तो। Save & WhatsApp, फिर ग्राहक के लिए पर्ची print करें।"],
     ["While working: tap the step (Being repaired / Waiting for part). Add the parts you used — the stock reduces at once. Type your repair charge.", "काम के दौरान: step दबाएँ (काम चालू / पार्ट का इंतज़ार)। लगे parts जोड़ें — स्टॉक तुरंत घटता है। अपना repair charge लिखें।"],
@@ -91,6 +109,17 @@ const GUIDE: Sec[] = [
     ["Mobile shop → Settings → Staff rights: tick what each may do — bills, stock, repair, discount, cancel, see cost and profit, reports.", "मोबाइल दुकान → Settings → Staff के हक़: हर एक क्या कर सकता है tick करें — बिल, स्टॉक, रिपेयर, छूट, रद्द, लागत और मुनाफ़ा देखना, रिपोर्ट।"],
     ["“Staff discount limit %” is the most discount staff can give by themselves.", "“Staff की छूट limit %” = staff खुद से ज़्यादा-से-ज़्यादा इतनी छूट दे सकता है।"],
     ["A bill is never deleted — it is only cancelled with a reason, and the name of who did it is kept.", "बिल कभी delete नहीं होता — सिर्फ़ वजह लिखकर रद्द होता है, और किसने किया वो नाम रहता है।"],
+    ["Commission and target: under each staff in Settings. Reports → Staff shows sale, target % and commission.", "Commission और target: Settings में हर staff के नीचे। रिपोर्ट → Staff में बिक्री, target % और commission दिखता है।"],
+  ] },
+  { icon: "🏪", en: "More than one shop (branches)", hi: "एक से ज़्यादा दुकान (ब्रांच)", href: "/poster/mobile/settings", openEn: "Open Settings", openHi: "Settings खोलें", steps: [
+    ["Settings → Branches: add each branch with its address.", "Settings → ब्रांच: हर ब्रांच उसके पते के साथ जोड़ें।"],
+    ["Give each staff login its branch; its bills, stock and expenses stay in that branch.", "हर staff login को उसकी ब्रांच दें; उसके बिल, स्टॉक और ख़र्चे उसी ब्रांच में रहते हैं।"],
+    ["Move stock with Stock transfer (home screen). Reports can show one branch or all.", "स्टॉक ट्रांसफ़र (home) से माल भेजें। रिपोर्ट एक ब्रांच या सबकी दिखती है।"],
+  ] },
+  { icon: "📝", en: "Order to a supplier (PO)", hi: "सप्लायर को order (PO)", href: "/poster/mobile/purchase", openEn: "Open Purchase", openHi: "ख़रीद खोलें", steps: [
+    ["Purchase → “Order to supplier”: add items and numbers, the supplier's mobile, Save order.", "ख़रीद → “सप्लायर को order”: items और गिनती, सप्लायर का मोबाइल, Order save।"],
+    ["Send it on WhatsApp with one tap.", "एक tap में WhatsApp पर भेजें।"],
+    ["When the goods come, tap “Goods came” on the order, scan phone IMEIs, Save — the stock goes up.", "माल आने पर order पर “माल आ गया” दबाएँ, फ़ोन के IMEI scan करें, Save — स्टॉक बढ़ जाता है।"],
   ] },
 ];
 

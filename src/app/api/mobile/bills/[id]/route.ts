@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { cleanPayment } from "@/lib/jewellery";
 import { BILL_COLS, billTotals, returnLines, returnedQty, type BillRow } from "@/lib/mobile";
-import { billById, billLink, createBill, hideBillCost, moveStock, msCtx, msDenied, msHas, sendBill, shopOf, trueLines, withTotals } from "@/lib/mobile-server";
+import { billById, billLink, createBill, hideBillCost, moveStock, msCtx, msDenied, msHas, sendBill, sendReminders, shopOf, trueLines, withTotals } from "@/lib/mobile-server";
 
 type Ctx = { params: Promise<{ id: string }> };
 const returnsOf = async (ownerId: string, billId: string) => (await restAsService<BillRow[]>(`ms_bills?owner_id=eq.${ownerId}&kind=eq.return&ref_bill_id=eq.${billId}&status=neq.cancelled&select=${BILL_COLS}&limit=100`)).data ?? [];
@@ -77,19 +77,26 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const now = new Date().toISOString();
       const note = String(b.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 150);
       const cn = await createBill(scope, { ...setup, gstOn: bill.gst_on }, "return", { customer_name: bill.customer_name, customer_phone: bill.customer_phone, customer_gstin: bill.customer_gstin, customer_state: bill.customer_state, lines,
-        payments: refund > 0 ? [{ mode, paise: refund, ref: "Refund", at: now }] : [], discount_paise: 0, notes: [`Return against ${bill.code}`, note].filter(Boolean).join(" · "), due_date: null, client_id: null, ref_bill_id: bill.id, created_by: scope.userId, created_by_name: access.name });
+        payments: refund > 0 ? [{ mode, paise: refund, ref: "Refund", at: now }] : [], discount_paise: 0, notes: [`Return against ${bill.code}`, note].filter(Boolean).join(" · "), due_date: null, client_id: null, ref_bill_id: bill.id, store: bill.store || "", created_by: scope.userId, created_by_name: access.name });
       if (!cn) return NextResponse.json({ error: "Could not save the return." }, { status: 500 });
       if (adjust > 0) await save({ payments: [...(bill.payments ?? []), { mode: "other", paise: adjust, ref: `Return ${cn.code}`, at: now }] });
       return NextResponse.json({ bill: hideBillCost(cn, access), refund, adjust });
     }
     case "send":
       return NextResponse.json(await sendBill(scope, setup, bill));
+    case "remind": {
+      // The customer's udhaar on WhatsApp now: one message with every bill they owe on.
+      if (bill.kind !== "sale" || bill.status !== "open" || bill.balance_paise <= 0) return NextResponse.json({ error: "Nothing is due on this bill." }, { status: 400 });
+      if (!bill.customer_phone) return NextResponse.json({ error: "No customer number on this bill." }, { status: 400 });
+      const r = await sendReminders(scope, setup, { ids: [bill.id], minDays: 0, max: 1 });
+      return NextResponse.json(r.sent ? { sent: true } : { sent: false, link: r.manual[0]?.link ?? "", error: "The shop's WhatsApp is not linked — send it with the button." });
+    }
     case "convert": {
       if (bill.kind !== "estimate" || bill.status !== "open") return NextResponse.json({ error: "Only an open estimate becomes a bill." }, { status: 400 });
       if (!msHas(access, "bill")) return msDenied("make bills");
-      const tl = await trueLines(scope.ownerId, bill.lines ?? [], "sale");
+      const tl = await trueLines(scope.ownerId, bill.lines ?? [], "sale", setup.stores.length ? bill.store || "" : null);
       if ("error" in tl) return NextResponse.json({ error: tl.error }, { status: 400 });
-      const sale = await createBill(scope, setup, "sale", { customer_name: bill.customer_name, customer_phone: bill.customer_phone, customer_gstin: bill.customer_gstin, customer_state: bill.customer_state, lines: tl.lines, payments: [], discount_paise: bill.discount_paise, notes: bill.notes, due_date: null, client_id: null, created_by: scope.userId, created_by_name: access.name });
+      const sale = await createBill(scope, setup, "sale", { customer_name: bill.customer_name, customer_phone: bill.customer_phone, customer_gstin: bill.customer_gstin, customer_state: bill.customer_state, lines: tl.lines, payments: [], discount_paise: bill.discount_paise, notes: bill.notes, due_date: null, client_id: null, store: bill.store || "", created_by: scope.userId, created_by_name: access.name });
       if (!sale) return NextResponse.json({ error: "Could not make the bill." }, { status: 500 });
       await save({ status: "converted" });
       return NextResponse.json({ bill: hideBillCost(sale, access) });

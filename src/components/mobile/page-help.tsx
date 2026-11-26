@@ -84,6 +84,18 @@ const HELP: Record<string, Help> = {
     ["Shop name, address, phone — printed on every bill.", "दुकान का नाम, पता, फ़ोन — हर बिल पर छपते हैं।"],
     ["GST: switch on only if you have a GSTIN.", "GST: तभी चालू करें जब आपके पास GSTIN हो।"],
     ["Paper: your printer's size.", "Paper: आपके printer का साइज़।"],
+    ["UPI ID: a QR for the exact amount then shows on bills and on the counter.", "UPI ID: तब बिल पर और counter पर सही रक़म का QR दिखता है।"],
+    ["Udhaar reminders, points, combo offers, branches and staff commission are further down.", "उधार की याद-दिलाई, points, combo offer, ब्रांच और staff commission नीचे हैं।"],
+  ] },
+  expenses: { en: "Expenses and cash book", hi: "ख़र्चे और रोकड़", steps: [
+    ["Paid rent, electricity, salary or tea? Tap the head, type the amount, Save.", "किराया, बिजली, तनख़्वाह या चाय दी? मद दबाएँ, रक़म लिखें, Save करें।"],
+    ["Cash book (top): money in today minus cash spent = cash that should be in the drawer.", "रोकड़ (ऊपर): आज आया पैसा घटा cash ख़र्च = दराज़ में इतना cash होना चाहिए।"],
+    ["Reports show the month's expenses and the profit left after them.", "रिपोर्ट में महीने के ख़र्चे और उनके बाद बचा मुनाफ़ा दिखता है।"],
+  ] },
+  transfer: { en: "Stock transfer", hi: "स्टॉक ट्रांसफ़र", steps: [
+    ["Pick From and To (main shop or a branch).", "कहाँ से और कहाँ (मेन दुकान या ब्रांच) चुनें।"],
+    ["Search the item, type how many; for a phone scan its IMEIs.", "item खोजें, कितने लिखें; फ़ोन के IMEI scan करें।"],
+    ["Save: the stock leaves one place and shows in the other. The total stays the same.", "Save: स्टॉक एक जगह से घटकर दूसरी में दिखता है। कुल स्टॉक वही रहता है।"],
   ] },
 };
 

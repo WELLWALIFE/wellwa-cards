@@ -12,7 +12,8 @@ import { Receipt } from "@/components/mobile/receipt";
 import { MsHelp } from "@/components/mobile/page-help";
 import { FieldTip } from "@/components/field-tip";
 import { inr, paiseOf, type Payment } from "@/lib/jewellery";
-import type { BillRow, MsSetup } from "@/lib/mobile";
+import { validUpi, type BillRow, type MsSetup } from "@/lib/mobile";
+import { UpiQr } from "@/components/mobile/upi-qr";
 import type { MsAccess } from "@/lib/mobile-types";
 
 type Ans = { bill: BillRow; setup: MsSetup; access: MsAccess; shop: string; link: string; returned?: number[]; returns?: { id: string; code: string; total_paise: number }[]; from?: { id: string; code: string } | null; error?: string };
@@ -53,8 +54,8 @@ function BillView() {
     try { r = await api(`/api/mobile/bills/${id}`, { method: "PATCH", json: { as: ws.as || undefined, action, ...extra } }); }
     catch { setBusy(""); setNote({ ok: false, t: T("No internet. Try again when the network is back.", "इंटरनेट नहीं है। नेटवर्क आने पर फिर करें।") }); return; }
     setBusy("");
-    if (action === "send") {
-      setNote(r.data.sent ? { ok: true, t: T("✅ Sent on WhatsApp.", "✅ WhatsApp पर भेज दिया।") } : { ok: false, t: r.data.error || T("Not sent.", "नहीं गया।"), link: r.data.link });
+    if (action === "send" || action === "remind") {
+      setNote(r.data.sent ? { ok: true, t: action === "remind" ? T("✅ Reminder sent on WhatsApp.", "✅ याद-दिलाई WhatsApp पर भेज दी।") : T("✅ Sent on WhatsApp.", "✅ WhatsApp पर भेज दिया।") } : { ok: false, t: r.data.error || T("Not sent.", "नहीं गया।"), link: r.data.link });
       return;
     }
     if (!r.ok) { setNote({ ok: false, t: r.data.error || T("Could not save.", "Save नहीं हुआ।") }); return; }
@@ -131,6 +132,10 @@ function BillView() {
             <button type="button" onClick={() => setPay({ ...pay, amount: String(bill.balance_paise / 100) })} className="text-xs font-semibold text-brand-ink">{T("Full", "पूरा")}</button>
             <button type="button" disabled={!paiseOf(pay.amount) || !!busy} onClick={() => void act("pay", { payment: { mode: pay.mode, paise: paiseOf(pay.amount), ref: "" } })} className="inline-flex items-center gap-1 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"><Check className="h-4 w-4" /> {T("Take payment", "पेमेंट लें")}</button>
           </div>
+          {bill.customer_phone && <p className="flex flex-wrap items-center gap-2 text-[12px]"><button type="button" disabled={!!busy} onClick={() => void act("remind")} className="inline-flex items-center gap-1 rounded-lg border border-[#25D366] bg-surface px-3 py-1.5 text-sm font-semibold text-[#128C7E] disabled:opacity-50">{busy === "remind" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} {T("Remind on WhatsApp", "WhatsApp पर याद दिलाएँ")}</button>
+            <FieldTip lang={lang} en="Sends the customer one polite message with everything they owe you (all their bills) and the bill link, which has a UPI QR to pay." hi="ग्राहक को एक विनम्र message जाता है जिसमें उनका सारा बाकी (सारे बिल) और बिल का लिंक होता है, जिस पर पेमेंट के लिए UPI QR है।" />
+            {bill.reminded_at && <span className="text-muted">{T("Last reminded", "पिछली याद-दिलाई")}: {new Date(bill.reminded_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>}</p>}
+          {validUpi(setup.upi) && pay.mode === "upi" && <div className="w-fit rounded-xl bg-white p-2 text-black"><UpiQr upi={setup.upi} name={setup.shopName || d.shop} paise={paiseOf(pay.amount) || bill.balance_paise} note={bill.code} size={130} /></div>}
         </section>
       )}
       {bill.status === "cancelled" && bill.cancel_reason && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">{T("Cancelled", "रद्द")}: {bill.cancel_reason}</p>}

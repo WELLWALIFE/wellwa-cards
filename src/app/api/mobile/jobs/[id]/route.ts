@@ -9,6 +9,9 @@ import { cleanJobFields, jobBillLines, jobOpen, jobStatus, jobTotals, type JobPa
 import { createBill, itemsByIds, msCtx, msDenied, msHas, qtyAdd, shopOf, trueLines } from "@/lib/mobile-server";
 import { hideJobCost, jobById, jobEvent, jobLink, partsBack, saveJob, sendJob } from "@/lib/mobile-repair-server";
 import { askForReview } from "@/lib/customer-send";
+import { cleanPhotoUrl } from "@/lib/jewellery-stock";
+import { SUPA_URL } from "@/lib/admin-guard";
+import { JOB_PHOTOS } from "@/lib/mobile-repair";
 
 type Ctx = { params: Promise<{ id: string }> };
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -74,7 +77,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       if (!it || it.serial || it.kind === "service") return NextResponse.json({ error: "Pick a part or accessory from your items." }, { status: 400 });
       const qty = Math.max(1, Math.min(99, Math.round(Number(b.qty) || 1)));
       const price = b.price !== undefined ? Math.max(0, Math.min(1e10, Math.round(Number(b.price) || 0))) : it.price_paise;
-      await qtyAdd(o, it.id, -qty);
+      await qtyAdd(o, it.id, -qty, undefined, job.store || "");
       const name = [it.brand, it.name, it.variant].filter(Boolean).join(" ");
       const parts: JobPart[] = [...(job.parts ?? []), { itemId: it.id, name, qty, price, cost: it.cost_paise }];
       return out(await saveJob(o, job.id, { parts, events: ev(`Part used: ${name} ×${qty}`) }));
@@ -84,8 +87,17 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const at = Math.round(Number(b.index));
       const p = (job.parts ?? [])[at];
       if (!p) return NextResponse.json({ error: "Part not found." }, { status: 400 });
-      if (p.itemId) await qtyAdd(o, p.itemId, p.qty);
+      if (p.itemId) await qtyAdd(o, p.itemId, p.qty, undefined, job.store || "");
       return out(await saveJob(o, job.id, { parts: job.parts.filter((_, i) => i !== at), events: ev(`Part taken off: ${p.name} ×${p.qty}`) }));
+    }
+    case "photos": {
+      // Photos of the phone and the customer's signature can be added any time (they are the shop's proof).
+      const photos = [...new Set([...(job.photos ?? []), ...(Array.isArray(b.photos) ? b.photos : []).map((u) => cleanPhotoUrl(u, SUPA_URL)).filter(Boolean)])];
+      const keep = Array.isArray(b.keep) ? photos.filter((u) => (b.keep as unknown[]).includes(u) || !(job.photos ?? []).includes(u)) : photos;
+      const signature = b.signature !== undefined ? cleanPhotoUrl(b.signature, SUPA_URL) || job.signature : job.signature;
+      if (keep.length > JOB_PHOTOS) return NextResponse.json({ error: `At most ${JOB_PHOTOS} photos on a job.` }, { status: 400 });
+      const what = [keep.length !== (job.photos ?? []).length && `Photos: ${keep.length}`, signature !== job.signature && "Customer signed"].filter(Boolean).join(" · ");
+      return out(await saveJob(o, job.id, { photos: keep, signature, ...(what ? { events: ev(what) } : {}) }));
     }
     case "advance": {
       if (!open) return closed();
@@ -131,7 +143,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       const t = billTotals({ lines, payments, discountPaise: 0, customerState: "" }, setup);
       if (t.paid > t.total) return NextResponse.json({ error: `The money received is more than the bill (${rs(t.total)}, advance ${rs(jobTotals(job).paid)}).` }, { status: 400 });
       const notes = [`Repair job ${job.code}`, job.device, job.imei && `IMEI ${job.imei}`, job.warranty_days > 0 && `Repair warranty ${job.warranty_days} days`].filter(Boolean).join(" · ");
-      const bill = await createBill(scope, setup, "sale", { customer_name: job.customer_name, customer_phone: job.customer_phone, customer_gstin: "", customer_state: "", lines, payments, discount_paise: 0, notes: notes.slice(0, 300), due_date: null, client_id: `job-${job.id}-${(job.events ?? []).length}`, created_by: scope.userId, created_by_name: access.name }, true);
+      const bill = await createBill(scope, setup, "sale", { customer_name: job.customer_name, customer_phone: job.customer_phone, customer_gstin: "", customer_state: "", lines, payments, discount_paise: 0, notes: notes.slice(0, 300), due_date: null, client_id: `job-${job.id}-${(job.events ?? []).length}`, store: job.store || "", created_by: scope.userId, created_by_name: access.name }, true);
       if (!bill) return NextResponse.json({ error: "Could not make the bill. Please try again." }, { status: 500 });
       const next = await saveJob(o, job.id, { status: "delivered", labour_paise: labour, bill_id: bill.id, delivered_at: now, events: ev(`Given back · bill ${bill.code} ${rs(bill.total_paise)}${excess > 0 ? ` · ${rs(excess)} of the advance returned` : ""}`) });
       // Given back: thank-you + review link (owner, 26 Nov 2026; the owner's switch decides).

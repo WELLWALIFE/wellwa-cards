@@ -75,3 +75,84 @@ test("day close: today's bills, money on the day it came, cancelled left out; th
   const pub = M.publicBill({ lines: [line()], profit_paise: 500 });
   assert.equal(pub.lines[0].cost, 0); assert.equal(pub.profit_paise, 0);
 });
+
+const A = "11111111-1111-1111-1111-111111111111", B = "22222222-2222-2222-2222-222222222222", C = "33333333-3333-3333-3333-333333333333";
+
+test("combo: off once per full set; an item counts in one combo only; half a set gets nothing", () => {
+  const combos = [{ id: "c1", name: "Cover + glass", items: [A, B], off: 5000 }, { id: "c2", name: "Glass + charger", items: [B, C], off: 3000 }];
+  assert.deepEqual(M.comboOff([{ itemId: A, qty: 2 }, { itemId: B, qty: 1 }], combos), { off: 5000, names: ["Cover + glass"] });
+  assert.deepEqual(M.comboOff([{ itemId: A, qty: 2 }, { itemId: B, qty: 3 }, { itemId: C, qty: 1 }], combos), { off: 2 * 5000 + 3000, names: ["Cover + glass ×2", "Glass + charger"] });
+  assert.equal(M.comboOff([{ itemId: A, qty: 1 }], combos).off, 0);
+  assert.equal(M.comboOff([{ itemId: "", qty: 1 }, { itemId: B, qty: 1 }], combos).off, 0);
+});
+
+test("points: earned per full ₹100, taken back on returns, minus what was used; cancelled bills do not count", () => {
+  const p = { on: true, per100: 1, worth: 100, min: 50 };
+  assert.equal(M.pointsEarned(129900, p), 12);
+  assert.equal(M.pointsEarned(9900, p), 0);
+  assert.equal(M.pointsEarned(129900, { ...p, on: false }), 0);
+  const bills = [
+    { kind: "sale", status: "paid", total_paise: 1000000, payments: [] },                                         // +100
+    { kind: "sale", status: "paid", total_paise: 500000, payments: [{ mode: "other", paise: 6000, ref: "Points 60" }] }, // +50, −60
+    { kind: "return", status: "paid", total_paise: 200000, payments: [] },                                         // −20
+    { kind: "sale", status: "cancelled", total_paise: 900000, payments: [] },                                      // nothing
+  ];
+  assert.deepEqual(M.pointsBalance(bills, p), { earned: 130, used: 60, balance: 70 });
+});
+
+test("points / exchange / return lines are not money in the day close", () => {
+  assert.equal(M.isReturnAdjust({ ref: "Points 60" }), true);
+  assert.equal(M.isReturnAdjust({ ref: "Exchange Redmi 9" }), true);
+  assert.equal(M.isReturnAdjust({ ref: "" }), false);
+});
+
+test("UPI: ID check and the pay link with the exact amount", () => {
+  assert.equal(M.validUpi("shop.name@okaxis"), true);
+  assert.equal(M.validUpi("9876543210@ybl"), true);
+  assert.equal(M.validUpi("shop name@ok"), false);
+  assert.equal(M.validUpi("shop@"), false);
+  assert.equal(M.upiLink("shop@okaxis", "Sunita Mobile", 29950, "MB/2026-27/5"), "upi://pay?pa=shop%40okaxis&pn=Sunita%20Mobile&am=299.50&cu=INR&tn=MB%2F2026-27%2F5");
+  assert.equal(M.upiLink("shop@okaxis", "S", 0), "upi://pay?pa=shop%40okaxis&pn=S&cu=INR");
+});
+
+test("setup: branches, combos, points and staff commission are cleaned; a staff branch that does not exist is dropped", () => {
+  const s = M.cleanMsSetup({
+    stores: [{ id: "b1", name: "Station Road", address: "x" }, { id: "b1", name: "dup" }, { id: "", name: "no id" }],
+    combos: [{ id: "c1", name: "Cover+glass", items: [A, B], off: 5000 }, { id: "c2", name: "one item", items: [A], off: 100 }, { id: "c3", name: "no off", items: [A, B], off: 0 }],
+    points: { on: true, per100: 2, worth: 50, min: 10 }, remindDays: 7,
+    staff: { "44444444-4444-4444-4444-444444444444": { title: "Counter", rights: ["bill", "expense", "nope"], store: "b9", commissionBp: 200, target: 5000000 } },
+  });
+  assert.deepEqual(s.stores.map((x) => x.id), ["b1"]);
+  assert.deepEqual(s.combos.map((x) => x.id), ["c1"]);
+  assert.deepEqual(s.points, { on: true, per100: 2, worth: 50, min: 10 });
+  assert.equal(s.remindDays, 7);
+  const st = s.staff["44444444-4444-4444-4444-444444444444"];
+  assert.deepEqual(st.rights, ["bill", "expense"]); assert.equal(st.store, ""); assert.equal(st.commissionBp, 200); assert.equal(st.target, 5000000);
+  assert.equal(M.cleanMsSetup({}).remindDays, 0);
+  assert.equal(M.storeName(s, "b1"), "Station Road");
+});
+
+test("staff totals: sale after returns, repairs as technician, commission from the owner's settings", () => {
+  const agents = [{ id: "a1", agent_user_id: "u1", name: "Ravi" }, { id: "a2", agent_user_id: "u2", name: "Tech" }];
+  const setup = { staff: { a1: { title: "", rights: [], store: "", commissionBp: 100, repairBp: 0, target: 10000000 }, a2: { title: "", rights: [], store: "", commissionBp: 0, repairBp: 2000, target: 0 } } };
+  const bills = [
+    { kind: "sale", status: "paid", total_paise: 1000000, profit_paise: 100000, created_by: "u1", created_by_name: "Ravi" },
+    { kind: "return", status: "paid", total_paise: 200000, profit_paise: 20000, created_by: "u1", created_by_name: "Ravi" },
+    { kind: "sale", status: "cancelled", total_paise: 999900, profit_paise: 0, created_by: "u1", created_by_name: "Ravi" },
+    { kind: "sale", status: "open", total_paise: 300000, profit_paise: 50000, created_by: "own", created_by_name: "Owner" },
+  ];
+  const jobs = [{ tech_id: "a2", labour_paise: 50000, status: "delivered" }, { tech_id: "a2", labour_paise: 90000, status: "ready" }];
+  const t = M.staffTotals(bills, jobs, agents, setup, "own");
+  const ravi = t.find((x) => x.userId === "u1"), tech = t.find((x) => x.userId === "u2"), own = t.find((x) => x.userId === "own");
+  assert.equal(ravi.sale, 800000); assert.equal(ravi.bills, 1); assert.equal(ravi.commission, 8000); assert.equal(ravi.target, 10000000);
+  assert.equal(tech.repairs, 1); assert.equal(tech.repairCharge, 50000); assert.equal(tech.commission, 10000);
+  assert.equal(own.name, "Owner"); assert.equal(own.commission, 0);
+});
+
+test("udhaar reminder: one message, every due bill with its link, the total and the UPI ID", () => {
+  const t = M.remindMessage("Ramesh", "Sunita Mobile", [
+    { code: "MB/2026-27/3", balance_paise: 50000, created_at: "2026-11-01T06:00:00Z", link: "https://x/mb/1" },
+    { code: "MB/2026-27/9", balance_paise: 25000, created_at: "2026-11-10T06:00:00Z", link: "https://x/mb/2" },
+  ], "shop@okaxis");
+  assert.match(t, /Ramesh जी/); assert.match(t, /₹750 बाकी/); assert.match(t, /MB\/2026-27\/3/); assert.match(t, /https:\/\/x\/mb\/2/); assert.match(t, /shop@okaxis/);
+});

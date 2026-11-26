@@ -10,11 +10,13 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { FieldTip } from "@/components/field-tip";
 import { inr, paiseOf } from "@/lib/jewellery";
-import { CATEGORIES, ITEM_KINDS, itemMatches, itemTitle, type ItemKind, type ItemRow, type MsSetup, type UnitRow } from "@/lib/mobile";
+import { CATEGORIES, ITEM_KINDS, itemMatches, itemTitle, storeName, type ItemKind, type ItemRow, type MsSetup, type UnitRow } from "@/lib/mobile";
 import type { MsAccess } from "@/lib/mobile-types";
 import { MsHelp } from "@/components/mobile/page-help";
 
-type Item = ItemRow & { stock: number };
+type Item = ItemRow & { stock: number; places?: Record<string, number> };
+/** With branches: the place this phone works at (picked on the bill screen; "" = main shop). */
+const here = () => { try { return localStorage.getItem("shubhora.ms-store") ?? ""; } catch { return ""; } };
 type Loaded = { items: Item[]; setup: MsSetup; access: MsAccess; error?: string };
 type Form = { id: string; kind: ItemKind; category: string; name: string; brand: string; model: string; variant: string; price: string; mrp: string; cost: string; barcode: string; low: string; fits: string; warranty: string; gst: string; hsn: string; qty: string; serial: boolean; active: boolean };
 const BLANK: Form = { id: "", kind: "accessory", category: "cover", name: "", brand: "", model: "", variant: "", price: "", mrp: "", cost: "", barcode: "", low: "", fits: "", warranty: "", gst: "18", hsn: "", qty: "", serial: false, active: true };
@@ -54,7 +56,7 @@ export default function ItemsPage() {
     setUnits(r?.ok ? r.data.units ?? [] : []);
   }
   function edit(i: Item) {
-    setNote(""); setImeis(""); setCount(String(i.stock));
+    setNote(""); setImeis(""); setCount(String(i.places ? i.places[here()] ?? 0 : i.stock));
     setF({ id: i.id, kind: i.kind, category: i.category, name: i.name, brand: i.brand, model: i.model, variant: i.variant, price: rs(i.price_paise), mrp: rs(i.mrp_paise), cost: rs(i.cost_paise), barcode: i.barcode, low: i.low_qty ? String(i.low_qty) : "", fits: (i.fits ?? []).join(", "), warranty: i.warranty_months ? String(i.warranty_months) : "", gst: String(i.gst_bp / 100), hsn: i.hsn, qty: "", serial: i.serial, active: i.active });
     if (i.serial) void loadUnits(i.id);
   }
@@ -114,9 +116,9 @@ export default function ItemsPage() {
 
         {f.id && !f.serial && f.kind !== "service" && (
           <section className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface p-3 text-sm">
-            <span className="font-semibold">{T("Correct the count", "गिनती ठीक करें")}{tip("Counted the shelf and the number is different? Type the real count here. For new stock use Purchase.", "shelf गिनी और संख्या अलग निकली? असली गिनती यहाँ लिखें। नए माल के लिए ख़रीद इस्तेमाल करें।")}</span>
+            <span className="font-semibold">{T("Correct the count", "गिनती ठीक करें")}{d.setup.stores.length > 0 ? ` (${storeName(d.setup, d.access.store || here(), hi)})` : ""}{tip("Counted the shelf and the number is different? Type the real count here. For new stock use Purchase.", "shelf गिनी और संख्या अलग निकली? असली गिनती यहाँ लिखें। नए माल के लिए ख़रीद इस्तेमाल करें।")}</span>
             <input className="w-24 rounded-lg border border-border bg-surface px-2 py-1.5" inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} />
-            <button type="button" disabled={busy || count.trim() === ""} onClick={async () => { const r = await post({ action: "adjust", id: f.id, qty: Number(count) }); if (r) { setNote(T("✅ Count saved.", "✅ गिनती save हो गई।")); void load(); } }} className="rounded-lg border border-border px-3 py-1.5 font-semibold disabled:opacity-50">{T("Save count", "गिनती save")}</button>
+            <button type="button" disabled={busy || count.trim() === ""} onClick={async () => { const r = await post({ action: "adjust", id: f.id, qty: Number(count), store: here() }); if (r) { setNote(T("✅ Count saved.", "✅ गिनती save हो गई।")); void load(); } }} className="rounded-lg border border-border px-3 py-1.5 font-semibold disabled:opacity-50">{T("Save count", "गिनती save")}</button>
           </section>
         )}
         {f.id && f.serial && (
@@ -124,7 +126,7 @@ export default function ItemsPage() {
             <p className="font-semibold">IMEI ({(units ?? []).filter((u) => u.status === "in_stock").length} {T("in stock", "स्टॉक में")}){tip("Every phone of this model, by its IMEI. 'In stock' ones can be sold; 'sold' ones are on a bill.", "इस model का हर फ़ोन, उसके IMEI से। 'स्टॉक में' वाले बिक सकते हैं; 'sold' वाले किसी बिल पर हैं।")}</p>
             {!units ? <LoaderCircle className="h-4 w-4 animate-spin text-muted" /> : <ul className="max-h-48 space-y-0.5 overflow-y-auto font-mono text-[12px]">{units.map((u) => <li key={u.id} className="flex justify-between"><span>{u.imei1}</span><span className={u.status === "in_stock" ? "text-good" : "text-muted"}>{u.status === "in_stock" ? T("in stock", "स्टॉक में") : u.status}</span></li>)}{units.length === 0 && <li className="font-sans text-muted">{T("No IMEI yet.", "अभी कोई IMEI नहीं।")}</li>}</ul>}
             <label className={lab}>{T("Add IMEIs you already have (one per line)", "जो फ़ोन पहले से हैं उनके IMEI जोड़ें (एक line में एक)")}<textarea className={`${inp} font-mono`} rows={3} value={imeis} onChange={(e) => setImeis(e.target.value)} /></label>
-            <button type="button" disabled={busy || !imeis.trim()} onClick={async () => { const r = await post({ action: "units", id: f.id, imeis: imeis.split(/[\s,]+/).filter(Boolean) }); if (r) { setImeis(""); setNote(`✅ ${r.added ?? 0} ${T("added", "जुड़े")}${r.already?.length ? ` · ${r.already.length} ${T("were already there", "पहले से थे")}` : ""}`); void loadUnits(f.id); void load(); } }} className="rounded-lg border border-border px-3 py-1.5 font-semibold disabled:opacity-50">{T("Add IMEIs", "IMEI जोड़ें")}</button>
+            <button type="button" disabled={busy || !imeis.trim()} onClick={async () => { const r = await post({ action: "units", id: f.id, imeis: imeis.split(/[\s,]+/).filter(Boolean), store: here() }); if (r) { setImeis(""); setNote(`✅ ${r.added ?? 0} ${T("added", "जुड़े")}${r.already?.length ? ` · ${r.already.length} ${T("were already there", "पहले से थे")}` : ""}`); void loadUnits(f.id); void load(); } }} className="rounded-lg border border-border px-3 py-1.5 font-semibold disabled:opacity-50">{T("Add IMEIs", "IMEI जोड़ें")}</button>
           </section>
         )}
       </div>
@@ -151,7 +153,7 @@ export default function ItemsPage() {
             <span className="min-w-0"><span className="block truncate text-sm font-semibold">{itemTitle(i)}{!i.active && ` (${T("off", "बंद")})`}</span>
               <span className="block truncate text-[11px] text-muted">{(hi ? CATEGORIES.find((c) => c.key === i.category)?.hi : CATEGORIES.find((c) => c.key === i.category)?.en) ?? ""}{i.fits?.length ? ` · ${i.fits.slice(0, 3).join(", ")}${i.fits.length > 3 ? "…" : ""}` : ""}</span></span>
             <span className="flex shrink-0 items-center gap-3 text-right"><span><span className="block text-sm font-bold tabular-nums">{inr(i.price_paise)}</span>
-              {i.kind !== "service" && <span className={`text-[11px] font-semibold ${i.stock <= i.low_qty && i.low_qty > 0 || i.stock <= 0 ? "text-danger" : "text-muted"}`}>{T("Stock", "स्टॉक")} {i.stock}</span>}</span>{can("stock") && <Pencil className="h-3.5 w-3.5 text-muted" />}</span>
+              {i.kind !== "service" && <span className={`text-[11px] font-semibold ${i.stock <= i.low_qty && i.low_qty > 0 || i.stock <= 0 ? "text-danger" : "text-muted"}`}>{T("Stock", "स्टॉक")} {i.stock}</span>}{i.places && i.kind !== "service" && <span className="block text-[10px] text-muted">{Object.entries(i.places).map(([k, v]) => `${storeName(d.setup, k, hi)} ${v}`).join(" · ")}</span>}</span>{can("stock") && <Pencil className="h-3.5 w-3.5 text-muted" />}</span>
           </button>
         ))}
       </div>

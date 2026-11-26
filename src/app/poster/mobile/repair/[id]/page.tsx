@@ -1,7 +1,7 @@
 "use client";
 // One repair job: where it stands, the parts used and the charge, the advance, and the next step — tell the customer it is
 // ready, give it back (this makes the bill), or return it unrepaired.
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Check, Link2, LoaderCircle, MessageCircle, Phone, Printer, Search, Trash2, Undo2 } from "lucide-react";
@@ -14,7 +14,8 @@ import { JobSlip } from "@/components/mobile/job-slip";
 import { inr, paiseOf, type Payment } from "@/lib/jewellery";
 import { itemMatches, itemTitle, type ItemRow, type MsSetup } from "@/lib/mobile";
 import type { MsAccess } from "@/lib/mobile-types";
-import { JOB_STATUSES, conditionText, jobLate, jobOpen, jobStatus, jobTotals, problemText, type JobRow, type JobStatus } from "@/lib/mobile-repair";
+import { PhotoPicker, SignPad, uploadSignature } from "@/components/mobile/job-proof";
+import { JOB_PHOTOS, JOB_STATUSES, conditionText, jobLate, jobOpen, jobStatus, jobTotals, problemText, type JobRow, type JobStatus } from "@/lib/mobile-repair";
 
 type Item = ItemRow & { stock: number };
 type Ans = { job: JobRow; setup: MsSetup; access: MsAccess; shop: string; link: string; staff: { id: string; name: string }[]; today: string; error?: string };
@@ -44,6 +45,8 @@ function JobView() {
   const [give, setGive] = useState({ open: false, amount: "", mode: "cash" as Payment["mode"] });
   const [closing, setClosing] = useState<"" | "return" | "cancel">("");
   const [reason, setReason] = useState("");
+  const [signed, setSigned] = useState(false);
+  const pad = useRef<HTMLCanvasElement | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -114,6 +117,18 @@ function JobView() {
         {!open && row("Technician", job.tech_name)}
         {job.cancel_reason && <p className="rounded-lg bg-red-50 px-2 py-1 text-[13px] text-red-700">{job.cancel_reason}</p>}
       </section>
+
+      {can("repair") && (
+        <section className={card}>
+          <p className="text-sm font-bold">{T("Photos & signature", "Photo और signature")}<FieldTip lang={lang} en="Photos of the phone as it came in, and the customer's signature. Your proof if there is an argument later." hi="फ़ोन जैसा आया था उसकी photo, और ग्राहक के signature। बाद में बहस हो तो ये आपका सबूत है।" /></p>
+          <PhotoPicker photos={job.photos ?? []} hi={hi} max={JOB_PHOTOS} setPhotos={(p) => void act("photos", { photos: p, keep: p })} />
+          {job.signature ? <div><p className="text-[12px] text-muted">{T("Customer's signature", "ग्राहक के signature")}</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={job.signature} alt="" className="h-16 w-auto rounded-lg border border-border bg-white" /></div>
+            : <div className="space-y-1"><SignPad padRef={pad} onChange={setSigned} hi={hi} />
+              {signed && <button type="button" disabled={!!busy} onClick={async () => { setBusy("photos"); const u = await uploadSignature(pad.current); setBusy(""); if (!u) { setNote({ ok: false, t: T("The signature did not upload.", "Signature upload नहीं हुआ।") }); return; } void act("photos", { signature: u }); }} className="rounded-lg grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">{T("Save signature", "Signature save करें")}</button>}</div>}
+        </section>
+      )}
 
       <div className="flex flex-wrap gap-2 print:hidden">
         <button type="button" onClick={() => window.print()} className={btn}><Printer className="h-4 w-4" /> {T("Print slip", "पर्ची print")}</button>

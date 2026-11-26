@@ -11,7 +11,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { finYear } from "@/lib/jewellery";
 import { istDay, isUuid, linkCustomerPhone } from "@/lib/jewellery-server";
 import {
-  BILL_COLS, DEFAULT_MS_SETUP, ITEM_COLS, MS_ALL_RIGHTS, UNIT_COLS, billInputOf, billMessage, billTotals, cleanCode, cleanMsSetup,
+  BILL_COLS, DEFAULT_MS_SETUP, ITEM_COLS, MS_ALL_RIGHTS, UNIT_COLS, billInputOf, billMessage, billTotals, cleanCode, cleanMsSetup, pointsBalance, pointsEarned, remindMessage,
   type BillKind, type BillLine, type BillRow, type ItemRow, type MsRight, type MsSetup, type UnitRow,
 } from "@/lib/mobile";
 import type { MsAccess } from "@/lib/mobile-types";
@@ -51,10 +51,10 @@ export async function msCtx(request: Request, as: string | null): Promise<{ ok: 
   ]);
   if (gate) return { ok: false, res: gate };
   const name = (row?.name || prof || "").trim().slice(0, 60);
-  if (scope.role === "owner") return { ok: true, scope, setup, access: { title: "Owner", rights: MS_ALL_RIGHTS, owner: true, name: name || "Owner" } };
+  if (scope.role === "owner") return { ok: true, scope, setup, access: { title: "Owner", rights: MS_ALL_RIGHTS, owner: true, name: name || "Owner", store: "", agentId: "" } };
   const st = row ? setup.staff[row.id] : undefined;
   const rights: MsRight[] = st ? st.rights : scope.role === "manager" ? MS_ALL_RIGHTS : ["bill"];
-  return { ok: true, scope, setup, access: { title: st?.title || (scope.role === "manager" ? "Manager" : "Counter"), rights, owner: false, name } };
+  return { ok: true, scope, setup, access: { title: st?.title || (scope.role === "manager" ? "Manager" : "Counter"), rights, owner: false, name, store: st?.store ?? "", agentId: row?.id ?? "" } };
 }
 
 /** Cost and profit are for those with the "cost" right only. */
@@ -73,9 +73,10 @@ export async function itemsByIds(ownerId: string, ids: string[]): Promise<ItemRo
   if (!ok.length) return [];
   return list(await restAsService<ItemRow[]>(`ms_items?owner_id=eq.${ownerId}&id=in.(${ok.join(",")})&select=${ITEM_COLS}`));
 }
-/** How many units of each serial item are in stock. */
-export async function unitCounts(ownerId: string): Promise<Record<string, number>> {
-  const rows = list(await restAsService<{ item_id: string }[]>(`ms_units?owner_id=eq.${ownerId}&status=eq.in_stock&select=item_id&limit=20000`));
+/** How many units of each serial item are in stock (in one place when `store` is given: "" = the main shop). */
+export async function unitCounts(ownerId: string, store?: string | null): Promise<Record<string, number>> {
+  const at = typeof store === "string" ? `&store=eq.${encodeURIComponent(store)}` : "";
+  const rows = list(await restAsService<{ item_id: string }[]>(`ms_units?owner_id=eq.${ownerId}&status=eq.in_stock${at}&select=item_id&limit=20000`));
   const out: Record<string, number> = {};
   for (const r of rows) out[r.item_id] = (out[r.item_id] ?? 0) + 1;
   return out;
@@ -85,19 +86,31 @@ export async function unitByImei(ownerId: string, imei: string): Promise<UnitRow
   if (!c) return null;
   return list(await restAsService<UnitRow[]>(`ms_units?owner_id=eq.${ownerId}&or=(imei1.eq.${c},imei2.eq.${c},serial_no.eq.${c})&select=${UNIT_COLS}&limit=1`))[0] ?? null;
 }
-export async function qtyAdd(ownerId: string, itemId: string, delta: number, cost?: number): Promise<void> {
+export async function qtyAdd(ownerId: string, itemId: string, delta: number, cost?: number, store = ""): Promise<void> {
   await restAsService("rpc/ms_qty_add", { method: "POST", body: JSON.stringify({ p_owner: ownerId, p_item: itemId, p_delta: delta, p_cost: cost ?? null }) });
+  // ms_items.qty is the whole stock; a branch keeps its own count too (the main shop's is the rest).
+  if (store) await restAsService("rpc/ms_store_qty_add", { method: "POST", body: JSON.stringify({ p_owner: ownerId, p_item: itemId, p_store: store, p_delta: delta }) });
 }
+/** Counted stock in each branch: { itemId: { storeId: qty } }. */
+export async function branchQtys(ownerId: string): Promise<Record<string, Record<string, number>>> {
+  const rows = list(await restAsService<{ item_id: string; store: string; qty: number }[]>(`ms_store_qty?owner_id=eq.${ownerId}&select=item_id,store,qty&limit=50000`));
+  const out: Record<string, Record<string, number>> = {};
+  for (const r of rows) (out[r.item_id] ??= {})[r.store] = r.qty;
+  return out;
+}
+/** The counted stock of an item in one place: a branch's own count, or for the main shop ("") the whole stock minus the branches. */
+export const qtyAt = (i: Pick<ItemRow, "id" | "qty">, store: string, branches: Record<string, Record<string, number>>) =>
+  store ? branches[i.id]?.[store] ?? 0 : i.qty - Object.values(branches[i.id] ?? {}).reduce((a, b) => a + b, 0);
 
 /* ---------------- bills ---------------- */
 
-export type NewBill = Partial<Pick<BillRow, "ref_bill_id">> & Pick<BillRow, "customer_name" | "customer_phone" | "customer_gstin" | "customer_state" | "lines" | "payments" | "discount_paise" | "notes" | "due_date" | "client_id" | "created_by" | "created_by_name">;
+export type NewBill = Partial<Pick<BillRow, "ref_bill_id" | "store">> & Pick<BillRow, "customer_name" | "customer_phone" | "customer_gstin" | "customer_state" | "lines" | "payments" | "discount_paise" | "notes" | "due_date" | "client_id" | "created_by" | "created_by_name">;
 
 /**
  * The bill's lines made true against the stock: cost, HSN, GST rate and warranty always come from the item (never from the app);
  * a serial item needs an IMEI that is in stock and belongs to it. Returns the problem in plain words, or the lines.
  */
-export async function trueLines(ownerId: string, lines: BillLine[], kind: BillKind): Promise<{ error: string } | { lines: BillLine[] }> {
+export async function trueLines(ownerId: string, lines: BillLine[], kind: BillKind, store: string | null = null): Promise<{ error: string } | { lines: BillLine[] }> {
   const items = await itemsByIds(ownerId, lines.map((l) => l.itemId));
   const seen = new Set<string>();
   const out: BillLine[] = [];
@@ -112,6 +125,7 @@ export async function trueLines(ownerId: string, lines: BillLine[], kind: BillKi
     const u = await unitByImei(ownerId, l.imei);
     if (!u || u.item_id !== it.id) return { error: `IMEI ${l.imei} is not in your stock of ${it.name}.` };
     if (kind === "sale" && u.status !== "in_stock") return { error: `IMEI ${l.imei} is already ${u.status === "sold" ? "sold" : u.status}.` };
+    if (kind === "sale" && store !== null && (u.store || "") !== store) return { error: `IMEI ${l.imei} is in the stock of another branch. Move it here first (Mobile shop → Stock transfer).` };
     out.push({ ...base, qty: 1, imei: u.imei1, unitId: u.id, cost: u.cost_paise || it.cost_paise });
   }
   return { lines: out };
@@ -156,7 +170,7 @@ export async function moveStock(ownerId: string, bill: BillRow, dir: 1 | -1): Pr
     if (l.unitId) {
       const patch = dir === -1 ? { status: "sold", bill_id: bill.id, sold_at: now } : { status: "in_stock", bill_id: null, sold_at: null };
       await restAsService(`ms_units?id=eq.${l.unitId}&owner_id=eq.${ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
-    } else await qtyAdd(ownerId, l.itemId, dir * l.qty);
+    } else await qtyAdd(ownerId, l.itemId, dir * l.qty, undefined, bill.store || "");
   }
 }
 
@@ -172,10 +186,58 @@ export async function billById(ownerId: string, id: string): Promise<BillRow | n
 export const billLink = (b: Pick<BillRow, "id" | "token">) => `${SITE_URL}/mb/${b.id}?t=${b.token}`;
 export const shopOf = async (ownerId: string, setup: MsSetup) => setup.shopName || (await shopName(ownerId)) || "हमारी दुकान";
 
+/** Every bill of one customer (for points and what they owe). */
+export async function customerBills(ownerId: string, phone: string): Promise<BillRow[]> {
+  if (!/^\+91[6-9]\d{9}$/.test(phone)) return [];
+  return list(await restAsService<BillRow[]>(`ms_bills?owner_id=eq.${ownerId}&customer_phone=eq.${encodeURIComponent(phone)}&kind=in.(sale,return)&select=${BILL_COLS}&order=created_at.desc&limit=2000`));
+}
+
 export async function sendBill(scope: Scope, setup: MsSetup, b: BillRow): Promise<{ sent: boolean; link: string; error?: string }> {
-  const text = billMessage(b, await shopOf(scope.ownerId, setup), billLink(b));
+  let extra = "";
+  if (setup.points.on && b.kind === "sale" && b.customer_phone) {
+    const got = pointsEarned(b.total_paise, setup.points);
+    const bal = pointsBalance(await customerBills(scope.ownerId, b.customer_phone), setup.points).balance;
+    if (got || bal) extra = `⭐ ${got ? `+${got} points · ` : ""}कुल ${bal} points (₹${Math.floor((bal * setup.points.worth) / 100)} के) — अगली ख़रीद पर काम आएँगे`;
+  }
+  const text = billMessage(b, await shopOf(scope.ownerId, setup), billLink(b), true, extra);
   const link = b.customer_phone ? `https://wa.me/${b.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}` : "";
   if (!b.customer_phone) return { sent: false, link, error: "No customer number on this bill." };
   if (!(await shopSend(scope, b.customer_phone, text))) return { sent: false, link, error: "The shop's WhatsApp is not linked — send it with the button." };
   return { sent: true, link };
+}
+
+/* ---------------- udhaar reminders ---------------- */
+
+type DueRow = Pick<BillRow, "id" | "token" | "code" | "customer_name" | "customer_phone" | "balance_paise" | "created_at" | "reminded_at" | "store">;
+/** Open udhaar bills, grouped by customer mobile (oldest bill first). `ids`: only these bills' customers. */
+export async function dueByCustomer(ownerId: string, ids?: string[]): Promise<Map<string, DueRow[]>> {
+  const rows = list(await restAsService<DueRow[]>(`ms_bills?owner_id=eq.${ownerId}&kind=eq.sale&status=eq.open&balance_paise=gt.0&customer_phone=neq.&select=id,token,code,customer_name,customer_phone,balance_paise,created_at,reminded_at,store&order=created_at&limit=5000`));
+  const want = ids ? new Set(rows.filter((r) => ids.includes(r.id)).map((r) => r.customer_phone)) : null;
+  const out = new Map<string, DueRow[]>();
+  for (const r of rows) if (!want || want.has(r.customer_phone)) out.set(r.customer_phone, [...(out.get(r.customer_phone) ?? []), r]);
+  return out;
+}
+export type RemindResult = { sent: number; skipped: number; manual: { phone: string; name: string; paise: number; link: string }[] };
+/**
+ * Remind customers of their udhaar on WhatsApp: one message per customer with all their due bills. `minDays`: skip a customer
+ * reminded (or whose newest bill was made) less than this many days ago. A shop without its WhatsApp linked gets wa.me links back.
+ */
+export async function sendReminders(scope: Scope, setup: MsSetup, opts: { ids?: string[]; minDays: number; max: number }): Promise<RemindResult> {
+  const groups = await dueByCustomer(scope.ownerId, opts.ids);
+  const shop = await shopOf(scope.ownerId, setup);
+  const cut = Date.now() - opts.minDays * 86400_000;
+  const out: RemindResult = { sent: 0, skipped: 0, manual: [] };
+  for (const [phone, bills] of groups) {
+    if (out.sent + out.manual.length >= opts.max) { out.skipped += 1; continue; }
+    const last = Math.max(...bills.map((b) => Date.parse(b.reminded_at || "") || 0));
+    const newest = Math.max(...bills.map((b) => Date.parse(b.created_at)));
+    if (opts.minDays > 0 && (last > cut || newest > cut)) { out.skipped += 1; continue; }
+    const name = bills.find((b) => b.customer_name)?.customer_name ?? "";
+    const text = remindMessage(name, shop, bills.map((b) => ({ code: b.code, balance_paise: b.balance_paise, created_at: b.created_at, link: billLink(b) })), setup.upi);
+    const ok = await shopSend(scope, phone, text);
+    if (ok) out.sent += 1;
+    else out.manual.push({ phone, name, paise: bills.reduce((a, b) => a + b.balance_paise, 0), link: `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}` });
+    if (ok) await restAsService(`ms_bills?owner_id=eq.${scope.ownerId}&id=in.(${bills.map((b) => b.id).join(",")})`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ reminded_at: new Date().toISOString() }) });
+  }
+  return out;
 }

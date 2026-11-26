@@ -18,13 +18,19 @@ export async function GET(request: Request) {
   const from = new Date(`${day}T00:00:00+05:30`).toISOString();
   const mine = all ? "" : `&created_by=eq.${scope.userId}`;
   const seeJobs = all || msHas(access, "repair");
-  const [touched, recent, due, items, units, shop, jobRows] = await Promise.all([
+  const seeExp = all || msHas(access, "expense");
+  const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00+05:30`).toISOString();
+  const target = access.agentId ? setup.staff[access.agentId]?.target ?? 0 : 0;
+  const [touched, recent, due, items, units, shop, jobRows, exp, mine30] = await Promise.all([
     restAsService<BillRow[]>(`ms_bills?owner_id=eq.${scope.ownerId}&kind=in.(sale,return)&updated_at=gte.${from}${mine}&select=${BILL_COLS}&limit=5000`),
     restAsService<BillRow[]>(`ms_bills?owner_id=eq.${scope.ownerId}${mine}&select=${BILL_COLS}&order=created_at.desc&limit=15`),
     all ? restAsService<{ balance_paise: number }[]>(`ms_bills?owner_id=eq.${scope.ownerId}&kind=eq.sale&status=eq.open&balance_paise=gt.0&select=balance_paise&limit=5000`) : Promise.resolve({ data: [] as { balance_paise: number }[] }),
     itemsOf(scope.ownerId), unitCounts(scope.ownerId), shopOf(scope.ownerId, setup),
     // Jobs still in the shop, and those closed without a bill today (their advance is today's money too).
     seeJobs ? restAsService<{ status: string; due_date: string | null; payments: Payment[] | null; bill_id: string | null }[]>(`ms_jobs?owner_id=eq.${scope.ownerId}&or=(status.in.(received,repairing,waiting,ready),updated_at.gte.${from})&select=status,due_date,payments,bill_id&limit=3000`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+    seeExp ? restAsService<{ amount_paise: number }[]>(`ms_expenses?owner_id=eq.${scope.ownerId}&day=eq.${day}${all ? "" : `&created_by=eq.${scope.userId}`}&select=amount_paise&limit=1000`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+    // A staff login's own sale this month, against the target the owner set.
+    !access.owner ? restAsService<{ total_paise: number; kind: string }[]>(`ms_bills?owner_id=eq.${scope.ownerId}&created_by=eq.${scope.userId}&kind=in.(sale,return)&status=neq.cancelled&created_at=gte.${monthStart}&select=total_paise,kind&limit=5000`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
   ]);
   const close = dayClose(list(touched), day);
   if (!msHas(access, "cost")) close.profit = 0;
@@ -43,5 +49,8 @@ export async function GET(request: Request) {
     shop, setup, access, today, day, close, jobs, seeJobs, items: items.length, low: low.slice(0, 50),
     due: { count: dueRows.length, paise: dueRows.reduce((a, b) => a + Number(b.balance_paise || 0), 0) },
     recent: list(recent).map((b) => hideBillCost(b, access)),
+    expenses: seeExp ? list(exp as { data: { amount_paise: number }[] | null }).reduce((a, e) => a + e.amount_paise, 0) : null,
+    month: access.owner ? null : { sale: list(mine30 as { data: { total_paise: number; kind: string }[] | null }).reduce((a, b) => a + (b.kind === "return" ? -b.total_paise : b.total_paise), 0), target },
+    stores: setup.stores.length,
   });
 }

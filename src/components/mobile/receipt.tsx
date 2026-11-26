@@ -1,12 +1,16 @@
 // The printable mobile-shop bill: a 58 / 80 mm thermal slip or an A5 / A4 sheet (Settings → paper). The same component draws the
 // shop's copy and the customer's link (/mb). Cost and profit are never drawn.
 import { inr, inWords } from "@/lib/jewellery";
-import { billInputOf, billTotals, lineAmounts, type BillRow, type MsSetup } from "@/lib/mobile";
+import { billInputOf, billTotals, lineAmounts, pointsEarned, validUpi, type BillRow, type MsSetup } from "@/lib/mobile";
+import { UpiQr } from "@/components/mobile/upi-qr";
 
 const day = (d: string) => new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const MODE: Record<string, string> = { cash: "Cash", upi: "UPI", card: "Card", bank: "Bank", cheque: "Cheque", other: "Other" };
 
-export function Receipt({ bill, setup, shop }: { bill: BillRow; setup: MsSetup; shop: string }) {
+export function Receipt({ bill, setup: base, shop, qr = true }: { bill: BillRow; setup: MsSetup; shop: string; qr?: boolean }) {
+  // A bill made in a branch prints that branch's name, address and phone.
+  const branch = bill.store ? base.stores.find((s) => s.id === bill.store) : undefined;
+  const setup: MsSetup = branch ? { ...base, shopName: `${base.shopName || shop} — ${branch.name}`, address: branch.address || base.address, phone: branch.phone || base.phone } : base;
   const t = billTotals(billInputOf(bill), { gstOn: bill.gst_on, stateCode: setup.stateCode });
   const slip = setup.paper === "58" || setup.paper === "80";
   const width = setup.paper === "58" ? "58mm" : setup.paper === "80" ? "80mm" : setup.paper === "a5" ? "148mm" : "100%";
@@ -43,13 +47,15 @@ export function Receipt({ bill, setup, shop }: { bill: BillRow; setup: MsSetup; 
           {t.igst > 0 ? <p className="flex justify-between"><span>IGST</span><span>{inr(t.igst, true)}</span></p> : <><p className="flex justify-between"><span>CGST</span><span>{inr(t.cgst, true)}</span></p><p className="flex justify-between"><span>SGST</span><span>{inr(t.sgst, true)}</span></p></>}
         </>}
         <p className="flex justify-between border-y border-black py-0.5 font-bold" style={{ fontSize: slip ? 13 : 15 }}><span>{est ? "Estimate total" : ret ? "Returned" : "Total"} ({t.qty} pcs)</span><span>{inr(t.total)}</span></p>
-        {!est && (bill.payments ?? []).map((p, i) => <p key={i} className="flex justify-between"><span>{ret ? `Given back · ${MODE[p.mode] ?? p.mode}` : /^Return /.test(p.ref) ? `Goods returned (${p.ref.slice(7)})` : /^Exchange /.test(p.ref) ? `Old phone taken (${p.ref.slice(9)})` : /^EMI/.test(p.ref) ? p.ref : `${MODE[p.mode] ?? p.mode}${p.ref ? ` (${p.ref})` : ""}`}</span><span>{inr(p.paise)}</span></p>)}
+        {!est && (bill.payments ?? []).map((p, i) => <p key={i} className="flex justify-between"><span>{ret ? `Given back · ${MODE[p.mode] ?? p.mode}` : /^Return /.test(p.ref) ? `Goods returned (${p.ref.slice(7)})` : /^Exchange /.test(p.ref) ? `Old phone taken (${p.ref.slice(9)})` : /^Points /.test(p.ref) ? `Points used (${p.ref.slice(7)})` : /^EMI/.test(p.ref) ? p.ref : `${MODE[p.mode] ?? p.mode}${p.ref ? ` (${p.ref})` : ""}`}</span><span>{inr(p.paise)}</span></p>)}
         {!est && !ret && t.balance > 0 && <p className="flex justify-between font-bold"><span>Balance due</span><span>{inr(t.balance)}</span></p>}
       </div>
       {!slip && <p className="mt-1 italic">{inWords(t.total)}</p>}
       {bill.gst_on && <p className="mt-1 opacity-70">Prices include GST.</p>}
       {bill.notes && <p className="mt-1">Note: {bill.notes}</p>}
-      {setup.upi && !est && !ret && <p className="mt-1">UPI: {setup.upi}</p>}
+      {qr && !est && !ret && bill.status !== "cancelled" && t.balance > 0 && validUpi(setup.upi) ? <div className="mt-2"><UpiQr upi={setup.upi} name={setup.shopName || shop} paise={t.balance} note={bill.code} size={slip ? 110 : 130} /></div>
+        : setup.upi && !est && !ret && <p className="mt-1">UPI: {setup.upi}</p>}
+      {setup.points.on && bill.kind === "sale" && bill.status !== "cancelled" && pointsEarned(bill.total_paise, setup.points) > 0 && <p className="mt-1">⭐ Points earned: {pointsEarned(bill.total_paise, setup.points)}</p>}
       {setup.terms && <p className="mt-1 whitespace-pre-line opacity-80">{setup.terms}</p>}
       <p className="mt-2 text-center">Thank you 🙏</p>
       <p className="text-center opacity-60" style={{ fontSize: 9 }}>Made with Shubhora · shubhora.com</p>

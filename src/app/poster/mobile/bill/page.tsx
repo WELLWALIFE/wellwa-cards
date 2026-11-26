@@ -11,7 +11,8 @@ import { useT } from "@/lib/poster-i18n";
 import { useWorkspace } from "@/components/orders/orders-common";
 import { FieldTip } from "@/components/field-tip";
 import { inr, paiseOf, type Payment } from "@/lib/jewellery";
-import { billTotals, cleanCode, itemMatches, itemTitle, type BillLine, type BillRow, type ItemRow, type MsSetup, type UnitRow } from "@/lib/mobile";
+import { billTotals, cleanCode, comboOff, itemMatches, itemTitle, storeName, validUpi, type BillLine, type BillRow, type ItemRow, type MsSetup, type UnitRow } from "@/lib/mobile";
+import { UpiQr } from "@/components/mobile/upi-qr";
 import type { MsAccess } from "@/lib/mobile-types";
 import { MsHelp } from "@/components/mobile/page-help";
 import { OfflineBar } from "@/components/mobile/offline-bar";
@@ -19,7 +20,10 @@ import { Receipt } from "@/components/mobile/receipt";
 import { enqueue, keepItems, keptItems, newClientId } from "@/lib/mobile-offline";
 
 type Item = ItemRow & { stock: number };
-type Loaded = { items: Item[]; setup: MsSetup; access: MsAccess; error?: string };
+type Loaded = { items: Item[]; setup: MsSetup; access: MsAccess; store?: string | null; error?: string };
+type Cust = { name: string; bills: number; due: { count: number; paise: number }; points: { balance: number; worth: number; min: number } | null };
+const STORE_KEY = "shubhora.ms-store";
+const keptStore = () => { try { return localStorage.getItem(STORE_KEY) ?? ""; } catch { return ""; } };
 type CL = { key: string; itemId: string; name: string; qty: number; price: string; disc: string; imei: string; serial: boolean; gstBp: number; stock: number | null };
 type PayMode = "cash" | "upi" | "card" | "emi" | "part";
 
@@ -51,12 +55,15 @@ function NewBill() {
   const [note, setNote] = useState("");
   const [offlineBill, setOfflineBill] = useState<BillRow | null>(null);
   const [tick, setTick] = useState(0);
+  const [store, setStore] = useState<string>(() => (typeof window === "undefined" ? "" : keptStore()));
+  const [known, setKnown] = useState<Cust | null>(null);
+  const [usePts, setUsePts] = useState("");
   const clientId = useRef(newClientId());
   const box = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
-      const r = await api<Loaded>(`/api/mobile/items${asQ}`, { fresh: true });
+      const r = await api<Loaded>(`/api/mobile/items${asQ ? `${asQ}&` : "?"}store=${encodeURIComponent(store)}`, { fresh: true });
       if (!r.ok) { setErr(r.data?.error || "Could not load."); return; }
       keepItems(ws.as, r.data); setStale(false); setD(r.data);
     } catch {
@@ -64,7 +71,23 @@ function NewBill() {
       if (kept) { setD(kept.data); setStale(true); } else setErr(T("No internet, and this phone has not loaded your items yet. Open this page once with internet.", "इंटरनेट नहीं है, और इस फ़ोन में अभी items नहीं आए हैं। एक बार इंटरनेट के साथ ये पेज खोलिए।"));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asQ, ws.as]);
+  }, [asQ, ws.as, store]);
+  // The customer, once 10 digits are typed: name from the last bill, old udhaar, and points.
+  const ten = cust.phone.replace(/\D/g, "").slice(-10);
+  useEffect(() => {
+    setKnown(null); setUsePts("");
+    if (ten.length !== 10 || kind !== "sale") return;
+    let on = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await api<Cust>(`/api/mobile/customer${asQ ? `${asQ}&` : "?"}phone=${ten}`, { fresh: true });
+        if (!on || !r.ok) return;
+        setKnown(r.data);
+        if (r.data.name) setCust((c) => (c.name.trim() ? c : { ...c, name: r.data.name }));
+      } catch { /* offline: billing goes on without it */ }
+    }, 300);
+    return () => { on = false; clearTimeout(t); };
+  }, [ten, asQ, kind]);
   useEffect(() => { (async () => {
     if (navigator.onLine && !(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(location.pathname)}`); return; }
     void load();
@@ -72,7 +95,11 @@ function NewBill() {
 
   const setup = d?.setup;
   const found = useMemo(() => (d && q.trim() ? d.items.filter((i) => i.active && itemMatches(i, q)).slice(0, 30) : []), [d, q]);
-  const totals = useMemo(() => billTotals({ lines: cart.map(lineOf), payments: [], discountPaise: paiseOf(disc), customerState: "" }, { gstOn: !!setup?.gstOn, stateCode: setup?.stateCode ?? "" }), [cart, disc, setup]);
+  // Combo offers are worked out the same way the server does, so the screen shows the real total.
+  const combo = useMemo(() => comboOff(cart.map(lineOf), setup?.combos ?? []), [cart, setup]);
+  const totals = useMemo(() => billTotals({ lines: cart.map(lineOf), payments: [], discountPaise: paiseOf(disc) + combo.off, customerState: "" }, { gstOn: !!setup?.gstOn, stateCode: setup?.stateCode ?? "" }), [cart, disc, setup, combo]);
+  const pts = known?.points && kind === "sale" ? Math.max(0, Math.min(known.points.balance, Math.round(Number(usePts) || 0))) : 0;
+  const ptsPaise = known?.points ? pts * known.points.worth : 0;
 
   function add(i: Item, imei = "") {
     setNote("");
@@ -118,13 +145,15 @@ function NewBill() {
     const exPaise = kind === "sale" && ex.open ? paiseOf(ex.value) : 0;
     if (kind === "sale" && ex.open && (!ex.model.trim() || !exPaise)) { setNote(T("For the exchange, type the old phone's model and its value (or close the exchange box).", "Exchange के लिए पुराने फ़ोन का model और उसकी क़ीमत लिखें (या exchange box बंद करें)।")); return; }
     if (exPaise > totals.total) { setNote(T("The old phone's value is more than the bill.", "पुराने फ़ोन की क़ीमत बिल से ज़्यादा है।")); return; }
-    const toPay = totals.total - exPaise;
+    if (pts && known?.points && pts < known.points.min) { setNote(T(`Use at least ${known.points.min} points.`, `कम-से-कम ${known.points.min} points इस्तेमाल करें।`)); return; }
+    if (exPaise + ptsPaise > totals.total) { setNote(T("The points (and old phone) are worth more than the bill — use fewer points.", "points (और पुराने फ़ोन) की क़ीमत बिल से ज़्यादा है — कम points लगाएँ।")); return; }
+    const toPay = totals.total - exPaise - ptsPaise;
     const payments = kind === "estimate" ? [] : mode === "part" ? (paiseOf(part.amount) ? [{ mode: part.mode, paise: paiseOf(part.amount), ref: "" }] : []) : mode === "emi" ? (toPay ? [{ mode: "other" as const, paise: toPay, ref: `EMI ${emi.trim()}`.trim().slice(0, 40) }] : []) : toPay ? [{ mode, paise: toPay, ref: "" }] : [];
     const paid = payments.reduce((a, p) => a + p.paise, 0);
     if (paid > toPay) { setNote(T("The money received is more than the bill.", "मिले पैसे बिल से ज़्यादा हैं।")); return; }
     if (kind === "sale" && paid < toPay && phone.length !== 10) { setNote(T("For udhaar (money left), type the customer's mobile.", "उधार (बाकी पैसे) के लिए ग्राहक का मोबाइल लिखें।")); return; }
     if (send && phone.length !== 10) { setNote(T("To send on WhatsApp, type the customer's mobile.", "WhatsApp पर भेजने के लिए ग्राहक का मोबाइल लिखें।")); return; }
-    const body = { as: ws.as || undefined, kind, client_id: clientId.current, lines, payments, customer_name: cust.name.trim(), customer_phone: phone, discount_paise: paiseOf(disc), notes: notes.trim(), send, exchange: exPaise ? { model: ex.model.trim(), imei: ex.imei.trim(), paise: exPaise } : undefined };
+    const body = { as: ws.as || undefined, kind, client_id: clientId.current, lines, payments, customer_name: cust.name.trim(), customer_phone: phone, discount_paise: paiseOf(disc), notes: notes.trim(), send, store: setup.stores.length ? (d.access.store || store) : undefined, points: pts || undefined, exchange: exPaise ? { model: ex.model.trim(), imei: ex.imei.trim(), paise: exPaise } : undefined };
     setBusy(send ? "send" : "save");
     try {
       const r = await api<{ bill?: BillRow; sent?: { sent?: boolean; error?: string } | null; error?: string }>("/api/mobile/bills", { method: "POST", json: body });
@@ -140,13 +169,13 @@ function NewBill() {
       const next = { ...d, items: d.items.map((i) => { const n = cart.filter((c) => c.itemId === i.id).reduce((a, c) => a + c.qty, 0); return n && kind === "sale" ? { ...i, stock: i.stock - n, qty: i.serial ? i.qty : i.qty - n } : i; }) };
       keepItems(ws.as, next); setD(next);
       setOfflineBill({ id: clientId.current, owner_id: "", kind, number: 0, fin_year: "", code: T("OFFLINE (number comes after sync)", "OFFLINE (नंबर sync के बाद)"), status: "open", customer_name: body.customer_name, customer_phone: phone, customer_gstin: "", customer_state: "",
-        lines, payments: [...(exPaise ? [{ mode: "other" as const, paise: exPaise, ref: `Exchange ${ex.model.trim()}`.slice(0, 40), at: now }] : []), ...payments.map((p) => ({ ...p, at: now }))], discount_paise: body.discount_paise, total_paise: totals.total, gst_paise: totals.gst, balance_paise: toPay - paid, profit_paise: 0, gst_on: setup.gstOn, notes: body.notes, due_date: null, token: "", client_id: clientId.current, ref_bill_id: null, created_by: null, created_by_name: "", cancel_reason: "", created_at: now, updated_at: now });
+        lines, payments: [...(exPaise ? [{ mode: "other" as const, paise: exPaise, ref: `Exchange ${ex.model.trim()}`.slice(0, 40), at: now }] : []), ...(pts ? [{ mode: "other" as const, paise: ptsPaise, ref: `Points ${pts}`, at: now }] : []), ...payments.map((p) => ({ ...p, at: now }))], discount_paise: body.discount_paise + combo.off, total_paise: totals.total, gst_paise: totals.gst, balance_paise: toPay - paid, profit_paise: 0, gst_on: setup.gstOn, notes: body.notes, due_date: null, token: "", client_id: clientId.current, ref_bill_id: null, created_by: null, created_by_name: "", cancel_reason: "", created_at: now, updated_at: now, store: body.store ?? "", reminded_at: null });
       setTick((t) => t + 1);
     }
   }
   function fresh() {
     clientId.current = newClientId();
-    setCart([]); setCust({ name: "", phone: "" }); setMode("cash"); setEmi(""); setEx({ open: false, model: "", imei: "", value: "" }); setPart({ amount: "", mode: "cash" }); setDisc(""); setNotes(""); setNote(""); setOfflineBill(null);
+    setCart([]); setCust({ name: "", phone: "" }); setKnown(null); setUsePts(""); setMode("cash"); setEmi(""); setEx({ open: false, model: "", imei: "", value: "" }); setPart({ amount: "", mode: "cash" }); setDisc(""); setNotes(""); setNote(""); setOfflineBill(null);
   }
 
   if (err) return <div className="space-y-3 py-16 text-center"><p className="font-semibold">{err}</p><Link href={`/poster/mobile${asQ}`} className="text-sm font-semibold text-brand-ink">← {T("Mobile shop", "मोबाइल दुकान")}</Link></div>;
@@ -175,6 +204,11 @@ function NewBill() {
       <MsHelp k="bill" />
       <OfflineBar as={ws.as} tick={tick} onSynced={() => void load()} />
       {stale && <p className="text-[12px] text-muted">{T("Showing the item list saved on this phone.", "इस फ़ोन में रखी item list दिख रही है।")}</p>}
+      {setup.stores.length > 0 && (d.access.store
+        ? <p className="text-[12px] font-semibold text-muted">🏪 {storeName(setup, d.access.store, hi)}</p>
+        : <label className="flex items-center gap-2 text-[12px] font-semibold text-muted">🏪 {T("Billing at", "बिल कहाँ से")}<FieldTip lang={lang} en="Which shop this bill is from. Its stock goes out of that place, and the bill prints that branch's address." hi="ये बिल किस दुकान से है। स्टॉक उसी जगह से घटेगा, और बिल पर उसी ब्रांच का पता छपेगा।" />
+          <select className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm" value={store} onChange={(e) => { setStore(e.target.value); try { localStorage.setItem(STORE_KEY, e.target.value); } catch { /* ignore */ } setCart([]); }}>
+            <option value="">{storeName(setup, "", hi)}</option>{setup.stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>)}
 
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" />
@@ -231,6 +265,17 @@ function NewBill() {
           <section className="grid gap-2 rounded-2xl border border-border bg-surface p-3 sm:grid-cols-2">
             <label className="text-[12px] font-semibold text-muted">{T("Customer name", "ग्राहक का नाम")} <span className="font-normal">(optional)</span><input className={`${inp} mt-1`} value={cust.name} onChange={(e) => setCust({ ...cust, name: e.target.value })} /></label>
             <label className="text-[12px] font-semibold text-muted">{T("Mobile", "मोबाइल")}<FieldTip lang={lang} en="Needed for udhaar and to send the bill on WhatsApp. The customer is also saved in your Customers list." hi="उधार और WhatsApp पर बिल भेजने के लिए ज़रूरी। ग्राहक आपकी Customers list में भी जुड़ जाता है।" /><input className={`${inp} mt-1`} inputMode="numeric" value={cust.phone} onChange={(e) => setCust({ ...cust, phone: e.target.value })} placeholder="10 digits" /></label>
+            {known && (known.due.paise > 0 || known.points) && (
+              <div className="space-y-1.5 rounded-xl bg-bg px-3 py-2 text-[13px] sm:col-span-2">
+                {known.due.paise > 0 && <p className="font-semibold text-danger">{T(`Old udhaar: ${inr(known.due.paise)} on ${known.due.count} bill(s)`, `पुराना उधार: ${inr(known.due.paise)} (${known.due.count} बिल)`)}</p>}
+                {known.points && kind === "sale" && <div className="flex flex-wrap items-center gap-2"><span>⭐ {T("Points", "Points")}: <b>{known.points.balance}</b> <span className="text-muted">({T("worth", "क़ीमत")} {inr(known.points.balance * known.points.worth)})</span></span>
+                  {known.points.balance >= known.points.min && known.points.balance > 0 ? <>
+                    <input className="w-20 rounded-lg border border-border bg-surface px-2 py-1 text-sm" inputMode="numeric" value={usePts} onChange={(e) => setUsePts(e.target.value)} placeholder="0" />
+                    <button type="button" onClick={() => setUsePts(String(Math.min(known.points!.balance, Math.floor(totals.total / known.points!.worth))))} className="text-xs font-semibold text-brand-ink">{T("Use all", "सारे लगाएँ")}</button>
+                    {pts > 0 && <span className="font-semibold text-good">− {inr(ptsPaise)}</span>}</>
+                    : <span className="text-[11px] text-muted">{T(`Can be used from ${known.points.min} points.`, `${known.points.min} points होने पर इस्तेमाल होंगे।`)}</span>}</div>}
+              </div>
+            )}
             <label className="text-[12px] font-semibold text-muted">{T("Discount on the bill ₹", "पूरे बिल पर छूट ₹")}<FieldTip lang={lang} en="A round-off or bargain on the whole bill. Staff can give up to the limit set in Settings." hi="पूरे बिल पर मोल-भाव या round-off की छूट। Staff Settings में तय limit तक ही दे सकता है।" /><input className={`${inp} mt-1`} inputMode="decimal" value={disc} onChange={(e) => setDisc(e.target.value)} /></label>
             <label className="text-[12px] font-semibold text-muted">{T("Note on the bill", "बिल पर नोट")} <span className="font-normal">(optional)</span><input className={`${inp} mt-1`} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
           </section>
@@ -262,17 +307,22 @@ function NewBill() {
                   <span>{T("Received now ₹", "अभी मिला ₹")}</span>
                   <input className={`${small} w-28`} inputMode="decimal" value={part.amount} onChange={(e) => setPart({ ...part, amount: e.target.value })} placeholder="0" />
                   <select className={small} value={part.mode} onChange={(e) => setPart({ ...part, mode: e.target.value as Payment["mode"] })}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select>
-                  <span className="font-semibold text-danger">{T("Udhaar", "उधार")}: {inr(Math.max(0, totals.total - (ex.open ? paiseOf(ex.value) : 0) - paiseOf(part.amount)))}</span>
+                  <span className="font-semibold text-danger">{T("Udhaar", "उधार")}: {inr(Math.max(0, totals.total - (ex.open ? paiseOf(ex.value) : 0) - ptsPaise - paiseOf(part.amount)))}</span>
                 </div>
               )}
+              {validUpi(setup.upi) && (mode === "upi" || (mode === "part" && part.mode === "upi" && paiseOf(part.amount) > 0)) && (
+                <div className="rounded-xl border border-border bg-white p-2 text-black"><UpiQr upi={setup.upi} name={setup.shopName} paise={mode === "upi" ? Math.max(0, totals.total - (ex.open ? paiseOf(ex.value) : 0) - ptsPaise) : paiseOf(part.amount)} size={150} /></div>
+              )}
+              {mode === "upi" && !validUpi(setup.upi) && <p className="text-[11px] text-muted">{T("Add your UPI ID in Settings to show a QR for the exact amount here.", "यहाँ सही रक़म का QR दिखाने के लिए Settings में अपनी UPI ID डालें।")}</p>}
             </section>
           )}
 
           <section className="space-y-2 rounded-2xl border-2 border-brand/40 bg-surface p-3">
-            {(totals.lineDiscount + totals.billDiscount > 0) && <p className="flex justify-between text-sm text-muted"><span>{T("Discount", "छूट")}</span><span>− {inr(totals.lineDiscount + totals.billDiscount)}</span></p>}
+            {combo.off > 0 && <p className="flex justify-between text-sm font-semibold text-good"><span>🎁 {T("Combo offer", "Combo offer")}: {combo.names.join(", ")}</span><span>− {inr(combo.off)}</span></p>}
+            {(totals.lineDiscount + totals.billDiscount > 0) && <p className="flex justify-between text-sm text-muted"><span>{T("Discount", "छूट")}{combo.off > 0 ? ` (${T("with combo", "combo मिलाकर")})` : ""}</span><span>− {inr(totals.lineDiscount + totals.billDiscount)}</span></p>}
             {setup.gstOn && <p className="flex justify-between text-[12px] text-muted"><span>{T("GST inside the price", "दाम में शामिल GST")}</span><span>{inr(totals.gst, true)}</span></p>}
             <p className="flex items-baseline justify-between"><span className="text-sm font-semibold">{T("Total", "कुल")} · {totals.qty} {T("pcs", "पीस")}</span><span className="text-2xl font-bold tabular-nums">{inr(totals.total)}</span></p>
-            {kind === "sale" && ex.open && paiseOf(ex.value) > 0 && <p className="flex justify-between text-sm"><span>{T("Old phone", "पुराना फ़ोन")} − {inr(paiseOf(ex.value))}</span><span className="font-bold">{T("Customer pays", "ग्राहक देगा")} {inr(Math.max(0, totals.total - paiseOf(ex.value)))}</span></p>}
+            {kind === "sale" && ((ex.open && paiseOf(ex.value) > 0) || pts > 0) && <p className="flex justify-between text-sm"><span>{ex.open && paiseOf(ex.value) > 0 ? `${T("Old phone", "पुराना फ़ोन")} − ${inr(paiseOf(ex.value))} ` : ""}{pts > 0 ? `· Points − ${inr(ptsPaise)}` : ""}</span><span className="font-bold">{T("Customer pays", "ग्राहक देगा")} {inr(Math.max(0, totals.total - (ex.open ? paiseOf(ex.value) : 0) - ptsPaise))}</span></p>}
             {note && <p className="text-sm font-semibold text-danger">{note}</p>}
             <p className="text-[11px] text-muted">{T("Save or Save & WhatsApp?", "Save या Save & WhatsApp?")}<FieldTip lang={lang} en="Save = the bill is made; print it on the next screen. Save & WhatsApp = it is also sent to the customer's mobile (type the mobile above). The stock reduces either way." hi="Save = बिल बन जाता है; अगली screen पर print करें। Save & WhatsApp = साथ में ग्राहक के मोबाइल पर भी जाता है (ऊपर मोबाइल लिखें)। दोनों में स्टॉक घटता है।" /></p>
             <div className="grid grid-cols-2 gap-2">

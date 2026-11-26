@@ -37,7 +37,9 @@ export default function StockTake() {
 
   const load = useCallback(async () => {
     try {
-      const amp = ws.q ? `&${ws.q}` : "";
+      let at = "";
+      try { at = localStorage.getItem("shubhora.ms-store") ?? ""; } catch { /* ignore */ }
+      const amp = `${ws.q ? `&${ws.q}` : ""}&store=${encodeURIComponent(at)}`;
       const [a, b] = await Promise.all([api<{ items?: Item[]; error?: string }>(`/api/mobile/items?all=1${amp}`, { fresh: true }), api<{ units?: Unit[] }>(`/api/mobile/items?instock=1${amp}`, { fresh: true })]);
       if (!a.ok) { setErr(a.data?.error || "Could not load."); return; }
       setItems((a.data.items ?? []).filter((i) => i.kind !== "service")); setUnits(b.ok ? b.data.units ?? [] : []);
@@ -78,7 +80,7 @@ export default function StockTake() {
   async function apply() {
     setBusy(true); setLast(null);
     try {
-      const r = await api<{ changed?: number; error?: string }>("/api/mobile/items", { method: "POST", json: { as: ws.as || undefined, action: "stocktake", counts: diff.map((i) => ({ id: i.id, qty: k.counts[i.id] })) } });
+      const r = await api<{ changed?: number; error?: string }>("/api/mobile/items", { method: "POST", json: { as: ws.as || undefined, action: "stocktake", store: (() => { try { return localStorage.getItem("shubhora.ms-store") ?? ""; } catch { return ""; } })(), counts: diff.map((i) => ({ id: i.id, qty: k.counts[i.id] })) } });
       setBusy(false); setSure(false);
       if (!r.ok) { setLast({ ok: false, t: r.data?.error || T("Could not save.", "Save नहीं हुआ।") }); return; }
       keep({ ...EMPTY }); try { localStorage.removeItem(KEY(ws.as)); } catch { /* fine */ }

@@ -38,7 +38,11 @@ export function JobSlip({ job, setup, shop }: { job: JobRow; setup: MsSetup; sho
       </div>
       {job.est_paise > 0 && <p className="mt-1 opacity-80">The estimate can change after the phone is opened; we will ask you first.</p>}
       {setup.repairTerms && <p className="mt-1 whitespace-pre-line opacity-80">{setup.repairTerms}</p>}
-      <div className="mt-6 flex justify-between gap-4"><span className="border-t border-black pt-0.5">Customer&apos;s sign</span><span className="border-t border-black pt-0.5">For {setup.shopName || shop}</span></div>
+      {(job.photos ?? []).length > 0 && <p className="mt-1 opacity-80">{job.photos.length} photo(s) of the phone taken when it came in.</p>}
+      <div className="mt-6 flex items-end justify-between gap-4"><span className="flex flex-col">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {job.signature && <img src={job.signature} alt="" style={{ height: slip ? 36 : 48, width: "auto", maxWidth: slip ? "30mm" : "50mm" }} />}
+        <span className="border-t border-black pt-0.5">Customer&apos;s sign</span></span><span className="border-t border-black pt-0.5">For {setup.shopName || shop}</span></div>
       <p className="mt-2 text-center opacity-60" style={{ fontSize: 9 }}>Made with Shubhora · shubhora.com</p>
     </article>
   );

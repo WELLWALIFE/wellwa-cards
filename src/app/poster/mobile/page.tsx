@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Boxes, Wrench, ChevronRight, FileText, IndianRupee, LoaderCircle, PackagePlus, ReceiptText, Settings2 } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Boxes, Wallet, Wrench, ChevronRight, FileText, IndianRupee, LoaderCircle, PackagePlus, ReceiptText, Settings2, Target } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { WorkspaceSwitch, useWorkspace } from "@/components/orders/orders-common";
@@ -18,7 +18,7 @@ import { BillLink } from "@/components/mobile/bill-link";
 import { OfflineBar } from "@/components/mobile/offline-bar";
 import { MobileStartList } from "@/components/mobile/start-list";
 
-type Home = { shop: string; setup: MsSetup; access: MsAccess; today: string; day: string; close: DayClose; items: number; low: { id: string; name: string; brand: string; variant: string; stock: number; low: number }[]; due: { count: number; paise: number }; recent: BillRow[]; jobs?: { open: number; ready: number; late: number }; seeJobs?: boolean; error?: string };
+type Home = { shop: string; setup: MsSetup; access: MsAccess; today: string; day: string; close: DayClose; items: number; low: { id: string; name: string; brand: string; variant: string; stock: number; low: number }[]; due: { count: number; paise: number }; recent: BillRow[]; jobs?: { open: number; ready: number; late: number }; seeJobs?: boolean; expenses?: number | null; month?: { sale: number; target: number } | null; stores?: number; error?: string };
 
 export default function MobileHome() {
   const router = useRouter();
@@ -78,6 +78,13 @@ export default function MobileHome() {
         </div>
       )}
 
+      {d.month && d.month.target > 0 && (
+        <div className={tile}>
+          <p className="flex items-center gap-1 text-[11px] text-muted"><Target className="h-3 w-3" /> {T("My sale this month", "इस महीने मेरी बिक्री")}</p>
+          <p className="text-sm font-bold tabular-nums">{inr(d.month.sale)} <span className="font-normal text-muted">/ {inr(d.month.target)}</span></p>
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-bg"><div className="h-full grad-brand" style={{ width: `${Math.min(100, Math.max(0, (d.month.sale * 100) / d.month.target))}%` }} /></div>
+        </div>
+      )}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className={tile}><p className="text-[11px] text-muted">{T("Today's sale", "आज की बिक्री")}<FieldTip lang={lang} en="The total of today's bills, after anything returned today. Cancelled bills are not counted." hi="आज के बिलों का जोड़, आज की वापसी घटाकर। रद्द बिल नहीं गिने जाते।" /></p><p className="text-lg font-bold tabular-nums">{inr(close.sale)}</p><p className="text-[11px] text-muted">{close.bills} {close.bills === 1 ? T("bill", "बिल") : T("bills", "बिल")} · {close.qty} {T("pcs", "पीस")}</p></div>
         <div className={tile}><p className="text-[11px] text-muted">{T("Money in today", "आज आए पैसे")}<FieldTip lang={lang} en="Money that really came today: on today's bills, old udhaar paid today, and repair advances. Udhaar not yet paid is not here." hi="आज सच में आया पैसा: आज के बिलों का, पुराना उधार जो आज चुका, और रिपेयर के advance। जो उधार अभी नहीं आया वो इसमें नहीं है।" /></p><p className="text-lg font-bold tabular-nums text-good">{inr(close.moneyTotal)}</p><p className="text-[11px] text-muted">Cash {inr(close.money.cash)} · UPI {inr(close.money.upi)}{close.money.card ? ` · Card ${inr(close.money.card)}` : ""}{close.money.other ? ` · EMI/Other ${inr(close.money.other)}` : ""}</p></div>
@@ -90,6 +97,8 @@ export default function MobileHome() {
         {can("stock") && <Link href={`/poster/mobile/purchase${q}`} className={`${tile} flex items-center justify-between`}><span><p className="flex items-center gap-1 text-[11px] text-muted"><PackagePlus className="h-3 w-3" /> {T("Purchase", "ख़रीद")}</p><p className="text-sm font-bold">{T("Stock came in", "माल आया")}</p></span><ChevronRight className="h-4 w-4 text-muted" /></Link>}
         {can("reports") && <Link href={`/poster/mobile/reports${q}`} className={`${tile} flex items-center justify-between`}><span><p className="text-[11px] text-muted">{T("Reports", "रिपोर्ट")}</p><p className="text-sm font-bold">{T("Month, GST, Excel", "महीना, GST, Excel")}</p></span><ChevronRight className="h-4 w-4 text-muted" /></Link>}
         <Link href={`/poster/mobile/bills${q}`} className={`${tile} flex items-center justify-between`}><span><p className="text-[11px] text-muted">{T("All bills", "सारे बिल")}</p><p className="text-sm font-bold">{T("Search, print, send", "खोजें, print, भेजें")}</p></span><ChevronRight className="h-4 w-4 text-muted" /></Link>
+        {d.expenses !== null && d.expenses !== undefined && <Link href={`/poster/mobile/expenses${q}`} className={`${tile} flex items-center justify-between`}><span><p className="flex items-center gap-1 text-[11px] text-muted"><Wallet className="h-3 w-3" /> {T("Expenses & cash book", "ख़र्चे और रोकड़")}</p><p className="text-sm font-bold">{d.expenses > 0 ? `${T("Today", "आज")} ${inr(d.expenses)}` : T("Rent, tea, salary…", "किराया, चाय, तनख़्वाह…")}</p></span><ChevronRight className="h-4 w-4 text-muted" /></Link>}
+        {!!d.stores && can("stock") && <Link href={`/poster/mobile/transfer${q}`} className={`${tile} flex items-center justify-between`}><span><p className="flex items-center gap-1 text-[11px] text-muted"><ArrowLeftRight className="h-3 w-3" /> {T("Stock transfer", "स्टॉक ट्रांसफ़र")}</p><p className="text-sm font-bold">{T("Between branches", "ब्रांचों के बीच")}</p></span><ChevronRight className="h-4 w-4 text-muted" /></Link>}
       </div>
 
       {d.low.length > 0 && (

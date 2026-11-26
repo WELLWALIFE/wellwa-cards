@@ -42,6 +42,7 @@ export const MS_RIGHTS = [
   { key: "cost", en: "See cost and profit", hi: "लागत और मुनाफ़ा देखना" },
   { key: "reports", en: "See all bills, day close and money", hi: "सारे बिल, डे क्लोज़ और पैसे देखना" },
   { key: "setup", en: "Change settings", hi: "Settings बदलना" },
+  { key: "expense", en: "Write shop expenses", hi: "दुकान के ख़र्चे लिखना" },
 ] as const;
 export type MsRight = (typeof MS_RIGHTS)[number]["key"];
 export const MS_ALL_RIGHTS: MsRight[] = MS_RIGHTS.map((r) => r.key);
@@ -58,12 +59,26 @@ export type MsSetup = {
   terms: string; upi: string;
   /** Repair: job number prefix, warranty given on a repair (days, printed on its bill), and the terms on the job slip. */
   jobPrefix: string; repairWarrantyDays: number; repairTerms: string;
-  staff: Record<string, { title: string; rights: MsRight[] }>;
+  /** Udhaar: remind the customer on WhatsApp by itself every this many days (0 = only when you tap Remind). */
+  remindDays: number;
+  /** Loyalty points: points for every ₹100 of a bill, what one point is worth (paise) when used, and the fewest that can be used. */
+  points: MsPoints;
+  /** Combo offers: these items bought together get this much off, by themselves on the bill. */
+  combos: MsCombo[];
+  /** Branches besides the main shop (the main shop is store ""). */
+  stores: MsStore[];
+  staff: Record<string, MsStaff>;
 };
+export type MsPoints = { on: boolean; per100: number; worth: number; min: number };
+export type MsCombo = { id: string; name: string; items: string[]; off: number };
+export type MsStore = { id: string; name: string; address: string; phone: string };
+/** A staff login's rights, its branch, its commission (basis points of its sale, and of the repair charge on jobs it repaired) and its monthly sale target (paise). */
+export type MsStaff = { title: string; rights: MsRight[]; store: string; commissionBp: number; repairBp: number; target: number };
 export const DEFAULT_MS_SETUP: MsSetup = {
   shopName: "", address: "", phone: "", gstOn: false, gstin: "", stateCode: "", billPrefix: "MB", estimatePrefix: "ME", paper: "80",
   counterDiscountBp: 500, terms: "No return on accessories once opened. Warranty as per the brand.", upi: "",
   jobPrefix: "MJ", repairWarrantyDays: 30, repairTerms: "Data is the customer's responsibility — please take a backup. Collect the phone within 30 days of the ready message. Warranty is on the part changed only, not on water or physical damage.",
+  remindDays: 0, points: { on: false, per100: 1, worth: 100, min: 50 }, combos: [], stores: [],
   staff: {},
 };
 
@@ -80,8 +95,25 @@ export function cleanMsSetup(v: unknown): MsSetup {
     for (const [id, st] of Object.entries(s.staff as Record<string, unknown>).slice(0, 100)) {
       const x = (st ?? {}) as Record<string, unknown>;
       if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
-      staff[id] = { title: txt(x.title, 30) || "Staff", rights: (Array.isArray(x.rights) ? x.rights : []).filter((r): r is MsRight => MS_ALL_RIGHTS.includes(r as MsRight)) };
+      staff[id] = { title: txt(x.title, 30) || "Staff", rights: (Array.isArray(x.rights) ? x.rights : []).filter((r): r is MsRight => MS_ALL_RIGHTS.includes(r as MsRight)),
+        store: storeId(x.store), commissionBp: int(x.commissionBp, 0, 5000, 0), repairBp: int(x.repairBp, 0, 10000, 0), target: int(x.target, 0, 1e12, 0) };
     }
+  }
+  const stores: MsStore[] = [];
+  for (const st of (Array.isArray(s.stores) ? s.stores : []).slice(0, 20)) {
+    const x = (st ?? {}) as Record<string, unknown>;
+    const id = storeId(x.id), name = txt(x.name, 40);
+    if (id && name && !stores.some((o) => o.id === id)) stores.push({ id, name, address: String(x.address ?? "").slice(0, 200), phone: txt(x.phone, 30) });
+  }
+  for (const k of Object.keys(staff)) if (staff[k].store && !stores.some((o) => o.id === staff[k].store)) staff[k].store = "";
+  const pt = (s.points && typeof s.points === "object" ? s.points : {}) as Record<string, unknown>;
+  const combos: MsCombo[] = [];
+  for (const cb of (Array.isArray(s.combos) ? s.combos : []).slice(0, 30)) {
+    const x = (cb ?? {}) as Record<string, unknown>;
+    const items = [...new Set((Array.isArray(x.items) ? x.items : []).map(String).filter((i) => /^[0-9a-f-]{36}$/i.test(i)))].slice(0, 6);
+    const id = storeId(x.id) || `c${combos.length + 1}`;
+    const off = int(x.off, 0, 1e9, 0);
+    if (items.length >= 2 && off > 0) combos.push({ id, name: txt(x.name, 50) || "Combo", items, off });
   }
   const gstin = txt(s.gstin, 15).toUpperCase();
   return {
@@ -95,9 +127,16 @@ export function cleanMsSetup(v: unknown): MsSetup {
     counterDiscountBp: int(s.counterDiscountBp, 0, 10000, 500),
     terms: String(s.terms ?? DEFAULT_MS_SETUP.terms).slice(0, 400), upi: txt(s.upi, 80),
     jobPrefix: String(s.jobPrefix ?? "").replace(/[^A-Za-z0-9/-]/g, "").slice(0, 8) || "MJ",
-    repairWarrantyDays: int(s.repairWarrantyDays, 0, 730, 30), repairTerms: String(s.repairTerms ?? DEFAULT_MS_SETUP.repairTerms).slice(0, 500), staff,
+    repairWarrantyDays: int(s.repairWarrantyDays, 0, 730, 30), repairTerms: String(s.repairTerms ?? DEFAULT_MS_SETUP.repairTerms).slice(0, 500),
+    remindDays: int(s.remindDays, 0, 60, 0),
+    points: { on: pt.on === true, per100: int(pt.per100, 1, 100, 1), worth: int(pt.worth, 1, 10000, 100), min: int(pt.min, 0, 100000, 50) },
+    combos, stores, staff,
   };
 }
+/** A branch / combo id: short letters and digits. "" = the main shop. */
+const storeId = (v: unknown) => String(v ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 20);
+/** The name of a place: the main shop ("") or a branch. */
+export const storeName = (setup: Pick<MsSetup, "shopName" | "stores">, id: string, hi = false) => (id ? setup.stores.find((s) => s.id === id)?.name ?? (hi ? "ब्रांच" : "Branch") : setup.shopName || (hi ? "मेन दुकान" : "Main shop"));
 
 /* ---------------- items and units ---------------- */
 
@@ -108,8 +147,8 @@ export type ItemRow = {
 };
 export const ITEM_COLS = "id,owner_id,kind,name,brand,model,variant,category,hsn,gst_bp,price_paise,mrp_paise,cost_paise,barcode,qty,low_qty,fits,serial,warranty_months,active,created_at,updated_at";
 export type UnitStatus = "in_stock" | "sold" | "returned" | "demo";
-export type UnitRow = { id: string; owner_id: string; item_id: string; imei1: string; imei2: string; serial_no: string; status: UnitStatus; cost_paise: number; purchase_id: string | null; bill_id: string | null; sold_at: string | null; created_at: string };
-export const UNIT_COLS = "id,owner_id,item_id,imei1,imei2,serial_no,status,cost_paise,purchase_id,bill_id,sold_at,created_at";
+export type UnitRow = { id: string; owner_id: string; item_id: string; imei1: string; imei2: string; serial_no: string; status: UnitStatus; cost_paise: number; purchase_id: string | null; bill_id: string | null; sold_at: string | null; created_at: string; store: string };
+export const UNIT_COLS = "id,owner_id,item_id,imei1,imei2,serial_no,status,cost_paise,purchase_id,bill_id,sold_at,created_at,store";
 
 /** A scanned or typed code, as stored: capitals and digits only. */
 export const cleanCode = (v: unknown, n = 40) => String(v ?? "").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, n);
@@ -220,8 +259,10 @@ export type BillRow = {
   lines: BillLine[]; payments: Payment[]; discount_paise: number; total_paise: number; gst_paise: number; balance_paise: number; profit_paise: number;
   gst_on: boolean; notes: string; due_date: string | null; token: string; client_id: string | null; ref_bill_id: string | null;
   created_by: string | null; created_by_name: string; cancel_reason: string; created_at: string; updated_at: string;
+  /** the branch it was made in ("" = main shop), and when the customer was last reminded of its udhaar */
+  store: string; reminded_at: string | null;
 };
-export const BILL_COLS = "id,owner_id,kind,number,fin_year,code,status,customer_name,customer_phone,customer_gstin,customer_state,lines,payments,discount_paise,total_paise,gst_paise,balance_paise,profit_paise,gst_on,notes,due_date,token,client_id,ref_bill_id,created_by,created_by_name,cancel_reason,created_at,updated_at";
+export const BILL_COLS = "id,owner_id,kind,number,fin_year,code,status,customer_name,customer_phone,customer_gstin,customer_state,lines,payments,discount_paise,total_paise,gst_paise,balance_paise,profit_paise,gst_on,notes,due_date,token,client_id,ref_bill_id,created_by,created_by_name,cancel_reason,created_at,updated_at,store,reminded_at";
 export const billInputOf = (b: Pick<BillRow, "lines" | "payments" | "discount_paise" | "customer_state">): BillInput => ({ lines: b.lines ?? [], payments: b.payments ?? [], discountPaise: b.discount_paise ?? 0, customerState: b.customer_state ?? "" });
 
 /** The bill without what the customer must not see (cost, profit) — for the public bill link. */
@@ -229,20 +270,20 @@ export function publicBill<T extends Pick<BillRow, "lines" | "profit_paise">>(b:
   return { ...b, profit_paise: 0, lines: (b.lines ?? []).map((l) => ({ ...l, cost: 0 })) };
 }
 
-export function billMessage(b: Pick<BillRow, "kind" | "code" | "customer_name" | "total_paise" | "balance_paise">, shop: string, link: string, hi = true): string {
+export function billMessage(b: Pick<BillRow, "kind" | "code" | "customer_name" | "total_paise" | "balance_paise">, shop: string, link: string, hi = true, extra = ""): string {
   const rs = (p: number) => `₹${Math.round(p / 100).toLocaleString("en-IN")}`;
   const name = b.customer_name?.trim() ? (hi ? `${b.customer_name.trim()} जी` : b.customer_name.trim()) : "";
   if (b.kind === "return") return hi ? [`नमस्ते ${name} 🙏`, `${shop}: वापसी ${b.code} — ${rs(b.total_paise)}`, `देखें: ${link}`].join("\n") : [`Hello ${name} 🙏`, `${shop}: return ${b.code} — ${rs(b.total_paise)}`, `See it: ${link}`].join("\n");
   if (b.kind === "estimate") return hi ? [`नमस्ते ${name} 🙏`, `${shop} से आपका estimate ${b.code}: ${rs(b.total_paise)}`, `देखें: ${link}`].join("\n") : [`Hello ${name} 🙏`, `Your estimate ${b.code} from ${shop}: ${rs(b.total_paise)}`, `See it: ${link}`].join("\n");
   const due = b.balance_paise > 0 ? (hi ? `बाकी: ${rs(b.balance_paise)}` : `Balance due: ${rs(b.balance_paise)}`) : (hi ? "पूरा भुगतान मिल गया ✅" : "Fully paid ✅");
-  return hi ? [`नमस्ते ${name} 🙏`, `${shop} से खरीदारी के लिए धन्यवाद।`, `बिल ${b.code}: ${rs(b.total_paise)}`, due, `बिल / वारंटी देखें: ${link}`].join("\n")
-    : [`Hello ${name} 🙏`, `Thank you for shopping at ${shop}.`, `Bill ${b.code}: ${rs(b.total_paise)}`, due, `Bill / warranty: ${link}`].join("\n");
+  return (hi ? [`नमस्ते ${name} 🙏`, `${shop} से खरीदारी के लिए धन्यवाद।`, `बिल ${b.code}: ${rs(b.total_paise)}`, due, extra, `बिल / वारंटी देखें: ${link}`]
+    : [`Hello ${name} 🙏`, `Thank you for shopping at ${shop}.`, `Bill ${b.code}: ${rs(b.total_paise)}`, due, extra, `Bill / warranty: ${link}`]).filter(Boolean).join("\n");
 }
 
 /* ---------------- returns (credit notes) ---------------- */
 
 /** A line in a bill's payments that is not money: goods that came back (cleared udhaar), or an old phone taken in exchange. */
-export const isReturnAdjust = (p: Pick<Payment, "ref">) => /^(Return|Exchange) /.test(p.ref || "");
+export const isReturnAdjust = (p: Pick<Payment, "ref">) => /^(Return|Exchange|Points) /.test(p.ref || "");
 /** How many of each line of a bill have already come back. */
 export function returnedQty(bill: Pick<BillRow, "lines">, returns: Pick<BillRow, "lines" | "status">[]): number[] {
   const out = (bill.lines ?? []).map(() => 0);
@@ -303,4 +344,129 @@ export function dayClose(bills: BillRow[], day: string): DayClose {
     for (const p of b.payments ?? []) if (p.at && istDate(p.at) === day && p.paise > 0 && !isReturnAdjust(p)) { out.money[p.mode] = (out.money[p.mode] ?? 0) + p.paise; out.moneyTotal += p.paise; }
   }
   return out;
+}
+
+/* ---------------- UPI: a QR / link that pays the shop ---------------- */
+
+/** A UPI ID looks like name@bank. */
+export const validUpi = (v: string) => /^[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9]{1,30}$/.test(v.trim());
+/** The UPI pay link (any UPI app opens it; the QR carries the same text). Amount in paise; 0 = the customer types it. */
+export function upiLink(upi: string, name: string, paise: number, note = ""): string {
+  const am = paise > 0 ? `&am=${(paise / 100).toFixed(2)}` : "";
+  const tn = note ? `&tn=${encodeURIComponent(note.slice(0, 40))}` : "";
+  return `upi://pay?pa=${encodeURIComponent(upi.trim())}&pn=${encodeURIComponent((name || "Shop").slice(0, 40))}${am}&cu=INR${tn}`;
+}
+
+/* ---------------- udhaar reminders ---------------- */
+
+export type DueBill = Pick<BillRow, "code" | "balance_paise" | "created_at"> & { link: string };
+/** One WhatsApp for one customer, with every bill they still owe on (oldest first) and its link (the link has the UPI QR). */
+export function remindMessage(name: string, shop: string, bills: DueBill[], upi: string, hi = true): string {
+  const rs = (p: number) => `₹${Math.round(p / 100).toLocaleString("en-IN")}`;
+  const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+  const total = bills.reduce((a, b) => a + Math.max(0, b.balance_paise), 0);
+  const who = name.trim() ? (hi ? `${name.trim()} जी` : name.trim()) : "";
+  const rows = bills.slice(0, 5).map((b) => `• ${b.code} (${day(b.created_at)}) — ${rs(b.balance_paise)}\n  ${b.link}`);
+  if (bills.length > 5) rows.push(hi ? `…और ${bills.length - 5} बिल` : `…and ${bills.length - 5} more bills`);
+  return (hi
+    ? [`नमस्ते ${who} 🙏`, `${shop} पर आपका ${rs(total)} बाकी है:`, ...rows, upi ? `UPI से चुकाएँ: ${upi} (बिल के लिंक पर QR भी है)` : "", "पहले ही दे दिया हो तो ये message छोड़ दें। धन्यवाद।"]
+    : [`Hello ${who} 🙏`, `${rs(total)} is due at ${shop}:`, ...rows, upi ? `Pay by UPI: ${upi} (the bill link has a QR too)` : "", "Already paid? Please ignore this. Thank you."]).filter(Boolean).join("\n");
+}
+
+/* ---------------- loyalty points ---------------- */
+
+/** Points a bill earns: per100 for every full ₹100. */
+export const pointsEarned = (totalPaise: number, p: MsPoints) => (p.on ? Math.floor(Math.max(0, totalPaise) / 10000) * p.per100 : 0);
+/** How many points a payment line used ("Points 120"). */
+export const pointsUsed = (pay: Pick<Payment, "ref" | "paise">, p: MsPoints) => (/^Points /.test(pay.ref || "") ? Math.max(0, Math.round(Number(pay.ref.slice(7)) || pay.paise / p.worth)) : 0);
+/** A customer's points from all their bills: earned on live sales, taken back on returns, minus what was used. */
+export function pointsBalance(bills: Pick<BillRow, "kind" | "status" | "total_paise" | "payments">[], p: MsPoints): { earned: number; used: number; balance: number } {
+  let earned = 0, used = 0;
+  for (const b of bills) {
+    if (b.status === "cancelled") continue;
+    if (b.kind === "sale") { earned += pointsEarned(b.total_paise, p); for (const x of b.payments ?? []) used += pointsUsed(x, p); }
+    else if (b.kind === "return") earned -= pointsEarned(b.total_paise, p);
+  }
+  return { earned: Math.max(0, earned), used, balance: Math.max(0, earned - used) };
+}
+
+/* ---------------- combo offers ---------------- */
+
+/** The combos a bill gets: each combo as many times as all its items are on the bill; an item counts in one combo only. */
+export function comboOff(lines: Pick<BillLine, "itemId" | "qty">[], combos: MsCombo[]): { off: number; names: string[] } {
+  const have = new Map<string, number>();
+  for (const l of lines) if (l.itemId) have.set(l.itemId, (have.get(l.itemId) ?? 0) + Math.max(0, l.qty));
+  let off = 0;
+  const names: string[] = [];
+  for (const c of combos) {
+    if (c.items.length < 2 || c.off <= 0) continue;
+    const times = Math.min(...c.items.map((i) => have.get(i) ?? 0));
+    if (times <= 0) continue;
+    off += times * c.off;
+    names.push(times > 1 ? `${c.name} ×${times}` : c.name);
+    for (const i of c.items) have.set(i, (have.get(i) ?? 0) - times);
+  }
+  return { off, names };
+}
+
+/* ---------------- expenses ---------------- */
+
+export const EXPENSE_CATS: { key: string; en: string; hi: string }[] = [
+  { key: "rent", en: "Rent", hi: "किराया" },
+  { key: "power", en: "Electricity", hi: "बिजली" },
+  { key: "salary", en: "Salary", hi: "तनख़्वाह" },
+  { key: "tea", en: "Tea / snacks", hi: "चाय-नाश्ता" },
+  { key: "transport", en: "Transport / courier", hi: "किराया-भाड़ा / courier" },
+  { key: "phone", en: "Phone / internet", hi: "फ़ोन / इंटरनेट" },
+  { key: "outside", en: "Outside repair work", hi: "बाहर से रिपेयर करवाया" },
+  { key: "shop", en: "Shop upkeep", hi: "दुकान का रख-रखाव" },
+  { key: "ads", en: "Advertising", hi: "प्रचार" },
+  { key: "other", en: "Other", hi: "अन्य" },
+];
+export type ExpenseRow = { id: string; owner_id: string; day: string; category: string; amount_paise: number; mode: string; note: string; store: string; created_by: string | null; created_by_name: string; created_at: string };
+export const EXPENSE_COLS = "id,owner_id,day,category,amount_paise,mode,note,store,created_by,created_by_name,created_at";
+export const expenseCat = (k: string, hi = false) => { const c = EXPENSE_CATS.find((x) => x.key === k) ?? EXPENSE_CATS[EXPENSE_CATS.length - 1]; return hi ? c.hi : c.en; };
+
+/* ---------------- staff: sale, target, commission ---------------- */
+
+export type StaffLine = { userId: string; agentId: string; name: string; bills: number; sale: number; profit: number; repairs: number; repairCharge: number; commission: number; target: number };
+/**
+ * Each person's work in a period: their live sale bills (minus their returns), the repair charge on jobs they repaired and gave back,
+ * and the commission the owner set for them. `agents` maps a staff login (crm_agents) to its user.
+ */
+export function staffTotals(
+  bills: Pick<BillRow, "kind" | "status" | "total_paise" | "profit_paise" | "created_by" | "created_by_name">[],
+  jobs: { tech_id: string | null; labour_paise: number; status: string }[],
+  agents: { id: string; agent_user_id: string | null; name: string }[],
+  setup: Pick<MsSetup, "staff">, ownerId: string,
+): StaffLine[] {
+  const rows = new Map<string, StaffLine>();
+  const row = (userId: string, name: string) => {
+    let r = rows.get(userId);
+    if (!r) {
+      const a = agents.find((x) => x.agent_user_id === userId);
+      const st = a ? setup.staff[a.id] : undefined;
+      r = { userId, agentId: a?.id ?? "", name: a?.name || (userId === ownerId ? "Owner" : name || "—"), bills: 0, sale: 0, profit: 0, repairs: 0, repairCharge: 0, commission: 0, target: st?.target ?? 0 };
+      rows.set(userId, r);
+    }
+    return r;
+  };
+  for (const b of bills) {
+    if (b.status === "cancelled" || !b.created_by) continue;
+    const r = row(b.created_by, b.created_by_name);
+    if (b.kind === "sale") { r.bills += 1; r.sale += b.total_paise; r.profit += b.profit_paise || 0; }
+    else if (b.kind === "return") { r.sale -= b.total_paise; r.profit -= b.profit_paise || 0; }
+  }
+  for (const j of jobs) {
+    if (j.status !== "delivered" || !j.tech_id) continue;
+    const a = agents.find((x) => x.id === j.tech_id);
+    if (!a?.agent_user_id) continue;
+    const r = row(a.agent_user_id, a.name);
+    r.repairs += 1; r.repairCharge += Math.max(0, j.labour_paise || 0);
+  }
+  for (const r of rows.values()) {
+    const st = r.agentId ? setup.staff[r.agentId] : undefined;
+    if (st) r.commission = Math.round((Math.max(0, r.sale) * st.commissionBp) / 10000) + Math.round((r.repairCharge * st.repairBp) / 10000);
+  }
+  return [...rows.values()].sort((a, b) => b.sale - a.sale);
 }

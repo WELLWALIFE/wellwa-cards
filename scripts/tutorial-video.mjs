@@ -243,6 +243,132 @@ const TUTORIALS = {
       ];
     },
   },
+  // Mobile shop, start to end (owner, 26 Nov 2026: "mobile wale ko demo — kaise start kare, fill kare, sab automate kare; 9:16, Hindi,
+  // link user ko de du"). Recorded on the demo account with its Mobile shop add-on on. The customer in it is the demo account's own
+  // number, so a message that goes out (repair ready, review ask) only ever reaches the demo phone.
+  mobile: {
+    title: "Mobile दुकान कैसे चलाएँ",
+    subtitle: "बिल, उधार, स्टॉक, रिपेयर, रिपोर्ट · Shubhora",
+    scenes: (u) => {
+      const P = () => u.page;
+      let CUST = "";   // the demo account's own mobile, read when the recording starts
+      const cust = async () => (CUST ||= await u.ownPhone());
+      const fill = async (re, text) => { await u.type(u.field(re), text); };
+      const save = async (expect) => { await u.tapThen("Save", expect, { exact: true, timeout: 30000 }); };
+      return [
+        { id: "intro", say: "नमस्ते! आज देखते हैं Shubhora की Mobile दुकान — बिल, उधार, स्टॉक, रिपेयर और हिसाब, सब एक ही app में। My Shop में Mobile दुकान खोलिए। सबसे ऊपर शुरुआत के सात step दिखते हैं; हर step दबाने पर वही screen खुलती है।",
+          between: async () => { await u.cleanMobile(); await u.login(); await u.goto(`${SITE}/poster/mobile`); await u.waitText("How to start", 30000); },
+          act: async () => { await u.cue(0); await pause(1200); await u.cue(1); await pause(800); await u.cue(2); await u.scrollBy(350, 2500); await pause(800); await u.scrollBy(-350, 1200); } },
+        { id: "settings", say: "Step एक — दुकान की जानकारी। Settings में दुकान का नाम, फ़ोन और पता लिखिए; ये हर बिल पर छपते हैं। Printer का size चुनिए — 58 या 80 mm roll, या A4। GST number हो तभी GST चालू करें। फिर Save।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000); },
+          act: async () => {
+            await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000);
+            await u.cue(0); await pause(600); await u.cue(1);
+            await fill(/^Shop name/, "Verma Mobile Point"); await fill(/^Phone/, await cust()); await fill(/^Address/, "Shop 12, MI Road, Jaipur");
+            await u.cue(2); await u.scrollBy(250, 1200); await u.cue(3); await pause(900);
+            await u.cue(4); await u.hold(4, 0.7); await save("Saved");
+          } },
+        { id: "items", say: "Step दो — जो बेचते हैं वो जोड़िए। Add item दबाइए और चुनिए: Accessory, Phone, Spare part या Service। नाम, बेचने का दाम और लागत लिखिए — लागत सिर्फ़ आपको दिखती है। 'किस फ़ोन का है' में model लिखिए, और कितने हैं, वो लिखकर Save।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/items`); await u.waitText("Add item", 30000); },
+          act: async () => {
+            await u.goto(`${SITE}/poster/mobile/items`); await u.waitText("Add item", 30000);
+            await u.cue(0); await u.tapText("Add item", { exact: true }); await pause(800);
+            await u.cue(1); await u.tapText("Accessory", { exact: true }); await pause(500);
+            await P().select("select", "glass").catch(() => undefined); await pause(400);
+            await u.cue(2); await fill(/^Name/, "Tempered glass 9D"); await fill(/^Selling price/, "149"); await fill(/^Cost/, "40");
+            await u.cue(3); await u.type('[placeholder="Redmi 13, Vivo Y28"]', "Redmi 13, Vivo Y28"); await fill(/^How many/, "25"); await fill(/^Low stock/, "5");
+            await u.hold(3, 0.8); await u.tapText("Save", { exact: true }); await u.waitText("Tempered glass 9D", 20000); await pause(800);
+          },
+          after: async () => {
+            // two more items for the bill and the repair, added off camera
+            for (const [kind, name, price, cost, fits, qty] of [["Accessory", "Silicone back cover", "199", "60", "Redmi 13", "15"], ["Spare part", "Display Redmi 13", "2200", "1500", "Redmi 13", "3"]]) {
+              await u.tapText("Add item", { exact: true }); await pause(700); await u.tapText(kind, { exact: true }); await pause(400);
+              await fill(/^Name/, name); await fill(/^Selling price/, price); await fill(/^Cost/, cost);
+              await u.type('[placeholder="Redmi 13, Vivo Y28"]', fits); await fill(/^How many/, qty);
+              await u.tapText("Save", { exact: true }); await u.waitText(name, 20000); await pause(500);
+            }
+          } },
+        { id: "bill", say: "Step तीन — बिल। New bill दबाइए। Item का नाम या फ़ोन का model लिखिए — 'glass redmi 13' लिखते ही वही glass मिल जाता है जो उस फ़ोन में लगता है। Barcode scanner हो तो बस scan कीजिए। ग्राहक का नाम और mobile लिखिए।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/bill`); await u.waitText("Search or scan", 30000); },
+          act: async () => {
+            await u.goto(`${SITE}/poster/mobile/bill`); await u.waitText("Search or scan", 30000);
+            await u.cue(0); await pause(600);
+            await u.cue(1); await u.type('[placeholder^="Search item"]', "glass redmi 13"); await pause(900); await u.tapText("Tempered glass 9D"); await pause(600);
+            await u.type('[placeholder^="Search item"]', "cover redmi"); await pause(900); await u.tapText("Silicone back cover"); await pause(600);
+            await u.cue(2); await pause(1200);
+            await u.cue(3); await fill(/^Customer name/, "Rahul Sharma"); await fill(/^Mobile/, await cust()); await pause(600);
+          } },
+        { id: "udhaar", say: "पैसे कैसे मिले — Cash, UPI, Card, EMI, या कुछ अभी और बाकी उधार। Part / udhaar चुनिए और जितने मिले वो लिखिए; बाकी उधार में चला जाता है। Save दबाइए — बिल तैयार, साथ में आपका मुनाफ़ा भी, जो सिर्फ़ आपको दिखता है।",
+          act: async () => {
+            await u.cue(0); await u.scrollBy(300, 1200); await pause(500);
+            await u.cue(1); await u.tapText("Part / udhaar", { exact: true }); await pause(600); await fill(/^Received now/, "200");
+            await u.cue(2); await u.hold(2, 0.6); await u.tapThen("Save", "Udhaar left", { exact: true, timeout: 30000 }); await pause(1200); await u.scrollBy(400, 2000);
+          } },
+        { id: "payment", say: "बाद में ग्राहक बाकी पैसे दे, तो बिल खोलिए, Full दबाइए और Take payment। उधार ख़त्म। Print कीजिए, या WhatsApp पर बिल भेजिए।",
+          act: async () => {
+            await u.scrollBy(-400, 800); await u.cue(0); await u.tapText("Full", { exact: true }); await pause(500); await u.tapText("Take payment", { exact: true }); await pause(1800);
+            await u.cue(1); await pause(800); await u.cue(2); await pause(1500);
+          } },
+        { id: "return", say: "ग्राहक कुछ वापस लाए? Return items दबाइए, कितने वापस आए वो लिखिए, और पैसे किस तरह लौटाए वो चुनिए। Return का बिल बनता है और माल stock में वापस आ जाता है।",
+          act: async () => {
+            await u.cue(0); await u.tapText("Return items", { exact: true }); await pause(800);
+            await u.type(u.field(/Silicone back cover/), "1"); await pause(400);
+            await u.cue(1); await pause(600); await u.tapThen("Take the return", "RETURN", { timeout: 30000 }); await u.cue(2); await pause(2000);
+          } },
+        { id: "purchase", say: "नया माल आया? Purchase खोलिए। सप्लायर का नाम लिखिए, आया हुआ item खोजिए, कितने आए और एक की लागत लिखिए, और सप्लायर को अभी कितना दिया। Save करते ही stock बढ़ जाता है, और सप्लायर का बाकी पैसा भी याद रहता है।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/purchase`); await u.waitText("Purchase", 30000); },
+          act: async () => {
+            await u.goto(`${SITE}/poster/mobile/purchase`); await u.waitText("Paid to supplier", 30000);
+            await u.cue(0); await pause(500); await fill(/^Supplier \(optional\)/, "Sharma Traders");
+            await u.cue(1); await u.type('[placeholder^="Search the item"]', "glass"); await pause(900); await u.tapText("Tempered glass 9D"); await pause(600);
+            await fill(/^Qty/, "10"); await fill(/^Cost of one/, "38"); await fill(/^Paid to supplier/, "300");
+            await u.cue(2); await u.hold(2, 0.6); await save("stock has gone up"); await pause(1500);
+          } },
+        { id: "repair", say: "Step चार — रिपेयर। New repair job खोलिए। ग्राहक का mobile, नाम और फ़ोन का model लिखिए। खराबी और फ़ोन की हालत बस tap करके चुनिए। Estimate और advance लिखकर Save — ग्राहक के लिए slip तैयार।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/repair`); await u.waitText("Display broken", 30000); },
+          act: async () => {
+            await u.goto(`${SITE}/poster/mobile/repair`); await u.waitText("Display broken", 30000);
+            await u.cue(0); await pause(500);
+            await u.cue(1); await u.type('[placeholder="10 digits"]', await cust()); await fill(/Customer name/, "Rahul Sharma"); await u.type('[placeholder="Vivo Y28 black"]', "Redmi 13 black");
+            await u.cue(2); await u.tapText("Display broken", { exact: true }); await u.tapText("Cracked screen", { exact: true }); await pause(500);
+            await u.cue(3); await fill(/^Estimate/, "2500"); await fill(/^Advance/, "500"); await u.hold(3, 0.7);
+            await save("Print the slip"); await pause(1500);
+          } },
+        { id: "repairdone", say: "काम शुरू हो तो Being repaired दबाइए। लगा हुआ part stock से चुनिए और repair charge लिखिए। फ़ोन ठीक हो जाए तो Ready — ग्राहक को WhatsApp पर अपने-आप ख़बर जाती है। फ़ोन लेने आए तो Give the phone back — advance कटकर बिल अपने-आप बन जाता है।",
+          act: async () => {
+            await u.cue(0); await u.tapText("Being repaired", { exact: true }); await pause(1500);
+            await u.cue(1); await u.type('[placeholder^="Add a part"]', "display"); await pause(900); await u.tapText("Display Redmi 13"); await pause(1500);
+            await fill(/^Repair charge/, "300"); await pause(800);
+            // no message to anyone during the recording
+            await P().$$eval('input[type="checkbox"]', (cs) => cs.forEach((c) => { if (c.checked) c.click(); }));
+            await u.cue(2); await u.tapText("Ready", { exact: true }); await pause(1500);
+            await u.cue(3); await u.tapText("Give the phone back"); await pause(900); await u.tapThen("Make the bill", "BILL", { timeout: 30000 }); await pause(1500);
+          } },
+        { id: "repairs", say: "Repair jobs में दिखता है कि दुकान में कितने फ़ोन हैं, कितने तैयार हैं और कितने देर से। नाम, mobile, model या IMEI से खोजिए।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/repairs`); await pause(2000); },
+          act: async () => { await u.goto(`${SITE}/poster/mobile/repairs`); await pause(1500); await u.cue(0); await pause(1500); await u.cue(1); await u.scrollBy(300, 1500); } },
+        { id: "reports", say: "Step सात — दिन का हिसाब। Reports में आज की बिक्री, cash और UPI अलग, मुनाफ़ा, उधार और रिपेयर की कमाई। किसी भी दिन, महीने या साल की रिपोर्ट। एक tap में हिसाब WhatsApp पर, Excel की files CA के लिए, और Tally में import भी।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/reports`); await u.waitText("Sale", 30000); },
+          act: async () => { await u.goto(`${SITE}/poster/mobile/reports`); await u.waitText("Sale", 30000); await u.cue(0); await pause(800); await u.cue(1); await u.scrollBy(500, 3000); await u.cue(2); await pause(600); await u.cue(3); await u.scrollBy(700, 3500); await pause(800); } },
+        { id: "stock", say: "Items में हर चीज़ का stock दिखता है, और कम होने पर चेतावनी। Shelf के लिए barcode label print कीजिए, और महीने में एक बार Count the stock से stock मिलान कर लीजिए।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/items`); await u.waitText("Add item", 30000); },
+          act: async () => {
+            await u.goto(`${SITE}/poster/mobile/items`); await u.waitText("Add item", 30000); await u.cue(0); await pause(1500);
+            await u.cue(1); await u.goto(`${SITE}/poster/mobile/labels`); await u.type('[placeholder^="Search the item"]', "glass"); await pause(1500);
+            await u.cue(2); await u.goto(`${SITE}/poster/mobile/stocktake`); await pause(2000);
+          } },
+        { id: "staff", say: "Staff हो तो हर एक का अलग login बनाइए, और Settings में तय कीजिए कि कौन बिल बनाए, कौन छूट दे, और लागत-मुनाफ़ा कौन देखे। बिल कभी delete नहीं होता — सिर्फ़ वजह लिखकर रद्द होता है, और किसने किया वो नाम रहता है।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000); },
+          act: async () => { await u.goto(`${SITE}/poster/mobile/settings`); await u.waitText("Shop name", 30000); await u.cue(0); await u.scrollBy(900, 4000); await u.cue(1); await pause(1500); } },
+        { id: "automate", say: "Step पाँच और छह — सब अपने-आप। Connections में अपना WhatsApp जोड़िए: बिल, 'फ़ोन तैयार है' का message और Google review की माँग आपके नंबर से अपने-आप जाएगी। Google profile जोड़िए: reviews के जवाब, रोज़ का poster और हर हफ़्ते की जाँच।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/connect`); await u.waitText("Connections", 30000); },
+          act: async () => { await u.goto(`${SITE}/poster/connect`); await u.waitText("Connections", 30000); await u.cue(0); await pause(800); await u.cue(1); await u.scrollBy(300, 2000); await u.cue(2); await u.scrollBy(400, 2500); } },
+        { id: "outro", say: "बस इतना ही। आज ही Shubhora पर अपनी Mobile दुकान शुरू कीजिए। कोई सवाल हो तो app में नीचे वाला गोल सवाल का button दबाइए।",
+          enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile`); await pause(2000); },
+          act: async () => { await u.goto(`${SITE}/poster/mobile`); await u.cue(0); await pause(1500); await u.cue(1); await pause(1200); } },
+      ];
+    },
+  },
 };
 
 /* ============================== helpers: account ============================== */
@@ -495,6 +621,36 @@ export function ui(page, { work, email, uid }) {
     await u.tap(target, { settle: 250 });
     await page.evaluate(() => { const a = document.activeElement; if (a && typeof a.select === "function") a.select(); });
     await page.keyboard.type(text, { delay: 55 }); await pause(350);
+  };
+  /** An input or textarea by its label's own words, or else by its placeholder (forms here use both). */
+  u.field = (re) => async () => {
+    const h = await page.evaluateHandle((src, flags) => {
+      const r = new RegExp(src, flags);
+      const vis = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
+      for (const l of document.querySelectorAll("label")) {
+        const own = [...l.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ").trim() || (l.innerText || "").split("\n")[0];
+        if (r.test(own.trim())) { const i = l.querySelector("input, textarea") || (l.htmlFor && document.getElementById(l.htmlFor)); if (i && vis(i)) return i; }
+      }
+      return [...document.querySelectorAll("input, textarea")].find((i) => vis(i) && r.test(i.placeholder || "")) ?? null;
+    }, re.source, re.flags);
+    const el = h.asElement();
+    if (!el) throw new Error(`no field for ${re}`);
+    return el;
+  };
+  /** The Mobile shop's own data on the demo account (bills, repair jobs, purchases, stock, items): the account reset leaves it,
+   *  and the mobile video starts from an empty shop. Only this account's rows. */
+  /** The demo account's own mobile (its poster profile): the "customer" in the mobile video, so anything that goes out reaches only it. */
+  u.ownPhone = async () => {
+    const r = await fetch(`${SUPA}/rest/v1/poster_profiles?user_id=eq.${uid}&select=phone&order=is_default.desc&limit=1`, { headers: H });
+    const d = String((await r.json().catch(() => []))?.[0]?.phone ?? "").replace(/\D/g, "").slice(-10);
+    if (d.length !== 10) throw new Error("the demo account has no 10-digit mobile on its profile — the video uses it as the customer's number");
+    return d;
+  };
+  u.cleanMobile = async () => {
+    for (const t of ["ms_bills", "ms_jobs", "ms_purchases", "ms_units", "ms_items"]) {
+      const r = await fetch(`${SUPA}/rest/v1/${t}?owner_id=eq.${uid}`, { method: "DELETE", headers: { ...H, Prefer: "return=minimal" } });
+      log(`mobile shop: cleared ${t} (${r.status})`);
+    }
   };
   u.scrollBy = async (dy, ms) => { const steps = Math.max(4, Math.round(ms / 120)); for (let i = 0; i < steps; i++) { await page.evaluate((d) => window.scrollBy({ top: d, behavior: "auto" }), dy / steps); await pause(ms / steps); } };
   /** Signs the phone into the account through the app's own "Login as" page, then opens the app. */
