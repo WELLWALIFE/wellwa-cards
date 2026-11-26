@@ -26,6 +26,9 @@ const Stars = ({ r }: { r: number }) => <span className="inline-flex items-cente
 
 export function GoogleCheck() {
   const [q, setQ] = useState(""); const [city, setCity] = useState("");
+  // Local or all-India (owner, 26 Nov 2026: "local me city puche aur India level me India apne se likh de").
+  const [reach, setReach] = useState<"local" | "india">("local");
+  const where = reach === "india" ? "India" : city.trim();
   const [places, setPlaces] = useState<Candidate[] | null>(null); const [pick, setPick] = useState<Candidate | null>(null);
   const [phone, setPhone] = useState(""); const [name, setName] = useState(""); const [sells, setSells] = useState("");
   const [busy, setBusy] = useState<"" | "find" | "report">(""); const [error, setError] = useState("");
@@ -34,14 +37,14 @@ export function GoogleCheck() {
 
   async function find(e: React.FormEvent) {
     e.preventDefault(); setError(""); setBusy("find"); setPlaces(null); setPick(null); setReport(null);
-    try { const j = await post({ step: "find", q, city }); setPlaces(j.places); if (!j.places.length) setError("No business found on Google with that name. Check the spelling, or add the city."); }
+    try { const j = await post({ step: "find", q, city: where }); setPlaces(j.places); if (!j.places.length) setError(reach === "india" ? "No business found on Google with that name. Check the spelling, or pick Local and add the city." : "No business found on Google with that name. Check the spelling or the city."); }
     catch (err) { setError((err as Error).message); } finally { setBusy(""); }
   }
   async function run(e: React.FormEvent) {
     e.preventDefault(); if (!pick) return; setError(""); setBusy("report");
     // The partner whose website sent the visitor here (?by=<card>): the lead is theirs.
     let by = ""; try { by = new URLSearchParams(window.location.search).get("by") ?? ""; } catch { /* old browser */ }
-    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${city}`.trim(), ...(sells.trim() ? { sells: sells.trim() } : {}), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setReport(j.report);
+    try { const j = await post({ step: "report", placeId: pick.id, phone, name, q: `${q} ${where}`.trim(), ...(sells.trim() ? { sells: sells.trim() } : {}), ...(by ? { by } : {}) }); setPartner(j.partner ?? null); setReport(j.report);
       // The website's speed comes a little later and is put into the report shown.
       if (j.report?.sitePending) void post({ step: "speed", placeId: pick.id }).then((s) => { if (s.report) setReport((cur) => (cur && cur.place.id === s.report.place.id ? s.report : cur)); }).catch(() => setReport((cur) => (cur ? { ...cur, sitePending: false } : cur)));
     }
@@ -52,9 +55,17 @@ export function GoogleCheck() {
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-5 md:p-7">
-      <form onSubmit={find} className="grid gap-3 sm:grid-cols-[1.4fr_1fr_auto]">
+      <p className="mb-2 text-sm font-semibold text-ink">Your business is… <span className="font-normal text-muted">/ आपका business…</span></p>
+      <div className="mb-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Business reach">
+        {([["local", "Local — one city", "एक शहर में"], ["india", "All India", "पूरे भारत में"]] as const).map(([k, en, hi]) => (
+          <button key={k} type="button" role="radio" aria-checked={reach === k} onClick={() => setReach(k)} className={`rounded-xl border px-3 py-2.5 text-left text-sm ${reach === k ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border text-ink"}`}>
+            {en}<span className="block text-xs font-normal text-muted">{hi}</span>
+          </button>
+        ))}
+      </div>
+      <form onSubmit={find} className={`grid gap-3 ${reach === "local" ? "sm:grid-cols-[1.4fr_1fr_auto]" : "sm:grid-cols-[1fr_auto]"}`}>
         <input value={q} onChange={(e) => setQ(e.target.value)} required minLength={2} placeholder="Business name (e.g. Gupta Sweets)" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />
-        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (e.g. Jaipur)" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />
+        {reach === "local" && <input value={city} onChange={(e) => setCity(e.target.value)} required minLength={2} placeholder="City (e.g. Jaipur)" className="rounded-xl border border-border bg-bg px-4 py-3 text-base" />}
         <button disabled={busy === "find"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-5 py-3 text-base font-semibold text-white shadow-glow disabled:opacity-60">
           {busy === "find" ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Check <ArrowRight className="h-5 w-5" /></>}
         </button>
