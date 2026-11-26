@@ -322,7 +322,7 @@ const TUTORIALS = {
           enter: async () => { await u.login(); await u.goto(`${SITE}/poster/mobile/purchase`); await u.waitText("Purchase", 30000); },
           act: async () => {
             await u.goto(`${SITE}/poster/mobile/purchase`); await u.waitText("Paid to supplier", 30000);
-            await u.cue(0); await pause(500); await fill(/^Supplier \(optional\)/, "Sharma Traders");
+            await u.cue(0); await pause(500); await fill(/^Supplier$/, "Sharma Traders");
             await u.cue(1); await u.type('[placeholder^="Search the item"]', "glass"); await pause(900); await u.tapText("Tempered glass 9D"); await pause(600);
             await fill(/^Qty/, "10"); await fill(/^Cost of one/, "38"); await fill(/^Paid to supplier/, "300");
             await u.cue(2); await u.hold(2, 0.6); await save("stock has gone up"); await pause(1200);
