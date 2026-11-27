@@ -4,7 +4,7 @@ import { geminiComplete } from "@/lib/gemini";
 import { fetchCardOwnerUsername, fetchCloudCard, getPublicSupabase } from "@/lib/supabase/public";
 import type { PlatformKnowledge } from "@/lib/platform";
 import type { Card } from "@/lib/types";
-import { agentLinks, firstName, replyLanguage } from "../../bridge/shubhora-agent.mjs";
+import { agentLinks, firstName, ownJoinLink, replyLanguage } from "../../bridge/shubhora-agent.mjs";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
@@ -40,7 +40,7 @@ export async function agentContext(card: Card, platform: PlatformKnowledge) {
   return {
     seller: /^shubhora$/i.test(String(card.name ?? "").trim()) ? "" : firstName(card.name),   // the company's own card: "हमारा", not "Shubhora जी का"
     card,
-    links: agentLinks({ site: SITE, cardUrl: `${SITE}/c/${card.username}`, ownerUsername: owner, joinFallback: ctaJoinLink(card), extraTemplates: templates }),
+    links: agentLinks({ site: SITE, cardUrl: `${SITE}/c/${card.username}`, ownerUsername: owner, joinFallback: ctaJoinLink(card), extraTemplates: templates, joinOverride: ownJoinLink(card.botFiles) }),
     override: platform.shubhora ?? {},
   };
 }

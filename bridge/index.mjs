@@ -21,7 +21,7 @@ import { isShubhoraCard, ownNotes, shubhoraTraining } from "./shubhora-kb.mjs";
 // The new assistant (Super Admin → Shubhora AI → "New AI" switch): Shubhora partners' playbook + memory + personal filter.
 import {
   v2Mode, agentLinks, agentTurn, agentFollowup, quickRead, personalLine, voiceSorry, mediaAck, linkKeys, modelMessages,
-  firstName,
+  firstName, ownJoinLink,
 } from "./shubhora-agent.mjs";
 import { writeFile, unlink } from "node:fs/promises";
 import { execFile } from "node:child_process";
@@ -792,7 +792,7 @@ function agentCtx() {
   return {
     seller: /^shubhora$/i.test(String(card.name || "").trim()) ? "" : firstName(card.name || config.businessName || ""),   // the company's own card
     card,
-    links: agentLinks({ site: PUBLIC_URL, cardUrl: cardLink(), ownerUsername: ownerHandle, joinFallback: ctaJoinLink(), extraTemplates: savedTemplates }),
+    links: agentLinks({ site: PUBLIC_URL, cardUrl: cardLink(), ownerUsername: ownerHandle, joinFallback: ctaJoinLink(), extraTemplates: savedTemplates, joinOverride: ownJoinLink(card.botFiles) }),
     override: shubhoraOverride,
   };
 }

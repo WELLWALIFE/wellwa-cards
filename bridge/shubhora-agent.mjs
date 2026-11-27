@@ -78,11 +78,20 @@ const BUILT_IN_PREVIEWS = [
 ];
 const NOT_PUBLIC = new Set(["wellwa-distributor", "vcard-reseller", "blank"]);
 
-/** Every link the assistant may share, built for one card. */
-export function agentLinks({ site, cardUrl, ownerUsername, joinFallback, extraTemplates } = {}) {
+/** The joining link the owner put in AI Training → "Files and links the AI can send" (a link named "Joining", "Registration",
+ *  "जॉइनिंग"…). It wins over the link made from the account name (owner, 27 Nov 2026: "joining link jo new dala hai wo nahi ja
+ *  raha" — the partner assistant always sent shubhora.com/join/<account>, whatever the owner had set). "" when none is set. */
+export function ownJoinLink(botFiles) {
+  const JOIN = /\b(join|joining|registration|register|sign\s*-?\s*up|signup|id\s*bana)|जॉइन|जोइन|ज्वाइन|रजिस्ट्रेशन|रजिस्टर/i;
+  const f = (Array.isArray(botFiles) ? botFiles : []).find((x) => x && x.kind === "link" && JOIN.test(String(x.label || "")) && /^https?:\/\/\S+$/i.test(String(x.url || "").trim()));
+  return f ? String(f.url).trim() : "";
+}
+
+/** Every link the assistant may share, built for one card. `joinOverride`: the owner's own joining link (ownJoinLink). */
+export function agentLinks({ site, cardUrl, ownerUsername, joinFallback, extraTemplates, joinOverride } = {}) {
   const s = String(site || "https://shubhora.com").replace(/\/$/, "");
   const handle = String(ownerUsername || "").trim();
-  const join = /^[A-Za-z0-9_-]{2,40}$/.test(handle) ? `${s}/join/${handle}` : (joinFallback || `${s}/signup`);
+  const join = String(joinOverride || "").trim() || (/^[A-Za-z0-9_-]{2,40}$/.test(handle) ? `${s}/join/${handle}` : (joinFallback || `${s}/signup`));
   const byKey = new Map(BUILT_IN_PREVIEWS.map(([key, name]) => [key, { key, name, url: `${s}/templates/${key}` }]));
   for (const t of extraTemplates || []) {
     const key = String(t?.key || "").trim();
