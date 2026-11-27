@@ -348,6 +348,9 @@ export async function publishCard(card: Card, opts: { freshSite?: boolean } = {}
       }).catch(() => {});
     }
   } catch { /* ignore */ }
+  // The WhatsApp bot reads the card again at once (owner, 27 Nov 2026: "Answer only new numbers" was switched off and the bot
+  // kept skipping for up to 5 minutes — it re-reads the card only every 5 minutes). Nothing linked: the call just fails quietly.
+  if (typeof window !== "undefined") void fetch("/api/wa/config", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => undefined);
   return { ok: true, username };
 }
 
