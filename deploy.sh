@@ -28,6 +28,10 @@ echo "→ building production release locally…"
 # NEXT_PUBLIC_DEPLOY_ID: this release's stamp — a browser tab left open from an older release sees it differ (api/health) and offers the refresh.
 NEXT_PUBLIC_DEPLOY_ID="$(date +%s)" NEXT_PUBLIC_SITE_URL="$SITE_URL" npm run build
 
+# Open the shared connection on its own, right before the uploads (owner moved to Windows/WSL, 27 Nov 2026): with the newer OpenSSH there, a
+# master started by rsync's own ssh cut rsync off ("connection unexpectedly closed … code 255"). Every ssh / rsync below
+# then rides this one connection, as before.
+$SSH -fN "$SERVER"
 echo "→ uploading source (env + runtime state preserved)…"
 # Only what the server runs goes up: not the Mac's own work folders (work/ = old Wellwa deck and video files,
 # ~25 MB; docs/; git history; editor files) — the server never uses them (owner's call, 27 Sep 2026).
