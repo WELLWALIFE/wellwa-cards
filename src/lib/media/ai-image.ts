@@ -31,14 +31,30 @@ const SCENES: Record<string, string> = {
 export const NO_TEXT = "ABSOLUTELY NO TEXT, letters, numbers, logos or watermarks anywhere in the image.";
 
 /** One try at a picture from the image model. */
-async function rawImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5"): Promise<Buffer | null> {
+/** Pictures handed to the image model with the words: "show THESE products" (a dealer's real models from the brand's site). */
+export type RefImage = { mime: string; data: string };
+export async function refImages(urls: string[], max = 2): Promise<RefImage[]> {
+  const out: RefImage[] = [];
+  for (const u of urls.slice(0, max)) {
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(15_000) });
+      if (!r.ok) continue;
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length < 2_000 || buf.length > 6_000_000) continue;
+      const small = await sharp(buf).rotate().resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer();
+      out.push({ mime: "image/jpeg", data: small.toString("base64") });
+    } catch { /* skip that one */ }
+  }
+  return out;
+}
+async function rawImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5", refs: RefImage[] = []): Promise<Buffer | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   try {
     const r = await fetch(`${GEMINI}/${IMG_MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(90_000),
       headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: `${prompt} ${IMAGE_GUIDE} ${NO_TEXT}` }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ratio } } }),
+      body: JSON.stringify({ contents: [{ parts: [...refs.map((r) => ({ inlineData: { mimeType: r.mime, data: r.data } })), { text: `${prompt} ${IMAGE_GUIDE} ${NO_TEXT}` }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ratio } } }),
     });
     const d = await r.json().catch(() => null);
     const part = (d?.candidates?.[0]?.content?.parts ?? []).find((x: { inlineData?: { data?: string } }) => x.inlineData?.data);
@@ -49,13 +65,13 @@ async function rawImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5"): 
 /** A picture that is right the first time (owner, 14 Oct 2026): the picture rules ride on every prompt; the result is checked, and
  *  a flawed one is drawn again with the checker's fix note — at most `tries` times, never past ~75 s — keeping the best. The
  *  owner is charged once, whatever the number of tries. */
-export async function aiImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5" = "16:9", opts: { tries?: number; check?: boolean } = {}): Promise<Buffer | null> {
+export async function aiImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5" = "16:9", opts: { tries?: number; check?: boolean; refs?: RefImage[] } = {}): Promise<Buffer | null> {
   const t0 = Date.now();
   const tries = Math.max(1, opts.tries ?? 3);
   let best: { img: Buffer; score: number } | null = null;
   let fix = "";
   for (let n = 0; n < tries; n++) {
-    const img = await rawImage(fix ? `${prompt} IMPORTANT, avoid these problems seen in an earlier attempt: ${fix}` : prompt, ratio);
+    const img = await rawImage(fix ? `${prompt} IMPORTANT, avoid these problems seen in an earlier attempt: ${fix}` : prompt, ratio, opts.refs ?? []);
     if (!img) continue;
     if (opts.check === false || !process.env.GEMINI_API_KEY) return img;
     const v = await checkImage(img, prompt);
@@ -89,13 +105,18 @@ export async function storeImage(userId: string, name: string, png: Buffer): Pro
 /** The website's sliding top banners (owner, 14 Nov 2026: "banner me 3 image lagao taaki movement dikhe, AI se perfect bana ke"):
  *  `count` wide (16:9) photographs of the trade, each a different scene — the place, the goods, people being served — and each with
  *  clear space on one side for the banner's words. Stored like the build's other pictures (ref-N); fewer come back if a picture fails. */
-export async function bannerSet(userId: string, opts: { trade: string; city?: string; dark?: boolean; color?: string; brand?: string; count?: number }): Promise<string[]> {
+export async function bannerSet(userId: string, opts: { trade: string; city?: string; dark?: boolean; color?: string; brand?: string; count?: number; products?: string[] }): Promise<string[]> {
   const brand = (opts.brand || "").trim().slice(0, 40);
   const trade = `${brand ? `${brand} ` : ""}${opts.trade || "small business"}`.slice(0, 80);
   const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
   const mood = `${MODERN_LOOK} ${opts.dark ? "Slightly deeper, richer tones with soft evening window light — still clean and contemporary, never gloomy." : "Bright and airy, clean uncluttered background, soft natural shadows."}`;
   const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
-  const brandLine = brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
+  // A dealer's real models (photos from the brand's own site, owner 27 Nov 2026: "scooty ka dealer, aur image car ki"): the image
+  // model is shown them and told to draw exactly those — an unknown brand name alone made it draw cars.
+  const refs = opts.products?.length ? await refImages(opts.products, 2) : [];
+  const brandLine = refs.length
+    ? ` The products in the picture are EXACTLY the products in the attached reference photos — the same kind of product, the same shape, body and styling (if they are scooters, show those scooters, never cars). No logo, badge, lettering or text visible anywhere.`
+    : brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
   const space = "Composed as a wide website banner with clear, calm empty space on one side so a headline can sit there. No text, lettering, signboards, logos or watermarks anywhere in the picture.";
   const scenes = [
     `Photorealistic wide banner photograph of a ${trade}${where}: the place itself, welcoming and well arranged.${brandLine} ${mood}${accent} ${space}`,
@@ -103,7 +124,7 @@ export async function bannerSet(userId: string, opts: { trade: string; city?: st
     `Photorealistic wide banner photograph of a happy customer being helped at a ${trade}${where}, candid and natural.${brandLine} ${mood}${accent} ${space}`,
   ].slice(0, Math.max(1, Math.min(3, opts.count ?? 3)));
   const made = await Promise.all(scenes.map(async (prompt, n) => {
-    const png = await aiImage(prompt, "16:9").catch(() => null);
+    const png = await aiImage(prompt, "16:9", { refs }).catch(() => null);
     return png ? storeImage(userId, `ref-${n + 1}`, png) : null;
   }));
   return made.filter((u): u is string => !!u);
@@ -120,7 +141,7 @@ export async function bannerSet(userId: string, opts: { trade: string; city?: st
  */
 export async function referenceImages(
   userId: string,
-  opts: { trade: string; city?: string; dark?: boolean; color?: string; /** How many in all (banner first when `banner` is not false). */ count?: number; /** false: no banner, gallery pictures only. */ banner?: boolean; /** "Hyundai": the pictures show that brand's kind of thing (no logos or text, as ever). */ brand?: string; /** What the owner asked the picture to show, in their words or the AI's brief from them. */ wish?: string },
+  opts: { trade: string; city?: string; dark?: boolean; color?: string; /** How many in all (banner first when `banner` is not false). */ count?: number; /** A dealer's real models (our copies of the brand site's photos): drawn exactly. */ products?: string[]; /** false: no banner, gallery pictures only. */ banner?: boolean; /** "Hyundai": the pictures show that brand's kind of thing (no logos or text, as ever). */ brand?: string; /** What the owner asked the picture to show, in their words or the AI's brief from them. */ wish?: string },
 ): Promise<string[]> {
   const brand = (opts.brand || "").trim().slice(0, 40);
   // "Hyundai auto showroom" — the brand's cars, phones or paint, not the trade's in general.
@@ -128,7 +149,10 @@ export async function referenceImages(
   const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
   const mood = `${MODERN_LOOK} ${opts.dark ? "Slightly deeper, richer tones with soft evening window light — still clean and contemporary, never gloomy." : "Bright and airy, clean uncluttered background, soft natural shadows."}`;
   const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
-  const brandLine = brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
+  const refs = opts.products?.length ? await refImages(opts.products, 2) : [];
+  const brandLine = refs.length
+    ? ` The products in the picture are EXACTLY the products in the attached reference photos — the same kind of product, the same shape, body and styling (if they are scooters, show those scooters, never cars). No logo, badge, lettering or text visible anywhere.`
+    : brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
   const wish = (opts.wish || "").trim().replace(/\s+/g, " ").slice(0, 600);
   const wishLine = wish ? ` THE OWNER ASKS FOR THIS, AND IT COMES FIRST: ${wish}` : "";
   const briefs = [
@@ -153,7 +177,7 @@ export async function referenceImages(
   for (let i = 0; i < list.length; i += 3) {
     const chunk = await Promise.all(list.slice(i, i + 3).map(async (prompt, k) => {
       const n = i + k;
-      const png = await aiImage(prompt, withBanner && n === 0 ? "16:9" : "4:3");
+      const png = await aiImage(prompt, withBanner && n === 0 ? "16:9" : "4:3", { refs });
       return png ? storeImage(userId, `ref-${n + 1}`, png) : null;
     }));
     made.push(...chunk);

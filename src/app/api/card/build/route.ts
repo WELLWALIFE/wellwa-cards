@@ -452,6 +452,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     const made = await within(
       bannerSet(me.id, {
         trade: setup.categoryLabel || setup.category || "", brand, city: setup.city || "",
+        products: importRole === "dealer" ? (got?.stored.products ?? []).flatMap((p) => p.stored.slice(0, 1)).slice(0, 2) : [],
         dark: ref?.style?.dark ?? false, color: ref?.style?.colors?.[0] ?? ref?.look?.accent ?? categoryOf(setup.category)?.accent,
         count: 3 - have.length,
       }).catch(() => [] as string[]),
@@ -470,6 +471,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     const made = await within(
       referenceImages(me.id, {
         trade: setup.categoryLabel || setup.category || "", brand, city: setup.city || "",
+        products: importRole === "dealer" ? (got?.stored.products ?? []).flatMap((p) => p.stored.slice(0, 1)).slice(0, 2) : [],
         dark: ref?.style?.dark ?? false, color: ref?.style?.colors?.[0] ?? ref?.look?.accent ?? categoryOf(setup.category)?.accent,
         banner: true, count: 1,
       }).catch(() => [] as string[]),

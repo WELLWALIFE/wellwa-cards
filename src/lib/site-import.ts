@@ -305,6 +305,74 @@ export function cardsFromHtml(html: string, base: string): SiteProduct[] {
   return [...out.values()];
 }
 
+/** The site's own catalogue pages, found from its menu (owner, 27 Nov 2026: chitrakaev.com keeps its scooters at /vehicles.html —
+ *  none of the usual /products or /shop addresses, and no prices, so nothing was imported and the dealer's website showed a car).
+ *  A same-site link whose words or address say "vehicles", "models", "products", "range", "catalogue"… */
+const LISTING_WORDS = /^(?:all |our |view all |explore (?:our )?|see all )?(vehicles?|models?|products?|range|ranges|catalogue|catalog|collections?|bikes?|scooters?|e-?scooters?|cars?|machines?|equipments?|solutions)$/i;
+export function listingLinks(html: string, base: string, max = 3): string[] {
+  let origin: string;
+  try { origin = new URL(base).origin; } catch { return []; }
+  const out = new Set<string>();
+  for (const m of html.matchAll(/<a\b([^>]+)>([\s\S]{0,200}?)<\/a>/gi)) {
+    const u = absolute(attr(` ${m[1]}`, "href"), base);
+    if (!u) continue;
+    let p: URL;
+    try { p = new URL(u); } catch { continue; }
+    if (p.origin !== origin || p.pathname === "/" || /index\.(html?|php)$/i.test(p.pathname)) continue;
+    const label = txt(m[2], 60).trim();
+    const byPath = /\/(vehicles?|models?|products?|our-products|range|catalog(?:ue)?|collections?)(\.(?:html?|php|aspx?))?\/?$/i.test(p.pathname);
+    if (!byPath && !LISTING_WORDS.test(label)) continue;
+    out.add(`${p.origin}${p.pathname}`);
+    if (out.size >= max) break;
+  }
+  return [...out];
+}
+
+/** A catalogue shown as model cards without prices — a picture, a model name and a "View details" link to the model's own page
+ *  (vehicle makers, machinery, many brand sites). Read for a dealer's brand site or the owner's own: the name, the picture and the
+ *  short spec lines of the card; the model's page is read afterwards for more. Blog / news "Read more" cards are not models. */
+const DETAIL_LINK = /^\s*(view details?|details|know more|explore|view product|more info|view model|specifications?|see details)\s*$/i;
+export function modelCardsFromHtml(html: string, base: string): SiteProduct[] {
+  let origin: string;
+  try { origin = new URL(base).origin; } catch { return []; }
+  const out = new Map<string, SiteProduct>();
+  let last = 0;
+  for (const m of html.matchAll(/<a\b([^>]+)>([\s\S]{0,120}?)<\/a>/gi)) {
+    const at = m.index ?? 0;
+    if (!DETAIL_LINK.test(txt(m[2], 60))) continue;
+    // Only what lies between the previous model's "View details" and this one belongs to this card.
+    const chunk = html.slice(Math.max(last, at - 2500), at);
+    last = at + m[0].length;
+    const u = absolute(attr(` ${m[1]}`, "href"), base);
+    if (!u) continue;
+    let p: URL;
+    try { p = new URL(u); } catch { continue; }
+    if (p.origin !== origin || NOT_PRODUCT.test(p.pathname) || /\/(blog|news|article|post|press|event|media)s?\b/i.test(p.pathname)) continue;
+    const heads = [...chunk.matchAll(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/gi)].map((h) => txt(h[1], 80)).filter((h) => h.length >= 2);
+    const name = heads[heads.length - 1] ?? "";
+    const imgs = [...chunk.matchAll(/<img\b[^>]*>/gi)].map((t) => absolute(biggestFromSrcset(attr(t[0], "srcset") || attr(t[0], "data-srcset")) || attr(t[0], "data-src") || attr(t[0], "data-lazy-src") || attr(t[0], "src"), base)).filter((x): x is string => !!x && !JUNK_IMG.test(x) && !/logo/i.test(x));
+    if (!name || !imgs.length || name.length > 60) continue;
+    // The card's short facts ("120 KM RANGE", "(2.52 KW) Lithium-ion BATTERY CAPACITY"): its text lines between the picture and the name.
+    const specs = [...chunk.slice(chunk.lastIndexOf("<img")).matchAll(/<(?:p|span|div|li|h[1-6])\b[^>]*>([^<]{2,60})<\/(?:p|span|div|li|h[1-6])>/gi)]
+      .map((x) => txt(x[1], 60)).filter((x) => x && x !== name && !DETAIL_LINK.test(x)).slice(0, 8);
+    const key = `${p.origin}${p.pathname}`;
+    const pretty = name === name.toUpperCase() ? name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : name;
+    if (!out.has(key)) out.set(key, { name: pretty, price: "", mrp: "", description: "", specs: pairSpecs(specs), images: [imgs[imgs.length - 1]], url: key });
+    if (out.size >= MAX_PRODUCTS) break;
+  }
+  return [...out.values()];
+}
+/** "120 KM", "RANGE", "(2.52 KW) Lithium-ion", "BATTERY CAPACITY" → "Range: 120 KM", "Battery capacity: (2.52 KW) Lithium-ion". */
+function pairSpecs(lines: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const v = lines[i], k = lines[i + 1];
+    if (k && /\d/.test(v) && !/\d/.test(k) && k.length <= 30) { out.push(`${k[0]}${k.slice(1).toLowerCase()}: ${v}`); i++; }
+    else if (/\d/.test(v)) out.push(v);
+  }
+  return out.slice(0, 6);
+}
+
 /** Product addresses from the site's sitemap, for sites whose menus are built in JavaScript or hide the shop
  *  behind a search. A sitemap index is followed into its product sitemap(s). Cheap: XML only. */
 async function sitemapProducts(origin: string): Promise<string[]> {
@@ -513,7 +581,8 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
     // The products / shop page often lists more than the home page does — and so do the site's own range /
     // category pages (Sweets, Namkeen, Gift Hampers…), which haldirams.com-style sites link from the header.
     const cats = categoryLinks(home.html, home.url).slice(0, 5);
-    const listing = await Promise.all([...["/products", "/shop", "/our-products", "/product", "/collections/all"].map((p) => `${origin}${p}`), ...cats.map((c) => c.url)]
+    const menu = listingLinks(home.html, home.url);
+    const listing = await Promise.all([...new Set([...["/products", "/shop", "/our-products", "/product", "/collections/all"].map((p) => `${origin}${p}`), ...cats.map((c) => c.url), ...menu])]
       .map((u) => page(u).catch(() => null)));
     const read = [home, ...listing].filter((pg): pg is NonNullable<typeof pg> => !!pg);
     // 1. the listing cards themselves (name + price + picture): on most Indian shop sites this is all there is
@@ -530,10 +599,20 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
       if (have) { if (!have.price && c.price) have.price = c.price; if (!have.images.length) have.images = c.images; continue; }
       add(c);
     }
+    // Still nothing: a catalogue of model cards with no prices (a vehicle maker's /vehicles.html). The card's name, picture and spec
+    // lines are kept; the model's own page adds its specification table and pictures where it has them.
+    if (!byName.size) {
+      const models = read.flatMap((pg) => modelCardsFromHtml(pg.html, pg.url)).slice(0, MAX_PRODUCTS);
+      const detail = await pool(models, 4, (mc) => productPage(mc.url, siteNameOfHome).catch(() => null));
+      models.forEach((mc, i) => {
+        const d = detail[i];
+        add({ ...mc, description: d?.description || "", specs: [...new Set([...mc.specs, ...(d?.specs ?? [])])].slice(0, 8), images: [...new Set([...mc.images, ...(d?.images ?? [])])].slice(0, 3) });
+      });
+    }
   }
 
   // Pictures: og:image and hero banners first, then the big photos of home, about and gallery pages.
-  const more = await Promise.all(["/about", "/about-us", "/gallery"].map((p) => page(`${origin}${p}`)));
+  const more = await Promise.all(["/about", "/about-us", "/gallery", "/about.html", "/gallery.html"].map((p) => page(`${origin}${p}`).catch(() => null)));
   const og = absolute(meta(home.html, "og:image"), home.url);
   const pics = [home, ...more].filter(Boolean).map((pg) => pictures(pg!.html, pg!.url));
   const productPics = new Set([...byName.values()].flatMap((p) => p.images));
