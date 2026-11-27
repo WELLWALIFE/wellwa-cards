@@ -190,7 +190,7 @@ export async function referenceImages(
  *  Null when the model gave nothing. */
 export async function slotImage(
   userId: string,
-  opts: { kind: "banner" | "about" | "gallery"; trade: string; tradeKey?: string; city?: string; label?: string; dark?: boolean; color?: string; brand?: string },
+  opts: { kind: "banner" | "about" | "gallery"; trade: string; tradeKey?: string; city?: string; label?: string; dark?: boolean; color?: string; brand?: string; /** A dealer's real models (photos from the brand's site): drawn exactly, never another kind of vehicle. */ products?: string[] },
 ): Promise<string | null> {
   const trade = `${opts.brand ? `${opts.brand.slice(0, 40)} ` : ""}${opts.trade || "small business"}`.slice(0, 80);
   const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
@@ -199,13 +199,16 @@ export async function slotImage(
   const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
   const label = (opts.label || "").replace(/\s+/g, " ").trim().slice(0, 60);
   const scene = (opts.tradeKey && SCENES[opts.tradeKey]) || `a modern ${trade}`;
+  // Same rule as the build's pictures (Vipin Thakkar, 27 Nov 2026: a scooter dealer's "Make by AI" banner drew a car).
+  const refs = opts.products?.length ? await refImages(opts.products, 2) : [];
+  const exact = refs.length ? " The products in the picture are EXACTLY the products in the attached reference photos — the same kind of product, the same shape, body and styling (if they are scooters, show those scooters, never cars). No logo, badge, lettering or text visible anywhere." : "";
   const prompt =
     opts.kind === "banner"
       ? `Photorealistic wide banner photograph of ${scene}${where}. ${mood}${accent} Composed with a large area of calm, clean empty space on the left third so a headline can sit there; the subject is on the right. Looks like the hero image of a leading brand's website.`
       : opts.kind === "about"
       ? `Photorealistic photograph of the people and the place of ${scene}${where}: the owner or two team members, smiling and confident, in current smart-casual clothes, working or talking with a customer in the clean space. A portrait-friendly composition that sits beside a paragraph of text. ${mood}${accent}`
       : `Photorealistic photograph for a website gallery tile${label ? ` called "${label}"` : ""} of ${scene}${where}${label ? ` — it must clearly show ${label}, nothing else` : " — the products, the work or the place"}. ${mood}${accent} One clear subject, sharp, tidy background, looks like current premium product photography.`;
-  const png = await aiImage(prompt, opts.kind === "banner" ? "16:9" : "4:3");
+  const png = await aiImage(prompt + exact, opts.kind === "banner" ? "16:9" : "4:3", { refs });
   // "ref-N" is how the app recognises a picture it made itself.
   return png ? storeImage(userId, `ref-${opts.kind === "banner" ? 1 : opts.kind === "about" ? 2 : 3}`, png) : null;
 }

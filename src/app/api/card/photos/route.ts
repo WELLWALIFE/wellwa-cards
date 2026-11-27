@@ -271,7 +271,9 @@ export async function POST(request: Request) {
     const pal = SITE_PALETTES.find((p) => p.key === st.palette && p.key !== "brand");
     const color = st.palette === "brand" && st.color ? st.color : pal?.mid ?? categoryOf(inputs.setup.category)?.accent;
     const label = kind === "gallery" && slot ? slotsOf(card).find((s) => s.id === slot)?.label ?? "" : "";
-    const made = await slotImage(me.id, { kind, trade: inputs.setup.categoryLabel || inputs.setup.category || "", tradeKey: inputs.setup.category || "", city: inputs.setup.city || "", label: /^Gallery photo \d+$/.test(label) ? "" : label, dark: pal ? pal.tone === "dark" : false, color }).catch(() => null);
+    // A dealer's pictures show the brand's real models (the first photo of the first two products), as the build does.
+    const dealerRefs = inputs.facts.websiteRole === "dealer" ? inputs.products.map((p) => p.photo || p.images?.[0] || "").filter(Boolean).slice(0, 2) : [];
+    const made = await slotImage(me.id, { kind, trade: inputs.setup.categoryLabel || inputs.setup.category || "", tradeKey: inputs.setup.category || "", city: inputs.setup.city || "", label: /^Gallery photo \d+$/.test(label) ? "" : label, dark: pal ? pal.tone === "dark" : false, color, products: dealerRefs }).catch(() => null);
     logImages("site-photo", IMG_MODEL, made ? 1 : 0);
     if (!made) { await refund().catch(() => undefined); return NextResponse.json({ error: "The picture could not be made. Nothing was charged." }, { status: 502 }); }
     newUrl = made;
