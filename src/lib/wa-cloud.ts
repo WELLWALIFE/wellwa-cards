@@ -8,6 +8,7 @@ import { isBlocked } from "@/lib/crm-block";
 import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, completeFileSets, ensureDemoLink, demoLink, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
+import { ownerAlert } from "@/lib/owner-alert";
 import type { Card } from "@/lib/types";
 import { asksStock, bookDays, bookedText, bookTurn, cardAnswer, dayMenu, deskBill, deskDue, deskIntent, deskNothing, deskStatus, formQuestions, formTurn, matchItems, orderDoneText, orderList, orderMenu, orderOwnerLine, orderTurn, shopItems, stockAnswer } from "../../bridge/shop-desk.mjs";
 
@@ -357,6 +358,7 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     if (desk) {
       await reply(acc, card, phone, desk.text);
       if (desk.alert && leadId) await note(acc.owner_id, leadId, `🔔 ${desk.alert}`, true);
+      if (desk.alert) await ownerAlert(acc.owner_id, { name, phone, alert: desk.alert, inbound: text });
       continue;
     }
     const flow = text ? await runFlow(ctx, text, firstContact) : null;
@@ -364,6 +366,7 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     if (flow && !flow.askAi) {
       if (!flow.menu || !(await replyMenu(acc, card, phone, flow.menu, flow.text))) await reply(acc, card, phone, flow.text);
       if (flow.alert && leadId) await note(acc.owner_id, leadId, `🔔 ${flow.alert}`, true);
+      if (flow.alert) await ownerAlert(acc.owner_id, { name, phone, alert: flow.alert, inbound: text });
       continue;
     }
     if (flow?.askAi) ask = flow.askAi;
@@ -384,6 +387,8 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     if (out || order) {
       if (out) await reply(acc, card, phone, out);
       if (alert && leadId) await note(acc.owner_id, leadId, `🔔 AI alert: ${alert}`, true);
+      // With a sound on the owner's phone (owner, 27 Nov 2026) — a CRM note alone tells nobody (lib/owner-alert.ts).
+      if (alert || order) await ownerAlert(acc.owner_id, { name: order?.name || name, phone, alert: order ? `${order.kind === "booking" ? "Booking" : order.kind === "callback" ? "Call back" : "Order"}: ${orderSummary(order)}` : alert!, inbound: text });
       // The salesman closed on WhatsApp: the lead carries the order (name, what, value) and goes hot.
       if (order && leadId) {
         const kind = order.kind === "booking" ? "Booking" : order.kind === "callback" ? "Call back" : "Order";

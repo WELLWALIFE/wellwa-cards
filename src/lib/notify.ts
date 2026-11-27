@@ -11,6 +11,7 @@ import { SUPA_URL, serviceConfigured, serviceHeaders } from "@/lib/admin-guard";
 import { SITE_URL } from "@/lib/site-url";
 
 export const NOTIFICATION_TYPES = {
+  customer_alert: { label: "Customer needs you (WhatsApp bot)", hint: "The WhatsApp bot took an order, a booking or a call-back, or a customer asked for you — a phone notification with sound, and a WhatsApp from the company number (your own 'message yourself' chat makes no sound).", push: true, whatsapp: true },
   new_lead:      { label: "New lead",              hint: "A customer fills the card form or chats with the AI.", push: true,  whatsapp: true },
   followup_due:  { label: "Follow-up reminder",    hint: "A lead's follow-up time in the CRM has come.",         push: true,  whatsapp: true },
   daily_summary: { label: "Morning summary",       hint: "8 am: yesterday's leads and today's follow-ups.",      push: true,  whatsapp: false },

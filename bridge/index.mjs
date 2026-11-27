@@ -2526,11 +2526,20 @@ function splitAlert(raw, inbound) {
 
 async function alertOwner(jid, name, alert, inbound) {
   noteAsk(name, alert, inbound); bump("alerts");
-  if (!me?.id || state !== "connected") return;
   const last = alertedAt.get(jid) ?? 0;
   if (Date.now() - last < 30 * 60 * 1000) return;
   alertedAt.set(jid, Date.now());
   const phone = await phoneOf(jid);
+  // With a sound (owner, 27 Nov 2026): the "message yourself" chat below never rings, so the app also sends a phone
+  // notification and a WhatsApp from the company number (app: /api/cron/owner-alert → lib/owner-alert.ts).
+  if (env.CRON_KEY && TENANT_ID && TENANT_ID !== "legacy") {
+    fetch(`${env.APP_INTERNAL_URL || "http://127.0.0.1:3001"}/api/cron/owner-alert`, {
+      method: "POST", signal: AbortSignal.timeout(20_000),
+      headers: { "content-type": "application/json", "x-cron-key": env.CRON_KEY },
+      body: JSON.stringify({ owner: TENANT_ID, name: name || "", phone: phone || "", alert: String(alert).slice(0, 300), inbound: String(inbound || "").slice(0, 300) }),
+    }).catch((e) => console.error("[wa] owner alert (sound) failed:", e?.message ?? e));
+  }
+  if (!me?.id || state !== "connected") return;
   const own = me.id.split(":")[0] + "@s.whatsapp.net";
   const text =
     `🔔 *Customer needs you now*\n` +
