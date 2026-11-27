@@ -1307,7 +1307,7 @@ export default function WebsiteEditPage() {
               <p className="text-sm font-semibold text-ink">This design has a fixed layout</p>
               <p className="mt-0.5 text-[12px] text-muted">Text and photos can be edited here. To change the design of each section, pick another of your 12 designs.</p>
             </div>
-            <Link href="/poster/site/choose" className="shrink-0 rounded-lg bg-brand px-3 py-2 text-[12px] font-bold text-white">Choose a design</Link>
+            <Link href="/poster/site/choose?all=1" className="shrink-0 rounded-lg bg-brand px-3 py-2 text-[12px] font-bold text-white">Choose a design</Link>
           </div>
         )}
         {!adv && (rtab === "sections" || rtab === "design") && (
@@ -1317,7 +1317,7 @@ export default function WebsiteEditPage() {
               <p className="text-sm font-semibold text-ink">Your website uses an older design</p>
               <p className="mt-0.5 text-[12px] text-muted">Pick one of the 12 new designs to change the design of each section, like every new website. Your text and photos stay.</p>
             </div>
-            <Link href="/poster/site/choose" className="shrink-0 rounded-lg bg-brand px-3 py-2 text-[12px] font-bold text-white">Choose a design</Link>
+            <Link href="/poster/site/choose?all=1" className="shrink-0 rounded-lg bg-brand px-3 py-2 text-[12px] font-bold text-white">Choose a design</Link>
           </div>
         )}
         {rtab === "sections" && (homeRows.length > 0 ? <>
@@ -1372,7 +1372,7 @@ export default function WebsiteEditPage() {
         </>}
 
         {rtab === "design" && <div className={BOX}>
-          <Link href="/poster/site/choose" className={ROW}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-ink"><LayoutGrid className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-ink">Ready designs</span><span className="block truncate text-[12px] text-muted">Change the whole website in one tap</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-muted" /></Link>
+          <Link href="/poster/site/choose?all=1" className={ROW}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-ink"><LayoutGrid className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-ink">{hi ? "पूरा layout बदलें" : "Change the whole layout"}</span><span className="block truncate text-[12px] text-muted">{hi ? "दूसरे तैयार designs देखें — हर design के sections भी बदल सकते हैं" : "See the other ready designs — each one's sections can be changed too"}</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-muted" /></Link>
           <EdRow Icon={Palette} title={LABEL.look[0]} sub={LABEL.look[1]} onClick={() => { openPart("look"); setLookMode("style"); }} />
           {adv && !storeDesign && <EdRow Icon={LayoutTemplate} title="Section designs" sub="The design of the home banner and of each section" onClick={() => { openPart("look"); setLookMode("sections"); }} />}
         </div>}
@@ -1494,7 +1494,7 @@ export default function WebsiteEditPage() {
         <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.06),0_12px_28px_-10px_rgba(16,24,40,0.18)]">
           <FoldGroups prefix="look" is={foldIs} tap={foldTap}>
           {/* A Premium website's own design lives on the Premium page (owner, 25 Oct 2026: "premium hai to premium design par jaana chahiye"). */}
-          <p className={`text-[11px] text-muted ${lookMode === "style" ? "" : "hidden"}`}>{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href="/poster/site/choose" className="font-semibold text-brand-ink">{hi ? "Website का design (12 में से चुनें)" : "Ready designs"}</Link>.</p>
+          <p className={`text-[11px] text-muted ${lookMode === "style" ? "" : "hidden"}`}>{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href="/poster/site/choose?all=1" className="font-semibold text-brand-ink">{hi ? "Website का design (12 में से चुनें)" : "Ready designs"}</Link>.</p>
           {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
               site's choices below never reached it, so a tap changed nothing (owner, 25 Oct 2026). */}
           {adv ? (<>

@@ -1,8 +1,9 @@
 "use client";
 // /poster/site/choose — the delivered website's one screen, the same for Standard and Premium (owner, 14 Nov 2026: "dono ke steps same
 // hone chahiye — easy and professional"):
-//   1. Select any one from 6   six designs, a live preview of the one tapped, "Use this design" (the website is already live with one of
-//                              them: choosing never holds it back)
+//   1. Your design             the design made for this business, already on the website, with its preview. Nothing to pick (owner,
+//                              27 Nov 2026: "app automatically ek best select karke de de, baad me wo change karna chahe to kar de").
+//                              "Change the whole layout" opens all the ready designs (also opened straight from Edit → Design: ?all=1).
 //   2. Check your details      what the website says about the business, and the way to change it
 //   3. Share your website      the link, Copy, WhatsApp
 //   Not happy? Tell us         a line or two to the team (the first change is free)
@@ -57,6 +58,9 @@ export default function ChooseDesignPage() {
   const [askErr, setAskErr] = useState("");
   const frame = useRef<HTMLIFrameElement | null>(null);
   const [pending, setPending] = useState(false);   // the Premium design is still being made
+  /** All the ready designs shown (to change the whole layout); otherwise only the one on the website. */
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => { try { if (new URLSearchParams(window.location.search).get("all") === "1") setShowAll(true); } catch { /* */ } }, []);
   const [tick, setTick] = useState(0);
 
   useEffect(() => { (async () => {
@@ -221,8 +225,29 @@ export default function ChooseDesignPage() {
       </div>
 
       <section className={box}>
-        {head(1, T(`Select any one from ${options.length}`, `${options.length} में से कोई एक चुनें`), confirmed ? T("Tap a design to see it below. Your website has the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website पर ✓ वाला design है।") : T("Tap a design to see it below, then make one final. Until then this page opens every time.", "Design दबाएँ, नीचे दिखेगा, फिर एक को final करें। तब तक हर बार यही page खुलेगा।"))}
-        {options.length ? (
+        {!showAll && (() => {
+          const cur = options.find((o) => o.on) ?? options[0];
+          return (
+            <>
+              {head(1, T("Your website's design", "आपकी website का design"), T("Made for your business and already on your website. Nothing to choose.", "आपके business के लिए बना, और website पर लग चुका है। कुछ चुनना नहीं है।"))}
+              {cur && <SiteCheck card={cur.card} hi={hi} staged />}
+              <div className="overflow-hidden rounded-2xl border border-border bg-surface2">
+                <iframe ref={frame} title={T("Website preview", "Website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} className="h-[30rem] w-full" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <a href={link} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3 text-sm font-semibold text-white"><ExternalLink className="h-4 w-4" /> {T("Open my website", "Website खोलें")}</a>
+                <Link href="/poster/website/edit" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-sm font-semibold"><Pencil className="h-4 w-4" /> {T("Edit", "Edit करें")}</Link>
+              </div>
+              {options.length > 1 && (
+                <button type="button" onClick={() => { setShowAll(true); setPick(""); }} className="w-full text-center text-[13px] font-semibold text-brand-ink underline underline-offset-2">
+                  {T(`Change the whole layout — see ${options.length - 1} other ready designs`, `पूरा layout बदलना है? ${options.length - 1} और तैयार designs देखें`)}
+                </button>
+              )}
+            </>
+          );
+        })()}
+        {showAll && head(1, T(`Change the whole layout — ${options.length} ready designs`, `पूरा layout बदलें — ${options.length} तैयार designs`), confirmed ? T("Tap a design to see it below. Your website has the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website पर ✓ वाला design है।") : T("Tap a design to see it below, then make one final. Until then this page opens every time.", "Design दबाएँ, नीचे दिखेगा, फिर एक को final करें। तब तक हर बार यही page खुलेगा।"))}
+        {!showAll ? null : options.length ? (
           <>
             {/* Keep design numbers stable within their two labeled sets. */}
             {([["p", T("Premium designs", "Premium designs")], ["s", T("Your current design (older style)", "आपका अभी का design (पुराना रूप)")]] as const).map(([row, label]) => {
