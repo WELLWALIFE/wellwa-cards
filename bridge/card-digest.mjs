@@ -47,6 +47,61 @@ function blockLines(b) {
   }
 }
 
+/* ---------------- the offer, already worked out (owner, 27 Nov 2026) ----------------
+ * Told "10% off on silk sarees" and a ₹2,499 silk saree, the assistant kept saying "10% off chal raha hai" without the
+ * amount, or took ₹2,499 as the price after the offer. The app does the sum once here and hands the AI the figures.
+ * Only a "N% off on <words>" offer whose words are all in the product's name (or an offer "on everything") counts;
+ * anything vaguer is left alone and the AI says the owner will confirm it. */
+const STOP = new Set(["off", "on", "the", "and", "all", "our", "for", "par", "per", "with", "every", "any", "now", "only", "today", "flat", "upto", "up", "to", "sale", "offer", "festive", "special", "discount"]);
+const stem = (w) => w.replace(/(?<=[sxz]|ch|sh)es$/, "").replace(/s$/, "");   // sarees → saree, dresses → dres (both sides alike)
+const words = (t) => String(t ?? "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w)).map(stem);
+const rupees = (v) => { const n = Number(String(v ?? "").replace(/[^\d.]/g, "")); return Number.isFinite(n) && n > 0 && n < 1e7 ? n : 0; };
+const inr = (n) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+/** The current "N% off" offers: { pct, on: words[] | "all", text }. */
+export function currentOffers(card, today = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10)) {
+  const texts = [];
+  const n = card?.notice;
+  if (n?.text && (!n.until || n.until >= today)) texts.push(`${n.text} ${n.sub ?? ""}`);
+  for (const pg of card?.pages ?? []) for (const b of pg?.blocks ?? []) if (b?.kind === "offer" && b.text) texts.push(String(b.text));
+  const out = [];
+  for (const t of texts) {
+    const m = String(t).match(/(\d{1,2})\s*%\s*(?:off|discount|छूट)(?:\s+(?:on|पर)\s+([^.,;!|\n]+))?/i);
+    if (!m) continue;
+    const pct = Number(m[1]);
+    if (!(pct > 0 && pct < 90)) continue;
+    const obj = clean(m[2] ?? "");
+    if (!obj) continue;                                   // "10% off" on what? left to the owner
+    const on = /\b(all|everything|every item|sab|sabhi)\b|सभी|सब पर|हर /i.test(obj) ? "all" : words(obj);
+    if (on !== "all" && !on.length) continue;
+    out.push({ pct, on, text: clean(t) });
+  }
+  return out;
+}
+/** Lines for the AI: each priced product an offer covers, with the price after it and the totals for 1–5 pieces. */
+export function offerPriceLines(card, today) {
+  const offers = currentOffers(card, today);
+  if (!offers.length) return [];
+  const lines = [];
+  for (const pg of card?.pages ?? []) {
+    if (pg?.hidden) continue;
+    for (const b of pg?.blocks ?? []) {
+      if (b?.kind !== "product") continue;
+      for (const p of b.items ?? []) {
+        const base = rupees(p?.price || p?.mrp);
+        if (!base || !clean(p?.name)) continue;
+        const have = new Set(words(p.name));
+        const o = offers.find((x) => x.on === "all" || x.on.every((w) => have.has(w)));
+        if (!o) continue;
+        const each = base * (100 - o.pct) / 100;
+        const totals = [1, 2, 3, 4, 5].map((q) => `${q} = ${inr(base * q * (100 - o.pct) / 100)}`).join(" · ");
+        lines.push(`- ${clean(p.name)}: listed ${inr(base)}; with the current ${o.pct}% offer ${inr(each)} each. To pay: ${totals}. (Before the offer: ${q2(base)}.)`);
+      }
+    }
+  }
+  return lines.slice(0, 20);
+}
+const q2 = (base) => [1, 2, 3].map((q) => `${q} = ${inr(base * q)}`).join(" · ");
+
 export function cardDigest(card, { maxChars = 9000, pages } = {}) {
   if (!card) return "";
   const out = [];
@@ -59,6 +114,8 @@ export function cardDigest(card, { maxChars = 9000, pages } = {}) {
     const today = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
     if (!card.notice.until || card.notice.until >= today) out.push(`NOTICE (current): ${clean(card.notice.text)}${card.notice.sub ? ` — ${clean(card.notice.sub)}` : ""}${card.notice.until ? ` (till ${card.notice.until})` : ""}`);
   }
+  const offerLines = offerPriceLines(card);
+  if (offerLines.length) out.push(`OFFER PRICES (worked out by the app — quote these exact figures; the listed price is BEFORE the offer):`, ...offerLines);
   const links = (card.links ?? []).map((l) => `${clean(l.label || l.type)}: ${clean(l.value)}`).filter((x) => !x.endsWith(": "));
   if (links.length) out.push(`Contact: ${links.join(" | ")}`);
   if (card.gstin) out.push(`GSTIN: ${clean(card.gstin)}`);
