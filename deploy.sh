@@ -31,7 +31,9 @@ NEXT_PUBLIC_DEPLOY_ID="$(date +%s)" NEXT_PUBLIC_SITE_URL="$SITE_URL" npm run bui
 echo "→ uploading source (env + runtime state preserved)…"
 # Only what the server runs goes up: not the Mac's own work folders (work/ = old Wellwa deck and video files,
 # ~25 MB; docs/; git history; editor files) — the server never uses them (owner's call, 27 Sep 2026).
-rsync -az --partial --timeout=120 -e "$SSH" \
+# --chmod: from a Windows drive (WSL, /mnt/d) every file looks rwxrwxrwx; without it the server copy would be world-writable.
+# Every server script is run as "bash script.sh", so no file needs the execute bit (owner moved to Windows, 27 Nov 2026).
+rsync -az --chmod=D755,F644 --partial --timeout=120 -e "$SSH" \
   --exclude node_modules \
   --exclude .next \
   --exclude .env.local \
@@ -52,7 +54,7 @@ rsync -az --partial --timeout=120 -e "$SSH" \
 $SSH "$SERVER" "rm -f $APP/src/middleware.ts"
 
 echo "→ uploading compiled release…"
-rsync -az --delete --partial --timeout=120 \
+rsync -az --chmod=D755,F644 --delete --partial --timeout=120 \
   --exclude cache \
   --exclude dev \
   -e "$SSH" .next/ "$SERVER:$APP/.next/"
