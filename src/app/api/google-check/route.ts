@@ -140,23 +140,36 @@ async function partnerOf(by: string): Promise<{ name: string; wa: string; card: 
   return { name: (d.name || d.company || "").trim(), wa: wa.length === 10 ? `91${wa}` : wa, card: by, ...(join ? { join } : {}) };
 }
 
-/** The report as one WhatsApp message: where they stand, the score, what to fix first, and the link to check again. */
-function reportText(r: { place: { name: string; id?: string }; city: string; score: number; fixes: { title: string; why: string }[]; issues?: unknown[]; local?: { rank: number | null; total: number; ahead: unknown[] }; profile?: { ok: boolean }[] }, from: string): string {
-  const fixes = r.fixes.slice(0, 3).map((f, i) => `${i + 1}. *${f.title}*\n   ${f.why}`).join("\n");
+/** The report as one WhatsApp message (owner, 27 Nov 2026: "proper report jaana chahiye … Shubhora ka naam, website bhi … ek tarah
+ *  se ad ke roop mein, ki dekh ke motivate ho ki Shubhora se ya us bande se contact karna chahiye"). The number it reaches is often
+ *  not the person who ran the check, so it says who it is from, what was found (in plain Hindi), what to fix first, and whom to
+ *  contact — the partner who sent it, and Shubhora. Kept short enough to read whole on a phone. */
+type ReportArg = { place: { name: string; id?: string }; city: string; score: number; fixes: { title: string; why: string; hi?: string }[]; issues?: unknown[]; local?: { rank: number | null; total: number; ahead: unknown[] }; profile?: { ok: boolean }[] };
+type Sender = { name: string; wa?: string; join?: string };
+function reportText(r: ReportArg, from: Sender): string {
+  const nums = ["1️⃣", "2️⃣", "3️⃣"];
+  const fixes = r.fixes.slice(0, 3).map((f, i) => `${nums[i]} ${(f.hi || f.title).replace(/\s+-\s+/g, " — ").trim()}`).join("\n");
   const pct = r.profile?.length ? Math.round((r.profile.filter((x) => x.ok).length / r.profile.length) * 100) : null;
+  const n = r.issues?.length ?? r.fixes.length;
+  const ahead = r.local?.ahead.length ?? 0;
+  const site = SITE_URL.replace(/^https?:\/\//, "");
+  const wa = (from.wa ?? "").replace(/\D/g, "");
   return [
-    `🔎 *Google report — ${r.place.name}*${r.city ? ` (${r.city})` : ""}`,
-    r.local && r.local.ahead.length ? `🏆 *${r.local.ahead.length}${r.local.rank === null ? "+" : ""} businesses* show before you on Google` : "",
-    `📊 Score: *${r.score}/100*${pct !== null ? ` · Profile ${pct}% complete` : ""}${r.issues?.length ? ` · ${r.issues.length} issues found` : ""}`,
-    fixes ? `\n*Fix these first:*\n${fixes}` : "",
-    r.place.id ? `\n🖼️ Your report as a picture: ${SITE_URL}/api/google-check/card?p=${encodeURIComponent(r.place.id)}` : "",
-    `\nSee the full report: ${SITE_URL}/google-check`,
-    `— ${from}`,
-  ].filter(Boolean).join("\n");
+    `🔎 *आपकी Google रिपोर्ट — ${r.place.name}*${r.city ? ` (${r.city})` : ""}\n`,
+    `📊 Google Score: *${r.score}/100*`,
+    ahead ? `🏆 आपके इलाके में *${ahead}${r.local?.rank === null ? "+" : ""} business* Google पर आपसे ऊपर दिखते हैं` : "",
+    `📝 ${pct !== null ? `Profile *${pct}%* पूरी · ` : ""}*${n} कमियाँ* मिलीं`,
+    fixes ? `\n*सबसे पहले ये ठीक करें:*\n${fixes}` : "",
+    `\n✅ ये सब ठीक करवाना है? *Shubhora* आपकी Google profile, website और WhatsApp AI एक साथ संभालता है।`,
+    `👉 पूरी रिपोर्ट: ${SITE_URL}/google-check`,
+    from.join ? `🚀 शुरू करें: ${SITE_URL}/join/${from.join}` : "",
+    wa ? `📞 बात करें: ${from.name || "हमसे"} — https://wa.me/${wa}` : "",
+    `\n— *Shubhora* · Your AI Business Assistant · ${site}`,
+  ].filter((l) => l !== "").join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
 /** The visitor's number goes to the company's own leads (same as the contact form), with the score in the message. */
-async function saveLead(phone: string, name: string, r: Parameters<typeof reportText>[0] & { place: { name: string; address: string } }, by = "", signedIn?: string) {
+async function saveLead(phone: string, name: string, r: ReportArg & { place: { name: string; address: string } }, by = "", signedIn?: string) {
   const admin = getAdminSupabase();
   if (!admin) return;
   const card = await leadCard(by, signedIn);
@@ -188,7 +201,7 @@ async function leadCard(by: string, signedIn?: string): Promise<{ id: string; ow
   return card;
 }
 
-async function deliverLead(admin: NonNullable<ReturnType<typeof getAdminSupabase>>, card: { id: string; owner_id: string } | null, phone: string, name: string, message: string, r: Parameters<typeof reportText>[0]) {
+async function deliverLead(admin: NonNullable<ReturnType<typeof getAdminSupabase>>, card: { id: string; owner_id: string } | null, phone: string, name: string, message: string, r: ReportArg) {
   // Always kept for Admin → Leads, with the card it also went to.
   let cardName = "";
   if (card) { const { data: u } = await admin.from("cards").select("username").eq("id", card.id).maybeSingle(); cardName = u?.username ?? ""; }
@@ -199,14 +212,25 @@ async function deliverLead(admin: NonNullable<ReturnType<typeof getAdminSupabase
   // The page says "we send the full report there too": it goes from the lead owner's own WhatsApp when it is linked (the same
   // bridge as booking reminders). Not linked: the owner gets the report with the customer's number, to forward in one tap.
   const { data: c } = await admin.from("cards").select("data").eq("id", card.id).maybeSingle();
-  const cd = (c?.data ?? {}) as { company?: string; name?: string };
-  const from = (cd.company || cd.name || "Shubhora").trim();
-  const text = reportText(r, from);
+  const cd = (c?.data ?? {}) as { company?: string; name?: string; jobTitle?: string; tagline?: string; links?: { type?: string; value?: string }[] };
+  // Who it is from, and whom to contact: the card's own name and WhatsApp; a Shubhora partner's card also gets their sign-up link.
+  const waRaw = ((cd.links ?? []).find((l) => l.type === "whatsapp")?.value ?? "").replace(/\D/g, "");
+  const partner = isShubhoraSellerCard(cd);
+  const join = partner ? await usernameOf(card.owner_id).catch(() => "") : "";
+  const sender: Sender = { name: (cd.name || cd.company || "Shubhora").trim(), wa: waRaw.length === 10 ? `91${waRaw}` : waRaw, join };
+  const text = reportText(r, sender);
   const digits = phone.replace(/\D/g, "");
   const to = digits.length === 10 ? `91${digits}` : digits;
   let sent = false;
   const expiry = await ownerPlanExpiry(card.owner_id).catch(() => null);
-  if (expiry) sent = (await bridge(card.owner_id, expiry, "send", { to, text })).ok;
+  if (expiry) {
+    // The report picture first (as a photo, not a link — it is the part people understand at a glance), then the message.
+    if (r.place.id) {
+      const pic = `${SITE_URL}/api/google-check/card?p=${encodeURIComponent(r.place.id)}${partner && cardName ? `&by=${encodeURIComponent(cardName)}` : ""}`;
+      await bridge(card.owner_id, expiry, "send", { to, imageUrl: pic, text: `🔎 Google report — ${r.place.name}` }).catch(() => null);
+    }
+    sent = (await bridge(card.owner_id, expiry, "send", { to, text })).ok;
+  }
   await notify(card.owner_id, "new_lead", {
     title: `New lead: ${name}`.slice(0, 80),
     body: `Google check ${r.score}/100 · ${phone}${sent ? " · report sent on WhatsApp" : ""}`.slice(0, 160),

@@ -18,7 +18,13 @@ async function inter(): Promise<{ name: string; data: ArrayBuffer; weight: 400 |
     return out.length === 2 ? out : [];
   } catch { return []; }
 }
-const ascii = (s: string, n: number) => s.replace(/[^\x20-\x7E₹·–—]/g, "").replace(/\s+/g, " ").trim().slice(0, n);
+// Cut at a word, with "…" — never half a word ("…Rehari Colony, Jammu, J", owner 27 Nov 2026).
+const ascii = (s: string, n: number) => {
+  const t = s.replace(/[^\x20-\x7E₹·–—]/g, "").replace(/\s+/g, " ").trim();
+  if (t.length <= n) return t;
+  const cut = t.slice(0, n - 1).replace(/[\s,;·–—-]+\S*$/, "").replace(/[\s,;·–—-]+$/, "");
+  return `${cut || t.slice(0, n - 1)}…`;
+};
 
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams;
@@ -57,21 +63,21 @@ export async function GET(request: Request) {
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#ffffff", fontFamily: "Inter", color: "#111827" }}>
         <div style={{ display: "flex", flexDirection: "column", padding: "44px 60px 34px", background: "#f3f4f6" }}>
           <div style={{ display: "flex", fontSize: 54, fontWeight: 700, lineHeight: 1.1 }}>{ascii(r.place.name, 44) || "Your business"}</div>
-          <div style={{ display: "flex", marginTop: 12, fontSize: 30, color: "#4b5563" }}>{`${r.place.rating ? r.place.rating.toFixed(1) : "0"}/5  ·  ${r.place.reviews} reviews  ·  ${ascii(r.city, 30)}`}</div>
+          <div style={{ display: "flex", marginTop: 12, fontSize: 30, color: "#4b5563" }}>{`${r.place.rating ? `${r.place.rating.toFixed(1)}/5` : "No rating yet"}  ·  ${r.place.reviews} reviews${r.city ? `  ·  ${ascii(r.city, 30)}` : ""}`}</div>
           <div style={{ display: "flex", marginTop: 6, fontSize: 24, color: "#6b7280" }}>{ascii(r.place.address, 78)}</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", padding: "30px 60px 0", flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "34px 40px", borderRadius: 28, border: "3px solid #2563eb", background: "#eaf2ff" }}>
-            <div style={{ display: "flex", flexDirection: "column", maxWidth: 640 }}>
+            <div style={{ display: "flex", flexDirection: "column", maxWidth: 560 }}>
               <div style={{ display: "flex", fontSize: 44, fontWeight: 700 }}>Google Search Rank</div>
               <div style={{ display: "flex", marginTop: 8, fontSize: 27, color: "#4b5563", lineHeight: 1.3 }}>
                 {r.local ? `Your place among "${ascii(r.trade || r.place.category, 28)}" businesses near you` : "Google has no clear category for this business, so it cannot be ranked"}
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, marginLeft: 20 }}>
               <div style={{ display: "flex", fontSize: 84, fontWeight: 700, color: r.local ? tone((r.local.rank ?? 99) <= 3, (r.local.rank ?? 99) <= 10) : "#dc2626" }}>{r.local ? (r.local.rank ?? `${r.local.total}+`) : "–"}</div>
-              <div style={{ display: "flex", padding: "4px 22px", borderRadius: 14, fontSize: 30, fontWeight: 700, background: "#fee2e2", color: "#dc2626" }}>
+              <div style={{ display: "flex", padding: "4px 18px", borderRadius: 14, fontSize: 26, fontWeight: 700, background: "#fee2e2", color: "#dc2626", whiteSpace: "nowrap" }}>
                 {r.local ? (ahead === 0 ? "You are first" : `${ahead}${plus} ahead of you`) : "Not ranked"}
               </div>
             </div>
