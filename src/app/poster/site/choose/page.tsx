@@ -82,7 +82,8 @@ export default function ChooseDesignPage() {
     // A trade with finished templates (bridal wear, 16 Nov 2026): its twelve are the whole choice — marked by their seed ("|fix:").
     const all = r?.ok && r.data.designs?.length ? r.data.designs : [];
     const fixed = all.filter((d) => String(d.spec?.seed ?? "").includes("|fix:"));
-    setDesigns(fixed.length ? fixed.slice(0, 12) : all.slice(0, 12));
+    // Fewer than twelve finished templates (motors: the Showroom, 28 Nov 2026) lead the list and the library fills the rest.
+    setDesigns(fixed.length >= 12 ? fixed.slice(0, 12) : [...fixed, ...all.filter((d) => !fixed.includes(d))].slice(0, 12));
   })(); }, [router, tick]);
 
   const advOn = !!card?.site?.advanced && (card.site as { advancedOn?: boolean }).advancedOn !== false;

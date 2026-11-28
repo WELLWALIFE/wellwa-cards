@@ -465,7 +465,8 @@ export default function WebsiteEditPage() {
   // A Premium design carries its own colours (site.advanced.palette): the colour row changes THOSE when it is the design on show
   // (owner, 23 Oct 2026: tapping a colour did nothing on a Premium site), and the basic site's colour along with it.
   const adv = (site as { advancedOn?: boolean }).advancedOn !== false && site.advanced ? site.advanced as { palette?: { key?: string; color?: string } } & Record<string, unknown> : null;
-  const storeDesign = !!adv && typeof adv.seed === "string" && /\|fix:bridal-(couture-house|lookbook)/.test(adv.seed);
+  // The whole-page designs (bridal store1.tsx, the Showroom showroom.tsx) draw their own home page.
+  const storeDesign = !!adv && typeof adv.seed === "string" && /\|fix:(bridal-(couture-house|lookbook)|[a-z]+-showroom)\b/.test(adv.seed);
   // The Premium home page, top to bottom, as the website draws it (its design owns the order — the sections of "Text & pages" feed it but do
   // not order it; owner, 19 Nov 2026: "right side ka sequence screen jaisa nahi hai"). Only the sections that have something to show.
   // Where each design section is REALLY drawn — the first page that draws it, Home first, read with the renderer's own rule (flowParts:
@@ -571,7 +572,7 @@ export default function WebsiteEditPage() {
       const all = r.ok && r.data.designs?.length ? r.data.designs : [];
       // The same twelve (a trade's finished templates) or six, in the same order, as the "choose a design" screen numbers them.
       const fixed = all.filter((d) => String(d.spec?.seed ?? "").includes("|fix:"));
-      setMixDesigns((fixed.length ? fixed.slice(0, 12) : all.slice(0, 12)).map((d) => ({ hero: d.spec?.hero, sections: d.spec?.sections ?? {} })));
+      setMixDesigns((fixed.length >= 12 ? fixed.slice(0, 12) : [...fixed, ...all.filter((d) => !fixed.includes(d))].slice(0, 12)).map((d) => ({ hero: d.spec?.hero, sections: d.spec?.sections ?? {} })));
     }).catch(() => { if (live) setMixDesigns([]); });
     return () => { live = false; };
   }, [tab, sheet, adv, storeDesign, mixDesigns, mixCardId]);

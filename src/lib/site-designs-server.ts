@@ -42,19 +42,21 @@ export async function fillDesigns(uid: string, row: { id: string; username: stri
     const site0 = row.data.site as (Card["site"] & { advancedCopy?: unknown; advancedMeta?: { critique?: unknown; round?: number } }) | undefined;
     const words = from ?? kept[kept.length - 1] ?? { copy: site0?.advancedCopy ?? {}, critique: site0?.advancedMeta?.critique, round: site0?.advancedMeta?.round ?? 0 };
     const have = new Set(kept.map((r) => (r.spec as AdvancedSpec | undefined)?.seed));
-    if (fixed.every((x) => have.has(x.seed))) return;
-    for (const spec of fixed) {
+    for (const spec of fixed.filter((x) => !have.has(x.seed))) {
       await rememberAdvDesign(uid, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, copy: words.copy ?? {}, critique: words.critique, round: words.round ?? 0, spec, source: { review: "signals", spec: "fixed", copy: "none" } } as unknown as Obj);
     }
-    return;
+    // A trade with a full set of finished templates (bridal's twelve) shows only those. A trade with fewer (motors has one, the
+    // Showroom, 28 Nov 2026) still gets the library's designs beside them, so its owners keep twelve to choose from.
+    if (fixed.length >= CHOICES) return;
   }
-  if (kept.length >= CHOICES) return;
+  const kept2 = fixed.length ? (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec) : kept;
+  if (kept2.length >= CHOICES) return;
   const site = row.data.site as (Card["site"] & { advancedCopy?: unknown; advancedMeta?: { critique?: unknown; source?: Obj; round?: number } }) | undefined;
   const onCard = parseAdvanced(site?.advanced);
-  const have = [...kept.map((r) => parseAdvanced(r.spec)).filter((x): x is AdvancedSpec => !!x), ...(onCard ? [onCard] : [])];
+  const have = [...kept2.map((r) => parseAdvanced(r.spec)).filter((x): x is AdvancedSpec => !!x), ...(onCard ? [onCard] : [])];
   // A website that never had a Premium design (a Standard order) gets six from the library too (owner, 15 Nov 2026: every design for everyone).
-  const base = from ?? kept[kept.length - 1] ?? { copy: site?.advancedCopy ?? {}, critique: site?.advancedMeta?.critique, round: site?.advancedMeta?.round ?? 0 };
-  for (const spec of libraryDesigns(row.data, have, CHOICES - kept.length)) {
+  const base = from ?? kept2[kept2.length - 1] ?? { copy: site?.advancedCopy ?? {}, critique: site?.advancedMeta?.critique, round: site?.advancedMeta?.round ?? 0 };
+  for (const spec of libraryDesigns(row.data, have, CHOICES - kept2.length)) {
     await rememberAdvDesign(uid, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, copy: base.copy ?? {}, critique: base.critique, round: base.round ?? 0, spec, source: { review: "signals", spec: "library", copy: "none" } } as unknown as Obj);
   }
 }

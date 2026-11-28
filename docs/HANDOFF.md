@@ -118,9 +118,13 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    (first one large, contain on white; a slogan shared by every model is hidden; price, else MRP); "Why" from facts + cleaned points;
    showroom photo strip; reviews (real only); visit card; FAQ; dark closing band. Motors wording when categoryKey is auto/bike/ev….
    Reviewed on Vipin's real card in a local preview (desktop in Chrome, phone in the pane); review page for the owner:
-   https://claude.ai/artifact/QuwEWAXG27UTFS9reFneGV. NEXT, only after the owner's yes: add a FIXED.motors entry
-   ("motors-showroom", Manrope-like type) AND change fillDesigns (site-designs-server.ts) so a group with fewer fixed designs than
-   CHOICES still gets library designs too (today a FIXED group shows only its fixed ones and returns early).
+   https://claude.ai/artifact/QuwEWAXG27UTFS9reFneGV. Owner said "haan, jodo" (28 Nov 2026): FIXED.motors = ["motors-showroom"]
+   (site-advanced-archetypes.ts; slate light, Space Grotesk/DM Sans). fillDesigns writes only the fixed designs a card lacks and,
+   when a trade has fewer than 12 fixed ones, fills the rest from the library; the choose screen and the editor's layout mixer show
+   fixed first, then library (bridal, with 12, still shows only its own). A NEW motors website's first design (card/advanced
+   {first:true}, quiet apply, admin sites-to-new) is the Showroom, since they take the first fixed one. Existing motors sites keep
+   their live design; the Showroom appears in their 12 the next time the choose screen fills. The editor treats it like the bridal
+   store (fixed layout, no section mixer). Checked: fixedSpecs on Vipin's card → 1 Showroom spec; bridal 12 unchanged; clinic 0.
    Local preview: .claude/launch.json "next-dev-wsl"; edits made from Windows are NOT picked up by the WSL dev server — restart it.
 6. Server keys — DONE (28 Nov 2026). /root/.ssh/authorized_keys now holds exactly two keys: omnibook-deploy-2 (this laptop, deploys)
    and tusharydv@Mac.lan (owner: keep). Removed: jsrao@JSRAOs-Air.lan (backup authorized_keys.bak-2026-11-28) and codex-wellwa-deploy

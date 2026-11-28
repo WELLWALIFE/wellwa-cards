@@ -1036,6 +1036,13 @@ const FIXED: Record<string, Archetype[]> = {
     a("bridal-family-wedding", "The Family Wedding Store", "for the whole family: bride, groom, sisters, mothers - a store front, then everything by person as tiles", "parallax-collage", "trust services gallery proof",
       "trust:counters services:lookbook gallery:bento about:numbers-led process:atelier-band proof:marquee-cards faq:spotlight visit:map-hours cta:wide-band footer:link-grid", "rose dark", "Fraunces/Manrope", "pill airy rich", "deep rose and pink; joyful; many faces; one stop for the wedding"),
   ],
+  // The Showroom (owner, 28 Nov 2026: "dekhte hi kahe wah", reference a big Indian EV maker's site): drawn whole by showroom.tsx
+  // (isShowroom: the seed's "|fix:motors-showroom"); the sections below only set the choose screen's picture and the pages it has no
+  // template for. One fixed design here: the trade's library designs are offered beside it (site-designs-server.ts fillDesigns).
+  motors: [
+    a("motors-showroom", "The Showroom", "the showroom floor: each model large with its name and price, test ride one tap away, few words", "split-frame", "services trust gallery visit",
+      "services:category-tabs trust:icon-row gallery:bento proof:star-summary process:steps faq:accordion visit:split cta:band footer:minimal", "slate light", "Space Grotesk/DM Sans", "pill airy subtle", "pale grey page, white cards, black pill buttons; the product photograph leads; trust as the owner's facts only"),
+  ],
 };
 export const ARCHETYPES_BY_GROUP: Record<string, Archetype[]> = mergeGroups(LIBRARY, RESEARCHED, PREMIUM, FIXED);
 
