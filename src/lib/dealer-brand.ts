@@ -59,7 +59,10 @@ async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Prom
 /** Every big picture of the brand's pages, seen by the AI: only the brand's products (one, a line-up, a close-up) are kept, biggest first. */
 export async function vetPictures(urls: string[], brand: string, log?: (url: string, kind: string) => void): Promise<VettedPicture[]> {
   if (!KEY() || !urls.length) return [];
-  const all = await pool([...new Set(urls)].slice(0, 60), 4, async (u) => ({ u, t: await thumb(u, 300) }));
+  // One picture under two spellings of its address (okinawascooters.com: /uploads/… and /Uploads/…) is looked at once.
+  const once = new Map<string, string>();
+  for (const u of urls) if (!once.has(u.toLowerCase())) once.set(u.toLowerCase(), u);
+  const all = await pool([...once.values()].slice(0, 60), 4, async (u) => ({ u, t: await thumb(u, 300) }));
   for (const x of all) if (!x.t) log?.(x.u, "unread");
   const seen = all.filter((x) => x.t);
   if (!seen.length) return [];
@@ -74,8 +77,10 @@ For every picture say what it is. JSON only: {"pictures":[{"n":1,"kind":"product
 - poster: a campaign / advertisement / event / film poster or any picture with a lot of written text. graphic: an icon, logo, pattern, plain background.` });
   try {
     const { text } = await geminiComplete({ apiKey: KEY(), tag: "dealer-brand:vet", temperature: 0, json: true, maxOutputTokens: 2000, contents: [{ role: "user", parts }] });
-    const v = parse<{ pictures?: { n?: number; kind?: string }[] }>(text);
-    const kindOf = new Map((v?.pictures ?? []).map((p) => [Number(p.n), String(p.kind ?? "")]));
+    // The answer is {"pictures":[…]} as asked, or now and then the bare list.
+    const v = parse<{ pictures?: { n?: number; kind?: string }[] } | { n?: number; kind?: string }[]>(text.trim().startsWith("[") ? `{"pictures":${text}}` : text);
+    const list = Array.isArray(v) ? v : v?.pictures ?? [];
+    const kindOf = new Map(list.map((p) => [Number(p.n), String(p.kind ?? "")]));
     const out: (VettedPicture & { rank: number })[] = [];
     seen.forEach((x, i) => {
       const k = kindOf.get(i + 1);
