@@ -57,3 +57,11 @@ next-env.d.ts
 /.card-jobs/
 /.test-links/
 /.indexnow-state.json
+
+# local only (this machine): Claude Code settings, review patches, old files, ad video, the deploy key's public half
+/.claude/settings.local.json
+/work/_review/
+/work/_to_delete/
+/work/*.mp4
+/work/*-thumb.jpg
+/work/new-public-keys.txt
