@@ -89,7 +89,9 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    time the app asks /api/wa (any screen's status bar). tsc, eslint, 59 bridge tests pass; not run against live Razorpay; no
    `next build` run here (deploy.sh builds).
    tsc, eslint, bridge tests (57) pass; the admin and AI Training screens were not opened in a browser.
-9. Website quality pass (28 Nov 2026, NOT deployed; owner: "duplicate si website… dekhte hi kahe wah"; owner keeps stock photos —
+9. Website quality pass (DEPLOYED 28 Nov 2026 on the owner's "haan, deploy karo"; live check: Vipin's site no longer shows "Trusted by
+   many customers", the repeated "Why choose us" or "Genuine parts, bill given"; 5 pages 200, no new app errors; the pre-live check
+   runs with the hourly site-live cron, not triggered by hand; owner: "duplicate si website… dekhte hi kahe wah"; owner keeps stock photos —
    "user baad me change kar leta hai"). Review of live sites (Vipin, Pratik, demo saree) + code: shared stock pool, filler points,
    repeated sections, AI told to write "general words true of any good <trade>", no check before go-live. Done:
    - Stock pool per trade 12 → 30 (bridge/stock-art.mjs ensureCardMedia `want`; a finished 12-pool is served while it refills, meta
