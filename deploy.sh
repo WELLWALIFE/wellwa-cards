@@ -124,8 +124,17 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-festival-wishes || printf '%s\n' 'P
 # CRM → Lead sources: new IndiaMART enquiries every 15 minutes for the owners who saved a key. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-lead-pull || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '*/15 * * * * root bash $APP/scripts/lead-pull.sh >> /var/log/shubhora-lead-pull.log 2>&1' > /etc/cron.d/shubhora-lead-pull && chmod 644 /etc/cron.d/shubhora-lead-pull"
 echo "→ health check…"
-curl --fail --silent --show-error -o /dev/null -w "   homepage %{http_code}\n" \
-  --resolve $SITE_HOST:443:148.72.247.91 $SITE_URL/ --max-time 30
-curl --fail --silent --show-error -o /dev/null -w "   application %{http_code}\n" \
-  --resolve $SITE_HOST:443:148.72.247.91 $SITE_URL/api/health --max-time 30
+# The app takes a little while to start after the restart: one 30 s try timed out on a healthy deploy (28 Nov 2026). Each check is
+# asked up to 12 times, 10 s apart, each try waiting at most 10 s (about 4 minutes at worst); only then does the deploy fail.
+check() {
+  local label="$1" path="$2" code=""
+  for i in $(seq 1 12); do
+    code="$(curl --silent -o /dev/null -w "%{http_code}" --resolve $SITE_HOST:443:148.72.247.91 "$SITE_URL$path" --max-time 10 || true)"
+    if [ "$code" = "200" ]; then echo "   $label 200"; return 0; fi
+    echo "   $label not ready yet (${code:-no answer}), try $i of 12…"; sleep 10
+  done
+  echo "   $label FAILED (${code:-no answer}) after 12 tries"; return 1
+}
+check homepage /
+check application /api/health
 echo "✓ deployed"

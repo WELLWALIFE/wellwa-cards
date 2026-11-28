@@ -13,6 +13,11 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
   owner's yes; never type passwords, never spend money or start ads, no fake reviews or leads, never message unknown real numbers
   (test name "TEST Claude (ignore)", phone 1234567890); Radhe Radhe title is never changed; Demo1, Pratik, Rajwal (card jai-dev-rajwal)
   are view-only; Codex never touches .env, keys, auth, payment, supabase.
+- pm2 `neuraledge-webhooks` and `neuraledge-broadcast` show hundreds of "restarts": that is their every-minute cron (ecosystem.config.cjs
+  `cron(..., "* * * * *")`), one count per run — not a crash. Healthy = exit 0 and an empty error log (empty since 4 Nov 2026; the
+  3–4 Nov lines were two Supabase connect timeouts). Checked 28 Nov 2026.
+- deploy.sh health check (28 Nov 2026): homepage and /api/health are asked up to 12 times, 10 s apart (each try ≤10 s), because the app
+  is slow to answer right after its restart; a single 30 s try had failed a healthy deploy.
 - Read-only server checks: `ssh -i ~/.ssh/neuraledge_vps root@148.72.247.91 'bash -s' < work/radhe-check.sh` (also radhe-data.sh, radhe-setting.sh).
 
 ### Open on 28 Nov 2026
