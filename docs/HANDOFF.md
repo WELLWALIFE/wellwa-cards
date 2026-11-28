@@ -61,8 +61,9 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; server Node 20 → 22;
    Cloud API buttons untested.
 7. Shubhora partner menu, editable (DEPLOYED 28 Nov 2026 on the owner's "haan, deploy karo"; owner: "setting sab sites ke liye same,
-   partner change kare to uska lage"). Checked live: /api/chat/niteen shows the 7 chips, bridge restarted clean. Migration 0100 was
-   NOT yet run at deploy time (column missing → built-in menu in use, Super Admin's Menu cannot save until the owner runs it). The numbered menu was already live for all 19 partner cards (ai_v2 = "shubhora" since 26 Sep). Now 7 options
+   partner change kare to uska lage"). Checked live: /api/chat/niteen shows the 7 chips, bridge restarted clean. Migration 0100 run
+   by the owner the same day (column live, value {} = built-in menu); Super Admin's Menu page loads without the notice and its Save
+   turns on after an edit (checked in Chrome, nothing saved). The numbered menu was already live for all 19 partner cards (ai_v2 = "shubhora" since 26 Sep). Now 7 options
    (owner's list): 1 Website + V-Card · 2 Growth Plan · 3 Custom software · 4 WhatsApp AI 24×7 · 5 CRM · 6 Direct Selling Plan ·
    7 talk to a person (partner alerted; card chat asks the number). A number answers with fixed text (no AI) + "0 = मेनू"; another
    number after a fixed answer still works; "0" brings the menu back; free text → AI. Partner programme off → no 6, person = 6.
