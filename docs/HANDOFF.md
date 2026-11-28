@@ -111,6 +111,17 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    not reproduced, not changed. Live log: some cards point at deleted storage photos (owner 2d12905f…) — the QA alert names them.
    NOT done: hand-made premium designs per trade family (8–10) — a design job to do with the owner, screen by screen.
    Checked: tsc, eslint, 59 bridge tests; Vipin's site on a local dev server (filler gone, repeated section gone).
+10. Hand-made premium designs, first one: "The Showroom" (28 Nov 2026, built, NOT live; owner's reference: Ather Energy's site).
+   src/components/site-adv/showroom.tsx — a whole-page design (own header, home, footer; other pages keep AdvPageBody in its
+   shell), picked when spec.seed contains "|fix:<group>-showroom" (isShowroom, hooked in site-adv/index.tsx like store1). Hero:
+   model name + one line + full-width banner slides; quick actions (test ride / call / directions / prices); models as big cards
+   (first one large, contain on white; a slogan shared by every model is hidden; price, else MRP); "Why" from facts + cleaned points;
+   showroom photo strip; reviews (real only); visit card; FAQ; dark closing band. Motors wording when categoryKey is auto/bike/ev….
+   Reviewed on Vipin's real card in a local preview (desktop in Chrome, phone in the pane); review page for the owner:
+   https://claude.ai/artifact/QuwEWAXG27UTFS9reFneGV. NEXT, only after the owner's yes: add a FIXED.motors entry
+   ("motors-showroom", Manrope-like type) AND change fillDesigns (site-designs-server.ts) so a group with fewer fixed designs than
+   CHOICES still gets library designs too (today a FIXED group shows only its fixed ones and returns early).
+   Local preview: .claude/launch.json "next-dev-wsl"; edits made from Windows are NOT picked up by the WSL dev server — restart it.
 6. Server keys — DONE (28 Nov 2026). /root/.ssh/authorized_keys now holds exactly two keys: omnibook-deploy-2 (this laptop, deploys)
    and tusharydv@Mac.lan (owner: keep). Removed: jsrao@JSRAOs-Air.lan (backup authorized_keys.bak-2026-11-28) and codex-wellwa-deploy
    (owner's "haan hatao"; backup authorized_keys.bak-2026-11-28T11-46-56). A fresh login from omnibook was checked after each removal.

@@ -41,6 +41,7 @@ import { AdvPageBody, PAGES_CSS, catalogueOf, itemsOf, routeOf } from "@/compone
 import { SeeMore } from "@/components/site-adv/page-parts";
 import { shotsOf } from "@/components/site-adv/page-more";
 import { STORE1_CSS, Store1, isStore1, isStore2 } from "@/components/site-adv/store1";
+import { SHOWROOM_CSS, Showroom, isShowroom } from "@/components/site-adv/showroom";
 
 /** The layout of words a photo-led products layout gives way to when the list it draws has no photo (slotWith below). */
 const NO_PHOTO_LAYOUT: Record<string, string> = { "edit-tiles": "index-rows", lookbook: "price-list", magazine: "index-rows", scroller: "price-list", "feature-cards": "listing-rows", "shop-grid": "grid" };
@@ -242,6 +243,28 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   const logo = c.hm.logo ? <Pic src={c.hm.logo} alt="" eager w={170} /> : <Wordmark name={t(c.name)} lang={L.lang} />;
   const bodyProps = { c, spec, x, chrome, slot, has, items, updates, slotWith, lang: L.lang, hasContact };
   const homePage = card.pages.find((p) => p.slug === first);
+
+  // The Showroom (showroom.tsx, 28 Nov 2026): a whole-page design for a showroom or dealer — its own header, home and footer; the other
+  // pages keep the advanced page bodies inside its shell.
+  if (isShowroom(spec)) {
+    return (
+      <TranslateCtx.Provider value={t}>
+        <style dangerouslySetInnerHTML={{ __html: `${SMART_CSS}${HERO_CSS}.site[data-adv]{${advancedVars(card, spec)}}${ADV_BASE_CSS}${PAGES_CSS}${VARIANT_CSS}${INSTALL_APP_CSS}${SHOWROOM_CSS}` }} />
+        <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-adv="" data-motion={spec.motion} data-shape={spec.shape} data-density={spec.density} data-page={route.kind === "page" ? route.entry.role : route.kind}>
+          <NoticeBar card={card} hi={hi} />
+          <Showroom card={card} c={c} x={x} items={items} route={route} open={open} logo={logo} lang={lang}
+            fallback={route.kind === "home" ? null : <AdvPageBody route={route} {...bodyProps} />} />
+          {linkBase !== undefined && !free && premiumOn(card) && <InstallSiteApp name={t(c.name)} hi={hi} accent="#161616" onTrack={(k) => track(k)} />}
+          {zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
+          {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={isHome ? "home" : slug} />}
+          {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={isHome ? "home" : slug} hi={hi} />}
+          {!free && premiumOn(card) && <CardChat username={card.username} name={card.name} theme={theme} />}
+          {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={isHome ? "home" : slug} />}
+          {shubhora && !brand && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={false} />}
+        </div>
+      </TranslateCtx.Provider>
+    );
+  }
 
   // Bridal Design 1 is a whole fashion store (store1.tsx): its own header, pages and footer; the pages it has no template for keep
   // the advanced page bodies inside its shell.

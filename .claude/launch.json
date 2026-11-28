@@ -2,6 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     { "name": "next-dev", "runtimeExecutable": "npx", "runtimeArgs": ["next", "dev", "-p", "3103"], "port": 3103 },
-    { "name": "next-dev-wsl", "runtimeExecutable": "wsl", "runtimeArgs": ["-e", "bash", "-lc", "source ~/.nvm/nvm.sh >/dev/null; cd /mnt/c/Projects/wellwa-cards && npx next dev -p 3103"], "port": 3103 }
+    { "name": "next-dev-wsl", "runtimeExecutable": "wsl", "runtimeArgs": ["-e", "bash", "-lc", "source ~/.nvm/nvm.sh >/dev/null; cd /mnt/c/Projects/wellwa-cards && WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -p 3103"], "port": 3103 }
   ]
 }
