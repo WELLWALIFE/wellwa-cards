@@ -72,10 +72,22 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    (card.botMenu, AI Training → "मेरा मेनू", "Shubhora वाला वापस"). Bridge reads it on its 5-minute refresh; card chat at once.
    Single services in the facts and the menu (owner chose the example prices): WhatsApp AI ₹1,499, CRM ₹999, posters + auto-post
    ₹1,499, Google reviews ₹699 a month; Growth Plan ₹2,999 = all + broadcasts + monthly report.
-   NOT built yet — selling them alone in the app: today one expiry (plan_expires_at / saas_*) opens WhatsApp AI, CRM sending,
-   posters, broadcasts and the report together; Google replies, Cloud API AI and Cloud broadcasts have no plan gate at all.
-   Needs a per-product expiry and every gate changed; BV per single service is decided in the separate partner panel app
-   (partner-link.ts reportPaidToPartner), not in this repo — owner to give BV per service.
+8. Single services sold alone (built 28 Nov 2026, NOT deployed; owner "haan, shuru karo"). Migration **0101** (owner runs it before
+   deploy): profiles.svc_{wa_ai,crm,posters,google}_until, payment_requests kind 'service' + `service`, svc_ledger, apply_service();
+   the billing guard now also covers 0087's package / package_until (users could write those from the app before).
+   Prices: src/lib/single-services.ts (not src/lib/services.ts — that is the /solutions catalogue). Rule everywhere: a plan covers all;
+   else the service's paid end + 7 grace days. Server: src/lib/single-services-server.ts (serviceExpiry); bridge jobs:
+   bridge/single-services.mjs (+ test). Gates changed: WhatsApp AI (/api/wa → X-Shubhora-Ai-Until; Cloud API AI now needs a plan or
+   wa_ai — 0 accounts affected), CRM sending (/api/crm/send, sendCustomer, crm-reminders; inbox / workspace show the WhatsApp state for
+   crm or wa_ai), review ask (crm or google), posters (posterQuota(…, { posters: true }) only on today / video / carousel /
+   social accounts; website, banner, card build still need a real plan), 4 AM auto-post + prerender, Google auto-post and review
+   replies (now need a plan or google — 0 accounts were using them without one). Broadcasts and the monthly report stay plan-only.
+   Selling: Admin → "₹ link" → Single service (any amount), and My plan → "Take one service alone" (list price, own request →
+   /pay/<code>). Client: usePlan().services (calendar, Create). Every new read is its own request, so before 0101 runs nothing
+   changes. NO partner BV for single services (reportPaidToPartner not called) until the owner gives BV per service — the partner
+   panel (separate app) must learn it too. Franchise commission still applies. A WhatsApp AI buyer's worker picks the AI up the next
+   time the app asks /api/wa (any screen's status bar). tsc, eslint, 59 bridge tests pass; not run against live Razorpay; no
+   `next build` run here (deploy.sh builds).
    tsc, eslint, bridge tests (57) pass; the admin and AI Training screens were not opened in a browser.
 6. Server keys — DONE (28 Nov 2026). /root/.ssh/authorized_keys now holds exactly two keys: omnibook-deploy-2 (this laptop, deploys)
    and tusharydv@Mac.lan (owner: keep). Removed: jsrao@JSRAOs-Air.lan (backup authorized_keys.bak-2026-11-28) and codex-wellwa-deploy

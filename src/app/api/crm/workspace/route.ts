@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { waPlanExpiry, ownerPlanExpiry, bridge, resolveScope, memberships, agentsFor } from "@/lib/crm-server";
 import { cloudAccount } from "@/lib/wa-cloud";
+import { serviceExpiry } from "@/lib/single-services-server";
 import { prefsOf } from "@/lib/crm-pro";
 import { outboundLine, exotelReady } from "@/lib/crm-pro2";
 
@@ -14,7 +15,9 @@ export async function GET(request: Request) {
   const scope = await resolveScope(me, new URL(request.url).searchParams.get("as"));
   if (!scope) return NextResponse.json({ error: "You are not a member of that team." }, { status: 403 });
   const [exp, teams, agents, cloud, card, prefs, line] = await Promise.all([
-    scope.role === "owner" ? waPlanExpiry(me.token) : ownerPlanExpiry(scope.ownerId),
+    // A plan, or the CRM / WhatsApp AI bought alone (single services, 28 Nov 2026): the WhatsApp state is shown either way.
+    (scope.role === "owner" ? waPlanExpiry(me.token) : ownerPlanExpiry(scope.ownerId))
+      .then(async (e) => e ?? (await serviceExpiry(scope.ownerId, "crm")) ?? (await serviceExpiry(scope.ownerId, "wa_ai"))),
     memberships(me.token, me.id),
     agentsFor(me.token, scope.ownerId, scope.role),
     cloudAccount(scope.ownerId),

@@ -9,6 +9,7 @@ import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUr
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
 import { ownerAlert } from "@/lib/owner-alert";
+import { serviceExpiry } from "@/lib/single-services-server";
 import type { Card } from "@/lib/types";
 import { asksStock, bookDays, bookedText, bookTurn, cardAnswer, dayMenu, deskBill, deskDue, deskIntent, deskNothing, deskStatus, formQuestions, formTurn, matchItems, orderDoneText, orderList, orderMenu, orderOwnerLine, orderTurn, shopItems, stockAnswer } from "../../bridge/shop-desk.mjs";
 
@@ -371,6 +372,9 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     }
     if (flow?.askAi) ask = flow.askAi;
     if (!acc.ai_enabled) { if (flow?.askAi) await reply(acc, card, phone, "ज़रूर! आप अपना सवाल लिख दीजिए 🙂"); continue; }
+    // The AI reply is a paid part (owner, 28 Nov 2026): a plan, or the WhatsApp AI bought alone. Without either the message stays a
+    // lead in the CRM and the owner answers it — the same as a free number on the linked-device bridge.
+    if (!(await serviceExpiry(acc.owner_id, "wa_ai").catch(() => "error"))) continue;
     if (!text) { // media without caption
       await reply(acc, card, phone, kind === "audio" ? "माफ़ कीजिए 🙏 मैं voice message अभी सुन नहीं पाता। आप टाइप करके भेज दें, तुरंत जवाब दूँगा।" : "धन्यवाद, मिल गया 🙏 बस ये बता दीजिए, आप इसके बारे में क्या जानना चाहते हैं?");
       continue;

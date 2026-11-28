@@ -3,6 +3,7 @@
 // bridge isn't running.
 
 import { requireUser, sameOrigin } from "@/lib/api-security";
+import { runningUntil, serviceDates } from "@/lib/single-services-server";
 
 const BRIDGE = "http://127.0.0.1:8787";
 
@@ -31,6 +32,8 @@ async function proxy(request: Request, path: string[]) {
     const saas = Array.isArray(saasData) ? saasData[0] : saasData;
     if (saas && saas.tier && saas.tier !== "none" && ["active", "grace"].includes(String(saas.state))) expiresAt = saas.expires_at || FAR;
   }
+  // Without a plan: the WhatsApp AI bought alone (single service, 28 Nov 2026) turns the AI replies on until its end + grace.
+  const aiUntil = expiresAt ?? runningUntil((await serviceDates(session.user.id)).wa_ai);
   // "?link=1": the WhatsApp page is open to link this number, so the bridge may start a WhatsApp process for it. Other
   // callers (the setup bar asks on every screen) get an answer without one (owner's review, 28 Sep 2026).
   const link = new URL(request.url).searchParams.get("link") === "1";
@@ -40,7 +43,7 @@ async function proxy(request: Request, path: string[]) {
       "X-Shubhora-User": session.user.id,
       // The linked number itself works as long as the account does; "none" = no AI replies (free plan).
       "X-Shubhora-Plan-Expires": expiresAt ?? FAR,
-      "X-Shubhora-Ai-Until": expiresAt ?? "none",
+      "X-Shubhora-Ai-Until": aiUntil ?? "none",
     };
     const init: RequestInit = { method: request.method, headers };
     if (request.method === "POST") {

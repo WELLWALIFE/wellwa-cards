@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { serviceRunning } from "./single-services.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(__dirname, "..");
@@ -148,6 +149,11 @@ async function runGoogle() {
   // a user has connected, and a missing client fails that row with a logged error.
   const rows = await restList(`google_accounts?auto_reply=eq.true&status=eq.ok&select=*`);
   for (const g of rows) {
+    // A paid part (owner, 28 Nov 2026): a plan, or Google reviews bought alone. No account was replying without a plan when this
+    // was added.
+    const p = (await restList(`profiles?id=eq.${g.user_id}&select=plan,plan_expires_at,saas_expires_at`))[0];
+    const planOk = !!p && ((["pro", "team"].includes(p.plan) && (!p.plan_expires_at || new Date(p.plan_expires_at) > new Date())) || (!!p.saas_expires_at && new Date(p.saas_expires_at) > new Date()));
+    if (!planOk && !(await serviceRunning(rest, g.user_id, "google"))) continue;
     try {
       const tok = await googleToken(g);
       const r = await fetch(`${V4}/${g.location_name}/reviews?pageSize=30&orderBy=updateTime%20desc`, { headers: { Authorization: `Bearer ${tok}` } });

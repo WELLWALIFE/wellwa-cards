@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   // Three independent reads at once (each is a far round trip), not one after the other.
   const [rows, quota, trialRow] = await Promise.all([
     listAccounts(me.id),
-    posterQuota(me.token, me.id).catch(() => ({ plan: "free", used: 0, limit: 0 })),
+    posterQuota(me.token, me.id, { posters: true }).catch(() => ({ plan: "free", used: 0, limit: 0 })),
     restAsService<{ status_trial_until: string | null }[]>(`profiles?id=eq.${me.id}&select=status_trial_until`).catch(() => null),
   ]);
   const status_trial = trialRow && trialRow.ok && Array.isArray(trialRow.data) ? statusTrialOf(trialRow.data[0]?.status_trial_until ?? null, quota.plan) : null;
@@ -46,7 +46,7 @@ export async function PATCH(request: Request) {
   if (b.action === "wa_enable") {
     const on = !!b.value;
     // a free account switching the daily Status on starts its 14 free days (once; the 4 AM post starts it too if this did not run)
-    if (on) { const q = await posterQuota(me.token, me.id).catch(() => null); if (q?.plan === "free") await restAsService(`profiles?id=eq.${me.id}&status_trial_until=is.null`, { method: "PATCH", body: JSON.stringify({ status_trial_until: new Date(Date.now() + 14 * 86400_000).toISOString() }) }).catch(() => null); }
+    if (on) { const q = await posterQuota(me.token, me.id, { posters: true }).catch(() => null); if (q?.plan === "free") await restAsService(`profiles?id=eq.${me.id}&status_trial_until=is.null`, { method: "PATCH", body: JSON.stringify({ status_trial_until: new Date(Date.now() + 14 * 86400_000).toISOString() }) }).catch(() => null); }
     const rows = await restAsService<{ id: string }[]>(`social_accounts?user_id=eq.${me.id}&provider=eq.whatsapp&select=id`);
     if (rows.data?.[0]) await restAsService(`social_accounts?id=eq.${rows.data[0].id}`, { method: "PATCH", body: JSON.stringify({ auto_post: on, is_active: true, status: "ok" }) });
     else await restAsService("social_accounts", { method: "POST", body: JSON.stringify({ user_id: me.id, provider: "whatsapp", account_id: me.id, name: "WhatsApp Status", username: "", access_token: "-", is_active: true, auto_post: on }) });

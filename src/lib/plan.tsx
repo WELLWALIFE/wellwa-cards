@@ -12,6 +12,7 @@ import { Lock, Sparkles, X, Check } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { planPrice } from "@/lib/billing";
 import type { Plan } from "@/lib/types";
+import { SERVICE_GRACE_DAYS, SERVICE_KEYS, serviceColumn, type ServiceKey } from "@/lib/single-services";
 
 export type Feature =
   | "ai-studio" | "ai-chat" | "whatsapp" | "bot-training" | "followup"
@@ -57,13 +58,16 @@ export type PlanState = {
   daysLeft: number;
   isTrial: boolean;
   expired: boolean;
+  /** Single services bought alone and still running (28 Nov 2026; src/lib/single-services.ts), e.g. { posters: true }. A running
+   *  plan covers all of them, so screens ask `plan !== "free" || services.posters`. */
+  services: Partial<Record<ServiceKey, boolean>>;
   /** Re-reads my_plan() — call right after a payment verifies so paid
    *  features unlock immediately instead of waiting for a page reload. */
   refresh: () => Promise<void>;
 };
 
 const PlanCtx = createContext<PlanState>({
-  plan: "free", loading: true, expiresAt: null, daysLeft: 0, isTrial: false, expired: false,
+  plan: "free", loading: true, expiresAt: null, daysLeft: 0, isTrial: false, expired: false, services: {},
   refresh: async () => {},
 });
 
@@ -74,6 +78,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [daysLeft, setDaysLeft] = useState(0);
   const [isTrial, setIsTrial] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [services, setServices] = useState<Partial<Record<ServiceKey, boolean>>>({});
 
   const load = async () => {
     const sb = getBrowserSupabase();
@@ -97,6 +102,12 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         p = "pro"; expiresAt = saas.expires_at ?? null; daysLeft = saas.days_left ?? 0; isTrial = false; expired = false;
       }
     }
+    // Single services: the account's own row, its own read (before migration 0101 it errors and none are found).
+    const { data: sv } = await sb.from("profiles").select(SERVICE_KEYS.map(serviceColumn).join(",")).eq("id", auth.user.id).maybeSingle();
+    const svRow = (sv ?? {}) as unknown as Record<string, string | null>;
+    const running: Partial<Record<ServiceKey, boolean>> = {};
+    for (const k of SERVICE_KEYS) { const v = svRow[serviceColumn(k)]; if (v && Date.parse(v) + SERVICE_GRACE_DAYS * 86400_000 > Date.now()) running[k] = true; }
+    setServices(running);
     setPlan(p === "pro" || p === "team" ? p : "free");
     setExpiresAt(expiresAt);
     setDaysLeft(daysLeft);
@@ -108,7 +119,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { load(); }, []);
 
   return (
-    <PlanCtx.Provider value={{ plan, loading, expiresAt, daysLeft, isTrial, expired, refresh: load }}>
+    <PlanCtx.Provider value={{ plan, loading, expiresAt, daysLeft, isTrial, expired, services, refresh: load }}>
       {children}
     </PlanCtx.Provider>
   );

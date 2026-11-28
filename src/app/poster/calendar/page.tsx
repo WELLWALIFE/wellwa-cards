@@ -68,8 +68,9 @@ export default function CalendarPage() {
   const [tagsCopied, setTagsCopied] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const dayPhotoIn = useRef<HTMLInputElement>(null);
-  const { plan: myPlan } = usePlan();
-  const paidPlan = !!myPlan && myPlan !== "free";
+  const { plan: myPlan, services } = usePlan();
+  // The daily posters bought alone (single service) open the month plan too.
+  const paidPlan = (!!myPlan && myPlan !== "free") || !!services.posters;
   const NET = hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again.";
 
   const load = useCallback(async (p: Profile, m: string) => {

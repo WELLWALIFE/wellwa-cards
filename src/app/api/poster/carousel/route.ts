@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const cal = Array.isArray(row) ? row[0] : undefined;
   if (!cal || cal.kind === "skip" || !isCarousel(cal.brief)) return NextResponse.json({ error: "not a carousel", message: "This day is not a carousel post." }, { status: 404 });
 
-  const quota = await posterQuota(me.token, me.id);
+  const quota = await posterQuota(me.token, me.id, { posters: true });
   const sample = quota.plan === "free";
   if (sample) {
     const first = (await restAsService<{ for_date: string }[]>(`poster_calendar?profile_id=eq.${profile.id}&for_date=gte.${istDate()}&kind=neq.skip&order=for_date&limit=3&select=for_date`)).data;

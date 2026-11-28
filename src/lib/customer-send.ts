@@ -3,6 +3,8 @@
 // customer sees the shop they know. Without a linked number the owner gets the message ready to forward in one tap.
 import { restAsService } from "@/lib/poster-server";
 import { bridge, ownerPlanExpiry } from "@/lib/crm-server";
+import { serviceExpiry } from "@/lib/single-services-server";
+import type { ServiceKey } from "@/lib/single-services";
 import { notify } from "@/lib/notify";
 import { SITE_URL, cardHome } from "@/lib/site-url";
 import { tapLink } from "@/lib/bookings";
@@ -32,11 +34,18 @@ export async function prefsOf(ownerId: string): Promise<Prefs> {
 
 const digitsOf = (phone: string) => { const d = String(phone ?? "").replace(/\D/g, ""); return d.length === 10 ? `91${d}` : d.length >= 11 ? d : ""; };
 
+/** Until when this owner may message customers from the CRM: a plan, or one of `services` bought alone (CRM; a review ask also
+ *  Google reviews). Broadcasts (blast) stay with the plan only. */
+async function sendUntil(ownerId: string, services: ServiceKey[]): Promise<string | null> {
+  for (const s of services) { const u = await serviceExpiry(ownerId, s); if (u) return u; }
+  return null;
+}
+
 /** One message from the owner's linked WhatsApp. False when the number is not linked (or the plan does not allow it). */
-export async function sendCustomer(ownerId: string, phone: string, text: string): Promise<boolean> {
+export async function sendCustomer(ownerId: string, phone: string, text: string, services: ServiceKey[] = ["crm"]): Promise<boolean> {
   const to = digitsOf(phone);
   if (!to) return false;
-  const expiry = await ownerPlanExpiry(ownerId);
+  const expiry = await sendUntil(ownerId, services);
   if (!expiry) return false;
   const r = await bridge(ownerId, expiry, "send", { to, text });
   return r.ok;
@@ -84,11 +93,11 @@ export async function askForReview(ownerId: string, who: { name: string; phone: 
       const ask = hindi
         ? `नमस्ते${first ? ` ${first} जी` : ""} 🙏 *${businessOf(c)}* को चुनने के लिए धन्यवाद!\nहमारी सेवा आपको कैसी लगी? 1 से 5 में एक नंबर भेज दीजिए ⭐\n(5 = बहुत अच्छी, 1 = ख़राब)`
         : `Hi${first ? ` ${first}` : ""} 🙏 Thank you for choosing *${businessOf(c)}*!\nHow was our service? Please reply with a number from 1 to 5 ⭐\n(5 = very good, 1 = poor)`;
-      const to = digitsOf(who.phone), expiry = await ownerPlanExpiry(ownerId);
+      const to = digitsOf(who.phone), expiry = await sendUntil(ownerId, ["crm", "google"]);
       if (to && expiry && (await bridge(ownerId, expiry, "send", { to, text: ask, expect: "rating", reviewLink: link })).ok) return;
     }
     const text = reviewText(c, who.name, hindi, link);
-    if (await sendCustomer(ownerId, who.phone, text)) return;
+    if (await sendCustomer(ownerId, who.phone, text, ["crm", "google"])) return;
     const tap = tapLink(who.phone, text);
     await notify(ownerId, "review_ask", {
       title: hindi ? `⭐ ${who.name || "ग्राहक"} से रिव्यू माँगें` : `⭐ Ask ${who.name || "the customer"} for a review`,

@@ -5,6 +5,7 @@ import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { leadById, waPlanExpiry, ownerPlanExpiry, bridge, addEvent, fillTemplate, cardLink, resolveScope } from "@/lib/crm-server";
 import { businessContext } from "@/lib/reviews-server";
 import { cloudAccount, sendCloud, logCloud, friendlyGraphError } from "@/lib/wa-cloud";
+import { serviceExpiry } from "@/lib/single-services-server";
 
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
@@ -37,8 +38,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, text: label, channel: "cloud" });
     } catch (e) { return NextResponse.json({ error: friendlyGraphError(e) }, { status: 502 }); }
   }
-  const exp = scope.role === "owner" ? await waPlanExpiry(me.token) : await ownerPlanExpiry(scope.ownerId);
-  if (!exp) return NextResponse.json({ error: "plan_expired", message: "WhatsApp sending needs the Business plan." }, { status: 402 });
+  // A plan, or the CRM bought alone (single service, 28 Nov 2026).
+  const exp = (scope.role === "owner" ? await waPlanExpiry(me.token) : await ownerPlanExpiry(scope.ownerId)) ?? (await serviceExpiry(scope.ownerId, "crm"));
+  if (!exp) return NextResponse.json({ error: "plan_expired", message: "WhatsApp sending needs the Business plan or the CRM." }, { status: 402 });
   const r = await bridge(scope.ownerId, exp, "send", { to: lead.phone, text, imageUrl, videoUrl, documentUrl, fileName, asOwner: true, sentBy: scope.role === "owner" ? undefined : me.id });
   if (!r.ok) {
     const msg = r.data.error === "not connected" ? "WhatsApp is not connected — open the WhatsApp AI tab and scan the QR." : r.data.error === "bridge_offline" ? "WhatsApp service is offline right now." : String(r.data.error ?? "Send failed.");

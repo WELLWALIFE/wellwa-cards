@@ -18,9 +18,9 @@ type Door = { key: string; I: typeof Sparkles; t: string; s: string; items: Item
 // there the previous screen is the very page that sent the owner here, so the door's own Back must not return to it.
 function CreateHubInner() {
   const { lang } = useT(); const hi = lang !== "en";
-  const { plan } = usePlan();
+  const { plan, services } = usePlan();
   const router = useRouter();
-  const free = plan === "free";
+  const free = plan === "free" && !services.posters;
   const params = useSearchParams();
   const open = params.get("door");
   const fromList = params.get("from") === "hub";

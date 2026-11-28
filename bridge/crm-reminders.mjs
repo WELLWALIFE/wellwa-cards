@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { serviceUntil } from "./single-services.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(__dirname, "..");
@@ -102,7 +103,8 @@ async function main() {
     const FAR = "2999-12-31T23:59:59.000Z", nowMs = Date.now();
     const cardOk = ["pro", "team"].includes(prof?.plan) && !(prof?.plan_expires_at && new Date(prof.plan_expires_at).getTime() < nowMs);
     const saasOk = !!prof?.saas_expires_at && new Date(prof.saas_expires_at).getTime() > nowMs;
-    const expiresAt = cardOk ? prof.plan_expires_at || FAR : saasOk ? prof.saas_expires_at : null;
+    // …or the CRM bought alone (single service, 28 Nov 2026; bridge/single-services.mjs).
+    const expiresAt = cardOk ? prof.plan_expires_at || FAR : saasOk ? prof.saas_expires_at : await serviceUntil(restList, owner, "crm");
     // Each line ends with a tap-to-message link: the follow-up is already written (name, what they asked), so the owner
     // sends it in one tap instead of opening the CRM (owner's call, 8 Oct 2026: follow-up engine).
     const biz = (await restList(`cards?owner_id=eq.${owner}&select=company,name&order=created_at.desc&limit=1`))[0] ?? {};

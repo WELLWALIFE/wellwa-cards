@@ -88,8 +88,19 @@ export async function ownProfile(token: string, profileId: string): Promise<Post
   return r.data?.[0] ?? null;
 }
 
-/** Plan + poster allowance. Paid: unlimited (limit null). Free: none (limit 0). */
-export async function posterQuota(token: string, userId: string): Promise<{ plan: string; used: number; limit: number | null }> {
+/** Plan + poster allowance. Paid: unlimited (limit null). Free: none (limit 0).
+ *  `posters: true` (only the poster screens pass it): the daily posters bought alone (single service, 28 Nov 2026) count too, as plan
+ *  "posters". Everything else that reads this (website, banner, card build) keeps asking for a real plan. */
+export async function posterQuota(token: string, userId: string, opts: { posters?: boolean } = {}): Promise<{ plan: string; used: number; limit: number | null }> {
+  const q = await planQuota(token, userId);
+  if (q.plan !== "free" || !opts.posters) return q;
+  // Its own read: before migration 0101 the column is missing and this simply finds no single service.
+  const s = await restAsService<{ svc_posters_until: string | null }[]>(`profiles?id=eq.${userId}&select=svc_posters_until`).catch(() => null);
+  const until = s?.ok ? s.data?.[0]?.svc_posters_until : null;
+  return until && Date.parse(until) + 7 * 86400_000 > Date.now() ? { plan: "posters", used: 0, limit: null } : q;
+}
+
+async function planQuota(token: string, userId: string): Promise<{ plan: string; used: number; limit: number | null }> {
   const prof = await restAsUser<{ poster_plan: string; poster_plan_expires_at: string | null; plan_expires_at: string | null; saas_expires_at: string | null; saas_tier?: string | null }[]>(token, `profiles?id=eq.${userId}&select=poster_plan,poster_plan_expires_at,plan_expires_at,saas_expires_at,saas_tier`);
   let plan = prof.data?.[0]?.poster_plan ?? "free";
   const exp = prof.data?.[0]?.poster_plan_expires_at;

@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const ctx = await load(me, String(b.poster_id ?? ""));
   if (!ctx) return NextResponse.json({ error: "Poster not found." }, { status: 404 });
   const { poster, prof } = ctx;
-  const quota = await posterQuota(me.token, me.id);
+  const quota = await posterQuota(me.token, me.id, { posters: true });
   // Free: the status video itself (stock clip + music) is free; the AI voice is part of the plan.
   const free = quota.plan === "free";
   if (free) return NextResponse.json({ error: "plan", message: "Status videos are part of the Standard plan. Your digital V-Card stays as it is — upgrade to get the daily poster and video." }, { status: 402 });

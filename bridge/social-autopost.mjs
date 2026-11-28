@@ -10,6 +10,7 @@ import { writeCaption, statusCaption } from "./poster-caption.mjs";
 import { renderStatusVideo, suggestVoiceScript, musicFor, voiceWanted, voiceLangOf } from "./poster-video.mjs";
 import { ensureStockClip, rosterKind } from "./stock-art.mjs";
 import { planFor, publishStory, publishReel, prepareBusinessDay, productOfDay, unpostedVideo, queuePhotoReel, waitForReel } from "./social-plan.mjs";
+import { serviceRunning } from "./single-services.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(__dirname, "..");
@@ -337,6 +338,8 @@ async function main() {
       const future = (d) => !!d && new Date(d) > new Date();
       const suite = !!plan && ((["pro", "team"].includes(plan.plan) && (!plan.plan_expires_at || future(plan.plan_expires_at))) || future(plan.saas_expires_at));
       let paid = suite || (plan && plan.poster_plan !== "free" && (!plan.poster_plan_expires_at || new Date(plan.poster_plan_expires_at) > new Date()));
+      // …or the daily posters bought alone (single service, 28 Nov 2026).
+      if (!paid && await serviceRunning(rest, a.user_id, "posters")) paid = true;
       // Free plan: WhatsApp Status for 14 days (trial), nothing else. Facebook / Instagram stay paid.
       let trial = null;
       if (!paid && a.provider === "whatsapp") {
@@ -420,6 +423,11 @@ async function googleMain() {
   if (!Array.isArray(rows) || !rows.length) return;
   for (const g of rows) {
     if (g.last_auto_post === date || !g.refresh_token) continue;
+    // A paid part (owner, 28 Nov 2026): the Growth Plan (or a card plan), or Google reviews bought alone. No account was posting
+    // without a plan when this was added.
+    const gp = (await rest(`profiles?id=eq.${g.user_id}&select=plan,plan_expires_at,saas_expires_at`))?.[0];
+    const gPlan = !!gp && ((["pro", "team"].includes(gp.plan) && (!gp.plan_expires_at || new Date(gp.plan_expires_at) > new Date())) || (!!gp.saas_expires_at && new Date(gp.saas_expires_at) > new Date()));
+    if (!gPlan && !(await serviceRunning(rest, g.user_id, "google"))) { console.log(`  google skip ${g.location_title}: no plan`); continue; }
     try {
       const prof = (await rest(`poster_profiles?user_id=eq.${g.user_id}&order=is_default.desc,created_at&limit=1&select=*`))?.[0];
       if (!prof) continue;
@@ -465,7 +473,7 @@ async function prerender() {
         const pl = (await rest(`profiles?id=eq.${prof.user_id}&select=poster_plan,poster_plan_expires_at,plan,plan_expires_at,saas_expires_at`))?.[0];
         const future = (d) => !!d && new Date(d) > new Date();
         const suite = !!pl && ((["pro", "team"].includes(pl.plan) && (!pl.plan_expires_at || future(pl.plan_expires_at))) || future(pl.saas_expires_at));
-        plans.set(prof.user_id, suite || !!(pl && pl.poster_plan !== "free" && (!pl.poster_plan_expires_at || future(pl.poster_plan_expires_at))));
+        plans.set(prof.user_id, suite || !!(pl && pl.poster_plan !== "free" && (!pl.poster_plan_expires_at || future(pl.poster_plan_expires_at))) || await serviceRunning(rest, prof.user_id, "posters"));
       }
       let paid = plans.get(prof.user_id);
       // Nothing connected → nothing to post → nothing is made. WhatsApp linked → poster + status video.

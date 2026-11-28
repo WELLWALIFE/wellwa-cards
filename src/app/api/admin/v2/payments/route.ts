@@ -7,8 +7,10 @@ import { requireAdmin, audit, userInScope } from "@/lib/admin-v2";
 import { svc } from "@/lib/service";
 import { createRequest, cancelRequest, requestById } from "@/lib/payments-server";
 import { payLink, requestTitle, type PaymentRequest, type PayKind, type PayTier } from "@/lib/payments";
+import { isServiceKey } from "@/lib/single-services";
 
-const COLS = "id,code,owner_id,created_by,created_role,kind,tier,months,amount_paise,title,note,status,order_id,payment_id,paid_at,expires_at,created_at";
+// Every column: `service` (single services) exists only after migration 0101.
+const COLS = "*";
 
 export async function GET(request: Request) {
   const g = await requireAdmin(request, "payments.request"); if (!g.ok) return g.res;
@@ -31,14 +33,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const g = await requireAdmin(request, "payments.request"); if (!g.ok) return g.res;
-  const b = (await request.json().catch(() => ({}))) as { user_id?: string; kind?: PayKind; tier?: PayTier; months?: number; amount_paise?: number; title?: string; note?: string; expires_days?: number };
+  const b = (await request.json().catch(() => ({}))) as { user_id?: string; kind?: PayKind; tier?: PayTier; service?: string; months?: number; amount_paise?: number; title?: string; note?: string; expires_days?: number };
   const userId = String(b.user_id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(userId)) return NextResponse.json({ error: "Pick the user." }, { status: 400 });
   if (!(await userInScope(g.me, userId))) return NextResponse.json({ error: "That user is not in your franchise." }, { status: 403 });
-  if (!b.kind || !["plan", "advance", "custom"].includes(b.kind)) return NextResponse.json({ error: "Choose what the payment is for." }, { status: 400 });
-  const made = await createRequest({ ownerId: userId, createdBy: g.me.id || null, createdRole: g.me.franchise ? "franchise" : "admin", kind: b.kind, tier: b.tier ?? null, months: b.months, amountPaise: Number(b.amount_paise), title: b.title, note: b.note, expiresInDays: Math.max(1, Math.min(60, Math.round(Number(b.expires_days) || 14))) });
+  if (!b.kind || !["plan", "advance", "custom", "service"].includes(b.kind)) return NextResponse.json({ error: "Choose what the payment is for." }, { status: 400 });
+  const made = await createRequest({ ownerId: userId, createdBy: g.me.id || null, createdRole: g.me.franchise ? "franchise" : "admin", kind: b.kind, tier: b.tier ?? null, service: isServiceKey(b.service) ? b.service : null, months: b.months, amountPaise: Number(b.amount_paise), title: b.title, note: b.note, expiresInDays: Math.max(1, Math.min(60, Math.round(Number(b.expires_days) || 14))) });
   if (!made.ok) return NextResponse.json({ error: made.error }, { status: 400 });
-  await audit(g.me, "payment.request", { type: "user", id: userId, label: `${made.request.kind} ${made.request.amount_paise}`, after: { code: made.request.code, kind: b.kind, tier: b.tier ?? null, months: b.months ?? 1, amount_paise: made.request.amount_paise } }, request);
+  await audit(g.me, "payment.request", { type: "user", id: userId, label: `${made.request.kind} ${made.request.amount_paise}`, after: { code: made.request.code, kind: b.kind, tier: b.tier ?? null, service: made.request.service ?? null, months: b.months ?? 1, amount_paise: made.request.amount_paise } }, request);
   return NextResponse.json({ ok: true, request: { ...made.request, label: requestTitle(made.request, false), link: payLink(made.request.code) } });
 }
 

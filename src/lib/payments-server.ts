@@ -15,11 +15,17 @@ import { notify } from "@/lib/notify";
 import { SITE_PKG, isCustomNote, pkgOfNote } from "@/lib/site-order";
 import { applyPackage } from "@/lib/site-order-server";
 import { newPayCode, PAY_MAX_PAISE, PAY_MIN_PAISE, requestTitle, rupeesOf, type PaymentRequest, type PayKind, type PayTier } from "@/lib/payments";
+import { SINGLE_SERVICES, isServiceKey, type ServiceKey } from "@/lib/single-services";
+import { forgetServiceDates } from "@/lib/single-services-server";
 
-const COLS = "id,code,owner_id,created_by,created_role,kind,tier,months,amount_paise,title,note,status,order_id,payment_id,paid_at,expires_at,created_at";
+// Every column: `service` exists only after migration 0101, and a named list would break every pay link until it ran.
+const COLS = "*";
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 
-export type NewRequest = { ownerId: string; createdBy: string | null; createdRole: "self" | "admin" | "franchise"; kind: PayKind; tier?: PayTier | null; months?: number; amountPaise: number; title?: string; note?: string; expiresInDays?: number };
+export type NewRequest = { ownerId: string; createdBy: string | null; createdRole: "self" | "admin" | "franchise"; kind: PayKind; tier?: PayTier | null; service?: ServiceKey | null; months?: number; amountPaise: number; title?: string; note?: string; expiresInDays?: number };
+
+/** A single service's list price for N months (the user's own purchase uses this; an admin may type any amount). */
+export const serviceListPrice = (s: ServiceKey, months: number) => SINGLE_SERVICES[s].paise * Math.max(1, Math.min(36, Math.round(months) || 1));
 
 /** The price a plan request would normally be: the admin may type any amount, the user's own request uses this. */
 export const planListPrice = (tier: PayTier, months: number) => (tier === "premium" ? PREMIUM_FIRST_PAISE + SAAS_PLANS.growth.amount * Math.max(0, months - 1) : SAAS_PLANS.growth.amount * months);
@@ -29,9 +35,12 @@ export async function createRequest(n: NewRequest): Promise<{ ok: true; request:
   if (amount < PAY_MIN_PAISE || amount > PAY_MAX_PAISE) return { ok: false, error: `The amount must be between ${rupeesOf(PAY_MIN_PAISE)} and ${rupeesOf(PAY_MAX_PAISE)}.` };
   const months = Math.max(1, Math.min(36, Math.round(Number(n.months) || 1)));
   if (n.kind === "plan" && !n.tier) return { ok: false, error: "Choose the plan." };
+  if (n.kind === "service" && !isServiceKey(n.service)) return { ok: false, error: "Choose the service." };
   const row = {
     code: newPayCode(), owner_id: n.ownerId, created_by: n.createdBy, created_role: n.createdRole,
-    kind: n.kind, tier: n.kind === "plan" ? n.tier : null, months: n.kind === "plan" ? months : 1, amount_paise: amount,
+    kind: n.kind, tier: n.kind === "plan" ? n.tier : null, months: n.kind === "plan" || n.kind === "service" ? months : 1, amount_paise: amount,
+    // Only a service request names the column, so the other kinds still save on a database without migration 0101.
+    ...(n.kind === "service" ? { service: n.service } : {}),
     title: (n.title ?? "").trim().slice(0, 80), note: (n.note ?? "").trim().slice(0, 300),
     expires_at: n.expiresInDays ? new Date(Date.now() + n.expiresInDays * 86400_000).toISOString() : null,
   };
@@ -98,6 +107,12 @@ export async function settleRequest(req: PaymentRequest, p: { paymentId: string;
   } else if (pkg) {
     // A website package (lib/site-order.ts): the year, a month of the Growth features, Premium's website. The build starts from the app.
     if (!(await applyPackage(req.owner_id, pkg, p.paymentId, isCustomNote(req.note)))) return { ok: false, error: "Paid, but the package could not be set. Shubhora will set it by hand." };
+  } else if (req.kind === "service" && isServiceKey(req.service)) {
+    // One single service for N months (migration 0101). No partner BV yet: the owner has not fixed a BV for single services in the
+    // partner panel, so nothing is reported there (owner, 28 Nov 2026). The franchise still earns below, as on every payment.
+    const rpc = await restAsService<{ ok?: boolean }>("rpc/apply_service", { method: "POST", body: JSON.stringify({ p_user: req.owner_id, p_service: req.service, p_months: req.months, p_ref: p.paymentId, p_amount: p.amount }) });
+    if (!rpc.ok) return { ok: false, error: `Paid, but the service could not be switched on (${rpc.status}). Shubhora will set it by hand.` };
+    forgetServiceDates(req.owner_id);
   } else if (req.kind === "advance") {
     const led = await restAsService("advance_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: req.owner_id, delta_paise: p.amount, reason: what, ref: p.paymentId }) });
     if (!led.ok && led.status !== 409) return { ok: false, error: `Paid, but the advance could not be recorded (${led.status}). Shubhora will set it by hand.` };
@@ -106,7 +121,7 @@ export async function settleRequest(req: PaymentRequest, p: { paymentId: string;
   await franchiseEarning(req.owner_id, { paise: p.amount, ref: p.paymentId, what: `${req.kind}:${what}` });
   await notify(req.owner_id, "payment", {
     title: "Payment received", body: pkg ? `Thank you. ${rupeesOf(p.amount)} — ${what}. Your website will be delivered within 24 to 48 hours of your order.` : `Thank you. ${rupeesOf(p.amount)} — ${what}.`, path: pkg ? "/poster/site/order" : "/poster/plan", ref: p.paymentId,
-    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${pkg ? "धन्यवाद! आपकी website order के 24 से 48 घंटे के अंदर deliver होगी। Live होते ही WhatsApp पर बताएँगे।" : req.kind === "plan" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
+    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${pkg ? "धन्यवाद! आपकी website order के 24 से 48 घंटे के अंदर deliver होगी। Live होते ही WhatsApp पर बताएँगे।" : req.kind === "plan" || req.kind === "service" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
   }).catch(() => undefined);
   return { ok: true, replayed: false, applied: req.kind };
 }

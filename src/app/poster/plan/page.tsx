@@ -13,6 +13,7 @@ import { packsFor } from "@/lib/media/ad-pricing";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { CardRenewButton } from "@/components/card-renew-button";
 import { FlexPayments } from "@/components/poster/flex-payments";
+import { SingleServicesBox } from "@/components/poster/single-services-box";
 
 type Res = {
   tier: SaasTier | null; state: "none" | "active" | "grace" | "expired"; expires_at: string | null; days_left: number;
@@ -218,6 +219,8 @@ function MyPlan() {
             </div>
           );
         })()}
+        {/* Single services (owner, 28 Nov 2026): only for an account without a running plan — a plan already has all of them. */}
+        {!welcome && !(on && r.state !== "expired") && <SingleServicesBox />}
         {r.tier !== "pro" && (
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-baseline justify-between gap-2">

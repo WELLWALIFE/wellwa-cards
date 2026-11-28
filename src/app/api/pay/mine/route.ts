@@ -2,11 +2,14 @@
 //   GET → open requests made for me (by Shubhora / my franchise / myself), my advance balance and its lines
 //   POST { op: "advance", amount_paise, note? }  → a request of my own: money kept on the account (then pay it at /api/pay/<code>)
 //   POST { op: "use", months }                   → Standard for N months paid from the advance balance
+//   POST { op: "service", service, months? }     → one single service at its list price (then pay it at /api/pay/<code>)
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
 import { SAAS_PLANS } from "@/lib/billing";
-import { advanceBalance, advanceLines, cancelRequest, createRequest, requestsOf, spendAdvance, isOpen } from "@/lib/payments-server";
+import { advanceBalance, advanceLines, cancelRequest, createRequest, requestsOf, spendAdvance, isOpen, serviceListPrice } from "@/lib/payments-server";
+import { runningServices } from "@/lib/single-services-server";
+import { isServiceKey, type ServiceKey } from "@/lib/single-services";
 import { requestEffect, requestTitle } from "@/lib/payments";
 import { CUSTOM_MARK, SITE_PKG, isSitePkg, pkgNote } from "@/lib/site-order";
 import { openPackageRequests, orderState, sameOrder } from "@/lib/site-order-server";
@@ -15,17 +18,29 @@ export async function GET(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const hi = new URL(request.url).searchParams.get("lang") === "hi";
-  const [all, balance, lines] = await Promise.all([requestsOf(me.id), advanceBalance(me.id), advanceLines(me.id)]);
+  const [all, balance, lines, services] = await Promise.all([requestsOf(me.id), advanceBalance(me.id), advanceLines(me.id), runningServices(me.id)]);
   const open = all.filter(isOpen).map((r) => ({ code: r.code, kind: r.kind, tier: r.tier, months: r.months, amount_paise: r.amount_paise, title: requestTitle(r, hi), effect: requestEffect(r, hi), note: r.note, created_role: r.created_role, created_at: r.created_at }));
   const paid = all.filter((r) => r.status === "paid").slice(0, 10).map((r) => ({ code: r.code, kind: r.kind, amount_paise: r.amount_paise, title: requestTitle(r, hi), paid_at: r.paid_at }));
-  return NextResponse.json({ open, paid, balance, lines, standardPaise: SAAS_PLANS.growth.amount });
+  return NextResponse.json({ open, paid, balance, lines, standardPaise: SAAS_PLANS.growth.amount, services });
 }
 
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   if (rateLimited(`pay-mine:${me.id}`, 10, 60_000)) return NextResponse.json({ error: "Too many tries. Please wait a minute." }, { status: 429 });
-  const b = (await request.json().catch(() => ({}))) as { op?: string; amount_paise?: number; note?: string; months?: number; pkg?: string; custom?: boolean };
+  const b = (await request.json().catch(() => ({}))) as { op?: string; amount_paise?: number; note?: string; months?: number; pkg?: string; custom?: boolean; service?: string };
+  // A single service (28 Nov 2026): always at its list price; an open request of mine for the same service and months is used again.
+  if (b.op === "service") {
+    if (!isServiceKey(b.service)) return NextResponse.json({ error: "Choose the service." }, { status: 400 });
+    const months = Math.max(1, Math.min(12, Math.round(Number(b.months) || 1)));
+    const open = (await requestsOf(me.id, "open")).filter((r) => isOpen(r) && r.kind === "service" && r.created_role === "self" && r.service === b.service);
+    const have = open.find((r) => r.months === months && r.amount_paise === serviceListPrice(b.service as ServiceKey, months));
+    await Promise.all(open.filter((r) => r !== have).map((r) => cancelRequest(r.id)));
+    if (have) return NextResponse.json({ ok: true, code: have.code, amount_paise: have.amount_paise });
+    const made = await createRequest({ ownerId: me.id, createdBy: me.id, createdRole: "self", kind: "service", service: b.service, months, amountPaise: serviceListPrice(b.service, months), expiresInDays: 7 });
+    if (!made.ok) return NextResponse.json({ error: made.error }, { status: 400 });
+    return NextResponse.json({ ok: true, code: made.request.code, amount_paise: made.request.amount_paise });
+  }
   // A website package (lib/site-order.ts): one request per plan, used again however many times the plans page is opened.
   if (b.op === "package") {
     if (!isSitePkg(b.pkg)) return NextResponse.json({ error: "Choose Website Standard or Website Premium." }, { status: 400 });

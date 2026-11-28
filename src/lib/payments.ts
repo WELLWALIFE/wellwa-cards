@@ -2,14 +2,18 @@
 // (/pay/<code>) made by Super Admin / staff / a franchise for a user, or by the user for themself (an advance, a booking). Shared by
 // the app, the admin panel and the server. Pure module. The server side is src/lib/payments-server.ts; migration 0079.
 import { SITE_URL } from "@/lib/site-url";
+import { SINGLE_SERVICES, type ServiceKey } from "@/lib/single-services";
 
-export type PayKind = "plan" | "advance" | "custom";
+/** "service" (28 Nov 2026, migration 0101): N months of one single service (src/lib/single-services.ts). */
+export type PayKind = "plan" | "advance" | "custom" | "service";
 export type PayTier = "growth" | "premium";
 export type PayStatus = "open" | "paid" | "cancelled";
 
 export type PaymentRequest = {
   id: string; code: string; owner_id: string; created_by: string | null; created_role: "self" | "admin" | "franchise";
   kind: PayKind; tier: PayTier | null; months: number; amount_paise: number; title: string; note: string;
+  /** The single service a "service" request buys (absent before migration 0101). */
+  service?: ServiceKey | null;
   status: PayStatus; order_id: string | null; payment_id: string | null; paid_at: string | null; expires_at: string | null; created_at: string;
 };
 
@@ -21,19 +25,26 @@ export const KIND_LABEL: Record<PayKind, [string, string]> = {
   plan: ["Plan", "Plan"],
   advance: ["Advance", "Advance"],
   custom: ["Custom", "Custom"],
+  service: ["Single service", "अकेली सर्विस"],
 };
 export const TIER_LABEL: Record<PayTier, string> = { growth: "Standard", premium: "Premium" };
 
 /** The one line that says what a request is for: "Standard · 3 months", "Advance towards your plan", or the custom title. */
-export function requestTitle(r: Pick<PaymentRequest, "kind" | "tier" | "months" | "title">, hi: boolean): string {
+export function requestTitle(r: Pick<PaymentRequest, "kind" | "tier" | "months" | "title" | "service">, hi: boolean): string {
   if (r.title.trim()) return r.title.trim();
-  if (r.kind === "plan" && r.tier) return `${TIER_LABEL[r.tier]} · ${r.months} ${hi ? (r.months === 1 ? "महीना" : "महीने") : r.months === 1 ? "month" : "months"}`;
+  const mo = `${r.months} ${hi ? (r.months === 1 ? "महीना" : "महीने") : r.months === 1 ? "month" : "months"}`;
+  if (r.kind === "plan" && r.tier) return `${TIER_LABEL[r.tier]} · ${mo}`;
+  if (r.kind === "service" && r.service && SINGLE_SERVICES[r.service]) return `${SINGLE_SERVICES[r.service][hi ? "hi" : "en"]} · ${mo}`;
   if (r.kind === "advance") return hi ? "Advance — आपके plan के लिए" : "Advance towards your plan";
   return hi ? "Shubhora को भुगतान" : "Payment to Shubhora";
 }
 
 /** What happens the moment it is paid, in the customer's words. */
-export function requestEffect(r: Pick<PaymentRequest, "kind" | "tier" | "months">, hi: boolean): string {
+export function requestEffect(r: Pick<PaymentRequest, "kind" | "tier" | "months" | "service">, hi: boolean): string {
+  if (r.kind === "service" && r.service && SINGLE_SERVICES[r.service]) {
+    const s = SINGLE_SERVICES[r.service];
+    return hi ? `${s.hi} ${r.months} महीने के लिए चालू हो जाएगा।` : `${s.en} runs for ${r.months} month${r.months === 1 ? "" : "s"}.`;
+  }
   if (r.kind === "plan" && r.tier === "growth") return hi ? `Standard plan ${r.months} महीने के लिए चालू हो जाएगा।` : `Standard runs for ${r.months} month${r.months === 1 ? "" : "s"}.`;
   if (r.kind === "plan" && r.tier === "premium") return hi ? `Premium (Standard + Premium website) ${r.months} महीने के लिए चालू हो जाएगा।` : `Premium (Standard + the Premium website) runs for ${r.months} month${r.months === 1 ? "" : "s"}.`;
   if (r.kind === "advance") return hi ? "रकम आपके account में advance की तरह रहेगी — plan लेते समय इसी से कट जाएगी।" : "The amount stays on your account as an advance and pays for your plan when you take it.";

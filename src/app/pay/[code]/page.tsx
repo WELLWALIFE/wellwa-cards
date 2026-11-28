@@ -14,7 +14,7 @@ import { NO_LOCK_IN } from "@/lib/billing";
 import { rupeesOf } from "@/lib/payments";
 
 type Answer = {
-  request: { code: string; kind: "plan" | "advance" | "custom"; tier: string | null; months: number; amount_paise: number; title: string; effect: string; note: string; status: "open" | "paid" | "cancelled" | "expired"; paid_at: string | null; created_role: string };
+  request: { code: string; kind: "plan" | "advance" | "custom" | "service"; tier: string | null; months: number; amount_paise: number; title: string; effect: string; note: string; status: "open" | "paid" | "cancelled" | "expired"; paid_at: string | null; created_role: string };
   for: { name: string; username: string }; mine: boolean; loggedIn: boolean; error?: string;
 };
 
@@ -44,7 +44,7 @@ export default function PayPage() {
               {a.for.name && <p className="text-sm text-muted">{T("For", "किसके लिए")}: <b className="text-ink">{a.for.name}</b>{a.for.username && <span> · @{a.for.username}</span>}</p>}
               {a.request.note && <p className="rounded-xl bg-surface2 px-3 py-2 text-sm">{a.request.note}</p>}
               <p className="flex items-start gap-2 text-sm text-muted"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-good" /> {a.request.effect}</p>
-              {a.request.kind === "plan" && <p className="text-xs text-muted">{hi ? NO_LOCK_IN.hi : NO_LOCK_IN.en}</p>}
+              {(a.request.kind === "plan" || a.request.kind === "service") && <p className="text-xs text-muted">{hi ? NO_LOCK_IN.hi : NO_LOCK_IN.en}</p>}
             </section>
 
             {paid || a.request.status === "paid" ? (

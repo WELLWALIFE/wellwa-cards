@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const existing = await restAsService<{ id: string; url: string; title: string; occasion_slug: string; shares: number; style: string; video_url: string; caption: string | null }[]>(
     `posters?profile_id=eq.${profile.id}&for_date=eq.${date}&select=id,url,title,occasion_slug,shares,style,video_url,caption`,
   );
-  const quota = await posterQuota(me.token, me.id);
+  const quota = await posterQuota(me.token, me.id, { posters: true });
   // The month plan's "see it first" (1 Nov 2026): a free account may SEE the first three planned posters of its plan — drawn
   // with the Shubhora mark, never saved as a poster, never posted. Paid plans see every day.
   const sample = q.get("sample") === "1" && q.get("preview") === "1" && quota.plan === "free";
