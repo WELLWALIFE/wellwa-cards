@@ -14,7 +14,7 @@ import sharp from "sharp";
 import { fetchPublic } from "@/lib/reference-site";
 import { htmlOf, looksEmpty } from "@/lib/render-page";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
-import { pagePictures, readModelPage, vetPictures, type BrandSpec } from "@/lib/dealer-brand";
+import { modelsFromPage, pagePictures, readModelPage, vetPictures, type BrandSpec } from "@/lib/dealer-brand";
 
 export type SiteProduct = { name: string; price: string; mrp: string; description: string; specs: string[]; images: string[]; url: string;
   /** A dealer's brand model, read by the AI from its own page (dealer-brand.ts): the spec sheet as rows, and its colours. */
@@ -682,16 +682,34 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
  *  the AI (its spec sheet, colours, variant prices and its pictures — dealer-brand.ts readModelPage), and every big picture of the
  *  pages read is seen by the AI so only the brand's products are kept (vetPictures): the wide ones are the dealer's banners, the rest
  *  their gallery. Nothing of the brand's town photos, team, stock art or campaign posters. */
-export async function dealerEnrich(s: SiteImport, log?: (url: string, kind: string) => void): Promise<SiteImport> {
+export async function dealerEnrich(s0: SiteImport, log?: (url: string, kind: string) => void): Promise<SiteImport> {
+  // The pages read, once each. The home page last: its town, team and testimonial pictures would fill the AI's look before the
+  // gallery page's photos. A site that answers every address with the same page (amul.com: /products, /about … all the home page)
+  // gives that page once.
+  const fetched = await pool([...new Set([...(s0.pages ?? []).filter((u) => u !== s0.url), s0.url])].slice(0, 10), 3, async (u) => {
+    const r = await fetchPublic(u, "html", 1_500_000, 10_000).catch(() => null);
+    return r ? { url: r.url, html: r.body.toString("utf8") } : null;
+  });
+  const bodies = new Set<string>();
+  const pagesHtml = fetched.filter((x): x is NonNullable<typeof x> => !!x).filter((x) => { const k = `${x.html.length}:${x.html.slice(0, 2000)}`; return !bodies.has(k) && (bodies.add(k), true); });
+  // No model found by the rules (okinawascooters.com: a tab per model, an arrow link to scooterdetail.aspx?…&psubcatid=N, the price
+  // beside it): the AI lists them from the home page, then the other pages, until some are found.
+  let s = s0;
+  if (!s.products.length) {
+    const home = pagesHtml.find((x) => x.url.replace(/\/$/, "") === s.url.replace(/\/$/, "")) ?? pagesHtml[pagesHtml.length - 1];
+    const order = home ? [home, ...pagesHtml.filter((x) => x !== home)] : pagesHtml;
+    for (const pg of order.slice(0, 3)) {
+      const found = await modelsFromPage(pg.html, pg.url, s.name).catch(() => []);
+      log?.(`${pg.url}: ${found.length} models`, "models");
+      if (found.length) {
+        s = { ...s, products: found.slice(0, MAX_PRODUCTS).map((m) => ({ name: m.name, price: m.price, mrp: "", description: "", specs: [], images: m.image ? [m.image] : [], url: m.url })) };
+        break;
+      }
+    }
+  }
   const names = s.products.map((p) => p.name);
-  const [models, pagePics] = await Promise.all([
-    pool(s.products, 3, (p) => (p.url ? readModelPage(p.url, p.name, p.images[0], names.filter((n) => n !== p.name)).catch(() => null) : Promise.resolve(null))),
-    // The home page last: its town, team and testimonial pictures would fill the AI's look before the gallery page's photos.
-    pool([...new Set([...(s.pages ?? []).filter((u) => u !== s.url), s.url])].slice(0, 10), 3, async (u) => {
-      const r = await fetchPublic(u, "html", 1_500_000, 10_000).catch(() => null);
-      return r ? pagePictures(r.body.toString("utf8"), r.url).map((x) => x.url) : [];
-    }),
-  ]);
+  const models = await pool(s.products, 3, (p) => (p.url ? readModelPage(p.url, p.name, p.images[0], names.filter((n) => n !== p.name)).catch(() => null) : Promise.resolve(null)));
+  const pagePics = pagesHtml.map((x) => pagePictures(x.html, x.url).map((y) => y.url));
   const products = s.products.map((p, i) => {
     const m = models[i];
     if (!m) return p;

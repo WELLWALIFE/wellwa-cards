@@ -91,14 +91,26 @@ For every picture say what it is. JSON only: {"pictures":[{"n":1,"kind":"product
   } catch { return []; }
 }
 
+/** The biggest picture a srcset offers ("a.jpg 180w, a.jpg 1200w" → the 1200w one). */
+function biggest(srcset: string): string {
+  let best = "", bw = 0;
+  for (const part of srcset.split(/,\s+(?=\S)/)) { const [u, d] = part.trim().split(/\s+/); const w = parseFloat(d ?? "") || 1; if (u && w >= bw) { best = u; bw = w; } }
+  return best;
+}
+/** A shop CDN's small copy asked by size (Shopify: …?v=1&width=180) → the same picture at 1200 px. */
+function full(u: string): string {
+  try { const x = new URL(u); const w = Number(x.searchParams.get("width")); if (w && w < 1000) { x.searchParams.set("width", "1200"); return x.toString(); } } catch { /* as is */ }
+  return u;
+}
 /** The pictures of a page (img tags and CSS backgrounds), commented-out markup left out. */
 export function pagePictures(html: string, base: string): { url: string; alt: string }[] {
   const clean = html.replace(/<!--[\s\S]*?-->/g, "");
   const out: { url: string; alt: string }[] = [];
-  const abs = (s: string) => { try { return s ? new URL(s.trim(), base).toString() : ""; } catch { return ""; } };
+  const abs = (s: string) => { try { return s ? full(new URL(s.trim().replace(/&amp;/g, "&"), base).toString()) : ""; } catch { return ""; } };
   for (const m of clean.matchAll(/<img\b[^>]*>/gi)) {
     const tag = m[0];
-    const src = tag.match(/\s(?:data-src|data-lazy-src)=["']([^"']+)["']/i)?.[1] || tag.match(/\ssrc=["']([^"']+)["']/i)?.[1] || "";
+    const set = tag.match(/\s(?:data-srcset|srcset)=["']([^"']+)["']/i)?.[1] ?? "";
+    const src = (set && biggest(set)) || tag.match(/\s(?:data-src|data-lazy-src)=["']([^"']+)["']/i)?.[1] || tag.match(/\ssrc=["']([^"']+)["']/i)?.[1] || "";
     const u = abs(src);
     if (u && /^https?:/i.test(u) && !/\.(svg|gif)(\?|$)/i.test(u) && !/logo|icon|favicon/i.test(u)) out.push({ url: u, alt: tag.match(/\salt=["']([^"']*)["']/i)?.[1] ?? "" });
   }
@@ -164,7 +176,9 @@ Read it as the model's spec sheet for a dealer's website. JSON only:
     const lorem = /\b(lorem|ipsum|eiusmod|consectetur|cupidatat)\b/i;
     // "Top Speed" + "Speed: 20-25 km/h" (the page's own words) → "20-25 km/h".
     const bare = (label: string, value: string) => { const m = value.match(/^([A-Za-z /()]{2,24}):\s*(.+)$/); return m && label.toLowerCase().includes(m[1].trim().toLowerCase()) ? m[2] : value; };
-    const specs = (v.specs ?? []).map((s) => ({ label: S(s?.label, 40).replace(/:$/, ""), value: S(s?.value, 80) })).map((s) => ({ ...s, value: bare(s.label, s.value) })).filter((s) => s.label && s.value && !lorem.test(`${s.label} ${s.value}`)).slice(0, 10);
+    // A price is the variants' business, never a spec row (okinawascooters.com: "Ex-Showroom Price*: ₹ 90,606").
+    const priceRow = (s: BrandSpec) => /price|mrp|₹|\brs\.?\s*\d/i.test(`${s.label} ${s.value}`);
+    const specs = (v.specs ?? []).map((s) => ({ label: S(s?.label, 40).replace(/:$/, ""), value: S(s?.value, 80) })).map((s) => ({ ...s, value: bare(s.label, s.value) })).filter((s) => !priceRow(s)).filter((s) => s.label && s.value && !lorem.test(`${s.label} ${s.value}`)).slice(0, 10);
     const colours = (v.colours ?? []).map((c) => S(c, 30)).filter(Boolean).slice(0, 10);
     const variants = (v.variants ?? []).map((x) => ({ name: S(x?.name, 60), price: money(x?.price), mrp: money(x?.mrp) })).filter((x) => x.name && (x.price || x.mrp) && !namesOther(x.name, name, others)).slice(0, 10);
     const picked = [...new Set((v.pictures ?? []).map((n) => shown[Number(n) - 1]).filter((p): p is NonNullable<typeof p> => !!p))];
@@ -173,4 +187,53 @@ Read it as the model's spec sheet for a dealer's website. JSON only:
     const chosen = new Set(picked.map((p) => p.url));
     return { specs, colours, variants, about: lorem.test(about) ? "" : about, images: picked.filter((p) => !wide(p)).map((p) => p.url).slice(0, 8), banners: picked.filter(wide).map((p) => p.url), rest: shown.map((p) => p.url).filter((u) => !chosen.has(u)) };
   } catch { return null; }
+}
+
+export type FoundModel = { name: string; url: string; image: string; price: string };
+
+/** A page cut down to what tells products apart: its words, its links as [link …] and its pictures as [img …]. */
+function condensed(html: string, base: string): { text: string; imgs: Set<string>; links: Set<string> } {
+  const imgs = new Set<string>(), links = new Set<string>();
+  const abs = (s: string) => { try { return s ? new URL(s.trim().replace(/&amp;/g, "&"), base).toString() : ""; } catch { return ""; } };
+  const text = html.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(script|style|noscript|svg|head)\b[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<img\b[^>]*>/gi, (tag) => {
+      const set = tag.match(/\s(?:data-srcset|srcset)=["']([^"']+)["']/i)?.[1] ?? "";
+      const u = full(abs((set && biggest(set)) || tag.match(/\s(?:data-src|data-lazy-src)=["']([^"']+)["']/i)?.[1] || tag.match(/\ssrc=["']([^"']+)["']/i)?.[1] || ""));
+      if (!u || /\.(svg|gif)(\?|$)/i.test(u)) return " ";
+      imgs.add(u); return `\n[img ${u}]\n`;
+    })
+    .replace(/<a\b[^>]*\shref=["']([^"'#]+)["'][^>]*>/gi, (_t, h: string) => { const u = abs(h); if (!/^https?:/i.test(u)) return " "; links.add(u); return `\n[link ${u}] `; })
+    .replace(/<(br|p|div|li|tr|h[1-6]|section|td|th|ul)\b[^>]*>/gi, "\n").replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#8377;/g, "₹")
+    .split("\n").map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean)
+    .filter((l, i, a) => l !== a[i - 1]).join("\n");
+  return { text: text.slice(0, 30000), imgs, links };
+}
+
+/** The brand's models on a page whose markup no rule reads (okinawascooters.com: tabs of models, each with a picture, a price
+ *  and an arrow link to scooterdetail.aspx?…&psubcatid=N), listed by the AI from the page's words, links and pictures. */
+export async function modelsFromPage(html: string, base: string, brand: string): Promise<FoundModel[]> {
+  if (!KEY()) return [];
+  const c = condensed(html, base);
+  if (c.imgs.size < 2) return [];
+  let host = "";
+  try { host = new URL(base).hostname.replace(/^www\./, ""); } catch { return []; }
+  try {
+    const { text } = await geminiComplete({ apiKey: KEY(), tag: "dealer-brand:models", temperature: 0, json: true, maxOutputTokens: 3000, contents: [{ role: "user", parts: [{ text: `A page of the website of ${brand || host}. Links are written [link address] before their words, pictures [img address].
+"""
+${c.text}
+"""
+List the products / models this brand sells that this page shows (each model once; not categories, accessories pages, blog posts,
+dealers or offers). JSON only: {"models":[{"name":"…","url":"…","image":"…","price":"…"}]}
+- name: as the page shows it. url: the link to that model's own page, copied exactly from a [link …] near it, or "".
+- image: the [img …] address nearest the name that shows the product itself (not an icon, arrow, logo or badge), or "".
+- price: digits only if the page shows the model's price, else "". At most 12 models.` }] }] });
+    const v = parse<{ models?: { name?: unknown; url?: unknown; image?: unknown; price?: unknown }[] }>(text);
+    const sameSite = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, "") === host; } catch { return false; } };
+    const seen = new Set<string>();
+    return (v?.models ?? []).map((m) => ({ name: S(m?.name, 60), url: S(m?.url, 500), image: S(m?.image, 500), price: money(m?.price) }))
+      .map((m) => ({ ...m, url: c.links.has(m.url) && sameSite(m.url) ? m.url : "", image: c.imgs.has(m.image) ? m.image : "" }))
+      .filter((m) => m.name.length >= 2 && (m.url || m.image) && !seen.has(m.name.toLowerCase()) && (seen.add(m.name.toLowerCase()), true))
+      .slice(0, 12);
+  } catch { return []; }
 }

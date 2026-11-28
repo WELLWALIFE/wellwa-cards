@@ -34,12 +34,15 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    slides, 6 gallery pictures, theme #069046 (Chitraka green). Backups on the server: /root/vipin-backup-2026-11-28T05-02-03-092Z,
    /root/dealer-backup-vipin-thakkar-2026-11-28T07-35-14-776Z. Brand logo is only 117×75 on chitrakaev.com (nothing bigger there).
    Still open: his own showroom photo (ask him); 0 credits (never pay).
-2b. Test dealer, 28 Nov (read-only runs of scripts/dealer-refresh.ts, nothing written): chitrakaev.com 5 models / 6 banners / 12
-   pictures; okinawascooters.com banners + product pictures right but 0 models (importSite does not find its product list — to do);
-   amul.com only a "Manthan" poster on its HTML → rightly nothing taken; kineticgreen.com is an empty JS shell → nothing (card falls
-   back to stock, as before). NOT DEPLOYED: dealer-brand.ts reads a bare-list AI answer, a picture under two spellings is seen once.
-   Full end-to-end test (a "TEST Claude (ignore)" dealer account through /api/card/build) is blocked: the build needs a paid plan or
-   a website package (route.ts, 402) — waiting for the owner's call (admin-granted plan, or the owner tests with a real order).
+2b. Test dealer, 28 Nov (read-only runs of scripts/dealer-refresh.ts, nothing written). Deployed: bare-list AI answer read, one
+   picture under two spellings seen once. NOT DEPLOYED (ready, ask the owner): no model found by the rules → the AI lists the models
+   from the page's words / links / pictures (dealer-brand.ts modelsFromPage; okinawascooters.com 0 → 9 models); pages answering
+   every address with the same body read once; biggest srcset + Shopify `width=180` → 1200 (crompton/kent galleries 0 → 12); price
+   rows never in specs. Results: chitrakaev 5 models/6 banners/12 pictures; okinawa 9/6/12; crompton 12/1/12 with MRP + specs;
+   kent 12/0/12 (few specs — its model pages are thin); amul nothing taken (a poster, rightly); kineticgreen empty JS shell;
+   amperevehicles.com answers 403 to the server, heroelectric.in does not answer — nothing to read there.
+   Full end-to-end test: the owner gives the "TEST Claude (ignore)" account a plan from the admin panel (owner, 28 Nov: never write
+   a plan into the DB directly); then run a dealer build on it.
 3. Deployed 27 Nov: Photo library "Make by AI" on a dealer card draws the brand's real models (ai-image.ts slotImage products refs).
 4. To discuss with the owner: WhatsApp support line (AI answers + tickets, safe auto-fixes, a daily Claude review, owner-approved deploys).
 5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; old server keys
