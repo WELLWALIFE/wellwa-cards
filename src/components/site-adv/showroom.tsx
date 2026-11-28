@@ -440,6 +440,9 @@ export const SHOWROOM_CSS = `
 .sr-ft-bottom{margin-top:28px;font-size:13px;color:var(--mu)}
 .sr-wa-float{position:fixed;right:18px;bottom:18px;z-index:45;width:56px;height:56px;border-radius:999px;display:grid;place-items:center;background:#25d366;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .sr-inner{padding-top:16px}
+/* The card chat's "Ask" button (card-chat.tsx: fixed, bottom 24px; 76px on a phone) sits in the same corner: the WhatsApp button goes above it. */
+.site:has(> .shadow-float) .sr-wa-float{bottom:84px;right:24px}
+@media (max-width:767px){.site:has(> .shadow-float) .sr-wa-float{bottom:136px;right:16px}}
 @keyframes srUp{from{transform:translateY(8px)}to{transform:none}}
 @media (prefers-reduced-motion:reduce){.sr-h1{animation:none}.sr-hero-slide{transition:none}}
 @media (max-width:900px){

@@ -113,6 +113,10 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    Checked: tsc, eslint, 59 bridge tests; Vipin's site on a local dev server (filler gone, repeated section gone).
 10. Hand-made premium designs, first one: "The Showroom" (DEPLOYED 28 Nov 2026 on the owner's "haan, deploy karo"; live check: 6 pages
    200, Showroom code in the build, no new app errors; the choose screen was not opened as a motors owner; owner's reference: Ather).
+   Vipin's live site put on the Showroom the same day (owner: "haan, laga do"): backup /root/card-backup-vipin-thakkar-2026-11-28T17-19-22-100Z.json
+   (his old design was "Electric Performance Spotlight"); only site.advanced / advancedOn / designChosenAt written. Checked live: Showroom
+   drawn, 5 models, no broken photos. Seen there: the WhatsApp float sat over the card chat's "Ask" button — moved above it when
+   the chat is on the page (showroom.tsx CSS); that fix is committed, NOT deployed.
    src/components/site-adv/showroom.tsx — a whole-page design (own header, home, footer; other pages keep AdvPageBody in its
    shell), picked when spec.seed contains "|fix:<group>-showroom" (isShowroom, hooked in site-adv/index.tsx like store1). Hero:
    model name + one line + full-width banner slides; quick actions (test ride / call / directions / prices); models as big cards
