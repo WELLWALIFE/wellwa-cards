@@ -407,7 +407,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
       const waitMs = 175_000;
       // A wedding-wear shop gets its own pool: "saree fabric shop" brought street stalls and washing lines (seen 16 Nov 2026).
       const bridal = isBridalTrade(setup.category || "", [setup.business, setup.categoryLabel, setup.about, facts.work, facts.specialText].filter(Boolean).join(" "));
-      return await within(st.ensureCardMedia({ category: bridal ? "bridal" : setup.category || "other", label: bridal ? "bridal lehenga boutique" : setup.categoryLabel || "", brand, soon: paidPlan ? 99 : 12, waitMs }), waitMs + 5_000);
+      return await within(st.ensureCardMedia({ category: bridal ? "bridal" : setup.category || "other", label: bridal ? "bridal lehenga boutique" : setup.categoryLabel || "", brand, soon: 12, waitMs }), waitMs + 5_000);   // 12 is plenty for this build's six; the pool fills to 30 behind it
     } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
   })();
   // Paid only (owner's call, 1 Oct 2026). Making a picture costs real money every time, so a free card

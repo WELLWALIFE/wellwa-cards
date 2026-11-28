@@ -89,6 +89,26 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    time the app asks /api/wa (any screen's status bar). tsc, eslint, 59 bridge tests pass; not run against live Razorpay; no
    `next build` run here (deploy.sh builds).
    tsc, eslint, bridge tests (57) pass; the admin and AI Training screens were not opened in a browser.
+9. Website quality pass (28 Nov 2026, NOT deployed; owner: "duplicate si website… dekhte hi kahe wah"; owner keeps stock photos —
+   "user baad me change kar leta hai"). Review of live sites (Vipin, Pratik, demo saree) + code: shared stock pool, filler points,
+   repeated sections, AI told to write "general words true of any good <trade>", no check before go-live. Done:
+   - Stock pool per trade 12 → 30 (bridge/stock-art.mjs ensureCardMedia `want`; a finished 12-pool is served while it refills, meta
+     `wanted`); builds wait for 12, not the whole pool (card/build).
+   - src/lib/site-points.ts: hollow points ("Trusted by many customers", "Best quality") never drawn; weak ones ("On-time service",
+     "<city> & nearby") only when a list has < 3 real points; near-repeats ("Genuine parts" ≈ "Original spares") once per PAGE —
+     site-adv content.ts (about ticks) + page-more Block highlights (pagePointsOnce, keyed per list so a re-render keeps its answer).
+     A list left with < 2 points is not drawn (Vipin's "Why choose us" repeated the about's ticks — gone). Saved cards are untouched.
+   - card-ai.ts prompt: about §2 from this business's facts (no "any good <trade>" filler), promise 4-6 concrete points, CTA must match
+     the headline; card-compose tops promise up to 4 (was 6) and skips seeds that repeat a point.
+   - Pic: a photo that fails retries the original once, then hides (no broken icon); site-adv video gets a poster (own → stock
+     "-poster.jpg" → first photo) and "#t=0.5" (no black box).
+   - src/lib/site-qa.ts + cron/site-live: websites still in their 24 h wait are checked hourly (deleted photos, sample products /
+     reviews, the trade's stock headline, filler-only lists, thin about); Super Admins get one system_alert per site and wait time.
+     Never holds a site back.
+   Speed: one load of Vipin's site had photos at 15–48 s; later loads and server tests were 0.4–2.6 s (sharp resizes in 5–8 ms) —
+   not reproduced, not changed. Live log: some cards point at deleted storage photos (owner 2d12905f…) — the QA alert names them.
+   NOT done: hand-made premium designs per trade family (8–10) — a design job to do with the owner, screen by screen.
+   Checked: tsc, eslint, 59 bridge tests; Vipin's site on a local dev server (filler gone, repeated section gone).
 6. Server keys — DONE (28 Nov 2026). /root/.ssh/authorized_keys now holds exactly two keys: omnibook-deploy-2 (this laptop, deploys)
    and tusharydv@Mac.lan (owner: keep). Removed: jsrao@JSRAOs-Air.lan (backup authorized_keys.bak-2026-11-28) and codex-wellwa-deploy
    (owner's "haan hatao"; backup authorized_keys.bak-2026-11-28T11-46-56). A fresh login from omnibook was checked after each removal.

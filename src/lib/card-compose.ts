@@ -18,6 +18,7 @@ import { tradeCta } from "@/lib/trade-moods";
 import { tradeAnswerLines, tradeAnswerPills, pickedOfferings, tradeQuestionsFor } from "@/lib/trade-questions";
 import { answerCatalog, catalogBlocks, catalogTitle, joinPage, priceTable, servicesTitle } from "@/lib/trade-pages";
 import { monogramUrl } from "@/lib/brand-identity";
+import { samePoint } from "@/lib/site-points";
 import type { TradeData } from "@/lib/trade-data/types";
 import { PERSONAL, PERSONAL_DEFAULT } from "@/lib/trade-data/personal";
 import {
@@ -276,7 +277,8 @@ function fillServices(own: ServiceItem[], trade: TradeData | null, line: (x: Tra
 }
 function fillPoints(own: string[], seeds: string[], want: number): string[] {
   const out = [...own.slice(0, 7)];
-  for (const s of seeds) { if (out.length >= want) break; if (!out.some((o) => sameText(o, s))) out.push(s); }
+  // A seed that says what a point already says in other words ("Original spares" beside "Genuine parts") is not added.
+  for (const s of seeds) { if (out.length >= want) break; if (!out.some((o) => sameText(o, s) || samePoint(o, s))) out.push(s); }
   return out;
 }
 /** Steps need to be a sequence: the AI's own list stands when it has three; otherwise the trade's. */
@@ -581,7 +583,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // neither is ever thin. The trust strip above stays the place for facts; these two never carry numbers.
   const promise = personal ? [] : fillPoints(
     (copy.promise ?? []).filter((x) => x && !trustItems.includes(x) && !isGeneric(x, trade)),
-    (trade?.whyUs ?? []).map((w) => (seedLang === "hi" ? w.hi : w.en)), 6);
+    // Topped up to 4, not 6 (owner, 28 Nov 2026): the trade's general reasons padded every site with the same lines.
+    (trade?.whyUs ?? []).map((w) => (seedLang === "hi" ? w.hi : w.en)), 4);
   const steps = personal ? [] : fillSteps((copy.steps ?? []).filter((st) => st.name && !isGeneric(st.name, trade)), trade, seedLine);
   const reviews: TestimonialItem[] = reviewList.slice(0, 6).map((r) => ({
     name: [r.name?.trim(), r.city?.trim()].filter(Boolean).join(", ") || (lang === "hi" ? "ग्राहक" : "Customer"),

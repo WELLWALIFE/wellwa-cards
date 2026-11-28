@@ -301,7 +301,9 @@ const POOLS = new Map();
 // Version of the clip choice. 2: judged on three frames and harshly. A pool whose clip was chosen before is kept for its
 // photos, but the clip is chosen again (and the old file is never used).
 const CLIP_V = 2;
-export async function ensureCardMedia({ category, label = "", want = 12, brand = "", soon = 6, waitMs = 150_000 }) {
+// 30 a trade (owner, 28 Nov 2026: "duplicate si website"): with 12, two shops of one trade shared half their six photos; with 30 they
+// share about one. A pool finished at the old size is still served while it is filled to 30 in the background (`wanted` below).
+export async function ensureCardMedia({ category, label = "", want = 30, brand = "", soon = 6, waitMs = 150_000 }) {
   if (!PEXELS) return { photos: [], clip: null };
   fs.mkdirSync(CARD_DIR, { recursive: true });
   // `soon` is how many photos the caller WAITS for (a paid build passes 99: "wait for the whole pool"). A pool that is
@@ -322,7 +324,9 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
       if (m.clip && m.clipV !== CLIP_V) m.clip = null;   // chosen by the old judge: not trusted
       if (onDisk(m)) {
         // An AI-made pool (scripts/ai-card-pool.mjs) is complete at whatever size it has: stock must never be searched over it.
-        if (!m.partial && ((m.photos ?? []).length >= floor || m.ai)) { if (m.clipV === CLIP_V || m.ai) return m; clipOnly = m; }   // photos done: only the clip again
+        // Done = finished at the size wanted now (or searched as far as it goes: `wanted` records the size it was searched for).
+        const big = (m.photos ?? []).length >= want || (m.wanted ?? 0) >= want;
+        if (!m.partial && (m.ai || ((m.photos ?? []).length >= floor && big))) { if (m.clipV === CLIP_V || m.ai) return m; clipOnly = m; }   // photos done: only the clip again
         else partial = m;
       }
     } catch { /* rebuild */ }
@@ -354,7 +358,15 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
   const pool = { label: trade, photos: clipOnly ? [...clipOnly.photos] : [], clip: null, clipV: 0, done: false, waiters: new Set() };
   POOLS.set(ik, pool);
   const notify = () => { for (const w of [...pool.waiters]) w(); };
-  const save = (done) => { try { fs.writeFileSync(meta, JSON.stringify({ category: cat, label: trade, photos: pool.photos, clip: pool.clip, clipV: pool.clipV, at: new Date().toISOString(), ...(done ? {} : { partial: true }) })); } catch { /* disk */ } };
+  // While a bigger pool fills, the finished smaller one stays on disk untouched (it is what builds are served meanwhile).
+  // A new search that ends with fewer photos than the old pool keeps the old photos (marked as searched at this size, so it is not
+  // searched again on every build).
+  const save = (done) => {
+    const old = legacy && pool.photos.length < (legacy.photos ?? []).length ? legacy : null;
+    if (!done && old) return;
+    const photos = old ? legacy.photos : pool.photos;
+    try { fs.writeFileSync(meta, JSON.stringify({ category: cat, label: trade, photos, clip: pool.clip ?? (old ? legacy.clip ?? null : null), clipV: pool.clipV, wanted: want, at: new Date().toISOString(), ...(done ? {} : { partial: true }) })); } catch { /* disk */ }
+  };
 
   const run_ = (async () => {
     // The trade's own search words first ("pharmacy chemist shop" for a medical store — "medical store india" brought

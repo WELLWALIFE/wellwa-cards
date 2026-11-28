@@ -73,7 +73,7 @@ export function Pic({ src, alt, className, style, eager, priority, sizes, w, onC
   const loading = eager || priority ? "eager" : "lazy";
   if (!optimizable(src)) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} className={className} style={style} loading={loading} decoding="async" onClick={onClick} draggable={draggable} aria-hidden={hidden} />;
+    return <img src={src} alt={alt} className={className} style={style} loading={loading} decoding="async" onClick={onClick} draggable={draggable} aria-hidden={hidden} onError={retryOrHide(src)} />;
   }
   const { props } = getImageProps(
     w
@@ -99,6 +99,24 @@ export function Pic({ src, alt, className, style, eager, priority, sizes, w, onC
       onClick={onClick}
       draggable={draggable}
       aria-hidden={hidden}
+      onError={retryOrHide(src)}
     />
   );
+}
+
+/** A picture that did not come (owner, 28 Nov 2026: empty boxes on live websites): the resized copy failed → ask for the original once;
+ *  that failed too (the file was deleted from storage) → hide the broken-image icon, so the box shows its own background, not an error. */
+function retryOrHide(original: string): React.ReactEventHandler<HTMLImageElement> {
+  return (e) => {
+    const el = e.currentTarget;
+    if (el.dataset.retried !== "1" && el.getAttribute("srcset")) {
+      el.dataset.retried = "1";
+      el.removeAttribute("srcset");
+      el.removeAttribute("sizes");
+      el.src = original;
+      return;
+    }
+    el.dataset.broken = "1";
+    el.style.visibility = "hidden";
+  };
 }

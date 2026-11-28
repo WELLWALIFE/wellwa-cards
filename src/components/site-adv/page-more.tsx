@@ -16,6 +16,7 @@ import type { AdvCtxPlus, AdvPageEntry, Chrome } from "@/components/site-adv/nav
 import { AdvForm, Masthead, ShareBtn } from "@/components/site-adv/page-parts";
 import { shownValue } from "@/components/site-adv/close";
 import { youtubeId } from "@/lib/youtube";
+import { pagePointsOnce } from "@/lib/site-points";
 
 export type Slot = (k: SectionKey, index: number) => ReactNode;
 type Props = { c: SiteContent; spec: AdvancedSpec; x: AdvCtxPlus; chrome: Chrome; slot: Slot; has: (k: SectionKey) => boolean };
@@ -381,6 +382,15 @@ function Albums({ b, x, i, tone, title }: { b: Extract<CardBlock, { kind: "galle
   );
 }
 
+/** The still a video shows before it plays (owner, 28 Nov 2026: a big black box on a live site). The owner's own poster; else our stock
+ *  clip's own frame (bridge/stock-art.mjs saves "<clip>-poster.jpg" beside it); else the site's first photo. With none, "#t=0.5" on the
+ *  address makes the browser show a frame of the clip itself instead of black. */
+function videoPoster(url: string, own?: string, photo?: string): string | undefined {
+  if (own) return own;
+  if (/^\/api\/stock\/.+\.mp4$/i.test(url)) return url.replace(/\.mp4$/i, "-poster.jpg");
+  return photo || undefined;
+}
+
 /** How a list of key points is dressed, by the design's own facts layout (`v`, the spec's trust variant): ruled rows, cards or pills.
  *  Before this the block was one narrow plain list in every one of the twelve designs, set a little inside the page's own edge. */
 const POINTS_LOOK: Record<string, "rule" | "cards" | "chips"> = { strip: "rule", hairline: "rule", "usp-bar": "rule", "icon-row": "cards", "split-cards": "cards", bento: "cards", ticker: "chips", counters: "chips" };
@@ -395,7 +405,12 @@ export function Block({ b, x, c, i, v }: { b: CardBlock; x: AdvCtxPlus; c: SiteC
   const title = (s?: string) => (s ?? "").trim() ? x.t(s!.trim()) : "";
   switch (b.kind) {
     case "about": return <Sec k={`b${i}`} tone={tone} label={title(b.title)}><Head title={title(b.title)} /><div className="adv-body gb-prose">{(b.body ?? "").split(/\n+/).filter(Boolean).map((p, k) => <p key={k}>{x.t(p)}</p>)}</div></Sec>;
-    case "highlights": return <Sec k={`b${i}`} tone={tone} wide className="gb-hl" label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-ticks" data-v={pointsLook(v, i)}>{b.items.filter(Boolean).map((t, k) => <li key={k}><span aria-hidden="true"><Icon name="check" size={15} strokeWidth={2} /></span>{x.t(t.replace(/^[^\p{L}\p{N}]+/u, ""))}</li>)}</ul></Sec>;
+    case "highlights": {
+      // Filler out, and nothing an earlier list on this page already said ("Our commitment" then "Why choose us"); too few left → no section.
+      const pts = pagePointsOnce(c, `b${i}:${b.id ?? ""}`, b.items.filter(Boolean));
+      if (pts.length < 2) return null;
+      return <Sec k={`b${i}`} tone={tone} wide className="gb-hl" label={title(b.title)}><Head title={title(b.title)} /><ul className="gb-ticks" data-v={pointsLook(v, i)}>{pts.map((t, k) => <li key={k}><span aria-hidden="true"><Icon name="check" size={15} strokeWidth={2} /></span>{x.t(t.replace(/^[^\p{L}\p{N}]+/u, ""))}</li>)}</ul></Sec>;
+    }
     case "services": {
       const steps = /^\s*1[.)]\s/.test(b.items[0]?.name ?? "");
       return (
@@ -435,7 +450,7 @@ export function Block({ b, x, c, i, v }: { b: CardBlock; x: AdvCtxPlus; c: SiteC
           <Head title={title(b.title)} />
           <div style={{ position: "relative", aspectRatio: "16/9", borderRadius: "var(--r-card)", overflow: "hidden", background: "#000" }}>
             {src ? <iframe src={src} title={title(b.title) || x.ui("Video", "वीडियो")} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
-              : <video src={b.url} poster={b.posterUrl || undefined} controls preload="metadata" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />}
+              : <video src={/#t=/.test(b.url ?? "") ? b.url : `${b.url}#t=0.5`} poster={videoPoster(b.url ?? "", b.posterUrl, c.photos[0])} controls playsInline preload="metadata" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
           </div>
           {(b.caption ?? "").trim() && <p className="adv-body" style={{ marginTop: "var(--s3)" }}>{x.t(b.caption.trim())}</p>}
         </Sec>

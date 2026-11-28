@@ -7,6 +7,10 @@ import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { serviceConfigured } from "@/lib/admin-guard";
 import { tellSiteLive } from "@/lib/site-live-server";
+import { siteQa } from "@/lib/site-qa";
+import { notify } from "@/lib/notify";
+import { SITE_URL } from "@/lib/site-url";
+import type { Card } from "@/lib/types";
 
 type Site = { readyAt?: string; advancedReadyAt?: string; enabled?: boolean } & Record<string, unknown>;
 type Row = { id: string; owner_id: string; username: string; site_paused?: boolean; data: { site?: Site; customDomain?: string } & Record<string, unknown> };
@@ -37,5 +41,30 @@ export async function GET(request: Request) {
     // The field is cleared first, so a message that fails is not repeated every hour; the website is live either way.
     if (await tellSiteLive(c, dueAdv && !dueSite)) told++;
   }
-  return NextResponse.json({ ok: true, due: (r.data ?? []).length, cleared, told, failed });
+  const qa = await checkWaiting(now).catch(() => ({ checked: 0, flagged: 0 }));
+  return NextResponse.json({ ok: true, due: (r.data ?? []).length, cleared, told, failed, qa });
+}
+
+/** Websites still in their waiting time: the quality check (src/lib/site-qa.ts), and Super Admin told once per website and waiting
+ *  time what would embarrass it, while there is still time to fix it. Nothing is written to the card (the owner may be editing it). */
+async function checkWaiting(now: string): Promise<{ checked: number; flagged: number }> {
+  const waiting = `or=(data->site->>readyAt.gt.${now},data->site->>advancedReadyAt.gt.${now})&order=created_at.desc&limit=20`;
+  const r = await restAsService<Row[]>(`cards?select=id,owner_id,username,data&${waiting}`);
+  if (!r.ok || !r.data?.length) return { checked: 0, flagged: 0 };
+  const admins = ((await restAsService<{ id: string }[]>("admin_users?role=eq.super_admin&active=is.true&franchise_id=is.null&select=id&limit=10")).data ?? []);
+  let flagged = 0;
+  for (const c of r.data) {
+    const issues = await siteQa(c.data as unknown as Card).catch(() => []);
+    if (!issues.length) continue;
+    flagged++;
+    const site = c.data?.site ?? {};
+    const when = site.readyAt ?? site.advancedReadyAt ?? "";
+    const lines = issues.map((q) => `• ${q.text}`).join("\n");
+    await Promise.all(admins.map((a) => notify(a.id, "system_alert", {
+      title: `Fix before it goes live: /c/${c.username}`, body: issues.map((q) => q.text).join(" · ").slice(0, 180),
+      path: "/admin/websites", ref: `site-qa:${c.id}:${when}`,
+      whatsappText: `*Website check — fix before it goes live* 🔎\n${SITE_URL}/c/${c.username}?view=site\n${lines}\n\nLive at: ${when ? new Date(when).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}\nAdmin → Websites`,
+    }).catch(() => undefined)));
+  }
+  return { checked: r.data.length, flagged };
 }

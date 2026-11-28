@@ -8,6 +8,7 @@ import { heroModel, tradeLabel, type HeroModel } from "@/lib/site-hero";
 import { isEmptyBlock, trustFacts, type TrustFact } from "@/lib/site-home";
 import { cardProducts } from "@/lib/product-page";
 import { splitGlyph } from "@/components/card-view";
+import { cleanPoints, pagePointsOnce } from "@/lib/site-points";
 
 export type Offering = {
   name: string; desc?: string; price?: string; mrp?: string; badge?: string;
@@ -106,7 +107,9 @@ export function buildContent(card: Card, lang: string): SiteContent {
   const hl = pages.flatMap((p) => p.blocks).find((b): b is Extract<CardBlock, { kind: "highlights" }> => b.kind === "highlights" && !b.items.some((x) => (x ?? "").startsWith("✅")));
   // A point the old builder cut at 40 letters mid-word ("…courier delivery acr") is left out, not shown broken.
   const hlItems = (hl?.items ?? []).map((s) => splitGlyph((s ?? "").trim()).text.trim()).filter((t) => t && !(t.length === 40 && /[a-z]$/i.test(t) && !/\s/.test(t.slice(-1))));
-  const highlights = hlItems.length >= 2 && hlItems.length <= 8 ? hlItems : [];
+  // Filler ("Trusted by many customers") and near-repeats out (lib/site-points.ts); the promise list below repeats none of these.
+  const hlClean = cleanPoints(hlItems);
+  const highlights0 = hlClean.length >= 2 && hlClean.length <= 8 ? hlClean : [];
 
   let offer: SiteContent["offer"];
   for (const b of all("offer")) {
@@ -126,10 +129,13 @@ export function buildContent(card: Card, lang: string): SiteContent {
   // big behind a heading they read as a jumble (live check, 20 Nov 2026: the partner's website in "The Story Scroll").
   ].filter((u) => !!u && !/\/(shubhora-)?plan-[\w-]+\.(jpe?g|png|webp)/i.test(u)))];
 
-  return {
+  const content: SiteContent = {
     hm, name: hm.name, trade: tradeLabel(card, hi), city: (card.seo?.city ?? "").trim(),
-    facts: trustFacts(card), highlights, about, offerings, steps, gallery, reviews, faq, visit, offer, photos,
+    facts: trustFacts(card), highlights: highlights0, about, offerings, steps, gallery, reviews, faq, visit, offer, photos,
   };
+  // The about's ticks are the page's first list: the point lists drawn after it (page-more Block) do not say them again.
+  pagePointsOnce(content, "about", highlights0);
+  return content;
 }
 
 /** Which sections have something to say - the renderer draws only these (hero and footer always). */
