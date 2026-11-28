@@ -1,6 +1,7 @@
 import { getPublicSupabase } from "@/lib/supabase/public";
 
-export type ShubhoraOverride = { persona: string; knowledge: string; faq: string };
+/** `menu`: Super Admin's text and links for the partner menu (platform_settings.shubhora_menu, bridge/shubhora-menu.mjs). */
+export type ShubhoraOverride = { persona: string; knowledge: string; faq: string; menu?: Record<string, unknown> };
 export type PlatformKnowledge = { persona: string; knowledge: string; shubhora?: ShubhoraOverride; aiV2?: string };
 
 // Global bot training set by the platform owner in Super Admin. Every card's
@@ -34,10 +35,26 @@ export async function getShubhoraOverride(): Promise<ShubhoraOverride> {
   const empty = { persona: "", knowledge: "", faq: "" };
   if (!sb) return empty;
   try {
-    const { data, error } = await sb.from("platform_settings").select("shubhora_persona, shubhora_knowledge, shubhora_faq").eq("id", 1).maybeSingle();
-    if (error || !data) return empty;
-    return { persona: data.shubhora_persona ?? "", knowledge: data.shubhora_knowledge ?? "", faq: data.shubhora_faq ?? "" };
+    const [{ data, error }, menu] = await Promise.all([
+      sb.from("platform_settings").select("shubhora_persona, shubhora_knowledge, shubhora_faq").eq("id", 1).maybeSingle(),
+      getShubhoraMenu(),
+    ]);
+    if (error || !data) return { ...empty, menu };
+    return { persona: data.shubhora_persona ?? "", knowledge: data.shubhora_knowledge ?? "", faq: data.shubhora_faq ?? "", menu };
   } catch { return empty; }
+}
+
+/** Super Admin → Shubhora AI → Menu (platform_settings.shubhora_menu): {} until supabase/migrations/0100_shubhora_menu.sql runs
+ *  or nothing is saved — then the built-in menu (bridge/shubhora-menu.mjs) is used. */
+export async function getShubhoraMenu(): Promise<Record<string, unknown>> {
+  const sb = getPublicSupabase();
+  if (!sb) return {};
+  try {
+    const { data, error } = await sb.from("platform_settings").select("shubhora_menu").eq("id", 1).maybeSingle();
+    if (error || !data) return {};
+    const m = (data as { shubhora_menu?: unknown }).shubhora_menu;
+    return m && typeof m === "object" ? (m as Record<string, unknown>) : {};
+  } catch { return {}; }
 }
 
 /** Super Admin → Shubhora AI → "New AI" switch (platform_settings.ai_v2): "off", "shubhora", "all" or card names

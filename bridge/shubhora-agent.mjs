@@ -19,6 +19,7 @@
 // The one outside call — the AI model — is passed in as `complete`, so the tests can run without it.
 
 import { SHUBHORA_SUPPORT, ownNotes, ownPersona, shubhoraTraining } from "./shubhora-kb.mjs";
+import { MENU_ITEMS, fillTemplate, resolveMenu, visibleItems } from "./shubhora-menu.mjs";
 
 export const AGENT_VERSION = "2026-09-27";
 
@@ -263,29 +264,33 @@ const ACKS = new Set([
   "अच्छा", "अच्छा जी", "great", "nice", "good", "super", "cool", "noted", "sure", "fine",
 ]);
 const MENU_NUMBER = {
-  "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "१": 1, "२": 2, "३": 3, "४": 4, "५": 5,
-  one: 1, two: 2, three: 3, four: 4, five: 5, ek: 1, teen: 3, char: 4, chaar: 4, paanch: 5, panch: 5,
-  "एक": 1, "दो": 2, "तीन": 3, "चार": 4, "पांच": 5, "पाँच": 5,
+  "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "१": 1, "२": 2, "३": 3, "४": 4, "५": 5, "६": 6, "७": 7,
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, ek: 1, teen: 3, char: 4, chaar: 4, paanch: 5, panch: 5,
+  chhe: 6, chhah: 6, saat: 7, "एक": 1, "दो": 2, "तीन": 3, "चार": 4, "पांच": 5, "पाँच": 5, "छह": 6, "छः": 6, "सात": 7,
 };
+/** "0" / "menu" in a running chat → the menu again (each fixed answer ends with "0 = मेनू"). */
+const MENU_AGAIN_RE = /^\s*(0|०|0️⃣|zero|menu|main\s*menu|मेनू|मेन्यू)\s*[.!]?\s*$/i;
+export const isMenuAgain = (text) => MENU_AGAIN_RE.test(String(text || ""));
 const BUSINESS_RE = /(shubhora|शुभोरा|v-?\s?card|vcard|visiting|card|कार्ड|website|वेबसाइट|link|लिंक|price|rate|रेट|कीमत|kimat|charge|fees?\b|फीस|kitne|kitna|कितने|कितना|plan|प्लान|pdf|ppt|presentation|brochure|join|जॉइन|जुड़|partner|पार्टनर|business|बिज़नेस|बिजनेस|software|सॉफ्टवेयर|\bapp\b|ऐप|crm|automation|ऑटोमेशन|demo|डेमो|video|वीडियो|poster|पोस्टर|order|ऑर्डर|buy|kharid|खरीद|subscri|growth|standard plan|premium|payment|पेमेंट|income|कमाई|kamai|register|रजिस्ट्रेशन|account|अकाउंट|sign ?up|signup|service|सर्विस|details?|डिटेल)/i;
 const PDF_RE = /\b(pdf|ppt|presentation|brochure|catalou?g(ue)?|document|details?|detail\s*me|full\s*details?|poori\s*(jankari|details?))\b|पीडीएफ|प्रेजेंटेशन|डिटेल/i;
 // Asking for a call or a person. "baat kar sakta hai" only with a person ("aapse / Niteen ji se …") — "kya AI customer
 // se baat kar sakta hai?" is a product question.
 const CALL_RE = /\b(call\s*(me|karo|kar|karen|kariye|kijiye|karna|back|now|please|karwao|karwa|karvao)|phone\s*(karo|kar|karen|kijiye|kariye)|baat\s*(karni|karna|karwao|karwa|karao|karaiye|karaye|kara\s*do|karwa\s*do|karvao)|(aapse|apse|aap\s*se|unse|un\s*se|niteen\s*(ji\s*)?se|kisi\s*se)\s*baat\s*(kar\s*sakt\w*|ho\s*sakti|hogi)|(phone|call)\s*(pe|par)\s*baat|urgent|abhi\s*call|talk\s*to\s*(someone|a\s*person|a\s*human|human|niteen|him|her|the\s*owner)|(can|could|may)\s*(i|we)\s*(talk|speak)\s*(to|with)\s*(you|someone|a\s*person|niteen|him|her|the\s*owner)|speak\s*(to|with)\s*(someone|a\s*person|a\s*human|niteen|him|her|the\s*owner)|real\s*person|insaan|insan)\b|कॉल\s*(करो|कीजिए|करें|करिए|कर|करवाइए)|फोन\s*(करो|कीजिए|करें)|बात\s*(करनी|करना|करवाइए|कराइए|कराओ|करवा\s*दो)|(आपसे|आप\s*से|उनसे|उन\s*से|किसी\s*से|जी\s*से)\s*बात\s*(कर\s*सकत|हो\s*सकती|होगी)|(फोन|कॉल)\s*(पे|पर)\s*बात|इंसान/i;
 
-/** Pieces of a menu choice: "1", "1.", "option 2", "३", "4️⃣", or an option's own words. 0 = not a choice. */
-export function menuChoice(text) {
+// Names of options on menus sent before 28 Nov 2026, so an answer to an old menu still lands on the right option.
+const OLD_NAMES = { direct: ["पार्टनर प्रोग्राम", "partner programme", "partner program"], growth: ["Shubhora सर्विसेज़", "Shubhora services", "सर्विसेज़", "services"] };
+
+/** Pieces of a menu choice: "1", "1.", "option 2", "३", "4️⃣", or an option's own words → its number in `items` (the menu
+ *  this customer sees). 0 = not a choice. */
+export function menuChoice(text, items = MENU_ITEMS) {
   const raw = String(text || "").trim();
   const key = raw.replace(/️?⃣/g, "").toLowerCase().replace(/[.)\]:\-–]+$/, "").trim()
     .replace(/^(option|opt|no|number|num|नंबर|विकल्प|choice)\s*/i, "").trim();
-  if (key in MENU_NUMBER) return MENU_NUMBER[key];
+  if (key in MENU_NUMBER) return MENU_NUMBER[key] <= items.length ? MENU_NUMBER[key] : 0;
   const p = plain(raw);
-  for (const lang of ["hi", "en"]) {
-    const i = MENU_OPTIONS[lang].findIndex((o) => plain(o) === p);
-    if (i >= 0) return i + 1;
-  }
-  const chip = WEB_CHIPS.findIndex((c) => plain(c.label) === p || plain(c.en) === p);
-  return chip >= 0 && chip < 4 ? chip + 1 : 0;
+  if (!p) return 0;
+  const i = items.findIndex((it) => [it.title?.hi, it.title?.en, it.chip?.hi, it.chip?.en, ...(OLD_NAMES[it.id] || [])].some((n) => n && plain(n) === p));
+  return i >= 0 ? i + 1 : 0;
 }
 
 /**
@@ -342,11 +347,18 @@ export function ownLinks(card) {
     .slice(0, 20);
 }
 
-/** The links for one turn: the seller's own added; with the partner programme off, the plan video and the PDF taken out (a model
- *  that still writes them has them dropped by cleanLinks). */
-export function turnLinks(ctx) {
+/** The menu in force for this card (bridge/shubhora-menu.mjs): the partner's own change → Super Admin's → built-in. */
+export function menuFor(ctx) {
+  return resolveMenu(ctx?.override?.menu, ctx?.card?.botMenu, ctx?.links?.site);
+}
+
+/** The links for one turn: Shubhora's PDF and videos as Super Admin or the partner set them (built-in otherwise), the seller's
+ *  own added; with the partner programme off, the plan video and the PDF taken out (a model that still writes them has them
+ *  dropped by cleanLinks). */
+export function turnLinks(ctx, menu = menuFor(ctx)) {
   const own = ownLinks(ctx?.card).map((f) => f.url);
   const base = { ...(ctx?.links || {}), own };
+  for (const [k, src] of Object.entries(menu.linkSrc || {})) if (src !== "built-in") base[k] = menu.links[k];
   return partnerOff(ctx?.card) ? { ...base, planVideo: "", pdf: "" } : base;
 }
 
@@ -369,28 +381,28 @@ export function faqWithoutPartner(text) {
 
 /* ================================ fixed texts ================================ */
 
-// The menu in the owner's own format (27 Sep 2026).
-export const MENU_OPTIONS = {
-  hi: ["वेबसाइट + डिजिटल V-Card", "Shubhora सर्विसेज़", "कस्टम सॉफ्टवेयर", "पार्टनर प्रोग्राम", "अन्य जानकारी"],
-  en: ["Website + digital V-Card", "Shubhora services", "Custom software", "Partner programme", "Other information"],
-};
-/** The card chat's buttons — the same five choices, short, plus a language switch. */
-export const WEB_CHIPS = [
-  { label: "वेबसाइट + V-Card", en: "Website + V-Card" },
-  { label: "सर्विसेज़", en: "Services" },
-  { label: "कस्टम सॉफ्टवेयर", en: "Custom software" },
-  { label: "पार्टनर प्रोग्राम", en: "Partner programme" },
-  { label: "English", en: "हिंदी" },
-];
-const NUM = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"];
+// The menu (owner, 28 Nov 2026): seven options, text and links editable in Super Admin and per partner (shubhora-menu.mjs).
+// These two are the built-in titles, kept for callers that only need the names.
+export const MENU_OPTIONS = { hi: MENU_ITEMS.map((i) => i.title.hi), en: MENU_ITEMS.map((i) => i.title.en) };
+/** The card chat's buttons — the menu's options, short, plus a language switch.
+ *  @param {{ partner?: boolean, menu?: any }} [opts] */
+export function webChips({ partner = true, menu } = {}) {
+  return [...visibleItems(menu, partner).map((i) => ({ label: i.chip.hi, en: i.chip.en })), { label: "English", en: "हिंदी" }];
+}
+export const WEB_CHIPS = webChips();
+const NUM = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
 const MENU_MARK = /1️⃣[^\n]*\n2️⃣[^\n]*\n3️⃣/;
+// The last line of every fixed answer: another number still works, "0" brings the menu back.
+const OPTION_FOOT = { hi: "किसी और के बारे में जानने के लिए उसका नंबर भेजें · 0 = मेनू", en: "Send another number to know about it · 0 = menu" };
+const FOOT_MARK = /0 = मेनू|0 = menu/;
 const LANG_LINE = "🌐 You can reply in any language (हिंदी, English, मराठी, Gujarati, etc.)";
 
 /** Menu for a new chat. `hi` for Hindi-reading languages, `en` otherwise. Web chat: no card link (they are on it).
- *  `offerLanguage` false drops the language line (they have just chosen a language). */
-export function menuText({ lang = "hi", seller, cardUrl, web = false, offerLanguage = true, partner = true } = {}) {
+ *  `offerLanguage` false drops the language line (they have just chosen a language). `menu`: menuFor(ctx).
+ *  @param {{ lang?: string, seller?: string, cardUrl?: string | null, web?: boolean, offerLanguage?: boolean, partner?: boolean, menu?: any }} [opts] */
+export function menuText({ lang = "hi", seller, cardUrl, web = false, offerLanguage = true, partner = true, menu } = {}) {
   const L = menuLangOf(lang);
-  const opts = MENU_OPTIONS[L].filter((_, i) => partner || i !== 3).map((o, i) => `${NUM[i]} ${o}`).join("\n");
+  const opts = visibleItems(menu, partner).map((o, i) => `${NUM[i]} ${o.title[L]}`).join("\n");
   const tail = [];
   if (!web && cardUrl) tail.push(L === "en" ? `🔗 ${seller ? `${seller}'s` : "Our"} card: ${cardUrl}` : `🔗 ${seller ? `${seller} जी का` : "हमारा"} कार्ड: ${cardUrl}`);
   if (offerLanguage) tail.push(LANG_LINE);
@@ -402,106 +414,21 @@ export function menuText({ lang = "hi", seller, cardUrl, web = false, offerLangu
 // Hindi, Marathi, Gujarati and Punjabi readers get the Hindi menu; the rest the English one.
 const menuLangOf = (lang) => (["hi", "mr", "gu", "pa"].includes(lang) ? "hi" : "en");
 
-/** The fixed answer to a menu choice (Hindi / English); null → the AI writes it (other languages). */
-export function optionReply(n, { lang = "hi", seller, links }) {
+/** The fixed answer to menu choice `n` of the menu this customer sees (Hindi / English) — the text in force (partner →
+ *  Super Admin → built-in) with its links filled in and the "another number · 0 = menu" line. null → not a fixed text: a
+ *  "talk to a person" option (the caller tells the partner), an empty text, or another language (the AI writes it).
+ *  @param {number} n @param {{ lang?: string, seller?: string, links?: any, partner?: boolean, menu?: any }} [opts] */
+export function optionReply(n, { lang = "hi", seller, links, partner = true, menu } = {}) {
   if (lang !== "hi" && lang !== "en") return null;
-  void seller;
-  const H = {
-    1: [
-      "आपकी अपनी वेबसाइट और डिजिटल V-Card — दोनों एक लिंक पर, सिर्फ ₹2,999 साल में (GST सहित) 🎉",
-      "आज हर कस्टमर पहले फोन पर ढूँढता है — आपका नाम, फोटो, प्रोडक्ट-रेट, WhatsApp/कॉल बटन और लोकेशन एक लिंक पर होंगे, तो कस्टमर एक टैप में कॉल या ऑर्डर करेगा।",
-      "12 डिज़ाइन में से अपनी पसंद का चुनिए — वेबसाइट 24 से 48 घंटे में तैयार।",
-      "",
-      `यहाँ से शुरू कीजिए 👉 ${links.join}`,
-      `स्टेप-बाय-स्टेप वीडियो: ${links.tutorial}`,
-      "बन जाए तो लिंक यहाँ भेजिए — मैं चेक करके बताऊँगा कि और अच्छा कैसे बने।",
-      "",
-      "आप क्या काम करते हैं? बताइए, तो आपके काम वाला डिज़ाइन भी दिखा देता हूँ।",
-    ],
-    2: [
-      "एक ही अकाउंट में आपका पूरा डिजिटल बिज़नेस:",
-      "• डिजिटल V-Card + वेबसाइट — एक लिंक पर",
-      "• WhatsApp पर 24×7 AI असिस्टेंट — आप बिज़ी हों, तब भी कस्टमर को तुरंत जवाब",
-      "• रोज़ का पोस्टर और स्टेटस वीडियो — Facebook/Instagram पर अपने-आप पोस्ट",
-      "• AI से प्रोडक्ट फोटो और वीडियो ऐड",
-      "• सारे लीड एक जगह — कोई कस्टमर छूटेगा नहीं",
-      "",
-      `3½ मिनट में पूरा देखिए: ${links.productVideo}`,
-      "आप क्या बिज़नेस करते हैं? बताइए — बताता हूँ कि आपको सबसे ज़्यादा फायदा कहाँ से होगा।",
-    ],
-    3: [
-      "आपके काम के हिसाब से कोई भी सॉफ्टवेयर — Shubhora बनाकर देता है:",
-      "• मोबाइल ऐप या वेबसाइट",
-      "• CRM, बिलिंग, डैशबोर्ड",
-      "• WhatsApp, लीड और फॉलो-अप का ऑटोमेशन",
-      "• AI चैटबॉट, Tally / पेमेंट इंटीग्रेशन",
-      "साथ में एक डेडिकेटेड अकाउंट मैनेजर।",
-      "",
-      "आपको क्या बनवाना है — थोड़ा बताइए, तो आपके लिए सही सॉल्यूशन बताता हूँ।",
-    ],
-    4: [
-      "Shubhora पार्टनर — अपने फोन से, अपने शहर में, अपना बिज़नेस 💼",
-      "आज हर दुकान, डॉक्टर और कोचिंग को ऑनलाइन दिखना है — आप उन्हें Shubhora दिलाते हैं। कोई स्टॉक नहीं, रजिस्ट्रेशन फ्री; अपना Website प्लान चालू करते ही ID ग्रीन।",
-      "कमाई के 5 तरीके: Direct Bonus 10% · Matching Bonus 10% · Sponsor Bonus (5 लेवल) · Renewal Income · 17 Rank Rewards। रोज़ 2 क्लोज़िंग, पेमेंट हर बुधवार।",
-      "",
-      `प्लान का वीडियो (हिंदी): ${links.planVideo}`,
-      "पूरी डिटेल नीचे PDF में है 👇",
-      "",
-      `फ्री रजिस्ट्रेशन यहाँ से 👉 ${links.join}`,
-      "रजिस्ट्रेशन में कोई दिक्कत आए तो बताइए — मैं मदद करता हूँ।",
-      `[MEDIA] ${links.pdf}`,
-    ],
-    5: ["ज़रूर! बताइए, क्या जानना चाहते हैं? 🙂"],
-  };
-  const E = {
-    1: [
-      "Your own website and digital V-Card — both on one link, for just ₹2,999 a year (GST included) 🎉",
-      "Every customer searches on their phone first today — with your name, photo, products and prices, WhatsApp/call buttons and location on one link, they call or order in one tap.",
-      "Pick any of 12 designs — your website is ready within 24 to 48 hours.",
-      "",
-      `Start here 👉 ${links.join}`,
-      `A step-by-step video: ${links.tutorial}`,
-      "Once it's ready, send me the link — I'll check it and tell you how to make it even better.",
-      "",
-      "What work do you do? Tell me and I'll show you a design made for it too.",
-    ],
-    2: [
-      "Your whole digital business in one account:",
-      "• Digital V-Card + website on one link",
-      "• A 24×7 WhatsApp AI assistant — customers get an instant reply even when you're busy",
-      "• A daily poster and status video, auto-posted to Facebook/Instagram",
-      "• AI product photos and video ads",
-      "• Every lead in one place — no customer slips away",
-      "",
-      `See it all in 3½ minutes (Hindi): ${links.productVideo}`,
-      "What business are you in? Tell me and I'll show you where you'll gain the most.",
-    ],
-    3: [
-      "Any software your work needs — Shubhora builds it for you:",
-      "• A mobile app or website",
-      "• CRM, billing, dashboards",
-      "• Automation for WhatsApp, leads and follow-ups",
-      "• AI chatbots, Tally / payment integrations",
-      "With a dedicated account manager.",
-      "",
-      "What would you like built? Tell me a little and I'll suggest the right solution.",
-    ],
-    4: [
-      "Shubhora partner — your own business, from your phone, in your own city 💼",
-      "Every shop, clinic and coaching centre needs to be online today — you help them get Shubhora. No stock, free registration; turn your own Website plan on and your ID goes Green.",
-      "5 ways to earn: Direct Bonus 10% · Matching Bonus 10% · Sponsor Bonus (5 levels) · Renewal Income · 17 Rank Rewards. Two closings a day, payout every Wednesday.",
-      "",
-      `Plan video (Hindi): ${links.planVideo}`,
-      "Full details in the PDF below 👇",
-      "",
-      `Register free here 👉 ${links.join}`,
-      "If anything gets stuck while registering, tell me — I'll help.",
-      `[MEDIA] ${links.pdf}`,
-    ],
-    5: ["Sure! What would you like to know? 🙂"],
-  };
-  const lines = (lang === "hi" ? H : E)[n];
-  return lines ? lines.join("\n") : null;
+  const item = visibleItems(menu, partner)[n - 1];
+  if (!item || item.call) return null;
+  const body = fillTemplate(item.reply[lang], { ...links, card: links?.card, seller: seller || "" });
+  if (!body) return null;
+  // The footer goes above a trailing file line, so the file still arrives last.
+  const lines = body.split("\n");
+  let k = lines.length;
+  while (k > 0 && /^\s*\[MEDIA\]/i.test(lines[k - 1])) k--;
+  return [...lines.slice(0, k), "", OPTION_FOOT[lang], ...lines.slice(k)].join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
 // The second half of an "ok / thanks" answer — what fits where the chat stands (making their card, reading the plan).
@@ -685,9 +612,7 @@ export function buildAgentSystem(opts) {
 function withoutPartnerPrompt(text) {
   const RULE = "5. NO PARTNER PROGRAMME ON THIS NUMBER: this number does not offer any partner, income, joining, bonus, network or MLM business opportunity. Never explain or offer one and never mention bonuses, pairs, ranks or income. If someone asks, say politely in one line that this number is for software and websites, and offer those. (Software FOR a direct-selling or MLM company is a custom-software need — handle it as 4.)";
   let t = text
-    .replace(/ · 4 पार्टनर प्रोग्राम · 5 अन्य जानकारी\)/g, " · 4 अन्य जानकारी)")
     .replace(/^5\. PARTNER PROGRAMME.*$/m, RULE)
-    .replace(/^6\. SOMETHING ELSE \(option 5\)/m, "6. SOMETHING ELSE (option 4)")
     .replace(/^7\. PDF \/ PPT.*$/m, "7. PDF / PPT / \"details\": there is no PDF to send on this number; send the Shubhora video, or a file or link from the seller's own list that fits.")
     .replace(/^- Motivate partners.*\n/m, "")
     .replace(/, an income of their own/g, "")
@@ -717,7 +642,7 @@ function buildAgentSystemFull({ channel = "whatsapp", seller, card, links, overr
     : "- A new contact: this is the first message.");
   else if (chat.gapMs > 6 * HOUR) chatLines.push(`- Returning after ${gapWords(chat.gapMs)}: continue from the earlier messages; no fresh greeting, no menu, no repeated links.`);
   else chatLines.push("- An ongoing chat: continue naturally, no greeting.");
-  if (chat.menuShown) chatLines.push("- The menu (1–5) was already sent in this chat.");
+  if (chat.menuShown) chatLines.push("- The numbered menu was already sent in this chat.");
   if (chat.saved && !chat.fresh) chatLines.push(`- Saved in ${S}'s phone as "${chat.saved}".`);
   chatLines.push(`- Already shared in this chat (do not send again unless asked): ${shared.length ? shared.join(", ") : "nothing yet"}.`);
   // On the website chat the visitor's number is not known — the call line asks for it.
@@ -727,6 +652,7 @@ function buildAgentSystemFull({ channel = "whatsapp", seller, card, links, overr
     : `आपकी ज़रूरत मैंने नोट कर ली है — इसका कोटेशन ${S} जी भेजेंगे; जैसे ही वो फ्री होंगे, आपसे बात कर लेंगे।`;
   const persona = ownPersona(card?.botPersona) || kb.brand_persona;
   const salon = (links.templates || []).find((t) => t.key === "salon-spa")?.url || links.gallery;
+  const menuLine = visibleItems(resolveMenu(override?.menu, card?.botMenu, links.site), !partnerOff(card)).map((i, n) => `${n + 1} ${i.title.hi}`).join(" · ");
 
   return `You are ${S}'s AI assistant on ${wa ? `WhatsApp (${S}'s own number)` : `${S}'s digital card`}. ${S} is a Shubhora partner in India. Shubhora (shubhora.com) is software for small businesses — a digital V-Card, a website, a WhatsApp AI assistant, daily posters, social auto-posting, a lead CRM, AI photo and video tools, and custom software — and ${S} helps businesses get it and invites people to the Shubhora partner programme.
 You talk like a senior sales consultant who knows Shubhora inside out — a real person: warm, confident and motivating, not a call centre, not a brochure and never a nervous beginner. You answer and help yourself; you do not hand the customer over to ${S}.
@@ -762,19 +688,19 @@ A good salesman creates demand and closes; a beginner scares people off. So:
   c) a payment, refund or account problem the steps you know don't fix → give the steps and the Shubhora support number yourself, and add [[ALERT: <the problem>]] so ${S} knows (don't tell the customer that ${S} will check).
 
 === WHAT YOU DO ===
-1. MENU: a new chat that only says hello gets a numbered menu (1 वेबसाइट + डिजिटल V-Card · 2 Shubhora सर्विसेज़ · 3 कस्टम सॉफ्टवेयर · 4 पार्टनर प्रोग्राम · 5 अन्य जानकारी). The system sends it. Never write the menu yourself: if the customer only greets and there is nothing to continue from, write exactly [[MENU]] and nothing else. A number or an option's name answers the menu — handle that option below.
-2. WEBSITE + V-CARD (option 1; "website", "card", "V-Card", "visiting card", "free card") — they sign up and fill in their details themselves, Shubhora builds it within 24 to 48 hours; you guide them, then check it:
+1. MENU: a new chat that only says hello gets a numbered menu (${menuLine}). The system sends it, and the system answers a number with that option's fixed text. Never write the menu yourself: if the customer only greets and there is nothing to continue from, write exactly [[MENU]] and nothing else. "0" brings the menu back.
+2. WEBSITE + V-CARD (the "Website + digital V-Card" option; "website", "card", "V-Card", "visiting card", "free card") — they sign up and fill in their details themselves, Shubhora builds it within 24 to 48 hours; you guide them, then check it:
    a) There is NO free card now. The start is Website Standard — ₹2,999 a YEAR, GST included — the website AND the digital V-Card on one link, any of 12 designs, ready within 24 to 48 hours. Give the joining link straight away — "यहाँ से शुरू कीजिए 👉 <joining link>" with the step-by-step video — and ask them to send their link here once it is ready, so you can check it and tell them how to make it even better. Never make them answer questions before they get the link. If they ask for a FREE card: say plainly, without apology, that the free V-Card offer is over and the V-Card now comes with Website Standard (₹2,999 a year — less than ₹10 a day).
    b) When they tell you their work: in 1–2 lines what their website will show for that trade, and a design to look at — the matching one from DESIGNS, or, if none matches, ${S}'s own card as a live sample. If the joining link is already in this chat, don't send it again — just say to open the link above.
    c) Never offer to make it for them and never ask for their name, business or city to make it. If they ask you to make it, or send their details: they fill them in themselves on the joining link and choose the plan — Shubhora's team and app build the website within 24 to 48 hours — and you'll guide every step.
    d) Stuck while making it → help step by step (SIGN-UP HELP in the facts).
    e) They send their card link → use the CARD CHECK below (real data from their card): one warm, specific line on what is good; then the 1–3 most useful improvements and where to make them in the app; then suggest sharing it (WhatsApp Status, the QR at the shop). Say only what the CARD CHECK shows. If there is no CARD CHECK, ask for the full card link.
-3. SERVICES (option 2; "services", "kya kya milta hai"): the main things as bullets, each with its gain (V-Card + website on one link; WhatsApp AI that answers 24×7; daily poster and status video, auto-posted; AI photos and videos; every lead in one place), the Shubhora video, then ask what business they do — and show what helps that business most.
-4. CUSTOM SOFTWARE (option 3; "software", "app", "CRM", "automation"): Shubhora builds any software — apps, websites, CRM/ERP, billing, automation, AI chatbots, integrations. Ask what they need (at most 2 short questions, one at a time). Once you understand it, say: "${quoteLine}" and add [[ALERT: Custom software — <what they need + business/city if told>]]. NEVER a price, a range or a timeline.
-5. PARTNER PROGRAMME (option 4; "plan", "business plan", "joining", "income", "kamai", "MLM"): what it is in 2 motivating lines (their own business from their phone: they help the businesses around them get Shubhora — free registration, no stock, five ways to earn); the PDF (a [MEDIA] line, unless already sent), the partner-plan video and the joining link: "फ्री रजिस्ट्रेशन यहाँ से 👉 <joining link>" + "रजिस्ट्रेशन में कोई दिक्कत आए तो बताइए — मैं मदद करता हूँ". Answer every plan question directly from PLAN FACTS, with confidence, in the plan's own figures: Direct Bonus 10% of BV (₹250 on Standard, ₹500 on Premium); Matching Bonus 10% a pair (₹250 on a Standard ID, ₹500 on a Premium ID), two closings a day (3 PM and 3 AM), up to ₹10,000 a day on a Standard ID and ₹20,000 on a Premium ID; Sponsor Bonus on 5 levels (40/20/20/10/10% of the team's matching); Renewal Income with its own capping of up to ₹10,000 a day; 17 Rank Rewards; payout every Wednesday after TDS and a 5% admin charge. Never give a monthly income figure of your own and never call income guaranteed — the rule is certain (every sale and pair is paid as the plan says), the amount depends on their own and their team's sales. A made-up example is always called an example.
-6. SOMETHING ELSE (option 5): ask what they would like to know.
+3. GROWTH PLAN AND SINGLE SERVICES (the "Growth Plan", "WhatsApp AI" and "CRM" options; "services", "kya kya milta hai", "posters", "WhatsApp bot", "CRM", "Google reviews"): what it does for THEIR business, each point with its gain, and its price from PLANS — the Growth Plan ₹2,999 a month has everything; a single service can also be taken alone by the month (WhatsApp AI ₹1,499, CRM ₹999, daily posters + auto-post ₹1,499, Google reviews ₹699). When they want two or more, show that the Growth Plan gives all of them plus broadcasts and the monthly report for ₹2,999. Then ask what business they do — and show what helps that business most.
+4. CUSTOM SOFTWARE (the "Custom software" option; "software", "app", "own CRM / ERP", "team logins", "automation"): Shubhora builds any software — apps, websites, CRM/ERP, billing, automation, AI chatbots, integrations. Ask what they need (at most 2 short questions, one at a time). Once you understand it, say: "${quoteLine}" and add [[ALERT: Custom software — <what they need + business/city if told>]]. NEVER a price, a range or a timeline.
+5. PARTNER PROGRAMME — the Direct Selling Plan (the "Direct Selling Plan" option;"plan", "business plan", "joining", "income", "kamai", "MLM"): what it is in 2 motivating lines (their own business from their phone: they help the businesses around them get Shubhora — free registration, no stock, five ways to earn); the PDF (a [MEDIA] line, unless already sent), the partner-plan video and the joining link: "फ्री रजिस्ट्रेशन यहाँ से 👉 <joining link>" + "रजिस्ट्रेशन में कोई दिक्कत आए तो बताइए — मैं मदद करता हूँ". Answer every plan question directly from PLAN FACTS, with confidence, in the plan's own figures: Direct Bonus 10% of BV (₹250 on Standard, ₹500 on Premium); Matching Bonus 10% a pair (₹250 on a Standard ID, ₹500 on a Premium ID), two closings a day (3 PM and 3 AM), up to ₹10,000 a day on a Standard ID and ₹20,000 on a Premium ID; Sponsor Bonus on 5 levels (40/20/20/10/10% of the team's matching); Renewal Income with its own capping of up to ₹10,000 a day; 17 Rank Rewards; payout every Wednesday after TDS and a 5% admin charge. Never give a monthly income figure of your own and never call income guaranteed — the rule is certain (every sale and pair is paid as the plan says), the amount depends on their own and their team's sales. A made-up example is always called an example.
+6. TALK TO A PERSON (the last option): the system handles it. ANY OTHER QUESTION: answer it yourself from the facts; when it is about one of the menu's options and the menu was sent in this chat, end with one short line saying which number to send for the full details.
 7. PDF / PPT / "details" / presentation: the PDF as a file (a [MEDIA] line) with one short line; add the partner-plan video when they are asking about the partner programme, otherwise the Shubhora video.
-8. PRICE / RATE / "kitne ka": Website Standard ₹2,999 a YEAR (website + digital V-Card, 12 designs, ready in 24 to 48 hours) — less than ₹10 a day; Website Premium ₹5,999 a YEAR (Standard plus complete SEO, ChatGPT/Gemini search, AI chat on the website, installs like an app, and the Growth Plan's 1st month free); upgrade from Standard to Premium ₹3,000; Growth Plan ₹2,999 a MONTH (daily posters, auto-posting, WhatsApp AI 24×7, CRM, Google replies) — less than ₹100 a day; all GST included; Custom Solutions (every kind of software and automation): price on request, a quote for their need. Never say a website price "a month" and never mention any other plan, price or a free card.
+8. PRICE / RATE / "kitne ka": Website Standard ₹2,999 a YEAR (website + digital V-Card, 12 designs, ready in 24 to 48 hours) — less than ₹10 a day; Website Premium ₹5,999 a YEAR (Standard plus complete SEO, ChatGPT/Gemini search, AI chat on the website, installs like an app, and the Growth Plan's 1st month free); upgrade from Standard to Premium ₹3,000; Growth Plan ₹2,999 a MONTH (daily posters, auto-posting, WhatsApp AI 24×7, CRM, Google replies, broadcasts, monthly report) — less than ₹100 a day; single services a MONTH: WhatsApp AI ₹1,499, CRM ₹999, daily posters + auto-post ₹1,499, Google reviews ₹699 (₹4,696 together, so two or more → the Growth Plan); all GST included; Custom Solutions (every kind of software and automation): price on request, a quote for their need. Never say a website price "a month" and never mention any other plan, price or a free card.
 9. WHAT EACH PLAN IS: say it from PLANS in the facts. The website opens on their Shubhora web address, live from day one. A personal domain (.com / .in) only if they want one: it is extra — they buy it themselves and it is connected to the website. Say it that way — never "Shubhora doesn't give a domain", and never "website on your own domain" as part of the plan.
 10. VIDEO / DEMO: the Shubhora video; ${S}'s own card is a live sample.
 11. RETURNING CUSTOMER: continue from the earlier messages, even days old. No fresh greeting, no menu, no repeated links. If they were making their card, ask whether it is ready and to send its link.
@@ -1112,16 +1038,20 @@ export async function agentTurn(input) {
   const state = { sent: {}, ...(input.state || {}) };
   state.sent = { ...(state.sent || {}) };
   const seller = ctx.seller || "";
-  const links = turnLinks(ctx);
+  const menu = menuFor(ctx);
+  const links = turnLinks(ctx, menu);
   const partner = !partnerOff(ctx.card);
+  const items = visibleItems(menu, partner);
   const q = quickRead(text);
+  const choice = menuChoice(text, items);
   const recent = (history || []).filter((m) => !m.at || now - m.at < FRESH_AFTER);
   const fresh = recent.length === 0;
   const lastBot = [...recent].reverse().find((m) => m.role === "assistant");
   const lastAt = recent.length ? (recent[recent.length - 1].at || now) : 0;
   const gapMs = lastAt ? now - lastAt : 0;
   const menuShown = recent.some((m) => m.role === "assistant" && MENU_MARK.test(m.content || ""));
-  const menuLive = !!lastBot && MENU_MARK.test(lastBot.content || "") && (!lastBot.at || now - lastBot.at < 7 * DAY);
+  // A number answers the menu while the last thing we sent is the menu or one of its fixed answers (they end "0 = मेनू").
+  const menuLive = !!lastBot && (MENU_MARK.test(lastBot.content || "") || FOOT_MARK.test(lastBot.content || "")) && (!lastBot.at || now - lastBot.at < 7 * DAY);
   const L = replyLanguage(text, state);
   const lang = L.code;
   if (L.explicit) { state.lang = lang; state.langExplicit = true; }
@@ -1150,30 +1080,36 @@ export async function agentTurn(input) {
   if (L.asked) {
     const ackMenu = fresh || menuLive;
     const fixed = ackMenu && (lang === "hi" || lang === "en")
-      ? menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, offerLanguage: false, partner })
+      ? menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, offerLanguage: false, partner, menu })
       : languageAck(lang);
     if (fixed) return done({ reply: fixed, reason: `language → ${lang}` });
     // other languages: the AI writes the acknowledgement (and the menu, on a new chat)
-    return aiTurn({ directive: `The customer asked you to talk in ${LANG_NAMES[lang]}. Say yes in one short line in ${LANG_NAMES[lang]}${ackMenu ? `, then show the menu in ${LANG_NAMES[lang]}: the five options numbered 1️⃣–5️⃣ (Digital V-Card (free/demo) · Shubhora services · Custom software · Partner programme · Other information) and "send a number"` : " and ask what they would like to know"}.` });
+    return aiTurn({ directive: `The customer asked you to talk in ${LANG_NAMES[lang]}. Say yes in one short line in ${LANG_NAMES[lang]}${ackMenu ? `, then show the menu in ${LANG_NAMES[lang]}: the ${items.length} options numbered ${NUM[0]}–${NUM[items.length - 1]} (${items.map((i) => i.title.en).join(" · ")}) and "send a number"` : " and ask what they would like to know"}.` });
   }
 
   // 4. A plain hello on a new chat → the menu. So does the first message of a Facebook / Instagram ad lead (the bridge
   //    sees the ad in the message) and a generic "I want to know more about …" — the same start, in Hindi.
   const adStart = fresh && (!!contact.fromAd || (!contact.known && isAdOpener(text)));
   if (adStart || (fresh && (q.kind === "opener" || q.kind === "social") && !contact.known)) {
-    return done({ reply: menuText({ lang, seller, cardUrl: links.card, web: !wa, partner }), reason: adStart ? "ad / know-more lead → menu" : "new chat, greeting → menu" });
+    return done({ reply: menuText({ lang, seller, cardUrl: links.card, web: !wa, partner, menu }), reason: adStart ? "ad / know-more lead → menu" : "new chat, greeting → menu" });
   }
 
-  // 5. A number (or option name) answering the menu we just sent.
-  if (q.choice && (menuLive || (!wa && fresh))) {
-    // Partner programme off: the menu's 4 is "other information"; the words "partner" / "plan" go to the AI, which says
-    // this number has no such programme.
-    const digit = /^\s*(4|४|four|char|chaar|चार)\s*(️?⃣)?\s*[.)]?\s*$/i.test(text);
-    if (!partner && q.choice === 4 && !digit) return aiTurn({ directive: "The customer asked about a partner / income / joining programme. This number has none: say so politely in one line and offer what it does have (software, websites)." });
-    const choice = !partner && q.choice === 4 ? 5 : q.choice;
-    const fixed = optionReply(choice, { lang, seller, links });
-    if (fixed) return done({ reply: fixed, reason: `menu option ${q.choice}` });
-    return aiTurn({ directive: `The customer chose option ${choice} (${MENU_OPTIONS.en[choice - 1]}) from the menu. Handle it as WHAT YOU DO says for that option.` });
+  // 4b. "0" / "menu" in a running chat → the menu again.
+  if (!fresh && isMenuAgain(text)) {
+    return done({ reply: menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, offerLanguage: false, partner, menu }), reason: "0 / menu → menu again" });
+  }
+
+  // 5. A number (or option name) answering the menu or one of its answers. With the partner programme off the Direct Selling
+  //    Plan is not on the menu, so "partner" / "plan" words go to the AI, whose first rule says this number has none.
+  if (choice && (menuLive || (!wa && fresh))) {
+    const item = items[choice - 1];
+    if (item.call) {
+      if (!wa) return done({ reply: callAskNumber(seller, lang === "en" ? "en" : "hi"), reason: `menu option ${choice} (talk to a person) → asked for the number` });
+      return done({ reply: callReply(seller, lang === "en" ? "en" : "hi"), alert: "Wants to talk to you (chose it from the menu)", reason: `menu option ${choice} (talk to a person) → partner told` });
+    }
+    const fixed = optionReply(choice, { lang, seller, links, partner, menu });
+    if (fixed) return done({ reply: fixed, reason: `menu option ${choice} (${item.id})` });
+    return aiTurn({ directive: `The customer chose option ${choice} (${item.title.en}) from the menu. Handle it as WHAT YOU DO says for that option, and end with one short line: "send another number · 0 = menu" in the reply language.` });
   }
 
   // 6. "Call me" / "baat karni hai" — the one moment the partner is brought in, in the owner's words. On the website
@@ -1234,7 +1170,7 @@ Reply as WHAT YOU DO 2e says. No [[ALERT]] for this.`);
     // the steps and Shubhora support from the assistant itself (the partner only gets the alert).
     const lately = [...recent.filter((m) => m.role === "user").slice(-3).map((m) => m.content || ""), text];
     const botLately = recent.filter((m) => m.role === "assistant").slice(-3).map((m) => m.content || "");
-    const softwareChat = lately.some((t) => quickRead(t).topics.includes("software") || menuChoice(t) === 3)
+    const softwareChat = lately.some((t) => quickRead(t).topics.includes("software") || items[menuChoice(t, items) - 1]?.id === "software")
       || botLately.some((c) => /कोई भी सॉफ्टवेयर|Any software your work needs|builds any software|कोटेशन|\bquote\b/i.test(c));
     const callChat = lately.some((t) => quickRead(t).topics.includes("call")) || botLately.some((c) => isCallLine(c, seller));
     const mayDefer = softwareChat || callChat;
@@ -1246,11 +1182,11 @@ Reply as WHAT YOU DO 2e says. No [[ALERT]] for this.`);
         res = await complete({ system: redo ? `${system}\n\nIMPORTANT — rewrite your previous draft: ${redo}` : system, messages, maxTokens: 700, temperature: 0.5 });
       } catch (e) {
         if (out) break; // keep the first draft
-        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa, partner }) : fallbackLine(seller, lang), alert: fresh ? null : `AI error — please reply yourself: "${String(text).slice(0, 80)}"`, reason: `ai error: ${e?.message || e}` });
+        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa, partner, menu }) : fallbackLine(seller, lang), alert: fresh ? null : `AI error — please reply yourself: "${String(text).slice(0, 80)}"`, reason: `ai error: ${e?.message || e}` });
       }
       if (!res || res.blocked || !String(res.text || "").trim()) {
         if (out) break;
-        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa, partner }) : fallbackLine(seller, lang), alert: fresh ? null : `No AI answer — please reply yourself: "${String(text).slice(0, 80)}"`, reason: "ai empty/blocked" });
+        return done({ reply: fresh ? menuText({ lang, seller, cardUrl: links.card, web: !wa, partner, menu }) : fallbackLine(seller, lang), alert: fresh ? null : `No AI answer — please reply yourself: "${String(text).slice(0, 80)}"`, reason: "ai empty/blocked" });
       }
       out = parseTags(res.text);
       if (out.personal || out.skip || out.menu) break;
@@ -1267,7 +1203,7 @@ Reply as WHAT YOU DO 2e says. No [[ALERT]] for this.`);
     const askWhat = lang === "en" ? "Sure! What would you like to know? 🙂" : "जी, बताइए — क्या जानना चाहते हैं? 🙂";
     if (out.menu) {
       if (!fresh && menuShown) return done({ reply: askWhat, reason: "menu asked again → short prompt" });
-      return done({ reply: menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, partner }), reason: "AI chose the menu" });
+      return done({ reply: menuText({ lang, seller, cardUrl: state.sent.card ? null : links.card, web: !wa, partner, menu }), reason: "AI chose the menu" });
     }
     // The card chat always answers something (the visitor is waiting in the box).
     if (!wa && (out.personal || out.skip || !out.text)) return done({ reply: askWhat, alert: out.alert, reason: "web: nothing to say → prompt" });

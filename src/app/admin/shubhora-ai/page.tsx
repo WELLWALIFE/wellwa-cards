@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { BellRing, Check, FileText, FlaskConical, Loader2, MessageCircle, Power, RotateCcw, Send, Sparkles } from "lucide-react";
 import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { savePlatformSettings, adminHeaders } from "@/lib/admin-client";
+import { ShubhoraMenuEditor } from "@/components/admin/shubhora-menu-editor";
 import { SHUBHORA_FAQ, SHUBHORA_KNOWLEDGE, SHUBHORA_PERSONA } from "../../../../bridge/shubhora-kb.mjs";
 
 type Fields = { persona: string; knowledge: string; faq: string };
@@ -94,6 +95,8 @@ export default function ShubhoraAi() {
       {note && <p className="rounded-lg border border-good/40 bg-good/10 px-3 py-2 text-sm">{note}</p>}
 
       <AiSwitch />
+
+      <ShubhoraMenuEditor />
 
       <TestChats />
 

@@ -42,7 +42,7 @@ export async function adminApi<T = Record<string, unknown>>(path: string, init: 
 }
 
 /** Save platform-wide AI settings through the admin API. Returns an error message, or null when saved. */
-export async function savePlatformSettings(row: Record<string, string>): Promise<string | null> {
+export async function savePlatformSettings(row: Record<string, unknown>): Promise<string | null> {
   const r = await adminApi("/api/admin/platform-settings", { method: "POST", json: row });
   return r.ok ? null : r.data.error || `Could not save (${r.status}).`;
 }

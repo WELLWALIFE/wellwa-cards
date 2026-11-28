@@ -294,6 +294,10 @@ export interface Card {
    *  "[MEDIA] url" lines (the chat shows them inline, WhatsApp sends them as a photo / document). Owner's call, 10 Oct 2026. */
   /** Files the bot may send (uploaded photo / PDF / video) and links it may share ("link": e.g. a YouTube demo video). */
   botFiles?: { label: string; url: string; kind: "image" | "pdf" | "video" | "link" }[];
+  /** A Shubhora partner's own change to the menu their assistant sends (AI Training → "मेरा मेनू", 28 Nov 2026): per item
+   *  title / reply in hi / en, and the PDF / video links. Wins over Super Admin's text for that item only; an empty value
+   *  falls back (bridge/shubhora-menu.mjs resolveMenu). */
+  botMenu?: { items?: Record<string, { title?: { hi?: string; en?: string }; reply?: { hi?: string; en?: string } }>; links?: Record<string, string> };
   /** What this card sells beyond its own content.
    *  "shubhora": the whole card is a Shubhora partner's — its assistant also gets Shubhora's own,
    *  always-current facts (bridge/shubhora-kb.mjs, or the Super Admin override). Set by the

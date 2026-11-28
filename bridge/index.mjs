@@ -733,8 +733,15 @@ async function refreshPlatform() {
     const r = await fetch(`${SUPA_URL}/rest/v1/platform_settings?select=shubhora_persona,shubhora_knowledge,shubhora_faq&id=eq.1`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
     const rows = r.ok ? await r.json() : [];   // columns not added yet → 400 → built-in text
-    if (Array.isArray(rows) && rows[0]) shubhoraOverride = { persona: rows[0].shubhora_persona || "", knowledge: rows[0].shubhora_knowledge || "", faq: rows[0].shubhora_faq || "" };
+    if (Array.isArray(rows) && rows[0]) shubhoraOverride = { ...shubhoraOverride, persona: rows[0].shubhora_persona || "", knowledge: rows[0].shubhora_knowledge || "", faq: rows[0].shubhora_faq || "" };
   } catch { /* built-in text */ }
+  // The partner menu's text and links (Super Admin → Shubhora AI → Menu; bridge/shubhora-menu.mjs). Its own request, so a
+  // database without the column (0100 not run) keeps the facts above and the built-in menu.
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/platform_settings?select=shubhora_menu&id=eq.1`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
+    const rows = r.ok ? await r.json() : [];
+    if (Array.isArray(rows) && rows[0]) shubhoraOverride = { ...shubhoraOverride, menu: rows[0].shubhora_menu || {} };
+  } catch { /* keep the last menu */ }
   try {
     const r = await fetch(`${SUPA_URL}/rest/v1/platform_settings?select=ai_v2&id=eq.1`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
     const rows = r.ok ? await r.json() : [];   // column not added yet (0056 not run) → 400 → stays "off"

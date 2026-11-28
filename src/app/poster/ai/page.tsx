@@ -16,6 +16,7 @@ import { AiAway, AiReport, AiWho } from "@/components/poster/ai-guard";
 import { AiMoreSettings, AiQuickSetup } from "@/components/poster/ai-setup";
 import { Help, type HelpKey } from "@/components/poster/field-help";
 import { CardChat } from "@/components/card-chat";
+import { AiShubhoraMenu } from "@/components/poster/ai-shubhora-menu";
 import { publishCard } from "@/lib/cloud";
 import type { Card } from "@/lib/types";
 
@@ -74,6 +75,7 @@ export default function AiTrainingPage() {
           <section>
             {sec(2, T("What your AI knows and sends", "आपका AI क्या जानता और भेजता है"), T("Prices, details, common questions, brochures, a demo video.", "दाम, जानकारी, आम सवाल-जवाब, brochure, demo video।"))}
             <BotSiteBox card={card} trainOnly onChanged={(c) => { setCard(c); void load(); }} />
+            {sellsShubhora(card) && <div className="mt-3"><AiShubhoraMenu card={card} onSaved={setCard} hi={hi} /></div>}
             {sellsShubhora(card) && <div className="mt-3"><AiPartnerSwitch card={card} onSaved={setCard} hi={hi} /></div>}
           </section>
 
@@ -132,7 +134,7 @@ export default function AiTrainingPage() {
 const sellsShubhora = (c: Card) => (c.kb ? c.kb === "shubhora" : /shubhora/i.test(c.company ?? "") || /shubhora partner/i.test(c.jobTitle ?? ""));
 
 /** "Partner programme" on / off (owner, 22 Nov 2026): a Shubhora number that sells software and websites only — the AI then never
- *  talks about the income plan, never sends its video or PDF, and the menu has four options. Saved at once. */
+ *  talks about the income plan, never sends its video or PDF, and the menu has no Direct Selling Plan. Saved at once. */
 function AiPartnerSwitch({ card, onSaved, hi }: { card: Card; onSaved: (c: Card) => void; hi: boolean }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const on = card.partnerPlan !== false;

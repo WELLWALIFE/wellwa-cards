@@ -9,8 +9,9 @@ import {
   optionReply, cleanLinks, everydayHindi, dropRepeatGreeting, modelMessages, parseTags, wrongScript, agentTurn,
   agentFollowup, buildAgentSystem, personalLine, cardReadyNudge, linkKeys, callReply, cardCheck, cardLinkIn,
   fixRomanWords, dropPlaceholders, defersToSeller, dropDeferring, callAskNumber, callNoted, phoneIn, dropDisclaimers, hasDisclaimer,
-  tooLong, isAdOpener,
+  tooLong, isAdOpener, menuFor,
 } from "./shubhora-agent.mjs";
+import { cleanMenuConfig, fillTemplate, resolveMenu } from "./shubhora-menu.mjs";
 import { SHUBHORA_FAQ, SHUBHORA_KNOWLEDGE, SHUBHORA_PERSONA, ownPersona } from "./shubhora-kb.mjs";
 
 const links = agentLinks({ site: "https://shubhora.com", cardUrl: "https://shubhora.com/c/niteen", ownerUsername: "Delhi" });
@@ -72,7 +73,10 @@ test("facts: no free card, own domain bought by the customer, the November 2026 
   assert.match(SHUBHORA_KNOWLEDGE, /twice a day, at 3 PM and 3 AM.*Global Ambassador 6,00,000 — ₹60 crore.*every Wednesday, after TDS and a 5% admin charge/s);
   // no nervous disclaimers as facts (the owner, 27 Sep): the only mention is the rule against them
   assert.match(SHUBHORA_KNOWLEDGE, /INCOME IS NOT GUARANTEED and you never say it is/);
-  for (const t of [SHUBHORA_KNOWLEDGE, SHUBHORA_FAQ, SHUBHORA_PERSONA]) assert.doesNotMatch(t, /1,499|3,00,000 a month|हर पेयर पर ₹500|फ्री V-Card से/);
+  for (const t of [SHUBHORA_KNOWLEDGE, SHUBHORA_FAQ, SHUBHORA_PERSONA]) assert.doesNotMatch(t, /3,00,000 a month|हर पेयर पर ₹500|फ्री V-Card से/);
+  // single services (owner, 28 Nov 2026): each alone by the month, the Growth Plan shown when two or more are wanted
+  assert.match(SHUBHORA_KNOWLEDGE, /WhatsApp AI assistant 24×7 ₹1,499 · CRM \(leads, follow-ups, pipeline, reports\) ₹999 · daily posters \+ Facebook\/Instagram auto-post ₹1,499 · Google review replies and posts ₹699/);
+  assert.match(SHUBHORA_FAQ, /Growth Plan देखिए — ₹2,999 महीने में चारों/);
   assert.match(SHUBHORA_FAQ, /नियम पक्का है — जो सेल होगी और जो पेयर बनेगा, उसका पैसा प्लान के हिसाब से मिलता है/);
   assert.match(SHUBHORA_FAQ, /फ्री V-Card वाला ऑफर अब बंद हो गया है/);
   assert.match(SHUBHORA_FAQ, /वेबसाइट आपके Shubhora लिंक पर पहले दिन से चालू/);
@@ -113,9 +117,14 @@ test("quick reads: openers, social, acks, menu numbers, topics, calls", () => {
   for (const t of ["ok", "👍", "thanks", "धन्यवाद"]) assert.equal(quickRead(t).kind, "ack", t);
   assert.equal(menuChoice("1"), 1);
   assert.equal(menuChoice("४"), 4);
-  assert.equal(menuChoice("पार्टनर प्रोग्राम"), 4);
-  assert.equal(menuChoice("अन्य जानकारी"), 5);
+  assert.equal(menuChoice("7️⃣"), 7);
+  assert.equal(menuChoice("सात"), 7);
+  assert.equal(menuChoice("पार्टनर प्रोग्राम"), 6, "a name from the old menu still finds its option");
+  assert.equal(menuChoice("Direct Selling Plan"), 6);
+  assert.equal(menuChoice("WhatsApp AI"), 4);
+  assert.equal(menuChoice("अन्य जानकारी"), 0);
   assert.equal(menuChoice("Website + V-Card"), 1);
+  assert.equal(menuChoice("8"), 0);
   assert.equal(menuChoice("12"), 0);
   assert.ok(quickRead("pdf bhejo").topics.includes("pdf"));
   assert.ok(!quickRead("school app ki details").topics.includes("pdf"));
@@ -133,36 +142,45 @@ test("menu: the owner's format, card link, language line", () => {
     "आप किस बारे में जानना चाहते हैं? (नंबर भेजें):",
     "",
     "1️⃣ वेबसाइट + डिजिटल V-Card",
-    "2️⃣ Shubhora सर्विसेज़",
-    "3️⃣ कस्टम सॉफ्टवेयर",
-    "4️⃣ पार्टनर प्रोग्राम",
-    "5️⃣ अन्य जानकारी",
+    "2️⃣ Growth Plan (सब कुछ एक साथ)",
+    "3️⃣ कस्टम सॉफ्टवेयर और ऑटोमेशन",
+    "4️⃣ WhatsApp AI 24×7",
+    "5️⃣ CRM",
+    "6️⃣ Direct Selling Plan",
+    "7️⃣ इंसान से बात करें",
     "",
     "🔗 Niteen जी का कार्ड: https://shubhora.com/c/niteen",
     "🌐 You can reply in any language (हिंदी, English, मराठी, Gujarati, etc.)",
   ].join("\n"));
   const en = menuText({ lang: "en", seller: "Niteen", cardUrl: links.card, offerLanguage: false });
-  assert.match(en, /2️⃣ Shubhora services/);
+  assert.match(en, /2️⃣ Growth Plan \(everything together\)\n3️⃣ Custom software & automation/);
   assert.doesNotMatch(en, /🌐/);
   assert.doesNotMatch(menuText({ lang: "hi", seller: "Niteen", cardUrl: links.card, web: true }), /🔗/);
 });
 
-test("menu options: website + V-Card at ₹2,999 a year, partner programme with the joining link and no call offer", () => {
+test("menu options: each number answers its own option, with prices, links and the 0 = menu line", () => {
   const o1 = optionReply(1, { lang: "hi", seller: "Niteen", links });
-  assert.match(o1, /^आपकी अपनी वेबसाइट और डिजिटल V-Card — दोनों एक लिंक पर, सिर्फ ₹2,999 साल में \(GST सहित\) 🎉/);
-  assert.match(o1, /यहाँ से शुरू कीजिए 👉 https:\/\/shubhora.com\/join\/Delhi\nस्टेप-बाय-स्टेप वीडियो/, "the joining link first — no details asked");
+  assert.match(o1, /^आपकी अपनी वेबसाइट और डिजिटल V-Card — दोनों एक लिंक पर, QR के साथ 🎉/);
+  assert.match(o1, /Website Standard ₹2,999 साल \(GST सहित\)/);
+  assert.match(o1, /यहाँ से शुरू कीजिए 👉 https:\/\/shubhora.com\/join\/Delhi\nस्टेप-बाय-स्टेप वीडियो/, "the joining link — no details asked");
   assert.match(o1, /मैं चेक करके बताऊँगा कि और अच्छा कैसे बने/);
-  assert.ok(o1.indexOf(links.join) < o1.indexOf("आप क्या काम करते हैं?"), "the link comes before any question");
-  assert.match(optionReply(1, { lang: "en", seller: "Niteen", links }), /Start here 👉 https:\/\/shubhora.com\/join\/Delhi/);
-  const o4 = optionReply(4, { lang: "hi", seller: "Niteen", links });
-  assert.match(o4, /फ्री रजिस्ट्रेशन यहाँ से 👉 https:\/\/shubhora.com\/join\/Delhi/);
-  assert.match(o4, /रजिस्ट्रेशन में कोई दिक्कत आए तो बताइए — मैं मदद करता हूँ।/);
-  assert.match(o4, /\[MEDIA\] https:\/\/shubhora.com\/api\/stock\/demo\/shubhora-presentation-2026-11.pdf$/);
-  assert.match(optionReply(1, { lang: "en", seller: "Niteen", links }), /₹2,999 a year \(GST included\)/);
-  assert.doesNotMatch(o1 + o4, /1,499|फ्री कार्ड|₹3,00,000/);
-  for (let n = 1; n <= 5; n++) for (const lang of ["hi", "en"]) {
+  assert.match(o1, /\n\nकिसी और के बारे में जानने के लिए उसका नंबर भेजें · 0 = मेनू$/);
+  assert.match(optionReply(1, { lang: "en", seller: "Niteen", links }), /Start here 👉 https:\/\/shubhora.com\/join\/Delhi[\s\S]*0 = menu$/);
+  assert.match(optionReply(2, { lang: "hi", seller: "Niteen", links }), /₹2,999 महीना[\s\S]*अलग-अलग लें तो ₹4,696 महीना/);
+  assert.match(optionReply(3, { lang: "hi", seller: "Niteen", links }), /कोई भी सॉफ्टवेयर[\s\S]*आपको क्या बनवाना है/);
+  assert.match(optionReply(4, { lang: "hi", seller: "Niteen", links }), /अकेला ₹1,499 महीना — या Growth Plan \(₹2,999\)/);
+  assert.match(optionReply(5, { lang: "hi", seller: "Niteen", links }), /अकेला ₹999 महीना[\s\S]*टीम के लॉगिन या अपना अलग CRM चाहिए तो 3 भेजिए/);
+  const o6 = optionReply(6, { lang: "hi", seller: "Niteen", links });
+  assert.match(o6, /^Shubhora Direct Selling Plan/);
+  assert.match(o6, /फ्री रजिस्ट्रेशन यहाँ से 👉 https:\/\/shubhora.com\/join\/Delhi/);
+  assert.match(o6, /रजिस्ट्रेशन में कोई दिक्कत आए तो बताइए — मैं मदद करता हूँ।/);
+  assert.match(o6, /0 = मेनू\n\[MEDIA\] https:\/\/shubhora.com\/api\/stock\/demo\/shubhora-presentation-2026-11.pdf$/, "the PDF still goes last");
+  assert.equal(optionReply(7, { lang: "hi", seller: "Niteen", links }), null, "talk to a person is not a fixed text");
+  assert.equal(optionReply(8, { lang: "hi", seller: "Niteen", links }), null);
+  assert.doesNotMatch(o1 + o6, /फ्री कार्ड|₹3,00,000/);
+  for (let n = 1; n <= 6; n++) for (const lang of ["hi", "en"]) {
     const r = optionReply(n, { lang, seller: "Niteen", links });
-    assert.doesNotMatch(r, /Niteen|कॉल पर|call with|for ever|हमेशा/, `option ${n} ${lang}`);
+    assert.doesNotMatch(r, /Niteen|कॉल पर|call with|for ever|हमेशा|\{\w+\}/, `option ${n} ${lang}`);
   }
 });
 
@@ -227,7 +245,9 @@ test("prompt: answers itself, facts, links, examples, no template tone", () => {
   assert.ok(!s.includes("PRODUCT: old copy") && !s.includes("offer a callback"), "old frozen notes dropped");
   assert.ok(s.includes("My office: Jaipur"));
   assert.doesNotMatch(s, /for ever/i);
-  assert.doesNotMatch(s, /1,499|₹3,00,000 a month|फ्री कार्ड में न पैसा|Shubhora डोमेन नहीं देता।/);
+  assert.doesNotMatch(s, /₹3,00,000 a month|फ्री कार्ड में न पैसा|Shubhora डोमेन नहीं देता।/);
+  assert.ok(s.includes("numbered menu (1 वेबसाइट + डिजिटल V-Card · 2 Growth Plan (सब कुछ एक साथ) · 3 कस्टम सॉफ्टवेयर और ऑटोमेशन · 4 WhatsApp AI 24×7 · 5 CRM · 6 Direct Selling Plan · 7 इंसान से बात करें)"));
+  assert.ok(s.includes("WhatsApp AI ₹1,499, CRM ₹999, daily posters + auto-post ₹1,499, Google reviews ₹699"));
   const web = buildAgentSystem({ channel: "web", seller: "Niteen", card, links, lang: "en", now: T0 });
   assert.ok(!web.includes("[[PERSONAL]]"));
 });
@@ -274,12 +294,12 @@ test("new contact: Hi → menu → 1 → kirana → joining link → next-day nu
   assert.equal(r.calls.length, 0);
   assert.match(r.out.reply, /मैं Niteen जी का AI असिस्टेंट हूँ/);
   r = await say(c, "1");
-  assert.match(r.out.reply, /सिर्फ ₹2,999 साल में/);
+  assert.match(r.out.reply, /Website Standard ₹2,999 साल/);
   assert.match(r.out.reply, /यहाँ से शुरू कीजिए 👉 https:\/\/shubhora.com\/join\/Delhi/);
   assert.equal(c.state.stage, "self-card", "the joining link went out with option 1");
   r = await say(c, "kirana store hai", { answers: [`किराना के लिए कार्ड पर रेट लिस्ट और "WhatsApp पर ऑर्डर" बटन — ग्राहक घर बैठे ऑर्डर भेजेंगे। नमूना देखिए: ${links.card}\nऊपर वाला लिंक खोलकर शुरू कीजिए — कहीं अटकें तो बताइए।`] });
   assert.equal(c.state.stage, "self-card");
-  assert.match(r.calls[0].system, /The menu \(1–5\) was already sent/);
+  assert.match(r.calls[0].system, /The numbered menu was already sent/);
   assert.match(r.calls[0].system, /Already shared in this chat[^\n]*the joining link/);
   assert.match(r.calls[0].system, /If the joining link is already in this chat, don't send it again/);
   const f = await agentFollowup({ history: c.history, state: c.state, ctx, step: 0, now: c.now + D, complete: fakeModel("x").complete });
@@ -367,14 +387,14 @@ test("PDF always goes out as the file; the right video goes with it", async () =
   c = newConvo();
   r = await say(c, "business plan ki pdf bhejo", { answers: ["ये रहा पूरा प्लान 👇"] });
   assert.match(r.calls[0].system, /They want the PDF .*the partner-plan video/);
-  // the menu naming "पार्टनर प्रोग्राम" is not interest in it; option 4 is
+  // the menu naming the Direct Selling Plan is not interest in it; option 6 is
   c = newConvo();
   await say(c, "Hi");
   r = await say(c, "pdf", { answers: ["ये रही पूरी डिटेल 👇"] });
   assert.match(r.calls[0].system, /They want the PDF .*the Shubhora video/);
   c = newConvo();
   await say(c, "Hi");
-  await say(c, "4");
+  await say(c, "6");
   r = await say(c, "pdf dobara bhejo", { answers: ["ये रही 👇"] });
   assert.match(r.calls[0].system, /They want the PDF .*the partner-plan video/);
 });
@@ -386,7 +406,7 @@ test("language switch: 'English' on a new chat → English menu, remembered", as
   assert.match(r.out.reply, /1️⃣ Website \+ digital V-Card/);
   assert.doesNotMatch(r.out.reply, /🔗/, "the card link was already in the Hindi menu");
   assert.equal(c.state.langExplicit, true);
-  r = await say(c, "4");
+  r = await say(c, "6");
   assert.match(r.out.reply, /Register free here 👉 https:\/\/shubhora.com\/join\/Delhi/);
 });
 
@@ -489,7 +509,7 @@ test("ok after the joining link / the plan: a closing line that fits, once", asy
   assert.equal(r.out.action, "silent");
   c = newConvo();
   await say(c, "Hello");
-  await say(c, "4");
+  await say(c, "6");
   r = await say(c, "thanks");
   assert.equal(r.out.reply, "आपका भी धन्यवाद जी 🙏 PDF और वीडियो आराम से देख लीजिए — कोई भी सवाल हो तो यहीं पूछिए।");
 });
@@ -575,13 +595,71 @@ test("follow-up: written by the AI in the contact's language, never a call; pers
   assert.match(k.calls[0].system, /Their V-Card is live/);
 });
 
-test("stage: option 4 marks the partner plan; a bare number later is read by the AI, not as a menu answer", async () => {
+test("stage: option 6 marks the partner plan; another number after a fixed answer is that option; after an AI reply it is not", async () => {
   const c = newConvo();
   await say(c, "Hi");
-  await say(c, "4");
+  await say(c, "6");
   assert.equal(c.state.stage, "partner");
-  const r = await say(c, "1", { answers: ["डिजिटल V-Card के लिए ऊपर वाला लिंक ही खोलिए — वही फ्री कार्ड का भी है।"] });
-  assert.equal(r.calls.length, 1, "the menu is no longer the last message, so the AI reads the chat");
+  let r = await say(c, "1");
+  assert.equal(r.calls.length, 0, "the last answer ended with '0 = मेनू', so 1 is the website option");
+  assert.match(r.out.reply, /^आपकी अपनी वेबसाइट और डिजिटल V-Card/);
+  await say(c, "kirana hai", { answers: ["किराना के लिए रेट लिस्ट और WhatsApp ऑर्डर बटन बढ़िया रहेगा।"] });
+  r = await say(c, "2", { answers: ["जी, 2 प्रोडक्ट से भी शुरू कर सकते हैं।"] });
+  assert.equal(r.calls.length, 1, "the last message is the AI's, so the AI reads the chat");
+});
+
+test("0 brings the menu back; 7 tells the partner (WhatsApp) or asks for the number (website)", async () => {
+  const c = newConvo();
+  await say(c, "Hi");
+  await say(c, "2");
+  let r = await say(c, "0");
+  assert.equal(r.calls.length, 0);
+  assert.match(r.out.reply, /1️⃣ वेबसाइट \+ डिजिटल V-Card[\s\S]*7️⃣ इंसान से बात करें/);
+  assert.doesNotMatch(r.out.reply, /🌐/);
+  r = await say(c, "7");
+  assert.equal(strip(r.out.reply), strip(callReply("Niteen", "hi")));
+  assert.match(r.out.alert, /Wants to talk to you/);
+  const w = newConvo();
+  r = await say(w, "7", { channel: "web" });
+  assert.equal(r.out.reply, callAskNumber("Niteen", "hi"));
+  assert.equal(r.out.alert, null);
+  r = await say(newConvo(), "0", { answers: ["जी, बताइए 🙂"] });
+  assert.equal(r.calls.length, 1, "0 on a brand-new chat is not a menu request");
+});
+
+test("menu text and links: Super Admin's change reaches every partner; a partner's own change wins for that item only", async () => {
+  const platform = { items: { growth: { reply: { hi: "ग्रोथ प्लान — {productVideo}" } }, whatsapp: { title: { hi: "WhatsApp बॉट" } } }, links: { productVideo: "https://youtu.be/NEWVIDEO" } };
+  const own = { items: { growth: { reply: { hi: "मेरा अपना ग्रोथ टेक्स्ट 👉 {join}" } } }, links: { pdf: "https://example.com/my-plan.pdf" } };
+  const sctx = { ...ctx, override: { menu: platform } };
+  const pctx = { ...ctx, card: { ...card, botMenu: own }, override: { menu: platform } };
+  const hist = (m) => [{ role: "user", content: "hi", at: T0 }, { role: "assistant", content: m, at: T0 }];
+  const menuS = menuText({ lang: "hi", seller: "Niteen", cardUrl: links.card, menu: menuFor(sctx) });
+  assert.match(menuS, /4️⃣ WhatsApp बॉट/);
+  let r = await agentTurn({ channel: "whatsapp", text: "2", history: hist(menuS), state: {}, contact: {}, ctx: sctx, now: T0 + 60_000, complete: fakeModel("x").complete });
+  assert.match(r.reply, /^ग्रोथ प्लान — https:\/\/youtu\.be\/NEWVIDEO\n\n.*0 = मेनू$/);
+  r = await agentTurn({ channel: "whatsapp", text: "2", history: hist(menuS), state: {}, contact: {}, ctx: pctx, now: T0 + 60_000, complete: fakeModel("x").complete });
+  assert.match(r.reply, /^मेरा अपना ग्रोथ टेक्स्ट 👉 https:\/\/shubhora.com\/join\/Delhi/);
+  r = await agentTurn({ channel: "whatsapp", text: "6", history: hist(menuS), state: {}, contact: {}, ctx: pctx, now: T0 + 60_000, complete: fakeModel("x").complete });
+  assert.match(r.reply, /\[MEDIA\] https:\/\/example\.com\/my-plan\.pdf$/, "the partner's own PDF goes instead of Shubhora's");
+  // the AI may send the changed links (cleanLinks keeps them)
+  const m = fakeModel("ये देखिए https://youtu.be/NEWVIDEO");
+  r = await agentTurn({ channel: "whatsapp", text: "video bhejo", history: [], state: {}, contact: {}, ctx: sctx, now: T0, complete: m.complete });
+  assert.match(r.reply, /https:\/\/youtu\.be\/NEWVIDEO/);
+  assert.match(m.calls[0].system, /Shubhora explained \(Hindi video, 3½ min\): https:\/\/youtu\.be\/NEWVIDEO/);
+});
+
+test("menu config is cleaned: unknown items and languages dropped, bad links refused, text capped", () => {
+  const c = cleanMenuConfig({ items: { growth: { reply: { hi: "  x  ", fr: "non" } }, bogus: { reply: { hi: "y" } }, crm: { title: { hi: "" } } },
+    links: { pdf: "javascript:alert(1)", productVideo: "https://ok.example/v", other: "https://x" } });
+  assert.deepEqual(c, { items: { growth: { reply: { hi: "x" } } }, links: { productVideo: "https://ok.example/v" } });
+  assert.deepEqual(cleanMenuConfig(null), {});
+  assert.equal(cleanMenuConfig({ items: { growth: { reply: { hi: "a".repeat(5000) } } } }).items.growth.reply.hi.length, 1500);
+  const r = resolveMenu({ items: { crm: { title: { hi: "S" } } } }, { items: { crm: { title: { hi: "O" } } } });
+  assert.equal(r.items.find((i) => i.id === "crm").title.hi, "O");
+  assert.equal(r.items.find((i) => i.id === "crm").src.title.hi, "own");
+  assert.equal(r.items.find((i) => i.id === "crm").src.title.en, "built-in");
+  assert.equal(r.links.pdf, "https://shubhora.com/api/stock/demo/shubhora-presentation-2026-11.pdf");
+  assert.equal(fillTemplate("a {join}\nb {pdf}\nc", { join: "J", pdf: "" }), "a J\nc", "a line whose link is empty is dropped");
 });
 
 test("links used in replies are remembered", () => {
@@ -590,12 +668,12 @@ test("links used in replies are remembered", () => {
 });
 
 /* ---- partner programme switched off (22 Nov 2026): a Shubhora number that sells software and websites only ---- */
-test("partner off: four-option menu, no partner words", () => {
+test("partner off: six-option menu without the Direct Selling Plan", () => {
   const m = menuText({ lang: "hi", seller: "JS", cardUrl: links.card, partner: false });
-  assert.doesNotMatch(m, /पार्टनर/);
-  assert.match(m, /4️⃣ अन्य जानकारी/);
-  assert.doesNotMatch(m, /5️⃣/);
-  assert.match(menuText({ lang: "hi", seller: "JS", cardUrl: links.card }), /4️⃣ पार्टनर प्रोग्राम/);
+  assert.doesNotMatch(m, /पार्टनर|Direct Selling/);
+  assert.match(m, /5️⃣ CRM\n6️⃣ इंसान से बात करें/);
+  assert.doesNotMatch(m, /7️⃣/);
+  assert.match(menuText({ lang: "hi", seller: "JS", cardUrl: links.card }), /6️⃣ Direct Selling Plan/);
 });
 
 test("partner off: the prompt has no plan, a first rule, and the seller's own link", () => {
@@ -605,7 +683,8 @@ test("partner off: the prompt has no plan, a first rule, and the seller's own li
   assert.doesNotMatch(sys, /Matching Bonus|Rank Rewards|Sponsor Bonus/);
   assert.doesNotMatch(sys, new RegExp(links.planVideo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(sys, /network\.shubhora\.com/);
-  assert.match(sys, /· 4 अन्य जानकारी\)/);
+  assert.match(sys, /· 5 CRM · 6 इंसान से बात करें\)/);
+  assert.doesNotMatch(sys, /Direct Selling Plan\)/);
   // everyone else keeps the plan
   assert.match(buildAgentSystem({ channel: "whatsapp", seller: "Niteen", card, links, override: {}, lang: "hi" }), /PARTNER PROGRAMME/);
 });
@@ -616,13 +695,19 @@ test("the seller's own link survives cleaning; an invented shubhora.com page sti
   assert.match(cleanLinks("देखिए https://shubhora.com/made-up", l), new RegExp(links.card));
 });
 
-test("partner off: menu 4 is 'other', the word 'partner' gets the no-programme answer", async () => {
+test("partner off: 6 is talk to a person, 7 is nothing, the word 'partner' gets the no-programme answer", async () => {
   const off = { ...card, partnerPlan: false };
   const octx = { ...ctx, card: off };
   const menu = menuText({ lang: "hi", seller: "Niteen", cardUrl: links.card, partner: false });
   const history = [{ role: "user", content: "hi", at: T0 }, { role: "assistant", content: menu, at: T0 }];
+  const six = await agentTurn({ channel: "whatsapp", text: "6", history, state: {}, contact: {}, ctx: octx, now: T0 + 60_000, complete: fakeModel("x").complete });
+  assert.equal(strip(six.reply), strip(callReply("Niteen", "hi")));
+  assert.ok(six.alert);
   const four = await agentTurn({ channel: "whatsapp", text: "4", history, state: {}, contact: {}, ctx: octx, now: T0 + 60_000, complete: fakeModel("x").complete });
-  assert.equal(four.reply, optionReply(5, { lang: "hi", seller: "Niteen", links }));
+  assert.equal(four.reply, optionReply(4, { lang: "hi", seller: "Niteen", links, partner: false }));
+  const seven = fakeModel("जी, बताइए 🙂");
+  await agentTurn({ channel: "whatsapp", text: "7", history, state: {}, contact: {}, ctx: octx, now: T0 + 60_000, complete: seven.complete });
+  assert.equal(seven.calls.length, 1, "no 7th option on this menu");
   const m = fakeModel("ये नंबर सिर्फ़ सॉफ्टवेयर और वेबसाइट के लिए है जी।");
   const p = await agentTurn({ channel: "whatsapp", text: "पार्टनर प्रोग्राम", history, state: {}, contact: {}, ctx: octx, now: T0 + 60_000, complete: m.complete });
   assert.doesNotMatch(p.reply, /Bonus|बोनस/);

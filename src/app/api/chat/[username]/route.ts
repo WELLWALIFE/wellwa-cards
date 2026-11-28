@@ -22,7 +22,8 @@ import { agentCardLookup, agentComplete, agentContext, webState, type AgentMsg }
 import type { Card } from "@/lib/types";
 import { isShubhoraCard } from "../../../../../bridge/shubhora-kb.mjs";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage } from "@/lib/shubhora-page";
-import { agentTurn, firstName, v2Mode, WEB_CHIPS } from "../../../../../bridge/shubhora-agent.mjs";
+import { agentTurn, firstName, v2Mode, webChips } from "../../../../../bridge/shubhora-agent.mjs";
+import { resolveMenu } from "../../../../../bridge/shubhora-menu.mjs";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -81,10 +82,10 @@ export async function GET(
   return Response.json({
     v2: true,
     title: `${seller} जी का AI असिस्टेंट`,
-    subtitle: card.partnerPlan === false ? "वेबसाइट, V-Card और सॉफ्टवेयर" : "V-Card, सर्विसेज़ और पार्टनर प्रोग्राम",
+    subtitle: card.partnerPlan === false ? "वेबसाइट, V-Card और सॉफ्टवेयर" : "वेबसाइट, सर्विसेज़ और Direct Selling Plan",
     greeting: `नमस्ते जी! 🙏 मैं ${seller} जी का AI असिस्टेंट हूँ। आप किस बारे में जानना चाहते हैं?`,
-    // Partner programme off: no "पार्टनर प्रोग्राम" chip.
-    chips: WEB_CHIPS.filter((_: unknown, i: number) => card.partnerPlan !== false || i !== 3).map((c: { label: string }) => c.label),
+    // The menu's options as buttons (Super Admin's and the partner's own names); programme off: no Direct Selling Plan chip.
+    chips: webChips({ partner: card.partnerPlan !== false, menu: resolveMenu(platform.shubhora?.menu, card.botMenu) }).map((c: { label: string }) => c.label),
     placeholder: "अपना सवाल लिखिए…",
   });
 }

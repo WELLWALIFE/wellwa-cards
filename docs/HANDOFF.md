@@ -60,6 +60,21 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 4. To discuss with the owner: WhatsApp support line (AI answers + tickets, safe auto-fixes, a daily Claude review, owner-approved deploys).
 5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; server Node 20 → 22;
    Cloud API buttons untested.
+7. Shubhora partner menu, editable (built 28 Nov 2026, NOT deployed; owner: "setting sab sites ke liye same, partner change kare to
+   uska lage"). The numbered menu was already live for all 19 partner cards (ai_v2 = "shubhora" since 26 Sep). Now 7 options
+   (owner's list): 1 Website + V-Card · 2 Growth Plan · 3 Custom software · 4 WhatsApp AI 24×7 · 5 CRM · 6 Direct Selling Plan ·
+   7 talk to a person (partner alerted; card chat asks the number). A number answers with fixed text (no AI) + "0 = मेनू"; another
+   number after a fixed answer still works; "0" brings the menu back; free text → AI. Partner programme off → no 6, person = 6.
+   Text and the PDF / video links: bridge/shubhora-menu.mjs (built-in) → Super Admin → Shubhora AI → "Menu and links"
+   (platform_settings.shubhora_menu, migration **0100**, owner runs it BEFORE deploy) → a partner's own change per item / link
+   (card.botMenu, AI Training → "मेरा मेनू", "Shubhora वाला वापस"). Bridge reads it on its 5-minute refresh; card chat at once.
+   Single services in the facts and the menu (owner chose the example prices): WhatsApp AI ₹1,499, CRM ₹999, posters + auto-post
+   ₹1,499, Google reviews ₹699 a month; Growth Plan ₹2,999 = all + broadcasts + monthly report.
+   NOT built yet — selling them alone in the app: today one expiry (plan_expires_at / saas_*) opens WhatsApp AI, CRM sending,
+   posters, broadcasts and the report together; Google replies, Cloud API AI and Cloud broadcasts have no plan gate at all.
+   Needs a per-product expiry and every gate changed; BV per single service is decided in the separate partner panel app
+   (partner-link.ts reportPaidToPartner), not in this repo — owner to give BV per service.
+   tsc, eslint, bridge tests (57) pass; the admin and AI Training screens were not opened in a browser.
 6. Server keys — DONE (28 Nov 2026). /root/.ssh/authorized_keys now holds exactly two keys: omnibook-deploy-2 (this laptop, deploys)
    and tusharydv@Mac.lan (owner: keep). Removed: jsrao@JSRAOs-Air.lan (backup authorized_keys.bak-2026-11-28) and codex-wellwa-deploy
    (owner's "haan hatao"; backup authorized_keys.bak-2026-11-28T11-46-56). A fresh login from omnibook was checked after each removal.
