@@ -72,8 +72,8 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    (card.botMenu, AI Training → "मेरा मेनू", "Shubhora वाला वापस"). Bridge reads it on its 5-minute refresh; card chat at once.
    Single services in the facts and the menu (owner chose the example prices): WhatsApp AI ₹1,499, CRM ₹999, posters + auto-post
    ₹1,499, Google reviews ₹699 a month; Growth Plan ₹2,999 = all + broadcasts + monthly report.
-8. Single services sold alone (built 28 Nov 2026, NOT deployed; owner "haan, shuru karo"). Migration **0101** (owner runs it before
-   deploy): profiles.svc_{wa_ai,crm,posters,google}_until, payment_requests kind 'service' + `service`, svc_ledger, apply_service();
+8. Single services sold alone (DEPLOYED 28 Nov 2026 on the owner's "ha karo", after the owner ran migration **0101** — columns,
+   payment_requests.service and svc_ledger checked live; pages 200, no new app errors). Migration 0101: profiles.svc_{wa_ai,crm,posters,google}_until, payment_requests kind 'service' + `service`, svc_ledger, apply_service();
    the billing guard now also covers 0087's package / package_until (users could write those from the app before).
    Prices: src/lib/single-services.ts (not src/lib/services.ts — that is the /solutions catalogue). Rule everywhere: a plan covers all;
    else the service's paid end + 7 grace days. Server: src/lib/single-services-server.ts (serviceExpiry); bridge jobs:
