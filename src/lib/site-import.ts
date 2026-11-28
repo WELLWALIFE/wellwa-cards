@@ -14,7 +14,7 @@ import sharp from "sharp";
 import { fetchPublic } from "@/lib/reference-site";
 import { htmlOf, looksEmpty } from "@/lib/render-page";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
-import { modelsFromPage, pagePictures, readModelPage, vetPictures, type BrandSpec } from "@/lib/dealer-brand";
+import { dropLookalikes, modelsFromPage, pagePictures, readModelPage, vetPictures, type BrandSpec } from "@/lib/dealer-brand";
 
 export type SiteProduct = { name: string; price: string; mrp: string; description: string; specs: string[]; images: string[]; url: string;
   /** A dealer's brand model, read by the AI from its own page (dealer-brand.ts): the spec sheet as rows, and its colours. */
@@ -734,7 +734,7 @@ export async function dealerEnrich(s0: SiteImport, log?: (url: string, kind: str
   // Banners: a line-up of the range first, then each model's own studio banner, then any other wide product picture.
   const wideVetted = vetted.filter((v) => v.kind !== "closeup" && v.w >= 1000 && v.w / v.h >= 1.3)
     .sort((a, b) => (a.kind === "lineup" ? 0 : 1) - (b.kind === "lineup" ? 0 : 1) || b.w * b.h - a.w * a.h).map((v) => v.url);
-  const banners = [...new Set([...wideVetted.slice(0, 1), ...modelBanners, ...wideVetted.slice(1)])].slice(0, 6);
+  const banners = (await dropLookalikes([...new Set([...wideVetted.slice(0, 1), ...modelBanners, ...wideVetted.slice(1)])].slice(0, 8)).catch(() => [] as string[])).slice(0, 6);
   const pictures2 = vetted.filter((v) => !banners.includes(v.url)).map((v) => v.url).slice(0, 12);
   const bannerModel = Object.fromEntries(models.flatMap((m, i) => (m?.banners ?? []).map((u) => [u, s.products[i].name])));
   return { ...s, products, dealer: { banners, pictures: pictures2, bannerModel } };

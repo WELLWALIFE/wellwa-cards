@@ -27,6 +27,12 @@ function parse<T>(text: string): T | null {
   const m = text.match(/\{[\s\S]*\}/);
   try { return m ? (JSON.parse(m[0]) as T) : null; } catch { return null; }
 }
+/** One AI call, tried once more when it fails or comes back empty (a lost look left a dealer's gallery empty, 28 Nov 2026). */
+async function ask(opts: Parameters<typeof geminiComplete>[0]): Promise<{ text: string; blocked: boolean }> {
+  try { const r = await geminiComplete(opts); if (r.text.trim()) return r; } catch { /* once more */ }
+  await new Promise((ok) => setTimeout(ok, 2000));
+  return geminiComplete(opts);
+}
 const money = (v: unknown) => { const d = S(v, 20).replace(/[^\d.]/g, ""); return d && Number(d) > 0 ? String(Math.round(Number(d))) : ""; };
 
 /** A small JPEG of a picture for the AI, with its real size; null when it is not a usable picture. */
@@ -76,7 +82,7 @@ For every picture say what it is. JSON only: {"pictures":[{"n":1,"kind":"product
 - place: a town, landmark, building, road, map. people: a person or team, a testimonial face. stock: generic concept art (bulb, target, hands).
 - poster: a campaign / advertisement / event / film poster or any picture with a lot of written text. graphic: an icon, logo, pattern, plain background.` });
   try {
-    const { text } = await geminiComplete({ apiKey: KEY(), tag: "dealer-brand:vet", temperature: 0, json: true, maxOutputTokens: 2000, contents: [{ role: "user", parts }] });
+    const { text } = await ask({ apiKey: KEY(), tag: "dealer-brand:vet", temperature: 0, json: true, maxOutputTokens: 2000, contents: [{ role: "user", parts }] });
     // The answer is {"pictures":[…]} as asked, or now and then the bare list.
     const v = parse<{ pictures?: { n?: number; kind?: string }[] } | { n?: number; kind?: string }[]>(text.trim().startsWith("[") ? `{"pictures":${text}}` : text);
     const list = Array.isArray(v) ? v : v?.pictures ?? [];
@@ -170,7 +176,7 @@ Read it as the model's spec sheet for a dealer's website. JSON only:
 - pictures: the numbers of the pictures that show THIS model (same body and design as the catalogue photo; another colour of it is fine)
   or a close-up of its parts. Not other models, not icons, logos, backgrounds, people or text graphics. Best first.` });
   try {
-    const { text } = await geminiComplete({ apiKey: KEY(), tag: "dealer-brand:model", temperature: 0, json: true, maxOutputTokens: 2500, contents: [{ role: "user", parts }] });
+    const { text } = await ask({ apiKey: KEY(), tag: "dealer-brand:model", temperature: 0, json: true, maxOutputTokens: 2500, contents: [{ role: "user", parts }] });
     const v = parse<{ specs?: { label?: unknown; value?: unknown }[]; colours?: unknown[]; variants?: { name?: unknown; price?: unknown; mrp?: unknown }[]; about?: unknown; pictures?: unknown[] }>(text);
     if (!v) return null;
     const lorem = /\b(lorem|ipsum|eiusmod|consectetur|cupidatat)\b/i;
@@ -219,7 +225,7 @@ export async function modelsFromPage(html: string, base: string, brand: string):
   let host = "";
   try { host = new URL(base).hostname.replace(/^www\./, ""); } catch { return []; }
   try {
-    const { text } = await geminiComplete({ apiKey: KEY(), tag: "dealer-brand:models", temperature: 0, json: true, maxOutputTokens: 3000, contents: [{ role: "user", parts: [{ text: `A page of the website of ${brand || host}. Links are written [link address] before their words, pictures [img address].
+    const { text } = await ask({ apiKey: KEY(), tag: "dealer-brand:models", temperature: 0, json: true, maxOutputTokens: 3000, contents: [{ role: "user", parts: [{ text: `A page of the website of ${brand || host}. Links are written [link address] before their words, pictures [img address].
 """
 ${c.text}
 """
@@ -236,4 +242,24 @@ dealers or offers). JSON only: {"models":[{"name":"…","url":"…","image":"…
       .filter((m) => m.name.length >= 2 && (m.url || m.image) && !seen.has(m.name.toLowerCase()) && (seen.add(m.name.toLowerCase()), true))
       .slice(0, 12);
   } catch { return []; }
+}
+
+/** The same picture twice under two addresses or sizes (okinawascooters.com: the red OKHI-90 at 1407 and at 1591 px) is kept once:
+ *  a 9×8 difference hash of each, and a picture within a few bits of one kept before it is left out. Order is kept. */
+export async function dropLookalikes(urls: string[]): Promise<string[]> {
+  const hashes = await pool(urls, 3, async (u) => {
+    const r = await fetchPublic(u, "image", 8_000_000, 15_000).catch(() => null);
+    if (!r) return null;
+    try {
+      const px = await sharp(r.body, { failOn: "none" }).rotate().flatten({ background: "#000000" }).trim({ threshold: 20 }).greyscale().resize(9, 8, { fit: "fill" }).raw().toBuffer()
+        .catch(() => sharp(r.body, { failOn: "none" }).rotate().flatten({ background: "#000000" }).greyscale().resize(9, 8, { fit: "fill" }).raw().toBuffer());
+      const bits: boolean[] = [];
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) bits.push(px[y * 9 + x] > px[y * 9 + x + 1]);
+      return bits;
+    } catch { return null; }
+  });
+  const kept: { u: string; h: boolean[] | null }[] = [];
+  const dist = (a: boolean[], b: boolean[]) => a.reduce((n, v, i) => n + (v !== b[i] ? 1 : 0), 0);
+  urls.forEach((u, i) => { const h = hashes[i]; if (h == null || !kept.some((k) => k.h != null && dist(k.h, h) <= 6)) kept.push({ u, h }); });
+  return kept.map((k) => k.u);
 }

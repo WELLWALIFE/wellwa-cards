@@ -135,7 +135,19 @@ async function planExpiry(userId: string): Promise<string> {
   return p?.[0]?.plan_expires_at || "2999-12-31T23:59:59.000Z";
 }
 
+/** A test account ("TEST Claude (ignore)" — the owner's rule for every test) never gets a WhatsApp: its number may be made up and
+ *  belong to a stranger (owner, 28 Nov 2026: the test dealer's 7234567890 must not be messaged when its website goes live). */
+async function isTestAccount(userId: string): Promise<boolean> {
+  try {
+    const p = await rest(`profiles?id=eq.${userId}&select=full_name,business&limit=1`).then((r) => r.json());
+    const c = await rest(`cards?owner_id=eq.${userId}&select=name,company&limit=3`).then((r) => r.json()).catch(() => []);
+    const names = [p?.[0]?.full_name, p?.[0]?.business, ...(Array.isArray(c) ? c.flatMap((x: { name?: string; company?: string }) => [x.name, x.company]) : [])];
+    return names.some((n) => typeof n === "string" && /^\s*test\b|\(ignore\)/i.test(n));
+  } catch { return true; }   // unsure → no message (a missed test message costs nothing; a stranger's costs trust)
+}
+
 async function sendWhatsApp(userId: string, text: string): Promise<{ ok: boolean; error?: string }> {
+  if (await isTestAccount(userId)) { console.log("[notify] whatsapp skipped: test account", userId); return { ok: false, error: "test account — no WhatsApp" }; }
   const to = await userPhone(userId);
   if (!to) return { ok: false, error: "no WhatsApp number" };
   const sender = process.env.NOTIFY_WA_USER || userId;          // company WhatsApp, else the user's own

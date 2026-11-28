@@ -43,6 +43,12 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    amperevehicles.com answers 403 to the server, heroelectric.in does not answer — nothing to read there.
    Full end-to-end test: the owner gives the "TEST Claude (ignore)" account a plan from the admin panel (owner, 28 Nov: never write
    a plan into the DB directly); then run a dealer build on it.
+2c. TEST Claude dealer (account b1269c12…, card test-claude-ignore; plan given by the owner from admin, till 28 Dec): built 28 Nov
+   from okinawascooters.com, Jaipur — 9 models with MRP, specs, colours, 3–6 photos each, 3 brand banner slides, gallery 5, Okinawa
+   logo, no AI picture painted. Website held till 29 Nov 10:11 (site-order hold), then the hourly job makes it live and tells the owner.
+   NOT DEPLOYED (needed before 29 Nov 10:11): notify.ts sends no WhatsApp to a test account (name "TEST…" / "(ignore)" on profile or
+   card) — its number 7234567890 may be a stranger's (owner). Also not deployed: dealer's brand name fills the trade's empty
+   "Brands" line on set-up (onboard page); near-duplicate banners kept once (dropLookalikes); dealer AI calls retried once.
 3. Deployed 27 Nov: Photo library "Make by AI" on a dealer card draws the brand's real models (ai-image.ts slotImage products refs).
 4. To discuss with the owner: WhatsApp support line (AI answers + tickets, safe auto-fixes, a daily Claude review, owner-approved deploys).
 5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; old server keys

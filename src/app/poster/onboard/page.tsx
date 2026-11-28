@@ -1019,6 +1019,23 @@ function Onboard() {
     });
   }
 
+  // A dealer's brand on "About your trade" (owner, 28 Nov 2026: the test dealer of okinawascooters.com found "Brands" empty): the brand
+  // site's name goes into the trade's Brands line when it is empty — again after a change of trade (that empties the answers), but
+  // never over what the owner typed, and not back into a line the owner emptied.
+  const brandFilled = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (site.kind !== "dealer" || peek.state !== "found" || peek.role !== "dealer" || !biz.category) return;
+    const raw = (peek.data?.name ?? "").trim();
+    if (!raw) return;
+    const brand = (raw === raw.toUpperCase() ? raw.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : raw).slice(0, 60);
+    const q = tradeQuestionsFor(biz.category, facts.tradeAnswers).find((x) => x.type === "text" && /^brands?$/.test(x.key));
+    if (!q) return;
+    const mark = `${biz.category}:${q.key}:${brand}`;
+    if (brandFilled.current.has(mark) || (facts.tradeAnswers?.[q.key] ?? []).some((v) => v.trim())) return;
+    brandFilled.current.add(mark);
+    setF({ tradeAnswers: { ...(facts.tradeAnswers ?? {}), [q.key]: [brand] } });
+  }, [site.kind, peek.state, peek.role, peek.data?.name, biz.category, facts.tradeAnswers]);
+
   /** A website the person likes says what trade they are in (owner's call, 4 Oct 2026: "reference website se bhi
    *  category auto select") — only the trade, and only until they pick one themselves. */
   function prefillReference(d: PeekData) {
