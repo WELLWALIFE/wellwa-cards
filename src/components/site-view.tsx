@@ -1460,7 +1460,7 @@ function OfferCode({ code }: { code: string }) {
 
 /* ---------- product cards (the products page and the home preview) ---------- */
 type Zoom = { images: string[]; i: number; alt: string } | null;
-const galleryOf = (p: ProductItem) => [...(p.images ?? []), ...(p.imageUrl ? [p.imageUrl] : [])].filter((u, j, a) => u && a.indexOf(u) === j).slice(0, 3);
+const galleryOf = (p: ProductItem) => [...(p.images ?? []), ...(p.imageUrl ? [p.imageUrl] : [])].filter((u, j, a) => u && a.indexOf(u) === j).slice(0, 6);
 
 /** One product on a page of its own: the picture big on the left, everything about it on the right. The grid
  *  card is a teaser; this is the page a visitor lands on from a shared link or from search. */

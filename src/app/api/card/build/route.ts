@@ -25,7 +25,7 @@ import { restAsService, userFromRequest, stockEngineMod, posterQuota } from "@/l
 import { writeCard, fillThinText, type CardBrief, type CardCopy } from "@/lib/card-ai";
 import { textAudit, applyThinText } from "@/lib/card-text";
 import { readOwnSite, readReference } from "@/lib/reference-site";
-import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
+import { dealerEnrich, importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
 import { cleanStyle, lookIsBlank } from "@/lib/site-style";
 import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts, tradeLabelOf } from "@/lib/card-inputs";
@@ -226,7 +226,8 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // accounts that chose the dealer chip before that box existed are let through, and noted.
   if (importRole === "dealer" && website && !facts.dealerAssertedAt) console.log("[card] dealer import without assertion", me.id, website);
   const importP: Promise<{ imp: SiteImport; stored: StoredSite } | null> = website
-    ? within(importSite(website).then(async (imp) => (imp ? { imp, stored: await storeSiteMedia(me.id, imp, importRole) } : null)).catch(() => null), 150_000)
+    ? within(importSite(website).then((imp) => (imp && importRole === "dealer" ? dealerEnrich(imp).catch(() => imp) : imp))
+      .then(async (imp) => (imp ? { imp, stored: await storeSiteMedia(me.id, imp, importRole) } : null)).catch(() => null), 150_000)
     : Promise.resolve(null);
 
   /* ---- save the typed products (service role; NEVER delete) ---- */
@@ -447,10 +448,11 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   let slideBanners: string[] = [];
   if (orderBuild) {
     step("pictures");
-    const have = facts.bannerUrl ? [facts.bannerUrl] : [];
+    // A dealer: the brand's own product banners (dealerEnrich, seen by the AI) come before any painted one.
+    const have = [...new Set([...(facts.bannerUrl ? [facts.bannerUrl] : []), ...(importRole === "dealer" ? got?.stored.banners ?? [] : [])])].slice(0, 3);
     const ref = role === "reference" && facts.website ? await referenceP : null;
     const made = await within(
-      bannerSet(me.id, {
+      have.length >= 3 ? Promise.resolve([] as string[]) : bannerSet(me.id, {
         trade: setup.categoryLabel || setup.category || "", brand, city: setup.city || "",
         products: importRole === "dealer" ? (got?.stored.products ?? []).flatMap((p) => p.stored.slice(0, 1)).slice(0, 2) : [],
         dark: ref?.style?.dark ?? false, color: ref?.style?.colors?.[0] ?? ref?.look?.accent ?? categoryOf(setup.category)?.accent,
@@ -463,6 +465,9 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     if (!facts.bannerUrl && made[0]) { aiPhotos = made.length; aiBannerUrl = made[0]; facts = { ...facts, bannerUrl: made[0] }; }
     console.log("[card] order banners", slideBanners.length, "of 3");
     mark("banner");
+  } else if (importRole === "dealer" && (got?.stored.banners ?? []).length >= 2) {
+    // A dealer's card that is not an order: the brand's product banners still slide at the top (nothing painted, nothing spent).
+    slideBanners = [...new Set([...(facts.bannerUrl ? [facts.bannerUrl] : []), ...got!.stored.banners!])].slice(0, 3);
   }
   const makeBanner = paidPlan && !fresh && !facts.bannerUrl && wantsBanner && !orderBuild;
   if (makeBanner) {

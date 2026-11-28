@@ -83,7 +83,7 @@ export interface SpecRow {
 export interface ProductItem {
   name: string;
   imageUrl?: string;   // legacy single image — still honoured as the first image
-  images?: string[];   // up to 3 product photos (gallery + tap to zoom)
+  images?: string[];   // up to 6 product photos (gallery + tap to zoom)
   mrp?: string;        // original price (struck through)
   price?: string;      // offer / selling price
   badge?: string;      // e.g. "Bestseller", "20% OFF"

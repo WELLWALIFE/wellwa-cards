@@ -14,8 +14,11 @@ import sharp from "sharp";
 import { fetchPublic } from "@/lib/reference-site";
 import { htmlOf, looksEmpty } from "@/lib/render-page";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
+import { pagePictures, readModelPage, vetPictures, type BrandSpec } from "@/lib/dealer-brand";
 
-export type SiteProduct = { name: string; price: string; mrp: string; description: string; specs: string[]; images: string[]; url: string };
+export type SiteProduct = { name: string; price: string; mrp: string; description: string; specs: string[]; images: string[]; url: string;
+  /** A dealer's brand model, read by the AI from its own page (dealer-brand.ts): the spec sheet as rows, and its colours. */
+  specRows?: BrandSpec[]; colours?: string[] };
 export type SiteAddress = { street: string; city: string; region: string; pin: string; full: string };
 export type SiteImport = {
   url: string;
@@ -38,6 +41,10 @@ export type SiteImport = {
   social: { instagram: string; facebook: string; youtube: string };
   /** What the site itself calls its ranges — the nav's category / collection labels ("Sweets", "Namkeen", "Gift Hampers"). */
   categories: string[];
+  /** The pages that were read (home, listings, about, gallery) — a dealer's brand pictures are looked for on them (dealerEnrich). */
+  pages?: string[];
+  /** A dealer's brand site, seen by the AI (dealerEnrich): its product pictures — banners (wide, biggest first) and the rest. */
+  dealer?: { banners: string[]; pictures: string[]; /** banner address → the model it shows (its own studio banner) */ bannerModel?: Record<string, string> };
 };
 
 type Obj = Record<string, unknown>;
@@ -600,6 +607,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
 
   // Products: structured data on the home page → shop catalogs → product pages.
   const byName = new Map<string, SiteProduct>();
+  const pagesRead: string[] = [home.url];
   const add = (p: SiteProduct | null) => { if (p && p.name && !byName.has(p.name.toLowerCase()) && byName.size < MAX_PRODUCTS) byName.set(p.name.toLowerCase(), p); };
   for (const o of ld) {
     if (isType(o, /^Product$/i)) add(productFromLd(o, home.url));
@@ -615,6 +623,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
     const listing = await Promise.all([...new Set([...["/products", "/shop", "/our-products", "/product", "/collections/all"].map((p) => `${origin}${p}`), ...cats.map((c) => c.url), ...menu])]
       .map((u) => page(u).catch(() => null)));
     const read = [home, ...listing].filter((pg): pg is NonNullable<typeof pg> => !!pg);
+    pagesRead.push(...listing.flatMap((pg) => (pg ? [pg.url] : [])));
     // 1. the listing cards themselves (name + price + picture): on most Indian shop sites this is all there is
     const cards = read.flatMap((pg) => cardsFromHtml(pg.html, pg.url));
     // 2. the product pages those cards (and any other product links) point at — richer: description, specs, MRP
@@ -645,6 +654,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
   const more = await Promise.all(["/about", "/about-us", "/gallery", "/about.html", "/gallery.html"].map((p) => page(`${origin}${p}`).catch(() => null)));
   const og = absolute(meta(home.html, "og:image"), home.url);
   const pics = [home, ...more].filter(Boolean).map((pg) => pictures(pg!.html, pg!.url));
+  pagesRead.push(...more.flatMap((pg) => (pg ? [pg.url] : [])));
   const productPics = new Set([...byName.values()].flatMap((p) => p.images));
   const covers = [...new Set([og, ...pics.flatMap((p) => p.hero)].filter((x): x is string => !!x && !productPics.has(x)))].slice(0, 6);
   const gallery = [...new Set(pics.flatMap((p) => p.other))].filter((u) => !covers.includes(u) && !productPics.has(u)).slice(0, 12);
@@ -664,19 +674,66 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
     hours,
     social: socialOf(home.html),
     categories: cats.map((c) => c.label),
+    pages: [...new Set(pagesRead)],
   };
+}
+
+/** A dealer's brand site, read for the dealer (owner, 28 Nov 2026: "main website se saari image"): every model's own page is read by
+ *  the AI (its spec sheet, colours, variant prices and its pictures — dealer-brand.ts readModelPage), and every big picture of the
+ *  pages read is seen by the AI so only the brand's products are kept (vetPictures): the wide ones are the dealer's banners, the rest
+ *  their gallery. Nothing of the brand's town photos, team, stock art or campaign posters. */
+export async function dealerEnrich(s: SiteImport, log?: (url: string, kind: string) => void): Promise<SiteImport> {
+  const names = s.products.map((p) => p.name);
+  const [models, pagePics] = await Promise.all([
+    pool(s.products, 3, (p) => (p.url ? readModelPage(p.url, p.name, p.images[0], names.filter((n) => n !== p.name)).catch(() => null) : Promise.resolve(null))),
+    // The home page last: its town, team and testimonial pictures would fill the AI's look before the gallery page's photos.
+    pool([...new Set([...(s.pages ?? []).filter((u) => u !== s.url), s.url])].slice(0, 10), 3, async (u) => {
+      const r = await fetchPublic(u, "html", 1_500_000, 10_000).catch(() => null);
+      return r ? pagePictures(r.body.toString("utf8"), r.url).map((x) => x.url) : [];
+    }),
+  ]);
+  const products = s.products.map((p, i) => {
+    const m = models[i];
+    if (!m) return p;
+    const v = m.variants[0];
+    const rows = m.specs.map((r) => `${r.label}: ${r.value}`);
+    const colours = m.colours.length ? [`Colours: ${m.colours.join(", ")}`] : [];
+    return {
+      ...p,
+      images: [...new Set([...p.images.slice(0, 1), ...m.images, ...p.images.slice(1)])].slice(0, 6),
+      specRows: m.specs, colours: m.colours,
+      // The first six lines become the product's points on the card: five specs, then the colours.
+      specs: rows.length ? [...rows.slice(0, 5), ...colours, ...rows.slice(5)] : [...p.specs, ...colours],
+      price: p.price || v?.price || "", mrp: p.mrp || v?.mrp || "",
+      description: p.description || m.about,
+    };
+  });
+  const modelBanners = [...new Set(models.flatMap((m) => m?.banners ?? []))];
+  const usedByModels = new Set([...products.flatMap((p) => p.images), ...modelBanners]);
+  const cands = [...new Set([...models.flatMap((m) => m?.rest ?? []), ...pagePics.flat(), ...s.covers, ...s.gallery])].filter((u) => !usedByModels.has(u));
+  log?.(`pages: ${(s.pages ?? []).join(" ")}`, "info");
+  const vetted = await vetPictures(cands, s.name, log).catch(() => []);
+  // Banners: a line-up of the range first, then each model's own studio banner, then any other wide product picture.
+  const wideVetted = vetted.filter((v) => v.kind !== "closeup" && v.w >= 1000 && v.w / v.h >= 1.3)
+    .sort((a, b) => (a.kind === "lineup" ? 0 : 1) - (b.kind === "lineup" ? 0 : 1) || b.w * b.h - a.w * a.h).map((v) => v.url);
+  const banners = [...new Set([...wideVetted.slice(0, 1), ...modelBanners, ...wideVetted.slice(1)])].slice(0, 6);
+  const pictures2 = vetted.filter((v) => !banners.includes(v.url)).map((v) => v.url).slice(0, 12);
+  const bannerModel = Object.fromEntries(models.flatMap((m, i) => (m?.banners ?? []).map((u) => [u, s.products[i].name])));
+  return { ...s, products, dealer: { banners, pictures: pictures2, bannerModel } };
 }
 
 /* ---------------- copying the pictures into our media bucket ---------------- */
 
 type Kind = "logo" | "wide" | "product";
 /** One picture from the site → our bucket (resized, re-encoded). Null when it is not a usable image. */
-export async function copyImage(userId: string, src: string, kind: Kind, n: number, minWidth: number): Promise<{ url: string; w: number; h: number } | null> {
+export async function copyImage(userId: string, src: string, kind: Kind, n: number, minWidth: number, ground?: string): Promise<{ url: string; w: number; h: number } | null> {
   const r = await fetchPublic(src, "image", 8_000_000, 12_000);
   if (!r) return null;
   try {
-    const img = sharp(r.body, { failOn: "none" }).rotate();
-    const m = await img.metadata();
+    const img0 = sharp(r.body, { failOn: "none" }).rotate();
+    const m = await img0.metadata();
+    // A cut-out on a transparent ground: on the colour asked for (a dealer's gallery: white), else JPEG makes it black.
+    const img = ground && kind !== "logo" ? img0.flatten({ background: ground }) : img0;
     const w = m.width ?? 0, h = m.height ?? 0;
     // A logo is often a wide wordmark — wellwalife.com's is 91×39 — so for a logo only the width has to be
     // real; the old rule wanted 64px of height too and threw that one away, leaving the account's old logo
@@ -706,7 +763,9 @@ async function pool<T, R>(items: T[], n: number, fn: (x: T, i: number) => Promis
   return out;
 }
 
-export type StoredSite = { logo: string | null; cover: string | null; gallery: string[]; products: (SiteProduct & { stored: string[] })[] };
+export type StoredSite = { logo: string | null; cover: string | null; gallery: string[]; products: (SiteProduct & { stored: string[] })[];
+  /** A dealer's brand banners, copied (the first is the cover) — for the website's banner slides — and the model each one shows. */
+  banners?: string[]; bannerModel?: Record<string, string> };
 
 /** Copies the logo, the best wide cover, up to 5 gallery photos and up to 2 photos per product into our bucket.
  *  A dealer's brand site (owner's call, 2 Oct 2026) gives its pictures too — a Maruti dealer's gallery shows Maruti
@@ -716,23 +775,26 @@ export async function storeSiteMedia(userId: string, s: SiteImport, role: "own" 
   let n = 0;
   const [logo, coverCands, galleryCands, productPics] = await Promise.all([
     s.logos?.length || s.logo ? copyLogo(userId, s.logos?.length ? s.logos : [s.logo!], n++) : Promise.resolve(null),
-    pool(s.covers.slice(0, 4), 3, (u) => copyImage(userId, u, "wide", n++, 700)),
-    // A dealer's brand site: its other pictures are the brand's — chitrakaev.com shows a landmark of every dealer town (a Rewari
-    // dealer got Rewari's monument as "Showroom gallery", 27 Nov 2026) — never the dealer's own photos; the build fills those.
-    role === "dealer" ? Promise.resolve([]) : pool(s.gallery.slice(0, 8), 3, (u) => copyImage(userId, u, "wide", n++, 500)),
-    pool(s.products, 3, async (p) => (await Promise.all(p.images.slice(0, 2).map((u) => copyImage(userId, u, "product", n++, 300)))).filter((x): x is NonNullable<typeof x> => !!x).map((x) => x.url)),
+    role === "dealer" ? Promise.resolve([]) : pool(s.covers.slice(0, 4), 3, (u) => copyImage(userId, u, "wide", n++, 700)),
+    // A dealer's brand site: only the pictures the AI saw as the brand's products (dealerEnrich) — chitrakaev.com also shows a landmark
+    // of every dealer town (a Rewari dealer got Rewari's monument as "Showroom gallery", 27 Nov 2026). Without that look, none.
+    role === "dealer" ? pool((s.dealer?.pictures ?? []).slice(0, 8), 3, (u) => copyImage(userId, u, "wide", n++, 300, "#ffffff")) : pool(s.gallery.slice(0, 8), 3, (u) => copyImage(userId, u, "wide", n++, 500)),
+    pool(s.products, 3, async (p) => (await Promise.all(p.images.slice(0, role === "dealer" ? 6 : 2).map((u) => copyImage(userId, u, "product", n++, 300)))).filter((x): x is NonNullable<typeof x> => !!x).map((x) => x.url)),
   ]);
+  const banners = role === "dealer" ? (await pool((s.dealer?.banners ?? []).slice(0, 6), 2, async (u) => { const x = await copyImage(userId, u, "wide", n++, 1000); return x ? { ...x, src: u } : null; })).filter((x): x is NonNullable<typeof x> => !!x) : [];
   // The cover must be a wide picture; a tall one joins the gallery instead.
   // A dealer's brand site: its home-page slides are the brand's campaigns (seen live, 11 Nov 2026: an Amul dealer got a film
   // poster as the banner and a "National Milk Day" slide in About) — they are never the dealer's cover, and never join the gallery.
-  const wide = [...(role === "dealer" ? [] : coverCands), ...galleryCands].filter((x): x is NonNullable<typeof x> => !!x);
-  const cover = role === "dealer" ? null : wide.find((x) => x.w / x.h >= 1.3) ?? null;
-  const gallery = wide.filter((x) => x !== cover).map((x) => x.url).slice(0, 5);
+  // The dealer's cover is the first banner the AI saw as the brand's products (dealerEnrich), else none.
+  const wide = [...coverCands, ...galleryCands].filter((x): x is NonNullable<typeof x> => !!x);
+  const cover = role === "dealer" ? banners[0] ?? null : wide.find((x) => x.w / x.h >= 1.3) ?? null;
+  const gallery = wide.filter((x) => x !== cover).map((x) => x.url).slice(0, role === "dealer" ? 8 : 5);
   return {
     logo: logo?.url ?? null,
     cover: cover?.url ?? null,
     gallery,
     products: s.products.map((p, i) => ({ ...p, stored: productPics[i] ?? [] })),
+    ...(banners.length ? { banners: banners.map((x) => x.url), bannerModel: Object.fromEntries(banners.flatMap((x) => (x.src && s.dealer?.bannerModel?.[x.src] ? [[x.url, s.dealer.bannerModel[x.src]]] : []))) } : {}),
   };
 }
 

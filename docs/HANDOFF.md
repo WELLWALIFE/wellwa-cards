@@ -19,11 +19,19 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    own words (brand words — in the site address or in every name — do not count). Also: a dealer's brand site gives no gallery
    (chitrakaev.com shows a landmark per dealer town); product cut-out PNGs go on white, not black; photo-focus.ts centres a
    line-up on a plain background (only Vipin's banner triggers it among 40+ test pictures).
-2. Done 28 Nov: Vipin Thakkar (card vipin-thakkar, Chitraka EV dealer, Rewari) fixed in the data by work/vipin-fix.mjs
-   (backup on the server: /root/vipin-backup-2026-11-28T05-02-03-092Z): 5 models (Active Star, Active Pro added, Single Light,
-   Double Light, Active Go) with their real photos on the Products page and the card; Showroom gallery = Chitraka green + white
-   scooters (was Rewari's monument); hero banner focus 84% → 51% (the middle of the five-scooter line-up). Still open: his own
-   showroom photo (ask him); he has 0 credits (Make by AI asks for payment — never pay).
+2. Deployed 28 Nov: dealer import takes the brand site's products in full (owner:
+   "dealer hai to main website se saari image kyo nahi"). src/lib/dealer-brand.ts — the AI (Gemini flash-lite, ~₹1 a dealer) reads
+   each model page beside its catalogue photo (spec sheet, colours, variant price/MRP, its pictures; template copies naming another
+   model and lorem/impossible specs left out) and looks at every big picture of the pages read (product / lineup / closeup kept;
+   places, people, stock, posters, graphics, plain grounds not). site-import.ts dealerEnrich → storeSiteMedia "dealer": up to 6
+   photos a product, the brand's banners (line-up first, then each model's studio banner) as cover + sliding banners (no AI banner
+   painted for those), product pictures as the gallery. Product gallery on the card shows up to 6 photos (was 3).
+   scripts/dealer-refresh.ts refills an existing dealer card (its header says how to bundle and run it; alias @/lib/admin-guard to
+   src/lib/service.ts when bundling). eslint + tsc OK.
+   Vipin Thakkar (vipin-thakkar) refilled 28 Nov with it: 5 models × 6 photos, MRP ₹1,21,000 on Active Star, colours, 5 banner
+   slides, 6 gallery pictures, theme #069046 (Chitraka green). Backups on the server: /root/vipin-backup-2026-11-28T05-02-03-092Z,
+   /root/dealer-backup-vipin-thakkar-2026-11-28T07-35-14-776Z. Brand logo is only 117×75 on chitrakaev.com (nothing bigger there).
+   Still open: his own showroom photo (ask him); 0 credits (never pay).
 3. Deployed 27 Nov: Photo library "Make by AI" on a dealer card draws the brand's real models (ai-image.ts slotImage products refs).
 4. To discuss with the owner: WhatsApp support line (AI answers + tickets, safe auto-fixes, a daily Claude review, owner-approved deploys).
 5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; old server keys

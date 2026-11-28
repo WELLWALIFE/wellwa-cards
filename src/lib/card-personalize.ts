@@ -287,7 +287,7 @@ export async function syncProductsToCard(rows: ProductSync[]) {
     c = primary ? cards.find((x) => x.id === primary) : undefined;
   } else c = cards[0];
   if (!c || /\byour name\b/i.test(c.name ?? "")) return;
-  const imagesOf = (r: ProductSync) => { const list = [...(r.photos ?? []).map((p) => p?.url).filter((u): u is string => !!u), ...(r.photo_url ? [r.photo_url] : [])]; return [...new Set(list)].slice(0, 3); };
+  const imagesOf = (r: ProductSync) => { const list = [...(r.photos ?? []).map((p) => p?.url).filter((u): u is string => !!u), ...(r.photo_url ? [r.photo_url] : [])]; return [...new Set(list)].slice(0, 6); };
   // A partner's own Shubhora card (owner, 19 Oct 2026: "product photos AI se banwaye, site par update nahi hue"): its "Plans and prices"
   // items are the company's — words and prices stay as written — but the PHOTOS the partner put on the Shubhora products follow.
   // Plans and products are matched by plan name (Free / Standard / Premium / Custom), the two are never named alike.
