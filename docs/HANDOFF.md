@@ -2,6 +2,32 @@
 
 Read this first. It is the state of the project on 12 Oct 2026, written for a session running on the owner's Mac.
 
+## NOW: the project runs on the Windows laptop (28 Nov 2026) — read this before "Where things are"
+- Machine: Windows laptop `nitin-omnibook`, Ubuntu (WSL), Node 22 (nvm). The Mac no longer deploys (its server key was removed).
+- Best place for the repo: inside Ubuntu, `~/wellwa-cards` (fast). `D:\wellwa-cards` (= `/mnt/d/wellwa-cards`) is the old copy,
+  slow from WSL. Branch `claude/dreamy-faraday-0864zl`. Deploy from Ubuntu: `bash deploy.sh` then commit and push.
+  Keys: server `~/.ssh/neuraledge_vps` (comment omnibook-deploy-2), GitHub `~/.ssh/id_ed25519`. Never print or copy keys or `.env.local`.
+- Owner rules in force: reply in short Hindi/Hinglish; list → discuss → build ("go"); production changes and deploys only with the
+  owner's yes; never type passwords, never spend money or start ads, no fake reviews or leads, never message unknown real numbers
+  (test name "TEST Claude (ignore)", phone 1234567890); Radhe Radhe title is never changed; Demo1, Pratik, Rajwal (card jai-dev-rajwal)
+  are view-only; Codex never touches .env, keys, auth, payment, supabase.
+- Read-only server checks: `ssh -i ~/.ssh/neuraledge_vps root@148.72.247.91 'bash -s' < work/radhe-check.sh` (also radhe-data.sh, radhe-setting.sh).
+
+### Open on 28 Nov 2026
+1. NOT DEPLOYED (ready, needs the owner's yes): `src/lib/site-import.ts` modelCardsFromHtml — on chitrakaev.com/vehicles.html every
+   model took the badge `misc/10.png` and two names came out as "₹1,11,000" (a price heading inside an HTML comment). Now: comments
+   are stripped, the card window is 4000 chars, a picture on half the cards or more is never used (the model page gives one instead).
+   Tested on the live page (28 Nov): Active Star, Active Pro, Single Light, Double Light, Active Go — real names, photos, specs.
+   eslint + tsc OK. Side note: JUNK_IMG drops any image URL with "star"/"icon"/"badge" in it (a model photo named active-star.png would be lost).
+2. Vipin Thakkar (@VipinThakkar, card vipin-thakkar, Chitraka EV dealer, Rewari): banners 1-2 and the About picture now show
+   Chitraka scooters (from chitrakaev.com). Still to fix after (1) is live: re-import the products (all show the green icon; one
+   row has no name, ₹1,11,000; Active Star and Active Pro missing), the Showroom gallery photo (a Rewari monument), the hero frame
+   crops the wide banner. His account has 0 credits (Make by AI asks for payment — never pay).
+3. Deployed 27 Nov: Photo library "Make by AI" on a dealer card draws the brand's real models (ai-image.ts slotImage products refs).
+4. To discuss with the owner: WhatsApp support line (AI answers + tickets, safe auto-fixes, a daily Claude review, owner-approved deploys).
+5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; old server keys
+   (codex, tusharydv, jsrao Mac); server Node 20 → 22; Cloud API buttons untested.
+
 ## The owner and how to talk
 - Owner: Shubhora (Wellwa Life), writes Hinglish; **reply in Devanagari Hindi** with everyday Hinglish words
   (प्राइस, डिलीवरी, डिटेल्स), brand/model/app names in English letters. Short, practical, no pure Hindi.

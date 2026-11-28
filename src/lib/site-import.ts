@@ -62,6 +62,16 @@ const attr = (tag: string, name: string) => { const m = tag.match(new RegExp(`\\
 /** "799.00" → "799", "1,299.50" → "1299.50"; "" for zero or nonsense. */
 const money = (v: unknown) => { const n = Number(String(v ?? "").replace(/[₹,\s]|rs\.?|inr/gi, "")); return Number.isFinite(n) && n > 0 ? String(Number.isInteger(n) ? n : Number(n.toFixed(2))) : ""; };
 const JUNK_IMG = /(sprite|icon|favicon|pixel|spacer|loader|loading|placeholder|avatar-default|badge|payment|visa|mastercard|rupay|upi|gpay|paytm|flag|arrow|star|rating|whatsapp|facebook|instagram|twitter|youtube|linkedin|\.svg(\?|$)|\.gif(\?|$))/i;
+/** How many of the product's own words the picture's path carries ("Active Star" → /products/active-star.png = 2). The brand's
+ *  words (in the site's address, or in every name of the list: `skip`) do not count, so the brand logo is never "named". */
+function nameHits(u: string, name: string, skip: Set<string> = new Set()): number {
+  let f: string; let host: string;
+  try { const x = new URL(u); f = decodeURIComponent(x.pathname).toLowerCase(); host = x.hostname.toLowerCase(); } catch { return 0; }
+  const words = [...new Set(name.toLowerCase().split(/[^a-z0-9]+/))].filter((w) => w.length >= 3 && !skip.has(w) && !host.includes(w));
+  return words.filter((w) => f.includes(w)).length;
+}
+/** A picture to drop: an icon, badge, logo… — unless its path carries the product's name (a model called "Star" is a photo, not a rating). */
+const junkFor = (u: string, name: string, skip?: Set<string>) => (JUNK_IMG.test(u) || /logo/i.test(u)) && !nameHits(u, name, skip);
 
 async function page(url: string) {
   const r = await fetchPublic(url, "html", 1_500_000, 10_000);
@@ -289,13 +299,13 @@ export function cardsFromHtml(html: string, base: string): SiteProduct[] {
     if (!price) continue;
     const src = biggestFromSrcset(attr(img, "srcset") || attr(img, "data-srcset")) || attr(img, "data-src") || attr(img, "data-lazy-src") || attr(img, "src");
     const image = absolute(src, base);
-    if (!image || JUNK_IMG.test(image)) continue;
+    if (!image) continue;
     const alt = txt(attr(img, "alt"), 80);
     const heading = txt(inner.match(/<(?:h[1-6]|p|span|div)\b[^>]*(?:class=["'][^"']*(?:title|name|product)[^"']*["'])[^>]*>([\s\S]*?)<\/(?:h[1-6]|p|span|div)>/i)?.[1], 80)
       || txt(inner.match(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/i)?.[1], 80);
     const text = txt(inner, 400).replace(PRICE_RE, "").replace(/\b(add to cart|buy now|quick view|sale|new|out of stock|select options)\b/gi, "").replace(/\s+/g, " ").trim();
     const name = (heading || (alt && !/logo|icon|banner/i.test(alt) ? alt : "") || text).slice(0, 80).trim();
-    if (name.length < 2 || /^(₹|rs)/i.test(name)) continue;
+    if (name.length < 2 || /^(₹|rs)/i.test(name) || junkFor(image, name)) continue;
     const mrpM = txt(inner, 3000).match(/(?:mrp|m\.r\.p|<del|<s\b|line-through)[^₹\d]{0,40}(?:₹|rs\.?)\s*([\d,]+(?:\.\d{1,2})?)/i);
     const mrp = mrpM ? money(mrpM[1]) : "";
     const key = `${p.origin}${p.pathname}`;
@@ -332,16 +342,19 @@ export function listingLinks(html: string, base: string, max = 3): string[] {
  *  (vehicle makers, machinery, many brand sites). Read for a dealer's brand site or the owner's own: the name, the picture and the
  *  short spec lines of the card; the model's page is read afterwards for more. Blog / news "Read more" cards are not models. */
 const DETAIL_LINK = /^\s*(view details?|details|know more|explore|view product|more info|view model|specifications?|see details)\s*$/i;
-export function modelCardsFromHtml(html: string, base: string): SiteProduct[] {
+export function modelCardsFromHtml(raw: string, base: string): SiteProduct[] {
   let origin: string;
   try { origin = new URL(base).origin; } catch { return []; }
   const out = new Map<string, SiteProduct>();
+  const cand = new Map<string, string[]>();
+  // Commented-out markup is not on the page (chitrakaev.com keeps an old "<h5> ₹1,11,000 </h5>" in a comment under each name).
+  const html = raw.replace(/<!--[\s\S]*?-->/g, "");
   let last = 0;
   for (const m of html.matchAll(/<a\b([^>]+)>([\s\S]{0,120}?)<\/a>/gi)) {
     const at = m.index ?? 0;
     if (!DETAIL_LINK.test(txt(m[2], 60))) continue;
     // Only what lies between the previous model's "View details" and this one belongs to this card.
-    const chunk = html.slice(Math.max(last, at - 2500), at);
+    const chunk = html.slice(Math.max(last, at - 4000), at);
     last = at + m[0].length;
     const u = absolute(attr(` ${m[1]}`, "href"), base);
     if (!u) continue;
@@ -350,15 +363,32 @@ export function modelCardsFromHtml(html: string, base: string): SiteProduct[] {
     if (p.origin !== origin || NOT_PRODUCT.test(p.pathname) || /\/(blog|news|article|post|press|event|media)s?\b/i.test(p.pathname)) continue;
     const heads = [...chunk.matchAll(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/gi)].map((h) => txt(h[1], 80)).filter((h) => h.length >= 2);
     const name = heads[heads.length - 1] ?? "";
-    const imgs = [...chunk.matchAll(/<img\b[^>]*>/gi)].map((t) => absolute(biggestFromSrcset(attr(t[0], "srcset") || attr(t[0], "data-srcset")) || attr(t[0], "data-src") || attr(t[0], "data-lazy-src") || attr(t[0], "src"), base)).filter((x): x is string => !!x && !JUNK_IMG.test(x) && !/logo/i.test(x));
-    if (!name || !imgs.length || name.length > 60) continue;
+    const imgs = [...chunk.matchAll(/<img\b[^>]*>/gi)].map((t) => absolute(biggestFromSrcset(attr(t[0], "srcset") || attr(t[0], "data-srcset")) || attr(t[0], "data-src") || attr(t[0], "data-lazy-src") || attr(t[0], "src"), base)).filter((x): x is string => !!x);
+    if (!name || !imgs.some((x) => !junkFor(x, name)) || name.length > 60) continue;
     // The card's short facts ("120 KM RANGE", "(2.52 KW) Lithium-ion BATTERY CAPACITY"): its text lines between the picture and the name.
     const specs = [...chunk.slice(chunk.lastIndexOf("<img")).matchAll(/<(?:p|span|div|li|h[1-6])\b[^>]*>([^<]{2,60})<\/(?:p|span|div|li|h[1-6])>/gi)]
       .map((x) => txt(x[1], 60)).filter((x) => x && x !== name && !DETAIL_LINK.test(x)).slice(0, 8);
     const key = `${p.origin}${p.pathname}`;
     const pretty = name === name.toUpperCase() ? name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : name;
-    if (!out.has(key)) out.set(key, { name: pretty, price: "", mrp: "", description: "", specs: pairSpecs(specs), images: [imgs[imgs.length - 1]], url: key });
+    if (!out.has(key)) { out.set(key, { name: pretty, price: "", mrp: "", description: "", specs: pairSpecs(specs), images: [], url: key }); cand.set(key, imgs); }
     if (out.size >= MAX_PRODUCTS) break;
+  }
+  // The card's photo: a picture repeated on half the cards or more (chitrakaev.com puts its logo badge after each model photo) is decoration,
+  // not the model (Vipin Thakkar, 27 Nov 2026: all five models came in with the brand's icon). Among the rest, one whose address
+  // carries the model's name wins, then the one nearest the name (as before).
+  const seen = new Map<string, number>();
+  for (const list of cand.values()) for (const u of new Set(list)) seen.set(u, (seen.get(u) ?? 0) + 1);
+  // A word in every model's name is the brand ("Chitraka"), not the model.
+  const names = [...out.values()].map((x) => new Set(x.name.toLowerCase().split(/[^a-z0-9]+/)));
+  const brand = new Set(out.size > 1 ? [...names[0]].filter((w) => names.every((n) => n.has(w))) : []);
+  for (const [key, prod] of out) {
+    const list = (cand.get(key) ?? []).filter((u) => !junkFor(u, prod.name, brand));
+    const real = out.size > 1 ? list.filter((u) => (seen.get(u) ?? 0) < Math.max(2, Math.ceil(out.size / 2))) : list;
+    const best = Math.max(0, ...real.map((u) => nameHits(u, prod.name, brand)));
+    const named = best ? real.find((u) => nameHits(u, prod.name, brand) === best) : undefined;
+    // Only the decoration on this card: no picture here; the model's own page gives one (never the brand's badge).
+    const pick = named ?? real[real.length - 1];
+    if (pick) prod.images = [pick];
   }
   return [...out.values()];
 }
