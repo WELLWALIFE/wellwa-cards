@@ -12,5 +12,5 @@ wsl -e bash -lc "cd /mnt/c/Projects/wellwa-cards && bash deploy.sh"
 ```
 Then commit and push. deploy.sh builds LOCALLY first (`npm run build`), so this folder needs, once:
 - `node_modules`: `npm ci` in this folder;
-- `.env.local`: the owner copies it here himself — Claude never copies, prints or reads it. Without it the build has no
+- `.env.local`: the owner puts it here — Claude never copies, prints or reads it. Without it the build has no
   NEXT_PUBLIC_SUPABASE_URL / ANON_KEY / RAZORPAY_KEY_ID and the live site breaks. If it is missing, stop and ask.
