@@ -60,9 +60,11 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 4. To discuss with the owner: WhatsApp support line (AI answers + tickets, safe auto-fixes, a daily Claude review, owner-approved deploys).
 5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; server Node 20 → 22;
    Cloud API buttons untested.
-6. Server keys (28 Nov 2026): jsrao@JSRAOs-Air.lan REMOVED from /root/.ssh/authorized_keys (backup authorized_keys.bak-2026-11-28,
-   fresh login from omnibook checked). Left: omnibook-deploy-2 (keep), codex-wellwa-deploy and tusharydv@Mac.lan (owner to decide).
-   Password login is off (00-shubhora-hardening.conf wins), though sshd_config and 50-cloud-init.conf still say `yes`.
+6. Server keys — DONE (28 Nov 2026). /root/.ssh/authorized_keys now holds exactly two keys: omnibook-deploy-2 (this laptop, deploys)
+   and tusharydv@Mac.lan (owner: keep). Removed: jsrao@JSRAOs-Air.lan (backup authorized_keys.bak-2026-11-28) and codex-wellwa-deploy
+   (owner's "haan hatao"; backup authorized_keys.bak-2026-11-28T11-46-56). A fresh login from omnibook was checked after each removal.
+   Password login is off in effect (`sshd -T` → passwordauthentication no; 00-shubhora-hardening.conf wins), though sshd_config and
+   50-cloud-init.conf still say `yes`.
 
 ## The owner and how to talk
 - Owner: Shubhora (Wellwa Life), writes Hinglish; **reply in Devanagari Hindi** with everyday Hinglish words
