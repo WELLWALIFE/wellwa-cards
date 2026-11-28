@@ -4,8 +4,10 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 
 ## NOW: the project runs on the Windows laptop (28 Nov 2026) — read this before "Where things are"
 - Machine: Windows laptop `nitin-omnibook`, Ubuntu (WSL), Node 22 (nvm). The Mac no longer deploys (its server key was removed).
-- Best place for the repo: inside Ubuntu, `~/wellwa-cards` (fast). `D:\wellwa-cards` (= `/mnt/d/wellwa-cards`) is the old copy,
-  slow from WSL. Branch `claude/dreamy-faraday-0864zl`. Deploy from Ubuntu: `bash deploy.sh` then commit and push.
+- **The real project is now `C:\Projects\wellwa-cards`** (WSL: `/mnt/c/Projects/wellwa-cards`; owner's call, 28 Nov 2026).
+  `~/wellwa-cards` (Ubuntu) and `D:\wellwa-cards` are old copies — no work and no deploys from them. Branch `claude/dreamy-faraday-0864zl`.
+  Deploy, only after the owner's yes: `wsl -e bash -lc "cd /mnt/c/Projects/wellwa-cards && bash deploy.sh"`, then commit and push.
+  deploy.sh builds locally, so the folder needs `npm ci` once and the owner's own copy of `.env.local` (see CLAUDE.md).
   Keys: server `~/.ssh/neuraledge_vps` (comment omnibook-deploy-2), GitHub `~/.ssh/id_ed25519`. Never print or copy keys or `.env.local`.
 - Owner rules in force: reply in short Hindi/Hinglish; list → discuss → build ("go"); production changes and deploys only with the
   owner's yes; never type passwords, never spend money or start ads, no fake reviews or leads, never message unknown real numbers
