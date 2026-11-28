@@ -35,7 +35,7 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
    /root/dealer-backup-vipin-thakkar-2026-11-28T07-35-14-776Z. Brand logo is only 117×75 on chitrakaev.com (nothing bigger there).
    Still open: his own showroom photo (ask him); 0 credits (never pay).
 2b. Test dealer, 28 Nov (read-only runs of scripts/dealer-refresh.ts, nothing written). Deployed: bare-list AI answer read, one
-   picture under two spellings seen once. NOT DEPLOYED (ready, ask the owner): no model found by the rules → the AI lists the models
+   picture under two spellings seen once. Deployed 28 Nov too: no model found by the rules → the AI lists the models
    from the page's words / links / pictures (dealer-brand.ts modelsFromPage; okinawascooters.com 0 → 9 models); pages answering
    every address with the same body read once; biggest srcset + Shopify `width=180` → 1200 (crompton/kent galleries 0 → 12); price
    rows never in specs. Results: chitrakaev 5 models/6 banners/12 pictures; okinawa 9/6/12; crompton 12/1/12 with MRP + specs;
