@@ -684,8 +684,9 @@ export async function copyImage(userId: string, src: string, kind: Kind, n: numb
     if (w < minWidth || h < (kind === "logo" ? 20 : Math.min(minWidth, 120))) return null;
     const out = kind === "logo"
       ? await img.resize({ width: 600, height: 300, fit: "inside", withoutEnlargement: true }).png().toBuffer()
+      // A cut-out PNG (brand sites show their models on a transparent ground) goes on white; JPEG alone would turn it black.
       : kind === "product"
-      ? await img.resize({ width: 1400, height: 1400, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toBuffer()
+      ? await img.resize({ width: 1400, height: 1400, fit: "inside", withoutEnlargement: true }).flatten({ background: "#ffffff" }).jpeg({ quality: 85, mozjpeg: true }).toBuffer()
       : await img.resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toBuffer();
     const ext = kind === "logo" ? "png" : "jpg";
     const key = `poster/${userId}/site-${kind}-${Date.now()}-${n}.${ext}`;
@@ -716,7 +717,9 @@ export async function storeSiteMedia(userId: string, s: SiteImport, role: "own" 
   const [logo, coverCands, galleryCands, productPics] = await Promise.all([
     s.logos?.length || s.logo ? copyLogo(userId, s.logos?.length ? s.logos : [s.logo!], n++) : Promise.resolve(null),
     pool(s.covers.slice(0, 4), 3, (u) => copyImage(userId, u, "wide", n++, 700)),
-    pool(s.gallery.slice(0, 8), 3, (u) => copyImage(userId, u, "wide", n++, 500)),
+    // A dealer's brand site: its other pictures are the brand's — chitrakaev.com shows a landmark of every dealer town (a Rewari
+    // dealer got Rewari's monument as "Showroom gallery", 27 Nov 2026) — never the dealer's own photos; the build fills those.
+    role === "dealer" ? Promise.resolve([]) : pool(s.gallery.slice(0, 8), 3, (u) => copyImage(userId, u, "wide", n++, 500)),
     pool(s.products, 3, async (p) => (await Promise.all(p.images.slice(0, 2).map((u) => copyImage(userId, u, "product", n++, 300)))).filter((x): x is NonNullable<typeof x> => !!x).map((x) => x.url)),
   ]);
   // The cover must be a wide picture; a tall one joins the gallery instead.

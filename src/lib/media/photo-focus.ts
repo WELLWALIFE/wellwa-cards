@@ -43,6 +43,15 @@ export async function focusOf(buf: Buffer): Promise<PhotoFocus | null> {
     if (typeof info.attentionX === "number" && typeof info.attentionY === "number") { fx = info.attentionX / scale; fy = info.attentionY / scale; }
     else if (typeof info.cropOffsetLeft === "number" && typeof info.cropOffsetTop === "number") { fx = (info.cropOffsetLeft + side / 2) / scale; fy = (info.cropOffsetTop + side / 2) / scale; }
     else return null;
+    // A line-up on a plain background (a brand's five scooters on black, Vipin Thakkar 28 Nov 2026): attention picks the brightest
+    // one at the edge and a narrow frame shows only that. When the plain ground trims off and what is left spans most of the
+    // width, the middle of the line-up is the focus.
+    const lineup = await sharp(buf, { failOn: "none" }).rotate().trim({ threshold: 30 }).toBuffer({ resolveWithObject: true }).then(({ info: t }) => {
+      const left = -(t.trimOffsetLeft ?? 0), top = -(t.trimOffsetTop ?? 0);
+      // A band across the picture: most of the width, at most three quarters of the height, at least twice as wide as tall.
+      return t.width >= w * 0.7 && t.height <= h * 0.75 && t.width >= t.height * 2 ? { x: left + t.width / 2, y: top + t.height / 2 } : null;
+    }).catch(() => null);
+    if (lineup) { fx = lineup.x; fy = lineup.y; }
     const px = Math.max(0, Math.min(100, Math.round((fx / w) * 100)));
     const py = Math.max(0, Math.min(100, Math.round((fy / h) * 100)));
     // Subject on the left third → words go right; on the right third → words go left; in the middle → centre.

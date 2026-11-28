@@ -14,15 +14,16 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 - Read-only server checks: `ssh -i ~/.ssh/neuraledge_vps root@148.72.247.91 'bash -s' < work/radhe-check.sh` (also radhe-data.sh, radhe-setting.sh).
 
 ### Open on 28 Nov 2026
-1. NOT DEPLOYED (ready, needs the owner's yes): `src/lib/site-import.ts` modelCardsFromHtml — on chitrakaev.com/vehicles.html every
-   model took the badge `misc/10.png` and two names came out as "₹1,11,000" (a price heading inside an HTML comment). Now: comments
-   are stripped, the card window is 4000 chars, a picture on half the cards or more is never used (the model page gives one instead).
-   Tested on the live page (28 Nov): Active Star, Active Pro, Single Light, Double Light, Active Go — real names, photos, specs.
-   eslint + tsc OK. Side note: JUNK_IMG drops any image URL with "star"/"icon"/"badge" in it (a model photo named active-star.png would be lost).
-2. Vipin Thakkar (@VipinThakkar, card vipin-thakkar, Chitraka EV dealer, Rewari): banners 1-2 and the About picture now show
-   Chitraka scooters (from chitrakaev.com). Still to fix after (1) is live: re-import the products (all show the green icon; one
-   row has no name, ₹1,11,000; Active Star and Active Pro missing), the Showroom gallery photo (a Rewari monument), the hero frame
-   crops the wide banner. His account has 0 credits (Make by AI asks for payment — never pay).
+1. Deployed 28 Nov: model cards (site-import.ts modelCardsFromHtml) — HTML comments stripped, 4000-char card window, a picture
+   repeated on half the cards is never the model's, an icon/badge/star/logo-named picture is kept when its path carries the model's
+   own words (brand words — in the site address or in every name — do not count). Also: a dealer's brand site gives no gallery
+   (chitrakaev.com shows a landmark per dealer town); product cut-out PNGs go on white, not black; photo-focus.ts centres a
+   line-up on a plain background (only Vipin's banner triggers it among 40+ test pictures).
+2. Done 28 Nov: Vipin Thakkar (card vipin-thakkar, Chitraka EV dealer, Rewari) fixed in the data by work/vipin-fix.mjs
+   (backup on the server: /root/vipin-backup-2026-11-28T05-02-03-092Z): 5 models (Active Star, Active Pro added, Single Light,
+   Double Light, Active Go) with their real photos on the Products page and the card; Showroom gallery = Chitraka green + white
+   scooters (was Rewari's monument); hero banner focus 84% → 51% (the middle of the five-scooter line-up). Still open: his own
+   showroom photo (ask him); he has 0 credits (Make by AI asks for payment — never pay).
 3. Deployed 27 Nov: Photo library "Make by AI" on a dealer card draws the brand's real models (ai-image.ts slotImage products refs).
 4. To discuss with the owner: WhatsApp support line (AI answers + tickets, safe auto-fixes, a daily Claude review, owner-approved deploys).
 5. Older: Radhe_Radhe join link `?leg=R` test on WhatsApp; NOTIFY_WA_USER decision; Google check WhatsApp test; old server keys
